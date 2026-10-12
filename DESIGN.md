@@ -34,7 +34,8 @@ or tournament already holding an Arterra side plays on.
 Each section's pages are tabs in the page bar under the top bar. A page about one thing (a club, a nation, a player)
 starts the page bar with its crest and name. Every page has its own address.
 
-A club has two pages: **Overview** (squad, pitch, club, honours, finishes, results) and **History**, a row a season,
+A club has two pages: **Overview** (squad, pitch, club, honours, finishes, results; the squad lists the bench's eleven
+places, an open one a quiet row with its group and Vacant) and **History**, a row a season,
 newest first, with its division, finish, record, cup run and Club World Cup or Shield run, titles in gold, and its
 manager (both, where a year had two), and its honours beside it by competition with the years each was won. A national side has the same two pages: its squad of
 22 fills the first column with each man's club and the year's international figures, AFA Rankings (its place in the
@@ -287,7 +288,8 @@ Ground or Neutral) centred under it with Swap Ends to its left ("home/away/neutr
 October 2026). A neutral ground is picked from the ground's name itself, a searchable list by nation.
 
 Under it, three columns. Down each outside, the side's **Team Sheet**: its eleven on the Pitch at the panel's full height,
-in a real pitch's widest proportions, or its bench (a row a man, given name and SURNAME, the surname bold: "John DOE"), by the switch in its
+in a real pitch's widest proportions, or its bench (a row a man, given name and SURNAME, the surname bold: "John DOE";
+an open place a quiet row with its group and Vacant, user, 12 October 2026: "Vacant spots should be shown"), by the switch in its
 title row, which reads the formation and Bench (Moukden and Kirin, 10 October 2026: "Do manager and bench need their own
 column?", then "Dude have you seen how crowded the pitches are"). Between them: **Strength Comparison** (the eleven's ATT,
 MID and DEF, then BENCH, each pair facing across its label; the user, 11 October 2026: "only keep ATT, MID, DEF, and BENCH"), **Form** (each side's last five, on one
@@ -413,7 +415,8 @@ tab opens and not again while it is open, so a row never jumps while men are mov
 the rest scrolls sideways.
 
 **The columns:** crest, code, name, OVR, XI, Bench, Value, formation, time wasting, manager, home and away kits, city,
-ground and capacity, and then the places, last, so a club's row ends at #16 and only a national side's runs on to #22. OVR is the squad's mean, XI the
+ground and capacity, and then the places, last, twenty-two for every side (a club's bench grew from five to eleven on 12
+October 2026, its first five places as they were and six more after them, open until filled). OVR is the squad's mean, XI the
 eleven's, Bench the bench's and Value its men's transfer values together, all worked out as men move and never typed; a
 saved side's record carries its OVR as worked out. Style, keeper passing and defensive line have no columns, since they
 follow the manager: his chip carries his style's name in its colour. Formation and time wasting are drop-downs in their
@@ -475,13 +478,13 @@ club, opens in the same form, with **Done** and **Remove**. **Many**, on the for
 (a line a man, one nationality, an age range, a table to rate them): one request, its men shown in the places they will
 take or first on Free Agents. A manager is made the same way, from **New Manager** or an empty manager cell, with his
 style; made for a side he takes it over when let in. **+ New Club** at the foot of each league band adds a row filled in
-place: name, code, kits, city, ground, capacity, formation, manager and its sixteen places. **New League** at the foot of
+place: name, code, kits, city, ground, capacity, formation, manager and its twenty-two places. **New League** at the foot of
 the tab adds a band for the league's name, tier and cup (picked from the nation's cups or named new), with its founding
 clubs as new rows. A club row's menu opens from its row number (a click, or the right button). **Roll Ratings**, in the
 menu of any side with new men (a new club's, or the new men in the cart placed in one of the person's sides; the user, 12
 October 2026: "I can then use the OVR randomizer? Also add an age randomizer with an age range"), is a tool and never a
 field: given a team rating it rates
-every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of 2.3 and
+every new man left blank or rolled before so the side's men average it, starters about 1.3 over it with a spread of 2.3 and
 each bench man below the starter at his position, keeping typed ratings (`src/data/roll.js`). **Roll Ages** beside it
 draws a date of birth for an age in a range (18 to 32 to start) for every new man there, keeping a date set by hand on
 his form (`bornSet`); every new man starts with a date for an age from 18 to 32 and a rating blank unless given. For an editor each new man,

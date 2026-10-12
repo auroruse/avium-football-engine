@@ -1,11 +1,11 @@
-// RATINGS ROLLED TO A TEAM RATING (Moukden and Kirin, 11 October 2026). A club's rating is the average of its sixteen.
+// RATINGS ROLLED TO A TEAM RATING (Moukden and Kirin, 11 October 2026). A club's rating is the average of its men.
 // The new men whose ratings were left blank, or rolled before, are drawn the way the clubs on file sit: starters about
 // 1.3 over the club's rating with a spread of 2.3 (measured over the 234 clubs with sixteen rated men, 11 October 2026),
 // and each bench man below the starter at his position, the nearest position where nobody plays his. They then move a
 // point at a time until the sixteen average the target. A rating someone typed, and a man already on file, stays.
 import { posFitCost } from "./positions.js";
 
-// squad: sixteen places, each empty, a record ID (a man on file) or a new man { pos, ovr, auto }.
+// squad: its places (twenty-two, sixteen on an old form), each empty, a record ID (a man on file) or a new man { pos, ovr, auto }.
 // labels: each place's position. ovrOf: a man on file's rating. maxOf: the most a new man may be rated (an editor's man of
 // another nation stays below that nation's level). Returns the squad with the rolled men rated, each marked auto, so the
 // next roll knows they are its own.

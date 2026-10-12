@@ -34,7 +34,7 @@ import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
-import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
+import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, clubBenchRest, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -1901,6 +1901,8 @@ function parseBulk(text) {
   // a club that simply has not been given colours yet left two blanks that nothing consumed, and
   // its city was read as its ground while the ground fell off the end.
   const _hdrColors = _hdr ? _hdr.split("\t").filter(c => /^(home|away)$/i.test(c.trim())).length : 0;
+  // ...and whose bench it is: an international sheet names its bench SUB #1..SUB #11, a club's runs on #12..#22.
+  const _hdrSub = _hdr ? _hdr.split("\t").some(c => /^SUB\s*#/i.test(c.trim())) : false;
   const stratKeys = _fromHdr.length ? _fromHdr
     : ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
@@ -1982,12 +1984,14 @@ function parseBulk(text) {
     // bench). Metadata always opens with a #RRGGBB colour, so the first colour terminates the
     // block; only the two legal widths are accepted, so a malformed row falls back to 16 rather
     // than silently eating a city name as a substitute.
-    let PLAYER_SLOTS = 16;
+    let PLAYER_SLOTS = 16, clubRow = !!_hdr && !_hdrSub;
     if (_hdrSlots === 16 || _hdrSlots === 22) PLAYER_SLOTS = _hdrSlots;
     else { // headerless input -- the in-app export, an old registry, a hand-pasted squad
       let e = PLAYER_START;
       while (e < p.length && e < PLAYER_START + 22 && !isHexColor(p[e])) e++;
       const n = e - PLAYER_START;
+      // Kit colours close a club's row; an international row carries none.
+      clubRow = e < p.length && isHexColor(p[e]);
       // Exactly 22 when a colour terminates the block. When the row simply ends instead (the
       // international rows carry no colours, so players are the last columns), anything past 16
       // is a 22-slot row whose trailing blanks were eaten upstream — by a spreadsheet export or
@@ -2045,7 +2049,7 @@ function parseBulk(text) {
     // National teams carry their confederation in the last column. Clubs have no such column,
     // so meta is already empty for them and this is a no-op.
     const conference = meta.length > 0 ? meta.shift().trim() : null;
-    const squad = buildSquad(formation, playerNames.some(Boolean) ? playerNames : null, PLAYER_SLOTS === 22 ? 11 : 5);
+    const squad = buildSquad(formation, playerNames.some(Boolean) ? playerNames : null, PLAYER_SLOTS === 22 ? 11 : 5, clubRow && PLAYER_SLOTS === 22);
     // Key off p.slot, not the array index: buildSquad drops unfilled bench slots, so a row with a
     // gap has a shorter squad than its column list and the two no longer line up positionally.
     squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
@@ -2640,6 +2644,11 @@ function parseHof(text) {
 // board, stamped beside the minute by the engine, so a stoppage-time goal can be told apart from
 // one on the whistle -- three in a row all reading 90' was the bug this fixes.
 const fmtMin = (min, add) => `${min ?? 0}${add ? "+" + add : ""}'`;
+// EVERY SQUAD HAS TWENTY-TWO PLACES, eleven and a bench of eleven, club and country alike (Moukden and Kirin, 12 October
+// 2026: "clubs will also be given 11-man benches, similarly to national teams, though they'll stay at 5 until new players
+// are added or drafted"). A club squad still carrying sixteen (a form kept from before) is filled out with open places.
+const SQUAD_PLACES = 22;
+const padSq = (sq) => { const out = Array.isArray(sq) ? [...sq] : []; while (out.length < SQUAD_PLACES) out.push(null); return out; };
 const POS_SPECIFIC = ["GK","LB","CB","RB","LWB","RWB","DM","CM","AM","LM","RM","LW","RW","ST"];
 // A squad's positions come from slot index + formation, so changing formation without reordering
 // silently reassigns roles (a RB becomes a third CB, a winger becomes a CM). Reorder the XI so each
@@ -2653,6 +2662,7 @@ const subLimit = (s, side) => s?.subCap?.[side] ?? 3;
 // Five substitutions is a property of the DECLARED bench width, not of how many names are in it —
 // a nation that lists 8 of its 11 subs still plays international rules. The length test stays as a
 // fallback for squads built before benchSize existed, including those inside older saves.
+// A club's eleven-man bench plays to five as well (Moukden and Kirin, 12 October 2026: "Put clubs on 5").
 const subCapFor = (bench) => ((bench || []).some(p => p.benchSize >= 11) || (bench || []).length >= 11 ? 5 : 3);
 function refitLineup(squad, formation) {
   const xi = (squad || []).filter(p => !p.bench), bench = (squad || []).filter(p => p.bench);
@@ -2686,7 +2696,8 @@ function refitLineup(squad, formation) {
   }
   return slotOf.map(i => group[i]);
   };
-  return [...order(xi), ...(bench.length === 11 ? order(bench) : bench)];
+  // A club's eleven-man bench keeps its places as they are, as its five always did: its first five are fixed, not a mirror.
+  return [...order(xi), ...(bench.length === 11 && !bench.some(p => p.clubBench) ? order(bench) : bench)];
 }
 
 // A FORMATION CHANGE, COMPLETE. refitLineup only reorders the men into the new slots; the squad is
@@ -2696,7 +2707,7 @@ function refitLineup(squad, formation) {
 // re-slotted at centre-half still read LW to squad fit and to the rating bands.
 function refitAs(squad, formation) {
   const old = refitLineup(squad, formation);
-  const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize);
+  const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize, old.some(p => p.clubBench));
   // ...and who he is: his record, traits and own positions come with him (a rebuilt man used to lose his traits).
   nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos;
     if (o.rid) p.rid = o.rid; if (o.badges) p.badges = o.badges; if (o.own) p.own = o.own; });
@@ -4107,9 +4118,10 @@ function WorldToggle({ value, onChange, style, btnStyle }) {
 // THE SWING OF IT, on Full Time (Moukden and Kirin, 12 October 2026: "add the momentum graph on top of it with when the
 // goals came"). The sidebar's chart drawn across the numbers: who was on top minute by minute, the home side's spells above
 // the line and the away side's below, the interval a dashed rule, and every goal a dot at the edge of its side's half with
-// its minute beside it and a faint line down to when it came. It measures its own box, so it takes whatever height the
-// team sheets leave above the numbers. last: the tick the match ended on; perMin: ticks a minute.
-function MomentumChart({ mom, perMin, last, htAt, etAt, goals, hc, ac }) {
+// its minute beside it and a faint line down to when it came. One height whatever the window (Moukden and Kirin, 12 October
+// 2026: "they need to stay the same height regardless"); it measures its own width. last: the tick the match ended on;
+// perMin: ticks a minute.
+function MomentumChart({ mom, perMin, last, htAt, etAt, goals, hc, ac, height }) {
   const box = useRef(null);
   const [sz, setSz] = useState(null);
   useLayoutEffect(() => {
@@ -4154,7 +4166,7 @@ function MomentumChart({ mom, perMin, last, htAt, etAt, goals, hc, ac }) {
         {marks}
       </svg>);
   }
-  return <div ref={box} className="ux-ftmom">{svg}</div>;
+  return <div ref={box} className="ux-ftmom" style={{ height }}>{svg}</div>;
 }
 const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
 function GoalReplay({ clip, hc, ac }) {
@@ -8627,14 +8639,28 @@ export default function App() {
   const commitDraft = (d) => { saveDraft(d); showRecords(applyDraft(recBase, d)); };
   const styleKeyOf = (label) => Object.keys(STYLE_LBL).find(k => STYLE_LBL[k].toLowerCase() === String(label || "").trim().toLowerCase()) || null;
   // A squad's places (src/data/positions.js slotLabels): the eleven's positions, then each bench place's group.
-  const slotLabels = (formation, n) => { const xi = sposFor(formation); return [...xi, ...(n > 16 ? xi.map(p => GROUP_OF[p] || "MID") : CLUB_BENCH)].slice(0, n); };
+  // club: a club's squad, whose bench keeps its old five first (src/data/positions.js); a national side's mirrors its eleven.
+  const slotLabels = (formation, n, club = false) => { const xi = sposFor(formation), g = xi.map(p => GROUP_OF[p] || "MID");
+    return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? [...CLUB_BENCH, ...clubBenchRest(g)] : g)].slice(0, n); };
+  const teamLabels = (t) => slotLabels(String(t.formation).trim(), t.squad.length, !isNational(t));
+  // A SIDE'S BENCH IN ITS PLACES, the open ones as well (Moukden and Kirin, 12 October 2026: "Vacant spots should be shown",
+  // in the squad views and never in a match): each man at the place he was named in, an open place as { vacant, lab }
+  // with the group it takes. A man with no place on record (an older save) fills the first open one.
+  const benchPlaces = (t, bench, nt) => {
+    const n = (bench || []).reduce((k, p) => Math.max(k, p.benchSize || 0), 0) || 11;
+    const lab = slotLabels(String(t?.formation || "4-3-3").trim(), 11 + n, !nt).slice(11);
+    const bySlot = new Map((bench || []).filter(p => p.slot != null).map(p => [p.slot, p]));
+    const out = lab.map((l, i) => bySlot.get(11 + i) || { vacant: true, lab: l, slot: 11 + i });
+    for (const p of (bench || []).filter(p => p.slot == null)) { const i = out.findIndex(x => x.vacant); if (i >= 0) out[i] = p; else out.push(p); }
+    return out;
+  };
   // TRANSFERS. Where each man is now (the records with the cart over them), the position he plays (for placing a
   // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
   const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
   const whereIs = useMemo(() => {
     const m = new Map();
     for (const t of curRecs.teams) {
-      const nat = t.file === "AVIUM" || t.file === "ARTERRA", lab = slotLabels(String(t.formation).trim(), t.squad.length);
+      const nat = t.file === "AVIUM" || t.file === "ARTERRA", lab = slotLabels(String(t.formation).trim(), t.squad.length, !nat);
       t.squad.forEach((v, i) => { const id = idOf(v); if (!id) return; const e = m.get(id) || {};
         if (nat) { if (!e.nt) e.nt = { key: teamKey(t), pos: lab[i] }; } else if (!e.club) e.club = { key: teamKey(t), pos: lab[i] };
         m.set(id, e); });
@@ -8653,7 +8679,7 @@ export default function App() {
   };
   // WHAT SAVING WOULD DO, by the server's own rules (src/data/rules.js) against the records as this page has them: what
   // it would refuse, and, for each item, the owners it would wait on (none: it goes live).
-  const judge = useMemo(() => ({ labels: (t) => slotLabels(String(t.formation).trim(), t.squad.length), fit: posFitCost,
+  const judge = useMemo(() => ({ labels: (t) => teamLabels(t), fit: posFitCost,
                                  ovr: (id) => recById.get(id)?.ovr ?? 0, pos: (id) => posList(recById.get(id)?.pos) }), [recById]);
   const preview = useMemo(() => {
     if (!draftSize(draft)) return null;
@@ -8731,7 +8757,8 @@ export default function App() {
     if (c.field === "manager") return pair(mName(c.from), mName(c.to));
     if (c.field === "squad") {
       const base = recTeam.get(c.id), fa = String(base?.formation || "").trim(), fb = String(formationAfter || fa).trim();
-      const la = slotLabels(fa, c.from.length), lb = slotLabels(fb, c.to.length), at = (lab, i) => lab[i] + (i >= 11 ? " (Bench)" : "");
+      const club = !base || !isNational(base);
+      const la = slotLabels(fa, c.from.length, club), lb = slotLabels(fb, c.to.length, club), at = (lab, i) => lab[i] + (i >= 11 ? " (Bench)" : "");
       const slot = (s, dim = true) => { const [p, b] = s.split(" "); return <span className={dim ? "ux-chg-o" : undefined}><span style={mono}>{p}</span>{b ? " " + b : ""}</span>; };
       const joined = c.to.map((id, i) => [id, i]).filter(([id]) => id && !c.from.includes(id));
       const left = c.from.filter(id => id && !c.to.includes(id));
@@ -12064,7 +12091,7 @@ export default function App() {
   const edTeamRec = (key) => curRecs.teams.find(t => teamKey(t) === key) || null;
   const edNatOf = (key) => { const r = edTeamRec(key); return r ? (isNational(r) ? r.code : r.nation) : null; };
   const edKindName = (k) => (k === "teams" ? "Team" : k === "players" ? "Player" : k === "leagues" ? "League" : "Manager");
-  const edSq = (t) => t.squad.map(v => idOf(v) ?? null), edLab = (t) => slotLabels(String(t.formation).trim(), t.squad.length);
+  const edSq = (t) => t.squad.map(v => idOf(v) ?? null), edLab = (t) => teamLabels(t);
   // The men an open request holds: none of them can move until it is settled.
   const edLockedMen = useMemo(() => new Set(requests.filter(r => !r.declined).flatMap(r => r.locks || []).filter(l => /^[pm]:/.test(l))), [requests]);
   // Every city on the map, for a side's city.
@@ -12160,7 +12187,7 @@ export default function App() {
   const edRail = (kind, groups, pickedKey, pick) => (
     <section className="ux-panel ux-grow ux-ed-rail">
       <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => {
-        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: clubNations(scope)[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdCall(null); setEdSel(null); setEdMsg(""); }}>
+        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: clubNations(scope)[0] || "", formation: "4-3-3", squad: Array(SQUAD_PLACES).fill(null) } : null) })); setEdCall(null); setEdSel(null); setEdMsg(""); }}>
         {uxIcon("plus", "ux-s")}New {edKindName(kind)}</button></div>
       <div className="ux-ed-search"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
         <input type="search" placeholder="Search" aria-label="Search" value={edQ} onChange={e => setEdQ(e.target.value)} /></span></div>
@@ -12196,7 +12223,8 @@ export default function App() {
     const callInto = (i) => { if (held(sq[i])) return; const s = [...sq]; s[i] = call.id;
       set({ squad: arrangeBench(s, lab, ownOfId, fitsPlace) }); setEdCall(null); setEdSel(null); };
     // A new shape re-slots the eleven by each man's own positions (a national bench follows its eleven).
-    const reform = (nf) => { const n = sq.length, rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
+    const reform = (nf) => { const n = sq.length, rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11,
+                                                                       clubBench: !nat && n - 11 === 11 }));
       set({ formation: nf, squad: refitLineup(rows, nf).map(e => e.rid ?? null) }); };
     const open = sq.some(v => !v);
     const man = (i) => { const id = sq[i], p = id ? recNow(id) : null; return { id, p, nm: p ? p.name : "" }; };
@@ -12577,9 +12605,9 @@ export default function App() {
     const sel = (label, value, opts, onChange) => (
       <label className="ux-pick ux-ed-sel"><select aria-label={label} value={value || ""} onChange={e => onChange(e.target.value)}>
         <option value="">Choose</option>{opts.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
-    // A new club's squad: sixteen places, filled from free agents and this person's own men, each to the place he fits.
+    // A new club's squad: twenty-two places, filled from free agents and this person's own men, each to the place he fits.
     const nation = f.nation || "", leagues = [...new Set(curRecs.teams.filter(t => !isNational(t) && t.nation === nation).map(t => t.group).filter(Boolean))];
-    const squad = f.squad || Array(16).fill(null), slabs = slotLabels(f.formation || "4-3-3", 16);
+    const squad = padSq(f.squad), slabs = slotLabels(f.formation || "4-3-3", SQUAD_PLACES, true);
     const pool = k !== "teams" || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !artNats.has(p.nat) && !squad.includes(p.id) && edHit(f.q, p.name)
       && (overseer || !whereIs.get(p.id)?.club || edMine(whereIs.get(p.id).club.key)) && !edLockedMen.has("p:" + p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 8);
     const mgrPool = k !== "teams" ? [] : [[null, [{ k: "", name: "No Manager" }, ...curRecs.managers.filter(m => { const at = edSidesOfMgr(m.id).find(t => !isNational(t));
@@ -12691,7 +12719,7 @@ export default function App() {
   // League is a request carrying its founding clubs and the new men they need, each rating proposed or left blank for the
   // overseer, who sets them before he lets it in (src/data/rules.js). ──
   const edLgBlankClub = () => ({ id: edUid(), name: "", code: "", home: "#888888", away: "#ffffff", ground: "", cap: "", city: "", formation: "4-4-2",
-    manager: null, squad: Array(16).fill(null) });
+    manager: null, squad: Array(SQUAD_PLACES).fill(null) });
   const edLgSeed = () => ({ kind: "leagues", name: "", nation: clubNations(scope)[0] || "", tier: 1, cup: "", clubs: [edLgBlankClub()], open: 0 });
   const edLgNew = (v) => !!v && typeof v === "object";
   // A league request as the builder holds it: each club's ground and capacity apart, its city, and ratings as typed.
@@ -12810,7 +12838,7 @@ export default function App() {
     const updC = (p) => upd({ clubs: clubs.map((x, i) => (i === oi ? { ...x, ...p } : x)) });
     const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
     const nation = f.nation || "", multi = overseer || clubNations(scope).length > 1;
-    const slabs = c ? slotLabels(c.formation || "4-4-2", 16) : [];
+    const slabs = c ? slotLabels(c.formation || "4-4-2", SQUAD_PLACES, true) : [];
     const starters = (cl) => cl.squad.slice(0, 11).filter(Boolean).length;
     const avgOf = (cl) => { const r = cl.squad.map(v => (!v ? null : edLgNew(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(x => x != null);
       return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null; };
@@ -13504,7 +13532,7 @@ export default function App() {
   // is released (dropped, from a national side).
   const shMovePlayer = (src, k2, j) => {
     const T2 = shRowOf(k2); if (!T2 || !shCan(k2)) return;
-    if (k2.startsWith("new:")) { const x = shClubOf(k2), sq = [...(x.c.squad || Array(16).fill(null))]; if (sq.includes(src.id)) return; sq[j] = src.id; shSetClub(k2, { squad: sq }); return; }
+    if (k2.startsWith("new:")) { const x = shClubOf(k2), sq = padSq(x.c.squad); if (sq.includes(src.id)) return; sq[j] = src.id; shSetClub(k2, { squad: sq }); return; }
     const s2 = edSq(T2), id = src.id, there = s2[j] || null, nt2 = isNational(T2);
     if (there === id) return;
     if (edLockedMen.has("p:" + id) || (there && edLockedMen.has("p:" + there))) return shSay("Waiting On A Request");
@@ -13583,7 +13611,7 @@ export default function App() {
     const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : ""].filter(Boolean).join(" · "));
     const man = (p, own, lab) => { const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
       return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr }; };
-    if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = [...(x.c.squad || Array(16).fill(null))], nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length);
+    if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = padSq(x.c.squad), nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length, true);
       let at = i, n = 0, last = -1;
       for (const p of men) { if (!p) { at++; continue; } while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
         sq[at] = man(p, nat, lab[at]); last = at; at++; n++; }
@@ -13619,7 +13647,7 @@ export default function App() {
     const T = side && edTeamRec(side); if (T) return isNational(T) ? T.code : T.nation;
     return shTabIs && shTabIs !== "ARTERRA" ? shTabIs : (scope.nations || [])[0] || ""; };
   const shPlaceOf = (side, at) => { if (!side || at == null) return null;
-    if (side.startsWith("new:")) { const x = shClubOf(side); return x ? slotLabels(String(x.c.formation || "4-3-3"), 16)[at] : null; }
+    if (side.startsWith("new:")) { const x = shClubOf(side); return x ? slotLabels(String(x.c.formation || "4-3-3"), SQUAD_PLACES, true)[at] : null; }
     const T = edTeamRec(side); return T ? edLab(T)[at] : null; };
   const shDefPos = (lab) => { const d = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab; return POSITIONS.includes(d) ? d : ""; };
   const shNum = (v) => (+v > 0 ? Math.round(+v) : null);
@@ -13659,7 +13687,7 @@ export default function App() {
   const shAddNew = (kind) => { const f = edForms[kind]; if (!f) return; const o = { id: edUid(), ...shFormObj(kind, f) };
     if (kind === "players") {
       if (f.side?.startsWith("new:")) { const x = shClubOf(f.side); if (!x) return shSay("The New Club Is Gone");
-        const sq = [...(x.c.squad || Array(16).fill(null))], lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length);
+        const sq = padSq(x.c.squad), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length, true);
         const i = f.at != null && !sq[f.at] ? f.at : placeFor(sq, lab, posFitCost, o.pos); if (i < 0) return shSay("No Open Place");
         sq[i] = o; shSetClub(f.side, { squad: sq }); }
       else if (f.side) { const T = edTeamRec(f.side); if (!T) return shSay("No Such Side"); const taken = shNewAt(f.side);
@@ -13694,13 +13722,13 @@ export default function App() {
     for (const n of draft.new || []) { if (n.what === "teams") out.set(n.id, { c: n, lg: null }); if (n.what === "leagues") for (const c of n.clubs || []) out.set(c.id, { c, lg: n.id }); }
     return out; }, [draft]);
   const shClubOf = (k) => (k && k.startsWith("new:") ? shNewClubs.get(k.slice(4)) || null : null);
-  const shPseudo = (c) => ({ ...c, file: "", timeWasting: c.timeWasting || "Never", _raw: c.squad || [], squad: (c.squad || Array(16).fill(null)).map(v => (typeof v === "string" ? v : null)) });
+  const shPseudo = (c) => ({ ...c, file: "", timeWasting: c.timeWasting || "Never", _raw: padSq(c.squad), squad: padSq(c.squad).map(v => (typeof v === "string" ? v : null)) });
   const shRowOf = (k) => { const x = shClubOf(k); return x ? shPseudo(x.c) : edTeamRec(k); };
   const shSetClub = (k, patch) => { const id = k.slice(4);
     shPut({ ...draft, new: shNew.map(n => (n.what === "teams" && n.id === id ? { ...n, ...patch }
       : n.what === "leagues" && (n.clubs || []).some(c => c.id === id) ? { ...n, clubs: n.clubs.map(c => (c.id === id ? { ...c, ...patch } : c)) } : n)) }); };
   const shClubSeed = (code, group) => ({ id: edUid(), name: "", code: "", home: "#888888", away: "#ffffff", stadium: "", location: "", group, formation: "4-3-3",
-    timeWasting: "Never", manager: null, squad: Array(16).fill(null) });
+    timeWasting: "Never", manager: null, squad: Array(SQUAD_PLACES).fill(null) });
   const shAddClub = (code, band) => {
     if (band.newLg) { const c = shClubSeed(code, band.newLg.name); shPut({ ...draft, new: shNew.map(n => (n.id === band.newLg.id ? { ...n, clubs: [...(n.clubs || []), c] } : n)) }); setShSel({ k: "new:" + c.id, c: "name" }); return; }
     const c = { ...shClubSeed(code, band.name), what: "teams", nation: code }; shPut({ ...draft, new: [...shNew, c] }); setShSel({ k: "new:" + c.id, c: "name" }); };
@@ -13718,7 +13746,8 @@ export default function App() {
     if (c === "name") { if (val.trim()) patch({ name: val.trim() }); return; }
     if (c === "code") { const x = val.trim().toUpperCase(); if (/^[A-Z0-9]{2,4}$/.test(x)) patch({ code: x }); else shSay("A Code Is Two To Four Letters"); return; }
     if (c === "formation") { if (!FORMATIONS.includes(val)) return; const sq = edSq(T), lab = edLab(T), n = sq.length;
-      const rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
+      const rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11,
+                                         clubBench: !isNational(T) && n - 11 === 11 }));
       patch({ formation: val, squad: refitLineup(rows, val).map(e => e.rid ?? null) }); return; }
     if (c === "tw") { if (SH_TW.includes(val)) patch({ timeWasting: val }); return; }
     if (c === "home" || c === "away") { const x = val.trim().startsWith("#") ? val.trim() : "#" + val.trim(); if (/^#[0-9A-Fa-f]{6}$/.test(x)) patch({ [c]: x }); else shSay("A Kit Is A Hex Colour"); return; }
@@ -14337,7 +14366,7 @@ export default function App() {
   // person's sides (a list's among them), each by his place (user, 12 October 2026: "I can then use the OVR randomizer?
   // Also add an age randomizer with an age range"). Written back where each came from.
   const shRollSquad = (k) => { const x = shClubOf(k);
-    if (x) { const sq = x.c.squad || Array(16).fill(null); return { sq, lab: slotLabels(String(x.c.formation || "4-3-3"), sq.length) }; }
+    if (x) { const sq = padSq(x.c.squad); return { sq, lab: slotLabels(String(x.c.formation || "4-3-3"), sq.length, true) }; }
     const T = edTeamRec(k); if (!T) return null; const at = shNewAt(k);
     return { sq: edSq(T).map((id, i) => id || at.get(i) || null), lab: edLab(T) }; };
   const shRollWrite = (k, out) => { const isN = (v) => !!v && typeof v === "object";
@@ -14395,7 +14424,7 @@ export default function App() {
     if (!tab) return <div className="ux-panel ux-grow"><div className="ux-empty">No Sides</div></div>;
     const sec = shSections(tab), n = tab === "ARTERRA" ? null : shNats.by.get(tab), natCode = n ? n.code : null;
     const colour = n ? n.nt.home : "#3a4a66", rowN = { n: 0 };
-    const places = sec.groups.some(g => g.nt) ? 22 : 16, sel = shSel && shRowOf(shSel.k), refCols = sel ? shCols(places) : [];
+    const places = SQUAD_PLACES, sel = shSel && shRowOf(shSel.k), refCols = sel ? shCols(places) : [];
     const ref = sel ? shLetter(Math.max(0, refCols.findIndex(c => c.c === shSel.c))) : "";
     return (
       <div className={"ux-body ux-sh" + (shFull ? " ux-sh-full" : "")} onClick={() => { setShFiltOpen(null); setShAll(false); }}>
@@ -15050,7 +15079,11 @@ export default function App() {
             <div className={"ux-pbody" + (isNT ? "" : " ux-fit")}><table className="ux-tbl">
               <colgroup><col style={{ width: oopAny ? 86 : 58 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /><col style={{ width: 46 }} /></colgroup>
               <thead><tr><th>Pos</th><th>Player</th><th>{isNT ? "Club" : "Nat"}</th><th className="ux-c">Rtg</th><th className="ux-n">GP</th><th className="ux-n">G</th><th className="ux-n">A</th><th className="ux-n">Avg</th></tr></thead>
-              <tbody>{xi.map(squadRow)}{bench.length > 0 && <tr className="ux-sep"><td colSpan={8} /></tr>}{bench.map((p, i) => squadRow(p, 100 + i))}</tbody>
+              <tbody>{xi.map(squadRow)}<tr className="ux-sep"><td colSpan={8} /></tr>
+                {benchPlaces(t, bench, isNT).map((p, i) => p.vacant ? (
+                  <tr key={"v" + i} className="ux-vac">
+                    <td><span className="ux-pos">{p.lab}</span></td><td>Vacant</td><td /><td className="ux-c" /><td /><td /><td /><td />
+                  </tr>) : squadRow(p, 100 + i))}</tbody>
             </table></div>), isNT)}
           {!isNT && uxPanel(ss ? `Season ${uxSeasonName(ss)}` : "Season", null, (
             <div className="ux-pbody">
@@ -18259,8 +18292,8 @@ export default function App() {
     const sheetOf = (t, side) => {
       const tsq = m ? m.tourn?.squads?.[side] : pend?.squads?.[side];
       if (tsq) return { xi: tsq.starters, bench: tsq.bench };
-      const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
-      return { xi: sq.filter(p => !p.bench), bench: sq.filter(p => p.bench) };
+      const sq = t.squad || buildSquad(t.formation || "4-3-3", null), bench = sq.filter(p => p.bench);
+      return { xi: sq.filter(p => !p.bench), bench, places: benchPlaces(t, bench, isIntlLeague(t.league)) };
     };
     const sh = { home: hT ? sheetOf(hT, "home") : null, away: aT ? sheetOf(aT, "away") : null };
     // ── The banner ──
@@ -18382,7 +18415,9 @@ export default function App() {
             onClick={() => view !== k && setLmSheet(v => ({ ...v, [side]: k }))}>{l}</button>))}</div>);
       return uxPanel("Team Sheet", sw, view === "bench" ? (
         <div className="ux-pbody"><div className="ux-mbench" aria-label="Bench">
-          {bench.map((p, i) => { const nm = p.fullName || p.name, pos = benchSpos(p, playerByName.get(nm)) || p.pos, ovr = p.ovr ?? t.skill;
+          {(sh[side].places || bench).map((p, i) => { if (p.vacant) return (
+              <div key={i} className="ux-mb-row ux-vac"><span className="ux-pos" style={mono}>{p.lab}</span><span className="ux-mb-n">Vacant</span><span /></div>);
+            const nm = p.fullName || p.name, pos = benchSpos(p, playerByName.get(nm)) || p.pos, ovr = p.ovr ?? t.skill;
             return (
               <div key={i} className="ux-mb-row">
                 <span className="ux-pos" style={{ ...mono, color: POS_CLR[pos] || "var(--ux-text-2)" }}>{pos}</span>
@@ -20417,12 +20452,13 @@ export default function App() {
                 // gives: about 19 px a man for a 22-man squad, tighter for a bigger one, never a scrollbar.
                 const rowH = Math.max(12, Math.min(22, Math.floor((MID - 26 - 16 - 3 - 9) / nRows)));
                 // The numbers have the centre to themselves now the ground is behind the score, so their rows grow into it.
-                // The numbers stand on the sheets' last line and the momentum chart takes what is left over the possession
-                // bar, so their rows are as tall as leaves the chart at least 40 px: the sheet is its title (26), its column
-                // heads (18), its men and the rule over the bench (9); over the numbers sit the chart (40), its caption (18),
-                // the possession bar with its own (46) and the gap under it (18).
-                const sheetH = 26 + 18 + nRows * rowH + (nRows > 11 ? 9 : 0);
-                const statH = Math.max(18, Math.min(28, Math.floor((sheetH - 40 - 18 - 46 - 18) / 9)));
+                // The numbers stand on the sheets' last line and the momentum chart keeps one height (MOM_H) whatever the window
+                // ("they need to stay the same height regardless", 12 October 2026: a wide window's taller photo had squeezed it
+                // to 40 px), so the numbers' rows give instead, 18 to 30 px. The sheet is its title (26), its column heads (18),
+                // its men and the rule over the bench (9); over the numbers sit the chart, its caption (18), the possession bar
+                // with its own (52) and the gap under it (18); the last line hangs half a row's difference past the foot.
+                const sheetH = 26 + 18 + nRows * rowH + (nRows > 11 ? 9 : 0), MOM_H = 90;
+                const statH = Math.max(18, Math.min(30, Math.floor((sheetH - MOM_H - 18 - 52 - 18 - rowH / 2 - 2) / 8.5)));
                 const zBar = { valW: 44, valFs: statH >= 25 ? 14 : 12.5, labW: 104, labFs: statH >= 25 ? 10.5 : 9.5, barH: 7, pad: 0,
                                gap: 8, rowH: statH };
                 const zMen = { cols: "26px 32px 1fr 22px 22px 28px 28px 24px 36px 44px", gap: 3, pad: 0, rowH,
@@ -20501,10 +20537,11 @@ export default function App() {
                       {sheet("home")}
                       <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
                         <MomentumChart mom={m.mom} perMin={ME_MATCH_TICKS / 90} last={m.t} htAt={m.htAt} etAt={m.et ? m.etAt : null}
-                                       goals={momGoals} hc={HC} ac={AC} />
+                                       goals={momGoals} hc={HC} ac={AC} height={MOM_H} />
                         <div style={{ flexShrink: 0, fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
                                       color: "var(--chrome-muted)", marginTop: 6 }}>Momentum</div>
-                        <div style={{ flexShrink: 0, marginTop: 16 }}>
+                        {/* Whatever the numbers' rows cannot take up lies over the possession bar, never over the chart. */}
+                        <div style={{ flexShrink: 0, marginTop: "auto", paddingTop: 16 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <span style={{ ...mono, width: 46, fontSize: 15, fontWeight: 700, color: HC }}>{pcH}%</span>
                             <div style={{ flex: 1, display: "flex", height: 9, borderRadius: 5, overflow: "hidden" }}>

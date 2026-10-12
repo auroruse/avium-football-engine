@@ -1,8 +1,8 @@
 // SQUAD MOVES, as the record editor makes them. A squad is its slots in order (a man's ID or null): eleven starters,
 // then the bench. `labels` names each slot's position (the formation's, then each bench place's group), and `fit(a, b)`
 // is how far a man who plays `a` (a position or his list of them) is from slot `b` (the app's posFitCost). `posOf(id)`,
-// where given, is a man's own positions; without it a man is judged by the place he stands in. Club squads stay at
-// sixteen and national ones at twenty-two, so a man comes in only where a place is open.
+// where given, is a man's own positions; without it a man is judged by the place he stands in. Squads stay at twenty-two
+// places, club and country alike (a club's six newest open until they are filled), so a man comes in only where a place is open.
 
 // A man leaving. A starting place he leaves goes to the bench player who fits it best (then the higher rated), whose
 // bench place stays open; a bench place he leaves simply opens.
