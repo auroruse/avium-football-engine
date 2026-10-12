@@ -4057,6 +4057,26 @@ function SlideName({ text, style, textStyle }) {
             style={{ display: "inline-block", "--marquee-dist": `-${over + 14}px`, ...textStyle }}>{text}</span>
     </div>);
 }
+// A LINE THAT DOES NOT FIT IS NARROWED, never shrunk, cut or wrapped (Moukden and Kirin, 12 October 2026). Full Time lines
+// its score up with the tops of the names and FULL TIME with the manager lines, so each of those keeps one line at one
+// height whatever its length, and the whole of it is in the picture. end: anchored at the right-hand edge.
+function FitLine({ className, end, children }) {
+  const box = useRef(null), line = useRef(null);
+  const [k, setK] = useState(1);
+  useLayoutEffect(() => {
+    const b = box.current, l = line.current; if (!b || !l) return;
+    const fit = () => { const w = l.offsetWidth, room = b.clientWidth; setK(room > 0 && w > room + 0.5 ? room / w : 1); };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit); ro.observe(b); ro.observe(l);
+    return () => ro.disconnect();
+  });
+  return (
+    <span ref={box} className={className} style={{ display: "flex", justifyContent: end ? "flex-end" : "flex-start", minWidth: 0 }}>
+      <span ref={line} style={{ flex: "none", whiteSpace: "nowrap", transformOrigin: end ? "right center" : "left center",
+                                transform: k < 1 ? `scaleX(${k.toFixed(4)})` : undefined }}>{children}</span>
+    </span>);
+}
 // The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
 // selections, the two live-match slots and a tournament's participants all survive a switch, which
 // is what makes an Avium side against an Arterra one a normal thing to set up rather than a mode.
@@ -19919,7 +19939,8 @@ export default function App() {
             // Two sizes of the same board: the live strip, and the full-time report's, which has the
             // band to itself.
             const SB_LIVE = { name: 14, sub: 10, crest: 66, gap: 13, score: 30, clock: 13, small: 11, tag: 9, minW: 150 };
-            const SB_FT = { name: 19, sub: 11.5, crest: 76, gap: 16, score: 46, clock: 12, small: 12, tag: 10, minW: 190 };
+            // Full Time's board fills the ground's photo (Moukden and Kirin, 12 October 2026); its sizes are in ui.css (.ux-ftban).
+            const SB_FT = { name: 19, sub: 11.5, crest: 76, gap: 16, score: 90, clock: 18, small: 18, tag: 15, minW: 300 };
             // THE ELEVEN ON THE PITCH, not the squad. Read off st.players, so it moves when a
             // substitute comes on and when a man is sent off -- which is the only reason to put it on
             // a live scoreboard rather than showing the team's static rating. One decimal, because
@@ -20008,38 +20029,30 @@ export default function App() {
             // been kicked. A shared best is not a best.
             const topMan = meBest && meRated.filter(x => (x[0]?.rating ?? 0) === (meBest[0]?.rating ?? 0)).length === 1
               ? meBest : null;
-            const sbScore = (z = SB_LIVE) => (
-                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: z.minW }}>
-                    <div style={{ fontSize: z.score, fontWeight: 800, letterSpacing: ".06em", lineHeight: 1.05, ...mono }}>
-                      {out.goals.home}&ndash;{out.goals.away}</div>
-                    <div style={{ fontSize: z.clock, fontWeight: 700, letterSpacing: ".12em", ...mono,
-                                  color: "var(--ui-on-pitch)", opacity: brk ? 1 : 0.85 }}>
+            // THE BOARD IN PIECES. Full Time sets the score in the names' face, its top level with theirs, and FULL TIME level with
+            // the manager lines (Moukden and Kirin, 12 October 2026). What else hangs under the score (the shootout, extra time,
+            // the aggregate) shares one line under them, over the ground. A line is padded on the left by its own letter-spacing,
+            // which otherwise trails the last letter and pulls it off centre.
+            const sbScore = () => (
+                    <div className="ux-ftban-score">{out.goals.home}&ndash;{out.goals.away}</div>);
+            const sbClock = (z = SB_LIVE) => (
+                    <div className="ux-ftban-ft" style={{ opacity: brk ? 1 : 0.85 }}>
                       {brk || clock}
                       {/* Added time alongside, not folded into the clock: the number the period
                           is played to stays legible and what is being played beyond it reads as
                           the separate thing it is. */}
                       {!brk && added && <span style={{ marginLeft: 6, color: "var(--ui-warn)",
-                        fontSize: z.small, letterSpacing: ".08em" }}>{added}</span>}</div>
-                    {/* A shootout is not part of the scoreline -- the goals are put back -- so the
-                        kicks are reported beside it rather than added to it. One line for both
-                        states: it counts up live off the shootout's own tally and then stands as
-                        the result, so it never changes shape or place on the board. Amber is the
-                        same white as the score: the shootout is part of the result, not a footnote
-                        beside it. */}
-                    {(m.pk || m.pens) && (() => {
-                      const sc = m.pk ? m.pk.st.sc : m.pens;
-                      return <div style={{ ...mono, fontSize: z.small, fontWeight: 800, letterSpacing: ".14em",
-                                           color: "var(--ui-on-pitch)" }}>
-                        {sc.home}&ndash;{sc.away} PENS</div>;
-                    })()}
-                    {!m.pk && !m.pens && m.et && <div style={{ ...mono, fontSize: z.tag, fontWeight: 700,
-                                                      letterSpacing: ".16em", opacity: 0.75 }}>
-                      {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
-                    {/* A second leg is not played against the scoreline in front of you. */}
-                    {(m.tourn?.agg || m.agg) && <div style={{ ...mono, fontSize: z.tag, fontWeight: 700,
-                                                   letterSpacing: ".14em", opacity: 0.75 }}>
-                      AGG {out.goals.home + (m.tourn?.agg || m.agg)[0]}&ndash;{out.goals.away + (m.tourn?.agg || m.agg)[1]}</div>}
-                  </div>);
+                        fontSize: z.small, letterSpacing: ".08em" }}>{added}</span>}</div>);
+            // A shootout is not part of the scoreline -- the goals are put back -- so the kicks are reported beside it rather
+            // than added to it, in the same white as the score: the shootout is part of the result, not a footnote beside it.
+            // Extra time and the aggregate are quieter, and a second leg is not played against the scoreline in front of you.
+            const sbExtra = () => {
+              const xs = [], sc = m.pk ? m.pk.st.sc : m.pens, agg = m.tourn?.agg || m.agg;
+              if (sc) xs.push(<b key="pk">{sc.home}&ndash;{sc.away} PENS</b>);
+              else if (m.et) xs.push(<span key="et">{m.ftDone ? "AET" : "EXTRA TIME"}</span>);
+              if (agg) xs.push(<span key="agg">AGG {out.goals.home + agg[0]}&ndash;{out.goals.away + agg[1]}</span>);
+              return xs.length ? <div className="ux-ftban-extra">{xs.map((x, i) => [i ? <i key={"s" + i}> · </i> : null, x])}</div> : null;
+            };
             // ── THE REPORT'S PARTS ────────────────────────────────────────────────────────────────
             // Shared by the Stats tab while a match runs and by the full-time report after it: the
             // same bars, team sheets and markers at two sizes, so the two can never disagree about a row.
@@ -20305,13 +20318,13 @@ export default function App() {
                 ? `${tSlots.find(sl => sl.id === tActiveSlot)?.name || "Tournament"} · ${lmFixtureName(m.tourn.target)}`
                 : m.agg ? "Friendly · Second Leg" : "Friendly";
               const ftSide = (t, sd) => {
-                const away = sd === "away", pad = Math.round(84 * CREST_PAD_RATIO);
+                const away = sd === "away", pad = Math.round(126 * CREST_PAD_RATIO);
                 const mg = t?.manager ? splitSurname(t.manager, t.managerAbbr) : null;
                 return (
                   <div className={"ux-ftban-side" + (away ? " ux-r" : "")}>
-                    <TeamCrest team={t} size={84} style={{ flexShrink: 0, marginTop: -pad, marginBottom: -pad }} />
+                    <TeamCrest team={t} size={126} style={{ flexShrink: 0, marginTop: -pad, marginBottom: -pad }} />
                     <div className="ux-ftban-id">
-                      <span className="ux-ftban-name"><SlideName text={t?.name || ""} /></span>
+                      <FitLine className="ux-ftban-name" end={away}>{t?.name || ""}</FitLine>
                       <span className="ux-ftban-meta">
                         <span className="ux-ftban-code">{t?.code || abbr(t?.name, t?.code)}</span>
                         <span>{xiOvr(sd).toFixed(1)}</span>
@@ -20320,8 +20333,7 @@ export default function App() {
                       {mg && (
                         <span className="ux-ftban-mgr">
                           <span className="ux-ftban-mface" aria-hidden="true"><PlayerShot name={t.manager} size="100%" /></span>
-                          <span>{mg.first && mg.first + " "}<b>{mg.last}</b></span>
-                          {uxStyleName(t.style)}
+                          <FitLine className="ux-ftban-mtext" end={away}><span>{mg.first && mg.first + " "}<b>{mg.last}</b></span>{uxStyleName(t.style)}</FitLine>
                         </span>)}
                     </div>
                   </div>);
@@ -20386,15 +20398,21 @@ export default function App() {
                     <div className="ux-ftban" style={{ height: bandH, backgroundImage: hasPhoto ? "none" : sbBg }}>
                       {hasPhoto && <div className="ux-mban-photo" style={{ backgroundImage: stadiumBg(venue) }} aria-hidden="true" />}
                       {hasPhoto ? <div className="ux-mban-veil" aria-hidden="true" /> : <div className="ux-ftban-tint" aria-hidden="true" />}
+                      {/* The competition's own mark, drawn large, over a tournament's fixture only: a friendly has the word alone
+                          (Moukden and Kirin, 12 October 2026). */}
+                      <div className="ux-ftban-comp">
+                        {m.tourn && uiTheme !== "default" && (
+                          <img className="ux-ftban-art" src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt=""
+                               onError={(e) => { e.currentTarget.style.display = "none"; }} />)}
+                        <span>{compLine}</span>
+                      </div>
                       {ftSide(m.hT, "home")}
-                      <div className="ux-ftban-mid">
-                        <div className="ux-ftban-comp">
-                          {uiTheme !== "default" && (
-                            <img className="ux-ftban-art" src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt=""
-                                 onError={(e) => { e.currentTarget.style.display = "none"; }} />)}
-                          <span>{compLine}</span>
-                        </div>
-                        {sbScore(SB_FT)}
+                      <div className="ux-ftban-board">
+                        {sbScore()}
+                        {sbClock(SB_FT)}
+                      </div>
+                      <div className="ux-ftban-foot">
+                        {sbExtra()}
                         <div className="ux-ftban-ground">
                           {venue || "Neutral Venue"}{(_v.city || venueNat) && " · "}
                           {_v.city && <CityLink name={_v.city} />}{_v.city && venueNat ? ", " : ""}{venueNat || ""}

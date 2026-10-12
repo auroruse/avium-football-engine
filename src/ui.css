@@ -1175,30 +1175,54 @@
 
 /* ── Full Time (DESIGN.md) ───────────────────────────────────────────────────────────────────── */
 /* The result over the ground's photograph: the competition and round over the score, the ground under it, and each side's
-   name with its code, its eleven's rating, its shape and its manager. The page is drawn in design pixels and scaled. */
-.ux-ftban { position: relative; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 28px;
-  padding: 0 32px; overflow: hidden; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); background-color: var(--chrome-panel);
+   name with its code, its eleven's rating, its shape and its manager. The page is drawn in design pixels and scaled.
+   The board fills the photo (Moukden and Kirin, 12 October 2026), in three rows: the competition (its mark large over a
+   tournament's fixture), then the two sides with the score between them, then the extra line and the ground across the
+   width. The sides and the score hang from one top line: the score is set in the names' face with its figures' tops level
+   with the names' capitals and their feet on the code line's baseline, and FULL TIME sits level with the manager lines.
+   Every piece is positioned, or the photo, which is, would paint over it. */
+.ux-ftban { position: relative; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto; align-content: center; align-items: start; column-gap: 36px;
+  padding: 0 40px; overflow: hidden; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); background-color: var(--chrome-panel);
   border-bottom: 1px solid var(--chrome-border); }
-.ux-ftban-side { position: relative; display: flex; align-items: center; gap: 18px; min-width: 0; }
-.ux-ftban-side.ux-r { flex-direction: row-reverse; }
-.ux-ftban-id { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.ux-ftban-side.ux-r .ux-ftban-id { align-items: flex-end; text-align: right; }
-.ux-ftban-name { display: block; min-width: 0; max-width: 100%; font: 700 32px/1 var(--ux-f-title); letter-spacing: .03em; text-transform: uppercase; }
+.ux-ftban-side { position: relative; grid-row: 2; grid-column: 1; display: flex; align-items: center; gap: 26px; min-width: 0; }
+.ux-ftban-side.ux-r { grid-column: 3; flex-direction: row-reverse; }
+/* Rows of fixed height (a name never takes a second line), so the score and FULL TIME can be set against them. */
+.ux-ftban-id { align-self: flex-start; display: flex; flex-direction: column; align-items: stretch; gap: 9px; min-width: 0; }
+.ux-ftban-side.ux-r .ux-ftban-id { text-align: right; }
+.ux-ftban-name { display: block; min-width: 0; font: 700 48px/1 var(--ux-f-title); letter-spacing: .03em; text-transform: uppercase; }
 .ux-ftban-tint { position: absolute; inset: 0; background: rgba(0, 0, 0, .32); }
 /* The ground shows through more than on Play Match's banner, the names carrying their own shadow (user, 11 October 2026:
    "we wanna see more of the stadium"). The copied picture is drawn from the same page, so it follows. */
 .ux-ftban .ux-mban-veil { background: linear-gradient(90deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, .5) 32%, rgba(6, 8, 15, .5) 68%, rgba(6, 8, 15, .78) 100%); }
-.ux-ftban-meta { display: flex; align-items: baseline; gap: 10px; font: 700 12px/1 'JetBrains Mono', 'Fira Code', monospace; }
+.ux-ftban-meta { display: flex; align-items: baseline; gap: 14px; font: 700 18px/1 'JetBrains Mono', 'Fira Code', monospace; }
 .ux-ftban-side.ux-r .ux-ftban-meta { flex-direction: row-reverse; }
 .ux-ftban-code { letter-spacing: .16em; opacity: .72; }
-.ux-ftban-mgr { display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap; }
+.ux-ftban-mgr { display: flex; align-items: center; gap: 10px; font-size: 18px; white-space: nowrap; }
 .ux-ftban-side.ux-r .ux-ftban-mgr { flex-direction: row-reverse; }
-.ux-ftban-mface { flex: none; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: var(--ux-panel-3); }
-.ux-ftban-mid { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 300px; }
-.ux-ftban-comp { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+.ux-ftban-mface { flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--ux-panel-3); }
+.ux-ftban-mtext { flex: 0 1 auto; min-width: 0; }
+.ux-ftban-mtext > span { display: inline-flex; align-items: baseline; gap: 10px; }
+.ux-ftban-side.ux-r .ux-ftban-mtext > span { flex-direction: row-reverse; }
+/* The competition over the board and the ground under it stand the same distance off it, about 28px of clear space each
+   (measured 12 October 2026: they had been 40 above and 16 below, the board crowding the ground). */
+.ux-ftban-comp { position: relative; grid-row: 1; grid-column: 1 / -1; justify-self: center; display: flex; flex-direction: column;
+  align-items: center; gap: 14px; margin-bottom: 14px; font-size: 16px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
   color: rgba(255, 255, 255, .9); white-space: nowrap; }
-.ux-ftban-art { height: 22px; width: auto; max-width: 180px; object-fit: contain; }
-.ux-ftban-ground { font-size: 12.5px; color: rgba(255, 255, 255, .88); white-space: nowrap; }
+.ux-ftban-comp > span { padding-left: .16em; }
+/* The mark's ink runs to the top of its box where the ground's text has room under its letters, so it drops 4px to sit as
+   far from the photo's top edge as the ground does from its foot. */
+.ux-ftban-art { display: block; height: 64px; width: auto; max-width: 360px; margin-top: 4px; object-fit: contain; }
+.ux-ftban-board { position: relative; grid-row: 2; grid-column: 2; display: flex; flex-direction: column; align-items: center; min-width: 300px; }
+.ux-ftban-score { margin-top: -8.4px; font: 700 90px/1 var(--ux-f-title); letter-spacing: .02em; padding-left: .02em; white-space: nowrap; }
+.ux-ftban-ft { margin-top: 8.4px; font: 700 18px/1 'JetBrains Mono', 'Fira Code', monospace; letter-spacing: .12em; padding-left: .12em;
+  color: var(--ui-on-pitch); white-space: nowrap; }
+.ux-ftban-foot { position: relative; grid-row: 3; grid-column: 1 / -1; justify-self: center; display: flex; flex-direction: column;
+  align-items: center; gap: 8px; margin-top: 24px; }
+.ux-ftban-extra { font: 700 16px/1 'JetBrains Mono', 'Fira Code', monospace; letter-spacing: .14em; padding-left: .14em; white-space: nowrap; }
+.ux-ftban-extra > span { opacity: .75; }
+.ux-ftban-extra > i { font-style: normal; opacity: .6; }
+.ux-ftban-ground { font-size: 17px; color: rgba(255, 255, 255, .88); white-space: nowrap; }
 
 /* ── Cart and Requests (DESIGN.md) ───────────────────────────────────────────────────────────── */
 /* Drop-down panels under their buttons in the top bar, the page left in view. A block a player, manager or side: its

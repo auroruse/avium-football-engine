@@ -355,6 +355,16 @@ each half under a shade that keeps white text readable on a light kit. Over the 
 aggregate, then the ground, its city and its nation. Each side has its crest, its name, its code with its eleven's OVR and
 its shape, and its manager with his style.
 
+The board fills the photo (user, 12 October 2026: the photo "had too much space that wasn't being used"; the photo itself
+stays whole, "that's the scene"). Crests, names and managers are half again their old size and the score nearly twice.
+Over a tournament's fixture the competition's own mark (the theme's art) is drawn large, the competition and round under
+it; a friendly has the word alone ("Remove the theme banner from friendlies"). The score is set in the names' face
+(Barlow Condensed), its figures' tops level with the names' capitals and their feet on the code line's baseline, and FULL
+TIME sits level with the manager lines (user, 12 October 2026). So every name keeps one line: one too long for its half is
+narrowed to fit, never shrunk, cut or wrapped, and so is a manager line. The shootout, extra time and the aggregate
+share one line under that, over the ground. Not picked: the scorers in the banner, the timeline over the pitch, headline numbers, kits, the half-time score and date, team
+ratings.
+
 Then the timeline (cards, injuries and missed or saved penalties, never substitutions); the team sheets either side, with
 the minute beside every man who came on or went off; between them possession, the seventeen numbers, the Played Live
 count under Reds for a tournament's fixture; and every goal along the bottom, playing on hover. The top player is a star
