@@ -204,6 +204,9 @@ export const CFG = {
   // crossBoxY of the centre -- and is flighted to arrive at crossZ, a head. A header from a cross is
   // worth crossHeadK of a shot from the same spot to the man deciding whether to cross it.
   crossFromX: 32, crossFromY: 11, crossBoxX: 19, crossBoxY: 13, crossZ: 1.85, crossHeadK: 0.55,
+  // What a cross is believed to be worth, re-read on what crosses do (mind/decide.ts, A CROSS IS A HOPE): the chance
+  // it reaches us is logistic(crossCalA + crossCalB * logit(the ordinary belief)). 0 / 0 is the ordinary belief.
+  crossCalA: 0, crossCalB: 0,
   // PASS AND MOVE: the give-and-go. A man who plays a short ball forward of his own third goes past
   // his marker for the return: wallP of the time, more for a side that passes short (wallShort per
   // step of passingDir) or plays with freedom (wallCre per step of creativity). The run is wallRunL
@@ -1827,6 +1830,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and its loft. The old knock (headV * power * 0.75, vz 0.9) left the head at 5-9 m/s and
   // carried six to ten metres against an 18 m aim -- a fifty-fifty on the edge of his own box.
   headClearV: 13, headClearVz: 3.5,
+  // A header carries this share of the pace the ball arrived with (match.ts meHeadPhys); 0, it leaves on his line alone.
+  headKeep: 0,
   // THE AERIAL DUEL (match.ts, THE DUEL): an opponent inside airR of a man about to head a ball delivered to him
   // wins it with airDef, plus airStr of their strength gap over 99, plus or minus airGoalSide for being goal-side
   // of him or not, less airDist for every metre past 0.8 m he is from him. At 2.0 / 0.45 crosses into a deep block
@@ -2688,6 +2693,10 @@ gkDiveV: 2.9,
   // in, plus most of the deflected-strike class. Applied only when the incoming ball is moving
   // at his own goal above walking pace, so attacking flicks and neutral squirts stay uniform.
   deflectAway: 3.0,
+  // ...and within this many metres of his own goal line a ball of theirs comes off a defender the physical way too
+  // (deflectPhys's rule beyond his own area: a cross blocked by the full-back, a shot charged down at the edge). 0: the
+  // area only.
+  deflectPhysD: 0,
   // A ball coming at his goal that a defender cannot control, in his own area, deflects physically when deflectPhys is
   // on (match.ts): out along the contact normal at bodyE of the pace it hit him with, keeping deflectTan of the pace
   // along him, deflectJit degrees of shin either way, and up to deflectVz m/s of loop.
