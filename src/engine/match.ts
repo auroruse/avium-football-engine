@@ -2308,9 +2308,9 @@ export function meTick(s, rng, out) {
           // the shot; a goal with no live shot reads it at the crossing instead. Gated on a global
           // the app never sets, so a watched match pays one truthiness test per goal.
           if (globalThis.__prov) globalThis.__prov.push({
-            side: scorer, par: globalThis.__prov._parried || 0, pos: gp ? gp.pos : null, nm: gp ? gp.fullName || gp.name : null,
+            side: scorer, par: globalThis.__prov._parried || 0, pos: gp ? gp.pos : null, nm: gp ? gp.fullName || gp.name : null, role: gp ? gp._mr : null,
             r: sh && sh._r != null ? sh._r : -1, hdr: sh && sh.hdr ? 1 : 0, pk0: globalThis.__prov._pk0 || "", car0: globalThis.__prov._car0 || 0,
-            spK: mp._spLast && mp._spLast.side === scorer ? mp._spLast.k : "", spT: mp._spLast ? mp.tick - mp._spLast.t : 1e9,
+            spK: mp._spLast && mp._spLast.side === scorer && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "", spT: mp._spLast ? mp.tick - mp._spLast.t : 1e9,
             og: ownGoal ? 1 : 0, pen: sh && sh.pen ? 1 : 0,
             dead: sh && !sh.p ? 1 : 0, noShot: sh ? 0 : 1,
             lt: sh ? (sh.lt ?? 1e9) : mp.tick - (mp._loose ?? -1e9),
@@ -2855,6 +2855,7 @@ export function meTick(s, rng, out) {
             mp.shot.fr0 = meOnFrame(mp, gxA);
             if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
               R.i = bi; R.nm = q.fullName || q.name; R.pos = q.pos; R.y = +(q.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0; R.from = _hFrom;
+              R.role = q._mr; R.spK = mp._spLast && mp._spLast.side === bs && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
               R.duel = duel ? 1 : 0; }
             mePlanSave(s, mp.shot);
           } else {
@@ -3908,6 +3909,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     mp.shot.fr0 = meOnFrame(mp, gx);
     if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
       R.i = shooter; R.nm = p.fullName || p.name; R.pos = p.pos; R.y = +(p.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0;
+      R.role = p._mr; R.spK = mp._spLast && mp._spLast.side === side && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
       R.sk = +sk.toFixed(3); R.wind = +wind.toFixed(2); R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.aim = +((aimY - ME_HALF_W) * away).toFixed(2); R.az = +aimZ.toFixed(2);
       if (gkp) { R.gkx = +Math.abs(gkp.x - gx).toFixed(2); R.gky = +(gkp.y - ME_HALF_W).toFixed(2); R.sx = +Math.abs(p.x - gx).toFixed(2); R.vy0 = +mp.bvy.toFixed(1); R.vx0 = +Math.abs(mp.bvx).toFixed(1); } }
     // THE KEEPER WATCHES IT. He used to commit to a side as it left the foot, right as often as his
