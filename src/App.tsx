@@ -3291,8 +3291,9 @@ function UxSurname({ word }) {
       <text ref={txt} x={fit ? fit.x : 0} y="100%" textLength={fit ? fit.len : undefined} lengthAdjust={fit?.squeeze ? "spacingAndGlyphs" : "spacing"}>{word}</text>
     </svg>);
 }
-// A stadium's photograph across the window: Escape, the close button or a click off the picture shuts it.
-function UxLightbox({ name, sub, onClose }) {
+// A stadium's photograph across the window, or what is passed in its place (a club's crest): Escape, the close button or
+// a click off the picture shuts it.
+function UxLightbox({ name, sub, onClose, children }) {
   useEffect(() => {
     const key = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", key);
@@ -3301,7 +3302,7 @@ function UxLightbox({ name, sub, onClose }) {
   return (
     <div className="ux-lightbox" role="dialog" aria-modal="true" aria-label={name} onClick={onClose}>
       <figure onClick={e => e.stopPropagation()}>
-        <StadiumImg name={name} style={{ width: "min(94vw, 2000px)", maxHeight: "calc(100vh - 150px)", objectFit: "contain", borderRadius: 8, border: "none" }} />
+        {children || <StadiumImg name={name} style={{ width: "min(94vw, 2000px)", maxHeight: "calc(100vh - 150px)", objectFit: "contain", borderRadius: 8, border: "none" }} />}
         <figcaption><b>{name}</b>{sub && <span style={mono}>{sub}</span>}</figcaption>
       </figure>
       <button type="button" className="ux-btnreset ux-lb-x" aria-label="Close" autoFocus onClick={onClose}>
@@ -4070,8 +4071,8 @@ function SlideName({ text, style, textStyle }) {
 }
 // A LINE THAT DOES NOT FIT IS NARROWED, never shrunk, cut or wrapped (Moukden and Kirin, 12 October 2026). Full Time lines
 // its score up with the tops of the names and FULL TIME with the manager lines, so each of those keeps one line at one
-// height whatever its length, and the whole of it is in the picture. end: anchored at the right-hand edge.
-function FitLine({ className, end, children }) {
+// height whatever its length, and the whole of it is in the picture. end: anchored at the right-hand edge; mid: centred.
+function FitLine({ className, end, mid, children }) {
   const box = useRef(null), line = useRef(null);
   const [k, setK] = useState(1);
   useLayoutEffect(() => {
@@ -4083,8 +4084,8 @@ function FitLine({ className, end, children }) {
     return () => ro.disconnect();
   });
   return (
-    <span ref={box} className={className} style={{ display: "flex", justifyContent: end ? "flex-end" : "flex-start", minWidth: 0 }}>
-      <span ref={line} style={{ flex: "none", whiteSpace: "nowrap", transformOrigin: end ? "right center" : "left center",
+    <span ref={box} className={className} style={{ display: "flex", justifyContent: mid ? "center" : end ? "flex-end" : "flex-start", minWidth: 0 }}>
+      <span ref={line} style={{ flex: "none", whiteSpace: "nowrap", transformOrigin: mid ? "center" : end ? "right center" : "left center",
                                 transform: k < 1 ? `scaleX(${k.toFixed(4)})` : undefined }}>{children}</span>
     </span>);
 }
@@ -11535,6 +11536,9 @@ export default function App() {
   const [uxNatQ, setUxNatQ] = useState("");                       // the home's nation search
   const [uxLeadYear, setUxLeadYear] = useState(null);             // the Leaders' season; null is the newest most of the archive has filed
   const [uxStatSeason, setUxStatSeason] = useState(null);         // a club page's season, by archive id; null is its league's newest
+  // A side's squad on its page, as the list or on the pitch (Moukden and Kirin, 13 October 2026: "Have a switch between pitch
+  // and list view", then "make list view the default"): the list on every visit, the pick held from page to page.
+  const [uxSqView, setUxSqView] = useState("list");
   const [uxMenu, setUxMenu] = useState(null);                     // the top bar's open menu: "settings", or null
   const [uxAtlasKind, setUxAtlasKind] = useState("club");         // what the home's map shows: clubs, or national teams
   const [uxPhoto, setUxPhoto] = useState(null);                   // the stadium photograph open across the window: { name, cap }
@@ -14830,8 +14834,8 @@ export default function App() {
   };
 
   // ── A panel: the title, and at most a working control beside it ──
-  const uxPanel = (title, control, body, grow, key) => (
-    <section key={key || title} className={"ux-panel" + (grow ? " ux-grow" : "")}>
+  const uxPanel = (title, control, body, grow, key, cls) => (
+    <section key={key || title} className={"ux-panel" + (grow ? " ux-grow" : "") + (cls ? " " + cls : "")}>
       <div className="ux-ph"><h2 className="ux-pt">{title}</h2>{control}</div>
       {body}
     </section>);
@@ -15009,21 +15013,35 @@ export default function App() {
     const sq = t.squad || buildSquad(t.formation || "4-3-3", null), xi = sq.filter(p => !p.bench), bench = sq.filter(p => p.bench);
     const posOf = (p) => (p.bench ? benchSpos(p, playerByName.get(p.fullName || p.name)) : (p.spos || p.pos)) || p.pos;
     const oopAny = xi.some(p => uxOop(p.own, posOf(p)));    // room for the alert after the place, when a man needs it
+    const sqFacts = (() => { let v = 0, nv = 0, a = 0, na = 0;
+      for (const p of sq) { const r = p.rid ? recNow(p.rid) : null; if (!r) continue;
+        if (pstats) { v += valueOf(valueInputs(r, uxValueCtx, uxTrends)) || 0; nv++; }
+        if (r.born) { a += ageOf(r.born); na++; } }
+      return { value: nv ? v : null, age: na ? a / na : null }; })();
+    // A MAN'S ROW (Moukden and Kirin, 13 October 2026: "make the player list better, with portraits and whatnot"; one line,
+    // a small face, and his age, value, other position and traits beside the season's figures). His record gives the rest.
     const squadRow = (p, i) => {
       const nm = p.fullName || p.name, pe = playerByName.get(nm), x = mine.get(pFold(nm)), pos = posOf(p);
       // A club's man by his nation; a national side's by his club.
       const oc = isNT ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
       const side = isNT ? (oc ? teamByName.get(oc.name) : null) : pe?.natCode ? natTeamByCode.get(pe.natCode) : null;
-      const sideCode = isNT ? (oc ? oc.code || abbr(oc.name, oc.code) : "") : pe?.natCode || "";
+      const rec = p.rid ? recNow(p.rid) : null, own = posList(rec?.pos ?? p.own), age = rec?.born ? ageOf(rec.born) : null;
+      const value = rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null;
+      const traits = badgeOrder(rec?.badges || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
+      const oop = !p.bench && uxOop(p.own, pos), other = own.find(q => q !== pos);
       return (
         <tr key={i} className="ux-link" onClick={() => pe && openPlayer(nm)}>
           {/* Where he plays (user, 11 October 2026): the eleven's place, a bench man his own first position; out of position
-              (uxOop) in red, with the alert after it. */}
-          <td><span className="ux-pos" style={{ color: !p.bench && uxOop(p.own, pos) ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
-            {!p.bench && uxOopMark(p.ovr ?? t.skill, p.own, pos)}</td>
-          <td className="ux-strong"><SlideName text={nm} /></td>
-          <td title={isNT ? oc?.name : pe?.nationality}><div className="ux-tc">{side && <TeamCrest team={side} size={16} />}<b className="ux-code" style={mono}>{sideCode}</b></div></td>
+              (uxOop) in red, with the alert after it, else his other position quiet after it. */}
+          <td><span className="ux-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
+            {oop ? uxOopMark(p.ovr ?? t.skill, p.own, pos) : other && <span className="ux-pos2" style={mono}>{other}</span>}</td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span>
+            <span className="ux-strong ux-sqnm"><SlideName text={nm} /></span></div></td>
+          <td><div className="ux-sqtr">{traits.map(id => <BadgeIcon key={id} id={id} size={14} />)}</div></td>
+          <td title={isNT ? oc?.name : pe?.nationality}><div className="ux-tc">{side && <TeamCrest team={side} size={16} />}</div></td>
+          <td className={"ux-n" + (age != null ? "" : " ux-dim")} style={mono}>{age ?? "–"}</td>
           <td className="ux-c">{uxBadge(p.ovr ?? t.skill)}</td>
+          <td className={"ux-n" + (value != null ? "" : " ux-dim")} style={mono}>{value != null ? moneyLabel(value) : "–"}</td>
           <td className={"ux-n" + (x ? "" : " ux-dim")} style={mono}>{x ? x.gp : "–"}</td>
           <td className={"ux-n" + (x?.G != null ? "" : " ux-dim")} style={mono}>{x?.G ?? "–"}</td>
           <td className={"ux-n" + (x?.A != null ? "" : " ux-dim")} style={mono}>{x?.A ?? "–"}</td>
@@ -15061,39 +15079,156 @@ export default function App() {
       return { key: f.s.id, pos: f.res.pos, of: f.res.of, label: f.s.season, s: f.s,
                tip: [uxSeasonName(f.s), `${ordinal(f.res.pos)} of ${f.res.of}`, ...(Number.isFinite(pts) ? [`${pts} Pts`] : [])] }; });
     const conf = isNT ? String(t.conference || CONF_BY_CODE.get(t.code) || "") : "";
+    // A NATIONAL SIDE'S LATEST TOURNAMENT (Moukden and Kirin, 13 October 2026: "On national teams, it should just say how
+    // the team did in the most recent int'l tournament"): the newest competition it played matches in, where it went out
+    // or that it won, its record and results there, and its top scorer and most assists there.
+    const lastTour = isNT && pstats ? (() => {
+      const keyIn = (s) => { const nm = sideNameIn(t, s); return nm ? archKey(nm) : null; }, comps = regRecordComps(t);
+      const pool = pstats.seasons.filter(s => s.md && comps.includes(s.comp) && keyIn(s) && uxClubRows(s, keyIn(s))?.length);
+      const s = [...pool].sort((a, b) => uxWhen(b) - uxWhen(a))[0]; if (!s) return null;
+      const ms = [...uxClubRows(s, keyIn(s))].sort((a, b) => a.t - b.t), rec = uxSeasonRec(s, t);
+      const res = record.rows.find(r => r.s === s)?.res || archOf(s, t.name);
+      const title = /^\d{4}$/.test(String(s.season)) ? `${s.season} ${s.comp}` : `${s.comp} ${s.season}`;
+      return { s, ms, rec, res, title };
+    })() : null;
     // The pitch.
     const slots = pitchSlots(t.formation || "4-3-3");
-    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, pop = venueCap(rec?.location || "");
+    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = STADIUM_IMAGES.includes(st);
+    const lines = uxLinesOf(xi, bench, t.skill);
     const shirt = (c) => { const hex = String(c || "").toUpperCase();
       return (
       <span className="ux-kit-tip" data-hex={hex || undefined} role="img" aria-label={hex || undefined}>
         <svg className="ux-kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z"
           fill={c || "var(--ux-panel-3)"} stroke="rgba(255,255,255,.55)" strokeWidth="1" /></svg></span>); };
     return (
-      // The pitch's column takes the window's width first, up to the widest a pitch can be at the window's height (three
-      // quarters as wide as long); past that the club's column takes the rest. The results keep their width.
-      <div className="ux-body" style={{ gridTemplateColumns: `468px minmax(360px, calc((100vh - 160px) * 0.75 + 26px)) minmax(290px, 1fr) ${isNT ? 272 : 256}px` }}>
+      // THE PAGE, LEFT TO RIGHT (Moukden and Kirin, 13 October 2026): the club's profile; its squad on the pitch with its bench
+      // beside it, or as the list, wide enough for either (the pitch's full width and the bench when the window is tall
+      // enough, once the profile and the season have 264 pixels each, which they give up to 240 on a narrow window); its season
+      // (a national side's latest tournament) and honours; its results, whose codes and scores keep their own width.
+      <div className="ux-body" style={{ gridTemplateColumns: `minmax(240px, 1fr) minmax(624px, min(calc((100vh - 160px) * 0.75 + 148px), calc(100vw - ${60 + 528 + (isNT ? 272 : 256)}px))) minmax(240px, 1fr) ${isNT ? 272 : 256}px` }}>
         <div className="ux-col">
-          {uxPanel("Squad", isNT ? ntYears.length > 0 && uxPick("Season", "y" + ny, ntYears.map(y => ["y" + y, String(y)]), setUxStatSeason)
-            : statSeasons.length > 0 && uxPick("Season", ss?.id || "", statSeasons.map(s => [s.id, uxSeasonName(s)]), setUxStatSeason), (
-            <div className={"ux-pbody" + (isNT ? "" : " ux-fit")}><table className="ux-tbl">
-              <colgroup><col style={{ width: oopAny ? 86 : 58 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /><col style={{ width: 46 }} /></colgroup>
-              <thead><tr><th>Pos</th><th>Player</th><th>{isNT ? "Club" : "Nat"}</th><th className="ux-c">Rtg</th><th className="ux-n">GP</th><th className="ux-n">G</th><th className="ux-n">A</th><th className="ux-n">Avg</th></tr></thead>
-              <tbody>{xi.map(squadRow)}<tr className="ux-sep"><td colSpan={8} /></tr>
+          {/* THE PROFILE, ONE SIDEBAR IN SECTIONS (Moukden and Kirin, 13 October 2026: over one panel of facts with its foot left
+              empty, "Lots of wasted space. Do multiple sections here"; over a panel a section, "Keep the left in one sidebar"):
+              who the club is, its crest opening across the window as the ground's photo does; then its kits; its ground, with
+              its city; its manager, his style and the side's shape; its strength by line; and its squad's age and value, each
+              under a small heading. */}
+          {uxPanel(isNT ? "Team" : "Club", null, (
+            <div className="ux-psb">
+              <div className="ux-prof">
+                <button type="button" className="ux-btnreset ux-prof-crest" aria-label={t.name} onClick={() => setUxPhoto({ crest: t })}>
+                  <TeamCrest team={t} size={72} /></button>
+                <FitLine className="ux-prof-nm" mid>{t.name}</FitLine>
+                <span className="ux-prof-sub" style={mono}>{t.code || abbr(t.name, t.code)}</span>
+              </div>
+              {/* A kit a row (Moukden and Kirin, 13 October 2026: "Make the kits one per row"). */}
+              <section className="ux-psec"><h3 className="ux-psec-h">Kits</h3>
+                <div className="ux-pkits">{[["Home", t.primaryColor], ["Away", t.secondaryColor || t.primaryColor]].map(([l, c]) => (
+                  <div key={l} className="ux-pkit">{shirt(c)}<span>{l}</span></div>))}</div></section>
+              {/* The ground at its photograph's own proportions (Moukden and Kirin, 13 October 2026: "the stadium image needs to
+                  be displayed at original aspect ratio"), its name, city and capacity under it. No photograph on file keeps the
+                  kit colours, as Full Time does. */}
+              <section className="ux-psec"><h3 className="ux-psec-h">Stadium</h3>
+                {photo ? (
+                  <button type="button" className="ux-btnreset ux-pstad-ph" aria-label={st} onClick={() => setUxPhoto({ name: st, cap })}>
+                    <StadiumImg name={st} style={{ borderRadius: 0, border: "none" }} /></button>)
+                  : <div className="ux-pstad-kit" aria-hidden="true" style={{ background: `linear-gradient(135deg, ${t.primaryColor || "var(--ux-panel-3)"} 0 50%, ${t.secondaryColor || t.primaryColor || "var(--ux-panel-3)"} 50% 100%)` }} />}
+                <div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b>
+                  <span>{t.city && <CityLink name={t.city} />}{cap && <span style={mono}>Capacity {cap}</span>}</span></div></section>
+              <section className="ux-psec"><h3 className="ux-psec-h">Manager</h3>
+                <div className="ux-pmgr">
+                  <span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={t.manager || ""} size="100%" /></span>
+                  <div className="ux-pmgr-id">
+                    <span className="ux-pmgr-nm">{uxMgrLink(t.manager)}{t.mgmt != null && <span style={{ ...ovrBlock(t.mgmt, true), ...mono }}>{showOvr(t.mgmt)}</span>}</span>
+                    <span className="ux-pmgr-st">{uxStyleName(t.style)}<span style={mono}>{t.formation || "4-3-3"}</span></span>
+                  </div>
+                </div></section>
+              {/* The side's rating, then its eleven by line and its bench, as Play Match compares them (uxLinesOf). */}
+              <section className="ux-psec"><h3 className="ux-psec-h">Strength</h3>
+                <div className="ux-pstr">{[["OVR", t.skill], ...["ATT", "MID", "DEF", "BENCH"].map(l => [l, lines[l]])].map(([l, v]) => (
+                  <div key={l}><OvrBadge v={v} /><span>{l}</span></div>))}</div></section>
+              <section className="ux-psec"><h3 className="ux-psec-h">{"Age & Value"}</h3>
+                <div className="ux-strip ux-pfig">
+                  <div><b style={mono}>{sqFacts.age != null ? sqFacts.age.toFixed(1) : "–"}</b><span>Average Age</span></div>
+                  <div><b style={mono}>{sqFacts.value != null ? moneyLabel(sqFacts.value) : "–"}</b><span>Squad Value</span></div>
+                </div></section>
+            </div>), true)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Squad", (<>
+            <div className="ux-seg" role="group" aria-label="Squad View">{[["pitch", "Pitch"], ["list", "List"]].map(([k, l]) => (
+              <button key={k} type="button" className={"ux-btnreset" + (uxSqView === k ? " ux-on" : "")} aria-pressed={uxSqView === k}
+                      onClick={() => uxSqView !== k && setUxSqView(k)}>{l}</button>))}</div>
+            <span className="ux-ph-gap" />
+            {uxSqView === "list" ? (isNT ? ntYears.length > 0 && uxPick("Season", "y" + ny, ntYears.map(y => ["y" + y, String(y)]), setUxStatSeason)
+            : statSeasons.length > 0 && uxPick("Season", ss?.id || "", statSeasons.map(s => [s.id, uxSeasonName(s)]), setUxStatSeason)) : <span className="ux-chip" style={mono}>{t.formation || "4-3-3"}</span>}</>),
+            uxSqView === "list" ? (
+            <div className="ux-pbody"><table className="ux-tbl ux-sq">
+              <colgroup><col style={{ width: 66 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 34 }} /><col style={{ width: 44 }} /><col style={{ width: 50 }} />
+                <col style={{ width: 30 }} /><col style={{ width: 26 }} /><col style={{ width: 26 }} /><col style={{ width: 44 }} /></colgroup>
+              <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>{isNT ? "Club" : "Nat"}</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th>
+                <th className="ux-n">GP</th><th className="ux-n">G</th><th className="ux-n">A</th><th className="ux-n">Avg</th></tr></thead>
+              <tbody>{xi.map(squadRow)}<tr className="ux-sep"><td colSpan={11} /></tr>
                 {benchPlaces(t, bench, isNT).map((p, i) => p.vacant ? (
                   <tr key={"v" + i} className="ux-vac">
-                    <td><span className="ux-pos">{p.lab}</span></td><td>Vacant</td><td /><td className="ux-c" /><td /><td /><td /><td />
+                    <td><span className="ux-pos">{p.lab}</span></td><td><div className="ux-sqn"><span className="ux-sqf ux-open" aria-hidden="true" />Vacant</div></td>
+                    <td /><td /><td /><td /><td /><td /><td /><td /><td />
                   </tr>) : squadRow(p, 100 + i))}</tbody>
-            </table></div>), isNT)}
-          {!isNT && uxPanel(ss ? `Season ${uxSeasonName(ss)}` : "Season", null, (
+            </table></div>
+            ) : (
+            // THE BENCH BESIDE THE PITCH (Moukden and Kirin, 13 October 2026, for the ground a short window left either side of
+            // the pitch): every place on it in a strip down the pitch's right, each man drawn as on the pitch but smaller (his
+            // face ringed in his position's colour, rating left, position right, SURNAME over him), an open place Vacant over
+            // its group.
+            <div className="ux-sqp">
+              <UxLineup slots={slots} men={xi.map(p => uxMan(p, t.skill))} />
+              <div className="ux-bn">
+                <div className="ux-bn-h">Bench</div>
+                <div className="ux-bn-l" role="list">{benchPlaces(t, bench, isNT).map((p, i) => { if (p.vacant) return (
+                    <div key={i} role="listitem" className="ux-bn-m ux-vac"><span className="ux-bn-nm">Vacant</span>
+                      <span className="ux-bn-c"><span className="ux-bn-tok ux-open" /><span className="ux-pl-pos" style={mono}>{p.lab}</span></span></div>);
+                  const nm = p.fullName || p.name, pos = posOf(p), { last } = splitSurname(nm, p.name);
+                  return (
+                    <div key={i} role="listitem" className="ux-bn-m" style={{ ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
+                      <span className="ux-bn-nm"><SlideName text={last} /></span>
+                      <span className="ux-bn-c">
+                        <button type="button" className="ux-btnreset ux-bn-tok" aria-label={nm} title={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}>
+                          <PlayerShot name={nm} size="100%" /></button>
+                        {uxPitchRtg(p.ovr ?? t.skill, [pos], pos)}
+                        <span className="ux-pl-pos" style={mono}>{pos}</span>
+                      </span></div>); })}</div>
+              </div>
+            </div>), true)}
+        </div>
+        <div className="ux-col">
+          {/* The season in League Finishes' place, a national side's latest tournament in AFA Rankings' (Moukden and Kirin, 13
+              October 2026: "Replace league finishes with the season thing"); the finishes and rankings stay on History. */}
+          {isNT ? uxPanel(lastTour ? lastTour.title : "Latest Tournament", null, lastTour ? (() => {
+              const { ms, rec: tr, res: tres, s: ts } = lastTour, st = tres?.league ? null : uxStage(tres?.stage), gd = (tr?.gf ?? 0) - (tr?.ga ?? 0);
+              const top = (k) => (ts.boards?.[k] || []).find(e => e.team === t.code) || null;
+              return (
+              <div className="ux-pbody">
+                <div className="ux-hero"><span className={"ux-big ux-stage" + (st === "Winner" ? " ux-gold" : "")}>
+                  {tres?.league ? <>{tres.pos}<small>{ordinal(tres.pos).replace(/^\d+/, "")}{tres.of ? ` of ${tres.of}` : ""}</small></> : st || "–"}</span></div>
+                {tr && <div className="ux-strip">
+                  {[["P", tr.p], ["W", tr.w], ["D", tr.d], ["L", tr.l], ["GF", tr.gf], ["GA", tr.ga], ["GD", (gd > 0 ? "+" : "") + gd]].map(([k, v]) => (
+                    <div key={k}><b style={mono}>{v}</b><span>{k}</span></div>))}
+                </div>}
+                {ms.length > 0 && <div className="ux-form">{ms.slice(-10).map((m, i) => <i key={i} className={"ux-" + m.o}>{m.o.toUpperCase()}</i>)}</div>}
+                <dl style={{ margin: "10px 0 0" }}>
+                  {[["Top Scorer", top("G")], ["Most Assists", top("A")]].filter(([, e]) => e && e.v).map(([k, e]) => (
+                    <div key={k} className="ux-kv"><dt>{k}</dt><dd>{e.player}<span className="ux-sub" style={mono}>{e.v}</span></dd></div>))}
+                </dl>
+              </div>); })() : <div className="ux-empty">{regLoading || !pstats ? "Loading" : "None"}</div>, false)
+            : uxPanel(ss ? `Season ${uxSeasonName(ss)}` : "Season", null, (
             <div className="ux-pbody">
               {res?.league ? (<>
                 <div className="ux-hero">
                   <span className="ux-big">{res.pos}<small>{ord.replace(/^\d+/, "")}</small></span>
-                  <div className="ux-lines"><span className="ux-t1">{t.league}</span></div>
-                  {res.pts != null && <span className="ux-big" style={{ marginLeft: "auto", color: "var(--ux-accent-ink)" }}>{res.pts}<small>PTS</small></span>}
+                  <div className="ux-lines"><span className="ux-t1"><SlideName text={t.league} /></span></div>
                 </div>
+                {/* The points lead the figures, so the league's name has the line beside the place to itself. */}
                 <div className="ux-strip">
+                  {res.pts != null && <div className="ux-pts"><b style={mono}>{res.pts}</b><span>PTS</span></div>}
                   {[["P", res.p], ["W", res.w], ["D", res.d], ["L", res.l], ["GF", res.gf], ["GA", res.ga],
                     ["GD", res.gf != null && res.ga != null ? (+res.gf - +res.ga > 0 ? "+" : "") + (+res.gf - +res.ga) : null]].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                     <div key={k}><b style={mono}>{v}</b><span>{k}</span></div>))}
@@ -15104,30 +15239,7 @@ export default function App() {
                     <div key={k} className="ux-kv"><dt>{k}</dt><dd>{e.player}<span className="ux-sub" style={mono}>{e.v}</span></dd></div>))}
                 </dl></>)
                 : <div className="ux-empty">{pstats && (!ss || rep) ? "No Record" : "Loading"}</div>}
-            </div>), true)}
-        </div>
-        <div className="ux-col">
-          {uxPanel("Formation", <span className="ux-chip" style={mono}>{t.formation || "4-3-3"}</span>, (
-            <UxLineup slots={slots} men={xi.map(p => uxMan(p, t.skill))} />), true)}
-        </div>
-        <div className="ux-col">
-          {uxPanel(isNT ? "Team" : "Club", null, (<>
-            {STADIUM_IMAGES.includes(st) && (
-              <button type="button" className="ux-btnreset ux-photo" aria-label={st} onClick={() => setUxPhoto({ name: st, cap })}>
-                <StadiumImg name={st} style={{ height: "100%", objectFit: "cover", borderRadius: 0, border: "none" }} />
-                <div><b><SlideName text={st} /></b>{cap && <span style={mono}>Capacity {cap}</span>}</div></button>)}
-            <dl style={{ margin: 0 }}>
-              <div className="ux-kv"><dt>City</dt><dd>{t.city ? <CityLink name={t.city} /> : "–"}{pop && <span className="ux-sub" style={mono}>{pop}</span>}</dd></div>
-              {!STADIUM_IMAGES.includes(st) && st && <div className="ux-kv"><dt>Ground</dt><dd className="ux-still"><SlideName text={st} />{cap && <span className="ux-sub" style={mono}>{cap}</span>}</dd></div>}
-              {isNT ? conf && <div className="ux-kv"><dt>Conference</dt><dd><LeagueCrest league={confLabel(conf)} size={16} />{conf.replace(/ Conference$/, "")}</dd></div>
-                : <div className="ux-kv"><dt>League</dt><dd><LeagueCrest league={t.league} size={16} />
-                {lgRail.some(c => c.name === t.league) ? <span className="ux-a" onClick={() => openComp(t.league)}>{t.league}</span> : t.league}</dd></div>}
-              <div className="ux-kv"><dt>Manager</dt><dd>{uxMgrLink(t.manager)}{t.mgmt != null && <span style={{ ...ovrBlock(t.mgmt, true), ...mono }}>{showOvr(t.mgmt)}</span>}</dd></div>
-              <div className="ux-kv"><dt>Style</dt><dd>{uxStyleName(t.style)}</dd></div>
-              <div className="ux-kv"><dt>Shape</dt><dd style={mono}>{t.formation || "4-3-3"}</dd></div>
-              {rec?.timeWasting && <div className="ux-kv"><dt>Time Wasting</dt><dd>{rec.timeWasting}</dd></div>}
-              <div className="ux-kv ux-kv-kits"><dt>Kits</dt><dd>{shirt(t.primaryColor)}{shirt(t.secondaryColor || t.primaryColor)}</dd></div>
-            </dl></>))}
+            </div>), false)}
           {uxPanel("Honours", null, (
             <div className="ux-pbody ux-fit"><table className="ux-tbl">
               <colgroup><col /><col style={{ width: 40 }} /><col style={{ width: 54 }} /></colgroup>
@@ -15136,9 +15248,7 @@ export default function App() {
                 <tr key={comp}><td><div className="ux-tc"><LeagueCrest league={comp} size={16} /><span>{comp}</span></div></td>
                   <td className="ux-n ux-strong" style={{ ...mono, color: "var(--ux-gold)" }}>{ss2.length}</td><td className="ux-n ux-dim" style={mono}>{ss2[0].season}</td></tr>))}
                 {!titles.length && <tr><td colSpan={3} className="ux-dim">{regLoading ? "Loading" : "None"}</td></tr>}</tbody>
-            </table></div>))}
-          {isNT ? uxPanel("AFA Rankings", null, afa.length ? uxBars(afa) : <div className="ux-empty">None</div>, true)
-            : uxPanel("League Finishes", null, finItems.length ? uxBars(finItems, openSeasonPage) : <div className="ux-empty">{regLoading ? "Loading" : "None"}</div>, true)}
+            </table></div>), true)}
         </div>
         <div className="ux-col">
           {uxPanel("Results", null, (
@@ -15214,15 +15324,19 @@ export default function App() {
         <div className="ux-col">
           {uxPanel("Seasons", null, !years.length ? <div className="ux-empty">{regLoading ? "Loading" : "None"}</div> : isNT ? (
             <div className="ux-pbody"><table className="ux-tbl">
-              <colgroup><col style={{ width: 80 }} />{NT_COLS.map(([k]) => <col key={k} />)}<col style={{ width: 230 }} /></colgroup>
-              <thead><tr><th>Season</th>{NT_COLS.map(([k, h]) => <th key={k}>{h}</th>)}<th>Manager</th></tr></thead>
-              <tbody>{years.map(r => (
+              <colgroup><col style={{ width: 80 }} />{NT_COLS.map(([k]) => <col key={k} />)}<col style={{ width: 70 }} /><col style={{ width: 230 }} /></colgroup>
+              <thead><tr><th>Season</th>{NT_COLS.map(([k, h]) => <th key={k}>{h}</th>)}<th className="ux-n">AFA</th><th>Manager</th></tr></thead>
+              <tbody>{years.map(r => {
+                // Its place in the AFA ranking that year (src/data/afa.js), now its Overview shows its latest tournament instead.
+                const ai = (AFA_RANKINGS[r.y] || []).findIndex(([c]) => c === t.code);
+                return (
                 <tr key={r.y}>
                   <td className="ux-dim" style={mono}>{r.y}</td>
                   {NT_COLS.map(([k]) => <td key={k}>{!r[k] ? none : k === "q"
                     ? <div className="ux-tc"><LeagueCrest league={r[k].s.comp} size={16} /><span title={r[k].s.comp}>{finish(r[k])}</span></div> : finish(r[k])}</td>)}
+                  <td className="ux-n" style={mono}>{ai >= 0 ? <b className={ai === 0 ? "ux-gold" : undefined}>{ordinal(ai + 1)}</b> : none}</td>
                   {mgrs(r)}
-                </tr>))}</tbody>
+                </tr>); })}</tbody>
             </table></div>) : (
             <div className="ux-pbody"><table className="ux-tbl">
               <colgroup><col style={{ width: 80 }} /><col style={{ width: 200 }} /><col style={{ width: 92 }} />
@@ -21316,8 +21430,10 @@ export default function App() {
       </div>
           </div>
         </main>
-        {uxPhoto && uxScreen === "club" && (
-          <UxLightbox name={uxPhoto.name} sub={uxPhoto.cap ? `Capacity ${uxPhoto.cap}` : null} onClose={() => setUxPhoto(null)} />)}
+        {uxPhoto && uxScreen === "club" && (uxPhoto.crest ? (
+          <UxLightbox name={uxPhoto.crest.name} sub={uxPhoto.crest.code || null} onClose={() => setUxPhoto(null)}>
+            <TeamCrest team={uxPhoto.crest} size="min(60vh, 500px)" /></UxLightbox>)
+          : <UxLightbox name={uxPhoto.name} sub={uxPhoto.cap ? `Capacity ${uxPhoto.cap}` : null} onClose={() => setUxPhoto(null)} />)}
       </div>
     </div>
   );

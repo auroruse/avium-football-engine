@@ -34,13 +34,29 @@ or tournament already holding an Arterra side plays on.
 Each section's pages are tabs in the page bar under the top bar. A page about one thing (a club, a nation, a player)
 starts the page bar with its crest and name. Every page has its own address.
 
-A club has two pages: **Overview** (squad, pitch, club, honours, finishes, results; the squad lists the bench's eleven
-places, an open one a quiet row with its group and Vacant) and **History**, a row a season,
+A club has two pages: **Overview** and **History**. Overview runs left to right (user, 13 October 2026, after a squad
+column beside the pitch had squeezed it thin and cut names short): the **profile**, one sidebar in sections (user: "Do
+multiple sections here", then "Keep the left in one sidebar"): the crest, name and code stacked at its top, a name too long
+for the sidebar narrowed as Full Time's are, the crest opening across
+the window as the ground's photo does; then Kits, home and away a row each; Stadium, its photo at its own 5:1 proportions
+("the stadium image needs to be displayed at original aspect ratio") with the ground's name, city and capacity under it (no
+photo keeps the kit colours); Manager, his face, name, rating and style and
+the side's shape; Strength, the side's rating then ATT, MID, DEF and BENCH as Play Match compares them; and Age & Value. The
+League, City population and Time Wasting rows went with the sections. Then the **squad**, a Pitch or List switch in its title
+bar, the list on every visit (user: "make list view the default"): the list a row a man with his face, place and other
+position, his traits in a column of their own (user: "Give traits its own column"), nation, age, rating, value and the
+season's figures, the bench's eleven places with an open one a quiet row and Vacant; the pitch in the formation with the bench
+in a strip down its right, every place on it drawn as on the pitch but smaller. Its column is at least 624 pixels, and the
+pitch's full width with the bench beside it when the window is tall enough, the profile and the season giving up their width
+first once they have 264 pixels each (down to 240 on a narrow window); Results keeps its width. Then the **season** (place and league, then points leading the figures, form, top scorer and most
+assists) over **Honours**; and **Results**. League Finishes is gone from it.
+History is a row a season,
 newest first, with its division, finish, record, cup run and Club World Cup or Shield run, titles in gold, and its
 manager (both, where a year had two), and its honours beside it by competition with the years each was won. A national side has the same two pages: its squad of
-22 fills the first column with each man's club and the year's international figures, AFA Rankings (its place in the
-ranking by rating, a bar a year from src/data/afa.js) stands where a club's league finishes are, and History has a column each for
-the World Cup, its qualifying and the Nations League, then its manager (the old confederation championships have no
+22 is its squad, each man with his club and the year's international figures, its **latest tournament** (where it went
+out or that it won, its record, results, top scorer and most assists; user: "it should just say how the team did in the
+most recent int'l tournament") stands where a club's season is, and History has a column each for
+the World Cup, its qualifying and the Nations League, then its AFA ranking that year, then its manager (the old confederation championships have no
 column, and count only toward who managed it).
 
 **Positions** (Moukden and Kirin, 11 October 2026, over three rounds of questions). Every player has one or two positions of
@@ -690,7 +706,9 @@ circle's left, the position chip on its right, given name over SURNAME above. A 
 placeholder.
 The pitch fills its panel and never leaves the panel's ground showing: it takes the panel's proportions within a real
 pitch's (64 to 75 metres wide, 100 to 110 long), and on a club's page its column takes the window's spare width first,
-up to the widest pitch the window's height allows.
+up to the widest pitch the window's height allows and the bench's strip beside it. The strip takes whatever width the pitch
+leaves, never less than its own (Moukden and Kirin, 13 October 2026, picking the bench over the margins a short window left
+either side of a pitch that could not fill its panel).
 
 **Results.** Every match of the season in every competition the club entered, newest first: the competition's short
 form (the archive folder, NL1, KPL, CWC, WC), the round or stage (R38, G3, QF, F), the opponent's crest and code, H or
