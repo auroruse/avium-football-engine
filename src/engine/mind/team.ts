@@ -299,6 +299,11 @@ function mindAttack(s, side) {
       const runner = r.ln[2] === "attack" || (r.run.behind || 0) >= 0.4;
       d = Math.max(d, runner ? g.off - 1 : Math.min(g.off - MT.cntSupport, d + 8 + MT.cntSurge * (1 - r.rest)));
     }
+    // PROTOTYPE (13 Oct 2026, MT.tuckIn): with the ball central in front of their box, a wide forward on the last line
+    // comes in off the touchline to the channel, so the last line is three men across instead of one.
+    if (MT.tuckIn && r.lane[phi] === "wide" && r.ln[phi] === "attack" && !String(p._mr || "").startsWith("wb")
+        && (ph === "final" || ph === "counter" || (ph === "progress" && bD > 64)) && Math.abs(mp.by - ME_HALF_W) <= MT.tuckBallY && bD > MT.tuckFrom)
+      y += (ME_HALF_W + Math.sign(y - ME_HALF_W) * MT.tuckY - y) * MT.tuckIn;
     // The whole shape leans toward the ball, except the far wide man, who keeps the switch on.
     const wideLane = r.lane[phi] === "wide";
     const farWide = wideLane && Math.sign(y - ME_HALF_W) !== Math.sign(mp.by - ME_HALF_W);
@@ -689,6 +694,11 @@ function mindRuns(s, side, ph, g, carrier) {
       const mk = roomAt(s, side, p.x, p.y);
       if (mk < 3.5) consider("drop", r.run.drop * 0.8, cD + 11, clamp(p.y, 22, PITCH_W - 22));
     }
+    // PROTOTYPE (13 Oct 2026, MT.lateRun): THE LATE RUN. With the ball central in front of their box and the man on it
+    // able to play, a man who gets into the box goes from behind the ball, past their last line, into it.
+    if (MT.lateRun && (r.run.box || 0) > 0 && !wide && cD > MT.lateFrom && canPlay > 0.25 && r.ln[PH_IX[ph] ?? 1] !== "attack"
+        && pd < g.off - 2 && pd > cD - MT.lateBehind)
+      consider("box", r.run.box * MT.lateRun, Math.min(99, g.off + MT.lateBeyond), clamp(p.y, ME_HALF_W - 11, ME_HALF_W + 11));
     // THE BOX: with the ball wide in the last third, the box men go for the near post, the spot, the far post.
     if ((r.run.box || 0) > 0 && wide && cD > 76 - Math.max(0, st.width || 0) * 4 && pd > 58) {
       const near = carrier.y < ME_HALF_W ? -1 : 1;

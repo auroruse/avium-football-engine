@@ -263,6 +263,13 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     else if (isGK && !c.high && d < CFG.gkRollD) ok *= CFG.gkRollOk;
     ok *= 1 - blockRisk(s, side, p.x, p.y, aimX, aimY, c.high) * MT.blockK;
     ok = clamp(ok, CFG.passFloor, 0.985);
+    // A CROSS IS A HOPE, AND HE KNOWS IT (13 October 2026). The belief above was fitted on every pass a side plays, and
+    // a ball into a defended box is not like any of them: struck, the man it is for is nearly always free (four crosses
+    // in five have nobody near the spot he is running to), and by the time it comes down a defender is there, or it is
+    // over everybody. Measured over 4,000 crosses, believed 0.67 and kept 0.40 -- the ball to the striker in a packed
+    // box looked twice the ball it was, so it was the ball every wide man played. Re-read on what crosses actually do:
+    // a logistic on the belief's own logit (crossCalA, crossCalB; 0 leaves it as it was).
+    if (c.k === "cross" && CFG.crossCalB) ok = clamp(1 / (1 + Math.exp(-(CFG.crossCalA + CFG.crossCalB * Math.log(ok / (1 - ok))))), CFG.passFloor, 0.985);
     // A team-mate he last saw a while ago is a guess: the ball goes to where he thinks the man is.
     if ((q._age ?? 0) > 1.0) ok *= Math.max(0.55, 1 - ((q._age ?? 0) - 1.0) * 0.08);
     // CLEAR YOUR LINES (plan.clearLines). A side that builds long does not play short or across in its own
@@ -601,7 +608,12 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   // it kept it, played an 18-metre ball after three seconds, and had the ball 30 m from its goal ten seconds on --
   // positional value is flat that far out, so the safe ball always won and the space was gone before it moved.
   // Closed down, he plays whatever gets him out.
-  const breaking = M?.ph?.[side]?.ph === "counter" && M.ph[side].short && mp.side === side && press < MT.crossPress;
+  // ...but not all the way in (13 October 2026). Inside cntLast of their line the break is a finish, and a finish is a
+  // choice: shoot, put it across for the man arriving, slip the runner, take one more touch. Held to the forward ball and
+  // the run, the man on it at the edge of their box could only run on and shoot -- three in four of the striker's touches
+  // there came on a break, and he took half of a side's shots. (cntLast 0: to the goal line, as it was.)
+  const breaking = M?.ph?.[side]?.ph === "counter" && M.ph[side].short && mp.side === side && press < MT.crossPress
+    && toLine > (MT.cntLast || 0);
   if (breaking && opts.some(o => o.k === "pass" && (o.ax - p.x) * dir >= MT.cntGo && o.p >= MT.cntGoOk))
     for (let n = opts.length - 1; n >= 0; n--) {
       const o = opts[n];
@@ -622,6 +634,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   opts.sort((x, y) => y.sc - x.sc);
   const best = opts[0];
   best.alts = opts.slice(0, 10);
+  if (globalThis.__choose) best.allOpts = opts;           // harness: the whole menu
   return best;
 }
 
@@ -641,6 +654,7 @@ export function mindChoose(s, side, i, dwell, noCarry, ft) {
     if (kept && kept.sc + Math.max(MT.hystAbs, MT.hystRel * Math.abs(kept.sc)) >= res.sc) pick = kept;
   }
   p._plan = { key: pick.key, epi: M.epi, t: mp.tick, k: pick.k };
+  if (globalThis.__choose) globalThis.__choose(s, side, i, pick, res);   // harness: every decision with its alternatives
   // The carry he chose is the line he runs it on.
   if (pick.k === "carry" && pick.ang != null) { p._drbWant = pick.ang; p._drbT = CFG.carryCommit; }
   return pick;
