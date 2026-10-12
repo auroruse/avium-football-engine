@@ -57,6 +57,9 @@
   color: color-mix(in srgb, var(--ux-text) 62%, transparent); }
 .ux-search input { all: unset; flex: 1; min-width: 0; color: var(--ux-text); font-size: 12px; }
 .ux-search input::placeholder { color: color-mix(in srgb, var(--ux-text) 55%, transparent); }
+/* A search box shows focus on its own border; the old global ring around a focused input drew a second box inside it. */
+.ux-search:focus-within { border-color: var(--ux-accent-ink); }
+.ux-search input:focus { box-shadow: none; }
 .ux-hits { position: absolute; top: calc(100% + 6px); right: 0; width: 460px; max-height: 460px; overflow-y: auto; z-index: 80; padding: 6px;
   background: var(--ux-panel); border: 1px solid var(--ux-line); border-radius: 8px; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); }
 .ux-hits-kind { font-size: 11px; font-weight: 600; color: var(--ux-text-3); padding: 10px 10px 4px; }
@@ -1778,6 +1781,8 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-kit { display: block; margin: 0 -6px; height: 30px; line-height: 30px; padding: 0 6px; font-size: 11px; }
 /* A cell being edited may spill over its neighbours: a kit's colour, its hex code and Done need more room than the cell. */
 .ux-sh-tbl td.ux-sh-td.ux-sh-editing { overflow: visible; z-index: 4; }
+/* a picker opened in a cell fills the cell, never wider */
+.ux-sp.ux-sh-cellpick { width: 100%; max-width: 100%; }
 .ux-sh-kited { position: absolute; left: 0; top: 0; height: 100%; min-width: 200px; display: flex; align-items: center; gap: 6px; padding: 0 6px;
   background: var(--ux-panel-3); box-shadow: inset 0 0 0 2px var(--ux-accent-ink), 0 6px 18px rgba(0, 0, 0, .45); border-radius: 2px; }
 .ux-sh-kited .ux-sh-in { flex: 1 1 auto; min-width: 0; outline: none; background: var(--ux-panel-2); }
@@ -1839,11 +1844,13 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-dseg { margin-left: 0; }
 .ux-sh-dropnote { margin: 0 12px 8px; padding: 6px 8px; border-radius: 6px; border: 1px dashed var(--ux-line-2); font-size: 12px; color: var(--ux-text-2); text-align: center; }
 .ux-sh-free { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
-.ux-search.ux-sh-fq { width: auto; margin: 0 12px 6px; }
+.ux-search.ux-sh-fq { width: auto; margin: 0 12px 6px; flex: none; }
 .ux-sh-flist { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 6px 10px; }
 .ux-sh-frow { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border-radius: 6px; font-size: 12px; cursor: grab; }
 .ux-sh-frow:hover { background: var(--ux-panel-2); }
-.ux-sh-fhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 8px; }
+.ux-sh-fhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 8px; flex: none; }
+.ux-seg.ux-sh-fseg { margin-left: 0; }
+.ux-sh-fst { flex: none; font-size: 11px; white-space: nowrap; }
 .ux-sh-fseg button { display: inline-flex; align-items: center; gap: 6px; }
 .ux-sh-fcount { font-size: 11px; font-weight: 500; color: var(--ux-text-3); }
 .ux-sh-fseg .ux-on .ux-sh-fcount { color: inherit; opacity: .75; }

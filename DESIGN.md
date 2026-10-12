@@ -447,8 +447,10 @@ opening the side's men he can change places with, a click swapping them; **Trade
 Offer** on another nation's, each opening Trades with him in a deal; and the overseer's Retire.
 
 **New records** are made in the sheet. Typing "Name, position" into an empty place makes a new man there, "(84) Name, ST"
-with a rating, a second position after the first (a tab does for a comma); pasting several lines into a run of places
-makes one in each. **New Player** on Free Agents, and the + in an empty place, open the full form on the dock (the user,
+with a rating, a second position after the first; pasting several lines into a run of places makes one in each, and a
+row copied from a sheet makes one a cell, as the registry wrote them ("(76) Cihan KARTACA [SEL]", the user, 12 October
+2026: "they should go to separate slots"), an empty cell keeping its place and a position-only cell going to the man
+before it. **New Player** on Free Agents, and the + in an empty place, open the full form on the dock (the user,
 12 October 2026, asked what was missing from making a new player: a New Player button, the full form, opening typed men,
 "Ensure that bulk player import works"): name, nationality (the side's, or the tab's, to start), date of birth or an age
 (the age draws a date for it, a die another), position and second position by name, the side he joins (from the button),

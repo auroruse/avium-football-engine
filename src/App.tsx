@@ -13481,33 +13481,52 @@ export default function App() {
   // A NEW MAN TYPED INTO A PLACE: "Name, position" or "(84) Name, ST", a second position after the first. He is a new
   // record in the cart at that place, a request for an editor, the tab's national, his surname set in capitals.
   const shParseMan = (s) => {
-    const m = String(s || "").replace(/\t+/g, ", ").trim().match(/^(?:\((\d{1,2})\)\s*)?([^,]+?)\s*(?:,\s*([A-Za-z]{2,3}))?\s*(?:,\s*([A-Za-z]{2,3}))?$/);
+    // A man typed ("Name, ST", "(84) Name, ST, CF") or as the registry's cells wrote him ("(76) Cihan KARTACA [SEL]", his
+    // nation tagged when it is not the side's); a tier mark ([*], [+]) says nothing about him and is dropped.
+    const m = String(s || "").replace(/\s*\[[*+]\]/g, "").trim()
+      .match(/^(?:\((\d{1,2})\)\s*)?([^,[\]]+?)\s*(?:\[([A-Za-z]{2,4})\])?\s*(?:,\s*([A-Za-z]{2,3}))?\s*(?:,\s*([A-Za-z]{2,3}))?$/);
     if (!m || !m[2].trim()) return null;
     const words = m[2].trim().split(/\s+/), caps = words.some(w => /\p{L}/u.test(w) && w === w.toUpperCase() && w.length > 1);
     const name = caps || words.length < 2 ? words.join(" ") : [...words.slice(0, -1), words[words.length - 1].toUpperCase()].join(" ");
-    return { name, ovr: m[1] ? +m[1] : null, pos: [m[3], m[4]].filter(Boolean).map(x => x.toUpperCase()).filter(x => POSITIONS.includes(x)) };
+    return { name, ovr: m[1] ? +m[1] : null, nat: m[3] ? m[3].toUpperCase() : null, pos: [m[4], m[5]].filter(Boolean).map(x => x.toUpperCase()).filter(x => POSITIONS.includes(x)) };
   };
+  // Lines into men: a line a man, or a row of cells copied from a sheet, a man a cell, going to places one after another
+  // (user, 12 October 2026: "I need to be able to bulk import names like this ... and they should go to separate slots").
+  // A cell holding only a position gives it to the man before; an empty cell keeps its place, so a registry row lines up
+  // with the places it came from.
+  const shReadMen = (lines) => { const out = [];
+    for (const line of lines) {
+      if (!line.includes("\t")) { const p = shParseMan(line); if (p) out.push(p); continue; }
+      for (const raw of line.split("\t")) { const c = raw.trim().replace(/^"(.*)"$/, "$1").trim(), prev = out[out.length - 1];
+        if (!c) { out.push(null); continue; }
+        if (POSITIONS.includes(c.toUpperCase())) { if (prev && prev.pos.length < 2) prev.pos.push(c.toUpperCase()); continue; }
+        const p = shParseMan(c); if (p) out.push(p); } }
+    while (out.length && !out[out.length - 1]) out.pop();
+    return out; };
   const shNewMen = (k, i, lines) => {
-    if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = [...(x.c.squad || Array(16).fill(null))], nat = x.c.nation || shTabIs, lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length);
-      let at = i, n = 0, read = 0, last = -1;
-      for (const line of lines) { const p = shParseMan(line); if (!p) continue; read++; while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
-        const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab[at]] || lab[at];
-        sq[at] = { id: edUid(), name: p.name, nat, born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: p.pos.length ? p.pos : [def].filter(x2 => POSITIONS.includes(x2)), ovr: p.ovr }; last = at; at++; n++; }
+    const men = shReadMen(lines), read = men.filter(Boolean).length, unknown = new Set();
+    // His nation: the tag he came with, else the side's; a tag naming no nation is said so, and the side's taken.
+    const natOf = (p, own) => { if (!p.nat || p.nat === own) return own; if (natTeamByCode.get(p.nat)) return p.nat; unknown.add(p.nat); return own; };
+    const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : ""].filter(Boolean).join(" · "));
+    const man = (p, own, lab) => { const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
+      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr }; };
+    if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = [...(x.c.squad || Array(16).fill(null))], nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length);
+      let at = i, n = 0, last = -1;
+      for (const p of men) { if (!p) { at++; continue; } while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
+        sq[at] = man(p, nat, lab[at]); last = at; at++; n++; }
       if (!n) return shSay(read ? "No Open Place From Here" : "Type A Name And A Position: Name, ST");
-      shSetClub(k, { squad: sq }); if (n < read) shSay(`Room For ${n} Of ${read}`);
-      if (n === 1) shOpenEdit("players", { club: k, i: last }, sq[last]); return; }
+      shSetClub(k, { squad: sq }); note(n);
+      if (n === 1 && read === 1) shOpenEdit("players", { club: k, i: last }, sq[last]); return; }
     const T = edTeamRec(k); if (!T || !shCan(k)) return;
-    const sq = edSq(T), taken = shNewAt(k), nat = isNational(T) ? T.code : T.nation, add = [];
-    let at = i, read = 0;
-    for (const line of lines) { const p = shParseMan(line); if (!p) continue; read++;
+    const sq = edSq(T), taken = shNewAt(k), nat = isNational(T) ? T.code : T.nation, lab = edLab(T), add = [];
+    let at = i;
+    for (const p of men) { if (!p) { at++; continue; }
       while (at < sq.length && (sq[at] || taken.has(at))) at++;
       if (at >= sq.length) break;
-      const lab = edLab(T)[at], def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
-      add.push({ id: edUid(), what: "players", name: p.name, nat, born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)),
-        ovr: p.ovr, side: k, at }); at++; }
+      add.push({ ...man(p, nat, lab[at]), what: "players", side: k, at }); at++; }
     if (!add.length) return shSay(read ? "No Open Place From Here" : "Type A Name And A Position: Name, ST");
-    shPut({ ...draft, new: [...shNew, ...add] }); if (add.length < read) shSay(`Room For ${add.length} Of ${read}`);
-    if (add.length === 1) shOpenEdit("players", { cart: add[0].id }, add[0]);
+    shPut({ ...draft, new: [...shNew, ...add] }); note(add.length);
+    if (add.length === 1 && read === 1) shOpenEdit("players", { cart: add[0].id }, add[0]);
   };
   const shNewItem = (id) => shNew.find(n => n.id === id) || null;
   // A NEW MANAGER, made in a side's empty manager cell (typed, or its +): of the editor's own nation, a request for an
@@ -13532,18 +13551,18 @@ export default function App() {
   const shDefPos = (lab) => { const d = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab; return POSITIONS.includes(d) ? d : ""; };
   const shNum = (v) => (+v > 0 ? Math.round(+v) : null);
   const shDropPristine = (but) => { const kd = shFormOpen, f = kd && kd !== but && edForms[kd];
-    if (f && f.mode !== "many" && !(f.name || "").trim()) setEdForms(m => { const o = { ...m }; delete o[kd]; return o; }); };
+    if (f && f.fresh) setEdForms(m => { const o = { ...m }; delete o[kd]; return o; }); };
   const shOpenNew = (kind, side = null, at = null) => {
     shDropPristine(kind); const kept = edForms[kind];
-    if (kept && !kept.review && (kept.mode === "many" ? (kept.list || []).length || (kept.text || "").trim() : (kept.name || "").trim())) {
+    if (kept && !kept.review && !kept.fresh) {
       if (kept.mode === "many") { shSay("Finish Or Cancel The List First"); setEdFormOff(o => ({ ...o, players: false })); setEdSec("players"); return; }
       if ((kept.side || null) !== side || (kept.at ?? null) !== at) shSay("Finish Or Cancel This One First");
       setShFormEdit(null); setShFormOpen(kind); setShDock("rec"); return; }
     const nat = shSideNat(side), own = overseer || (scope.nations || []).includes(nat) ? nat : (scope.nations || [])[0] || nat;
     const T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
     const f = kind === "players"
-      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at }
-      : { kind, name: "", nat: own, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T?.style) || "balanced", ovr: "", side };
+      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, fresh: true }
+      : { kind, name: "", nat: own, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T?.style) || "balanced", ovr: "", side, fresh: true };
     setEdForms(m => ({ ...m, [kind]: f })); setEdFormOff(o => ({ ...o, [kind]: false }));
     setShFormEdit(null); setShFormOpen(kind); setShDock("rec"); setShMsg("");
     if (side) setShSel({ k: side, c: kind === "players" ? "p" + at : "mgr" }); };
@@ -13666,7 +13685,7 @@ export default function App() {
     if (!shEditable(k, c)) return false; const T = shRowOf(k);
     setShEdit({ k, c, v: v ?? (c === "home" || c === "away" ? String(T[c] || "") : shText(T, c)) }); return true; };
   const shKey = (e) => {
-    if (shEdit) return;
+    if (shEdit || e.target !== e.currentTarget) return;
     const mod = e.metaKey || e.ctrlKey;
     if (mod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) shRedo(); else shUndo(); return; }
     if (mod && (e.key === "y" || e.key === "Y")) { e.preventDefault(); shRedo(); return; }
@@ -13880,7 +13899,7 @@ export default function App() {
                         onChange={(e) => done(e.target.value, null)} onBlur={() => setShEdit(null)}>
                         {(c === "tw" ? SH_TW : FORMATIONS).map(x => <option key={x} value={x}>{x}</option>)}</select></td>);
                     if (c === "city") return (
-                      <td key={c} {...tdp}><UxSidePick label="City" value={shCity(t)} groups={edCities} placeholder="Search Cities" startOpen onClose={() => setTimeout(() => setShEdit(null), 0)} onPick={it => done(it.k, null)} /></td>);
+                      <td key={c} {...tdp}><UxSidePick label="City" value={shCity(t)} groups={edCities} placeholder="Search Cities" cls="ux-sh-cellpick" startOpen onClose={() => setTimeout(() => setShEdit(null), 0)} onPick={it => done(it.k, null)} /></td>);
                     if (c === "home" || c === "away") return (
                       <td key={c} {...tdp}><span className="ux-sh-kited"><input type="color" ref={shOpenNow} value={/^#[0-9a-f]{6}$/i.test(shEdit.v) ? shEdit.v : "#888888"} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} />
                         <input className="ux-sh-in" style={mono} value={shEdit.v} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} onKeyDown={keys} />
@@ -13888,7 +13907,7 @@ export default function App() {
                     return (
                       <td key={c} {...tdp}><input className="ux-sh-in" autoFocus onFocus={(e) => { const n2 = e.currentTarget.value.length; e.currentTarget.setSelectionRange(n2, n2); }} value={shEdit.v} placeholder={c.startsWith("p") ? "Name, ST" : c === "mgr" ? "Name" : undefined}
                         style={c === "code" || c === "cap" ? mono : undefined} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} onKeyDown={keys}
-                        onPaste={c.startsWith("p") ? (e) => { const txt = e.clipboardData.getData("text"); if (/\n/.test(txt.trim())) { e.preventDefault(); done(txt, null); } } : undefined}
+                        onPaste={c.startsWith("p") ? (e) => { const txt = e.clipboardData.getData("text"); if (/[\n\t]/.test(txt.trim())) { e.preventDefault(); done(txt, null); } } : undefined}
                         onBlur={(e) => { if (shEdit) done(e.target.value, null); }} /></td>);
                   }
                   let body = null;
@@ -13948,7 +13967,7 @@ export default function App() {
             <div key={n.id} className={"ux-sh-frow ux-sh-fpend" + (n.batch ? " ux-sh-fbatch" : "")} title={n.batch ? "One Of A List Of New Players, In The Cart" : mg ? "A New Manager, In The Cart" : "A New Player, In The Cart"}
               onClick={n.batch ? undefined : () => shOpenEdit(mg ? "managers" : "players", { cart: n.id }, n)}>
               <span className="ux-sh-fface">{uxIcon("plus", "ux-xs")}</span><span className="ux-sh-fn"><SlideName text={n.name || (mg ? "New Manager" : "New Player")} /></span>
-              {mg ? <span style={{ color: STYLE_CLR[n.style], fontSize: 11 }}>{STYLE_LBL[n.style]}</span> : <b style={{ ...mono, color: POS_CLR[posList(n.pos)[0]] }}>{posText(posList(n.pos))}</b>}
+              {mg ? <span className="ux-sh-fst" style={{ color: STYLE_CLR[n.style] }}>{STYLE_LBL[n.style]}</span> : <b style={{ ...mono, color: POS_CLR[posList(n.pos)[0]] }}>{posText(posList(n.pos))}</b>}
               <span style={mono} className="ux-dim">{n.nat}</span><span className="ux-sh-tag">New</span></div>))}
           {!mg && shFree.men.slice(0, 200).map(p => (
             <div key={p.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "p", id: p.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
@@ -13959,7 +13978,7 @@ export default function App() {
             <div key={m.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "m", id: m.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
               onClick={() => { setShRec({ kind: "m", id: m.id }); setShDock("rec"); }}>
               <PlayerShot name={m.name} size={24} /><span className="ux-sh-fn"><SlideName text={m.name} /></span>
-              <span style={{ color: STYLE_CLR[edStyleOfMgr(m.id)], fontSize: 11 }}>{STYLE_LBL[edStyleOfMgr(m.id)]}</span><span style={mono} className="ux-dim">{m.nat}</span>{uxBadge(m.ovr)}</div>))}
+              <span className="ux-sh-fst" style={{ color: STYLE_CLR[edStyleOfMgr(m.id)] }}>{STYLE_LBL[edStyleOfMgr(m.id)]}</span><span style={mono} className="ux-dim">{m.nat}</span>{uxBadge(m.ovr)}</div>))}
         </div>
       </div>); }
     else body = !natSide ? <div className="ux-empty">Pick A National Side</div> : (() => {
@@ -14144,7 +14163,7 @@ export default function App() {
   };
   const shRecPanel = () => {
     if (shFormEdit) return shFormPanel(shFormEdit.kind, shFormEdit.f, (p) => setShFormEdit(e => (e ? { ...e, f: { ...e.f, ...p } } : e)), "edit");
-    if (shFormOpen && edForms[shFormOpen]) return shFormPanel(shFormOpen, edForms[shFormOpen], (p) => setEdForms(m => (m[shFormOpen] ? { ...m, [shFormOpen]: { ...m[shFormOpen], ...p } } : m)), "new");
+    if (shFormOpen && edForms[shFormOpen]) return shFormPanel(shFormOpen, edForms[shFormOpen], (p) => setEdForms(m => (m[shFormOpen] ? { ...m, [shFormOpen]: { ...m[shFormOpen], ...p, fresh: false } } : m)), "new");
     if (!shRec) return <div className="ux-empty">Click A Chip</div>;
     if (shRec.kind === "lg") { const lg = (curRecs.leagues || []).find(l => l.id === shRec.id); if (!lg) return <div className="ux-empty">Gone</div>;
       const mineLg = overseer || clubNations(scope).includes(lg.nation), put = (p) => shPut(draftWith(draft, recBase, lg.id, p, "leagues"));
@@ -14307,7 +14326,7 @@ export default function App() {
             </div>
           </div>
           <div className="ux-sh-grid" ref={shGrid} tabIndex={0} onKeyDown={shKey} onPaste={(e) => {
-            if (shEdit || !shSel || !shSel.c.startsWith("p")) return; const txt = e.clipboardData.getData("text"); if (!txt.trim()) return; e.preventDefault();
+            if (shEdit || e.target !== e.currentTarget || !shSel || !shSel.c.startsWith("p")) return; const txt = e.clipboardData.getData("text"); if (!txt.trim()) return; e.preventDefault();
             shNewMen(shSel.k, +shSel.c.slice(1), txt.split(/\r?\n/).filter(x => x.trim())); }}>
             {sec.groups.length > 0 && shTable(sec.groups, places, natCode, colour, rowN, "t")}
             {sec.groups.some(g => !g.nt) && n && (overseer || clubNations(scope).includes(natCode)) && (
