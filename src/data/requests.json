@@ -1,1 +1,2082 @@
-[]
+[
+ {
+  "by": "the-giathster",
+  "at": "2026-10-12T17:55:56.084Z",
+  "approved": [],
+  "id": "e055dab1",
+  "kind": "new",
+  "what": "leagues",
+  "teamName": "Giathkik Premier League",
+  "rec": {
+   "what": "leagues",
+   "name": "Giathkik Premier League",
+   "nation": "GIA",
+   "tier": 1,
+   "cup": "Giathka Cup",
+   "clubs": [
+    {
+     "id": "mv3jpbtmpz3o",
+     "name": "FK Britannica",
+     "code": "BRT",
+     "home": "#640202",
+     "away": "#30006b",
+     "stadium": "Tarnovetsky Grand Stadium (12,000)",
+     "location": "Britannica",
+     "formation": "5-4-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Alexi Sorokin",
+      "nat": "GIA",
+      "born": "1886-04-15",
+      "style": "wingplay",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Kliment Tchaikovsky",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1903-07-03",
+       "ovr": 80
+      },
+      "p1587",
+      {
+       "name": "Zinoviy Naoumov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1907-12-10",
+       "ovr": 58
+      },
+      {
+       "name": "Maksim Viktorov",
+       "pos": "CB",
+       "nat": "GIA",
+       "born": "1903-10-03",
+       "ovr": 68
+      },
+      {
+       "name": "Rodya Romanov",
+       "pos": "CB",
+       "nat": "GIA",
+       "born": "1908-08-10",
+       "ovr": 62
+      },
+      "p1345",
+      "p1765",
+      "p1744",
+      "p1509",
+      {
+       "name": "Alexandr Matveyev",
+       "pos": "RM",
+       "nat": "GIA",
+       "born": "1907-06-21",
+       "ovr": 71
+      },
+      "p1715",
+      "p1597",
+      {
+       "name": "Leonti Popov",
+       "pos": "CB",
+       "nat": "GIA",
+       "born": "1908-03-27",
+       "ovr": 58
+      },
+      "p1735",
+      "p1603",
+      "p1793"
+     ]
+    },
+    {
+     "id": "mv3mwcgyfmcv",
+     "name": "Dimitrovsk Cavaliers",
+     "code": "KVC",
+     "home": "#00eeff",
+     "away": "#0048bd",
+     "stadium": "Spartak Stadium (10,000)",
+     "location": "Korolevskygorod",
+     "formation": "4-4-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Ilia Palmerov",
+      "nat": "GIA",
+      "born": "1887-03-23",
+      "style": "counterattack",
+      "ovr": null
+     },
+     "squad": [
+      "p1349",
+      "p1598",
+      "p1589",
+      "p1493",
+      "p1754",
+      "p1416",
+      {
+       "name": "Yulian Sobol",
+       "pos": [
+        "CM",
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1910-09-21",
+       "ovr": 67
+      },
+      "p2282",
+      {
+       "name": "Soini Kroon",
+       "pos": [
+        "RM"
+       ],
+       "nat": "KAR",
+       "born": "1911-06-26",
+       "ovr": 78
+      },
+      {
+       "name": "Jari Tähtinen",
+       "pos": [
+        "ST",
+        "LW"
+       ],
+       "nat": "KAR",
+       "born": "1906-12-08",
+       "ovr": 74
+      },
+      "p1803",
+      {
+       "name": "Julius Seppänen",
+       "pos": [
+        "GK",
+        "CB"
+       ],
+       "nat": "KAR",
+       "born": "1899-11-05",
+       "ovr": 47
+      },
+      {
+       "name": "Lyosha Karamazov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1907-05-07",
+       "ovr": 69
+      },
+      "p1354",
+      "p1501",
+      {
+       "name": "Arseniy Nikolayev",
+       "pos": [
+        "RW",
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1910-10-13",
+       "ovr": 65
+      }
+     ]
+    },
+    {
+     "id": "mv3nbe6fclr9",
+     "name": "Korolevsky United",
+     "code": "KVU",
+     "home": "#ff0000",
+     "away": "#ff6600",
+     "stadium": "Dzedva Arena (20,000)",
+     "location": "Korolevskygorod",
+     "formation": "5-4-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Nikolay Kovalev",
+      "nat": "GIA",
+      "born": "1893-02-28",
+      "style": "gegenpress",
+      "ovr": null
+     },
+     "squad": [
+      "p1706",
+      {
+       "name": "Jani Lehtonen",
+       "pos": [
+        "LWB",
+        "RWB"
+       ],
+       "nat": "KAR",
+       "born": "1911-02-25",
+       "ovr": 65
+      },
+      {
+       "name": "Lennart Seppänen",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1911-08-21",
+       "ovr": 52
+      },
+      {
+       "name": "Rolan Vinogradov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1902-12-10",
+       "ovr": 63
+      },
+      "p2190",
+      "p1962",
+      "p1711",
+      "p1790",
+      "p1602",
+      "p1460",
+      {
+       "name": "Odissey Lazarev",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1908-08-06",
+       "ovr": 68
+      },
+      "p1531",
+      "p1699",
+      {
+       "name": "Alexandr Kozel",
+       "pos": [
+        "AM",
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1899-08-18",
+       "ovr": 56
+      },
+      {
+       "name": "Varnava Aleksandrov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1902-09-04",
+       "ovr": 53
+      },
+      "p1605"
+     ]
+    },
+    {
+     "id": "mv3nbetatwmj",
+     "name": "Svyatogorsk Spearmen",
+     "code": "SVP",
+     "home": "#888888",
+     "away": "#000000",
+     "stadium": "Dynamo Park (15,000)",
+     "location": "Svyatogorsk",
+     "formation": "4-3-1-2",
+     "timeWasting": "Never",
+     "manager": "m0080",
+     "squad": [
+      "p1728",
+      "p1892",
+      {
+       "name": "Bronislav Aleksandrov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1911-02-23",
+       "ovr": 52
+      },
+      "p1524",
+      "p1743",
+      "p1316",
+      "p1604",
+      "p1734",
+      {
+       "name": "Mark Ignatyev",
+       "pos": [
+        "AM",
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1898-04-26",
+       "ovr": 42
+      },
+      "p1341",
+      "p1628",
+      {
+       "name": "Pyotor Kirilov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1898-01-09",
+       "ovr": 76
+      },
+      "p1321",
+      "p1327",
+      "p1517",
+      "p1638"
+     ]
+    },
+    {
+     "id": "mv3nbfbqmg7m",
+     "name": "Archtessa Warriors",
+     "code": "ATW",
+     "home": "#ffdd00",
+     "away": "#002d57",
+     "stadium": "Petrovsky Stadium (10,000)",
+     "location": "Archtessa",
+     "formation": "4-4-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Nil Timofeyev",
+      "nat": "GIA",
+      "born": "1881-12-23",
+      "style": "counterattack",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Vieno Karjalainen",
+       "pos": [
+        "GK"
+       ],
+       "nat": "KAR",
+       "born": "1902-11-10",
+       "ovr": 43
+      },
+      {
+       "name": "Vladamir Luganov",
+       "pos": [
+        "LB"
+       ],
+       "nat": "GIA",
+       "born": "1911-11-07",
+       "ovr": 56
+      },
+      {
+       "name": "Kiril Yananov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1911-06-28",
+       "ovr": 34
+      },
+      {
+       "name": "Yassen Orlov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-03-28",
+       "ovr": 47
+      },
+      {
+       "name": "Shmuel Jaffe",
+       "pos": [
+        "RB"
+       ],
+       "nat": "SHI",
+       "born": "1908-12-19",
+       "ovr": 56
+      },
+      {
+       "name": "Steven Ilianov",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1899-05-23",
+       "ovr": 68
+      },
+      {
+       "name": "Yura Bogdanov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1910-10-22",
+       "ovr": 57
+      },
+      {
+       "name": "Senya Kiselyov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1903-01-04",
+       "ovr": 69
+      },
+      {
+       "name": "Sergei Brokovsky",
+       "pos": [
+        "RM"
+       ],
+       "nat": "GIA",
+       "born": "1900-10-10",
+       "ovr": 70
+      },
+      {
+       "name": "Fyodor Valentinov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1908-11-30",
+       "ovr": 59
+      },
+      {
+       "name": "Stanoslav Sokoloff",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-08-16",
+       "ovr": 66
+      },
+      null,
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    {
+     "id": "mv3nbg5xrj5k",
+     "name": "Volnograd Wanderers",
+     "code": "VGW",
+     "home": "#cc6d00",
+     "away": "#57003b",
+     "stadium": "Druzhba Park (5,000)",
+     "location": "Volnograd",
+     "formation": "4-4-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Sergei Kharov",
+      "nat": "GIA",
+      "born": "1875-06-19",
+      "style": "balanced",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Alexander Cetkov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "RUD",
+       "born": "1897-06-05",
+       "ovr": 76
+      },
+      {
+       "name": "Kevin Martinov",
+       "pos": [
+        "LB",
+        "RB"
+       ],
+       "nat": "GIA",
+       "born": "1913-02-26",
+       "ovr": 47
+      },
+      "p1860",
+      {
+       "name": "David Martelev",
+       "pos": [
+        "RB",
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1911-06-19",
+       "ovr": 52
+      },
+      "p1590",
+      {
+       "name": "Jamie Olivov",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1897-07-03",
+       "ovr": 32
+      },
+      {
+       "name": "Alexis Korokevsky",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1913-05-05",
+       "ovr": 63
+      },
+      {
+       "name": "Viktor Ivanov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1909-08-06",
+       "ovr": 43
+      },
+      {
+       "name": "Yaroslav Larvov",
+       "pos": [
+        "RM"
+       ],
+       "nat": "GIA",
+       "born": "1909-05-15",
+       "ovr": 72
+      },
+      "p1672",
+      "p1900",
+      {
+       "name": "Nicholas Amamev",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1902-07-09",
+       "ovr": 75
+      },
+      {
+       "name": "Akira Ikeda",
+       "pos": [
+        "CB"
+       ],
+       "nat": "NCH",
+       "born": "1914-10-02",
+       "ovr": 51
+      },
+      {
+       "name": "Yūdai Mochizuki",
+       "pos": [
+        "AM"
+       ],
+       "nat": "NCH",
+       "born": "1909-03-14",
+       "ovr": 42
+      },
+      {
+       "name": "Siegfried Eichel",
+       "pos": [
+        "CM"
+       ],
+       "nat": "ALE",
+       "born": "1915-08-14",
+       "ovr": 42
+      },
+      {
+       "name": "Diethelm Geiger",
+       "pos": [
+        "ST"
+       ],
+       "nat": "ALE",
+       "born": "1904-02-29",
+       "ovr": 60
+      }
+     ]
+    },
+    {
+     "id": "mv3nbgnqrmax",
+     "name": "Milovsk Canoneers",
+     "code": "MVC",
+     "home": "#ff4d00",
+     "away": "#4c00ff",
+     "stadium": "Kabrinsky Ground (5,000)",
+     "location": "Milovsk",
+     "formation": "5-4-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Jack Brekenov",
+      "nat": "GIA",
+      "born": "1878-07-13",
+      "style": "parkthebus",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Alexis Karov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1910-12-27",
+       "ovr": 56
+      },
+      {
+       "name": "Vladimir Karovich",
+       "pos": [
+        "LWB"
+       ],
+       "nat": "GIA",
+       "born": "1912-02-26",
+       "ovr": 56
+      },
+      {
+       "name": "Ilia Barenov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1905-06-25",
+       "ovr": 51
+      },
+      {
+       "name": "Nikolai Baranov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1915-10-14",
+       "ovr": 55
+      },
+      {
+       "name": "Sergei Antonov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-12-25",
+       "ovr": 57
+      },
+      {
+       "name": "Mikhail Orlov",
+       "pos": [
+        "RWB"
+       ],
+       "nat": "GIA",
+       "born": "1907-12-30",
+       "ovr": 55
+      },
+      {
+       "name": "Andrei Kuznetsov",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1911-08-14",
+       "ovr": 58
+      },
+      {
+       "name": "Ivan Petrov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1910-01-25",
+       "ovr": 55
+      },
+      {
+       "name": "Vladimir Kozlov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1913-09-02",
+       "ovr": 58
+      },
+      {
+       "name": "Pavel Smirnov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1908-03-09",
+       "ovr": 56
+      },
+      {
+       "name": "Yuri Belov",
+       "pos": [
+        "RM"
+       ],
+       "nat": "GIA",
+       "born": "1916-07-17",
+       "ovr": 51
+      },
+      {
+       "name": "Pavel Smirnov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1902-08-22",
+       "ovr": 50
+      },
+      {
+       "name": "Artem Lebedev",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1914-08-17",
+       "ovr": 49
+      },
+      {
+       "name": "Roman Mikhailov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1909-08-10",
+       "ovr": 45
+      },
+      {
+       "name": "Kirill Fedorov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1915-02-08",
+       "ovr": 50
+      },
+      {
+       "name": "Maxim Voronin",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1906-06-26",
+       "ovr": 44
+      }
+     ]
+    },
+    {
+     "id": "mv3nbh1acdok",
+     "name": "Sibirskaya Minutemen",
+     "code": "SKM",
+     "home": "#700006",
+     "away": "#006080",
+     "stadium": "Nordorov Park (4,000)",
+     "location": "Sibirskaya",
+     "formation": "4-4-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Soyev Arlov",
+      "nat": "GIA",
+      "born": "1882-08-19",
+      "style": "tikitaka",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Igor Medvedev",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1906-03-21",
+       "ovr": 74
+      },
+      {
+       "name": "Grigori Sidorov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1914-07-09",
+       "ovr": 67
+      },
+      {
+       "name": "Anton Kravtsov",
+       "pos": [
+        "LB"
+       ],
+       "nat": "GIA",
+       "born": "1915-08-04",
+       "ovr": 68
+      },
+      {
+       "name": "Yegor Zaitsev",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1917-04-04",
+       "ovr": 70
+      },
+      {
+       "name": "Maksim Chernov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1914-11-21",
+       "ovr": 67
+      },
+      {
+       "name": "Denis Karpov",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1910-05-30",
+       "ovr": 70
+      },
+      {
+       "name": "Matvei Zubkov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1916-07-11",
+       "ovr": 69
+      },
+      {
+       "name": "Nikita Krylov",
+       "pos": [
+        "DM"
+       ],
+       "nat": "GIA",
+       "born": "1908-01-09",
+       "ovr": 67
+      },
+      {
+       "name": "Vladislav Fomin",
+       "pos": [
+        "RB"
+       ],
+       "nat": "GIA",
+       "born": "1917-03-25",
+       "ovr": 74
+      },
+      {
+       "name": "Timur Gusev",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1904-02-20",
+       "ovr": 67
+      },
+      {
+       "name": "Ruslan Makarov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1915-05-09",
+       "ovr": 69
+      },
+      {
+       "name": "Ilianov Dimitriev",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-04-19",
+       "ovr": 63
+      },
+      {
+       "name": "Ilya Belyaev",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-08-04",
+       "ovr": 62
+      },
+      {
+       "name": "Petr Savin",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1902-07-20",
+       "ovr": 57
+      },
+      {
+       "name": "Konstantin Yashin",
+       "pos": [
+        "RM"
+       ],
+       "nat": "GIA",
+       "born": "1916-08-05",
+       "ovr": 69
+      },
+      {
+       "name": "Fyodor Tarasov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1903-06-03",
+       "ovr": 64
+      }
+     ]
+    },
+    {
+     "id": "mv3nbhquvowz",
+     "name": "Kristalinsk Gunners",
+     "code": "KTG",
+     "home": "#ff0000",
+     "away": "#cc0000",
+     "stadium": "Saint Peters Park (5,000)",
+     "location": "Kristalinsk",
+     "formation": "4-1-2-1-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Aleksander Garnachov",
+      "nat": "GIA",
+      "born": "1867-12-21",
+      "style": "balanced",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Aleksandr Volkov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1907-10-30",
+       "ovr": 65
+      },
+      {
+       "name": "Yegor Makarov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1913-10-22",
+       "ovr": 62
+      },
+      {
+       "name": "Dmitri Sokolov",
+       "pos": [
+        "LB"
+       ],
+       "nat": "GIA",
+       "born": "1914-10-02",
+       "ovr": 63
+      },
+      {
+       "name": "Artem Voronin",
+       "pos": [
+        "LB"
+       ],
+       "nat": "GIA",
+       "born": "1909-07-16",
+       "ovr": 63
+      },
+      {
+       "name": "Ivan Chernov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1906-08-02",
+       "ovr": 67
+      },
+      {
+       "name": "Mikhail Zaytsev",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1907-04-29",
+       "ovr": 67
+      },
+      {
+       "name": "Nikolai Belov",
+       "pos": [
+        "RB"
+       ],
+       "nat": "GIA",
+       "born": "1906-06-13",
+       "ovr": 63
+      },
+      {
+       "name": "Sergei Morozov",
+       "pos": [
+        "DM"
+       ],
+       "nat": "GIA",
+       "born": "1902-07-16",
+       "ovr": 63
+      },
+      {
+       "name": "Andrei Kuznetsov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1907-03-01",
+       "ovr": 64
+      },
+      {
+       "name": "Viktor Orlov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1912-11-27",
+       "ovr": 61
+      },
+      {
+       "name": "Maxim Kozlov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1903-12-09",
+       "ovr": 64
+      },
+      {
+       "name": "Ilya Kravtsov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1910-11-16",
+       "ovr": 59
+      },
+      {
+       "name": "Roman Belyaev",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1910-12-19",
+       "ovr": 59
+      },
+      {
+       "name": "Denis Baranov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1908-05-04",
+       "ovr": 59
+      },
+      {
+       "name": "Pavel Gromov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1911-07-01",
+       "ovr": 58
+      },
+      {
+       "name": "Kirill Antonov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1914-04-03",
+       "ovr": 55
+      }
+     ]
+    },
+    {
+     "id": "mv3nbickrpzf",
+     "name": "FK Velikiy Roy",
+     "code": "VKR",
+     "home": "#003d29",
+     "away": "#00ff9d",
+     "stadium": "Velikiy Park (4,000)",
+     "location": "Velikiy Roy",
+     "formation": "3-4-2-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Styopa Nikolayev",
+      "nat": "GIA",
+      "born": "1867-06-07",
+      "style": "lanuestra",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Maksim Doroshenko",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1905-07-07",
+       "ovr": 65
+      },
+      {
+       "name": "Yuri Mikhailov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1904-12-23",
+       "ovr": 71
+      },
+      {
+       "name": "Vitaly Zhuravlev",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1917-04-04",
+       "ovr": 68
+      },
+      {
+       "name": "Ilya Tkachenko",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-12-31",
+       "ovr": 62
+      },
+      {
+       "name": "Danil Meleshko",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-07-13",
+       "ovr": 60
+      },
+      {
+       "name": "Gleb Barinov",
+       "pos": [
+        "LWB"
+       ],
+       "nat": "GIA",
+       "born": "1903-11-04",
+       "ovr": 66
+      },
+      {
+       "name": "Semyon Golubev",
+       "pos": [
+        "RWB"
+       ],
+       "nat": "GIA",
+       "born": "1907-04-14",
+       "ovr": 64
+      },
+      {
+       "name": "Pyotr Savchenko",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-11-13",
+       "ovr": 65
+      },
+      {
+       "name": "Anton Rudnev",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1909-12-09",
+       "ovr": 65
+      },
+      {
+       "name": "Timofey Nikitin",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1917-02-27",
+       "ovr": 68
+      },
+      {
+       "name": "Boris Yushkov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1908-07-06",
+       "ovr": 61
+      },
+      {
+       "name": "Kirill Demchenko",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1909-12-09",
+       "ovr": 60
+      },
+      {
+       "name": "Lev Grishin",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1917-03-24",
+       "ovr": 60
+      },
+      {
+       "name": "Mark Sidorenko",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1910-12-22",
+       "ovr": 59
+      },
+      {
+       "name": "Zakhar Vlasov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1902-11-21",
+       "ovr": 57
+      },
+      {
+       "name": "Vadim Kolesnik",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-02-15",
+       "ovr": 57
+      }
+     ]
+    },
+    {
+     "id": "mv3nbj12qxf6",
+     "name": "FK Severomilsk",
+     "code": "FKS",
+     "home": "#ff0040",
+     "away": "#000000",
+     "stadium": "Lokomotiv Park (3,000)",
+     "location": "Severomilsk",
+     "formation": "3-5-2",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Alexander Goslingov",
+      "nat": "GIA",
+      "born": "1891-11-02",
+      "style": "parkthebus",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Aleksandr Korovin",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1911-03-04",
+       "ovr": 61
+      },
+      {
+       "name": "Artem Kovalchuk",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1915-05-19",
+       "ovr": 62
+      },
+      {
+       "name": "Dmitri Lukyanov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1902-11-20",
+       "ovr": 62
+      },
+      {
+       "name": "Mikhail Shcherbakov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1911-03-12",
+       "ovr": 62
+      },
+      {
+       "name": "Ivan Pankratov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1917-04-03",
+       "ovr": 57
+      },
+      {
+       "name": "Sergei Tikhonov",
+       "pos": [
+        "LWB"
+       ],
+       "nat": "GIA",
+       "born": "1903-04-25",
+       "ovr": 62
+      },
+      {
+       "name": "Nikolai Zorin",
+       "pos": [
+        "RWB"
+       ],
+       "nat": "GIA",
+       "born": "1907-08-14",
+       "ovr": 60
+      },
+      {
+       "name": "Ilya Kruglov",
+       "pos": [
+        "DM"
+       ],
+       "nat": "GIA",
+       "born": "1906-12-13",
+       "ovr": 59
+      },
+      {
+       "name": "Denis Polunin",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1909-03-21",
+       "ovr": 58
+      },
+      {
+       "name": "Andrei Yudin",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1904-08-22",
+       "ovr": 62
+      },
+      {
+       "name": "Pavel Bessonov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1913-02-07",
+       "ovr": 64
+      },
+      {
+       "name": "Ruslan Buryak",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1917-02-26",
+       "ovr": 53
+      },
+      {
+       "name": "Yegor Danilov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1916-10-02",
+       "ovr": 55
+      },
+      {
+       "name": "Roman Cherkasov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1909-04-07",
+       "ovr": 56
+      },
+      {
+       "name": "Maxim Shapovalov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1916-07-27",
+       "ovr": 56
+      },
+      {
+       "name": "Viktor Kudinov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-06-23",
+       "ovr": 60
+      }
+     ]
+    },
+    {
+     "id": "mv3nbk7ihp1m",
+     "name": "Leonidgrad United",
+     "code": "LGU",
+     "home": "#601515",
+     "away": "#9c3802",
+     "stadium": "Otkritie Stadium (3,000)",
+     "location": "Leonidgrad",
+     "formation": "3-4-2-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Boris Ignatov",
+      "nat": "GIA",
+      "born": "1882-12-27",
+      "style": "counterattack",
+      "ovr": null
+     },
+     "squad": [
+      "p1511",
+      {
+       "name": "Yuri Goncharov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1903-02-04",
+       "ovr": 62
+      },
+      {
+       "name": "Maksim Zubkov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1907-11-26",
+       "ovr": 65
+      },
+      {
+       "name": "Vitaly Kravchenko",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1915-08-13",
+       "ovr": 61
+      },
+      {
+       "name": "Danil Shostak",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1916-11-23",
+       "ovr": 66
+      },
+      {
+       "name": "Anton Biryukov",
+       "pos": [
+        "LWB"
+       ],
+       "nat": "GIA",
+       "born": "1905-01-27",
+       "ovr": 64
+      },
+      {
+       "name": "Lev Ponomarenko",
+       "pos": [
+        "RWB"
+       ],
+       "nat": "GIA",
+       "born": "1915-06-14",
+       "ovr": 62
+      },
+      {
+       "name": "Kirill Chumak",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1912-03-23",
+       "ovr": 62
+      },
+      {
+       "name": "Semyon Lavrov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1916-11-15",
+       "ovr": 63
+      },
+      {
+       "name": "Boris Korneev",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1910-11-29",
+       "ovr": 60
+      },
+      {
+       "name": "Artem Lobanov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1905-08-11",
+       "ovr": 68
+      },
+      {
+       "name": "Denis Poltavsky",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1906-08-04",
+       "ovr": 62
+      },
+      {
+       "name": "Zakhar Yashin",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1912-09-07",
+       "ovr": 64
+      },
+      {
+       "name": "Pyotr Malinovsky",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1904-11-03",
+       "ovr": 56
+      },
+      {
+       "name": "Timofey Rudenko",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1913-03-06",
+       "ovr": 52
+      },
+      {
+       "name": "Roman Terekhov",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1902-05-02",
+       "ovr": 56
+      }
+     ]
+    },
+    {
+     "id": "mv3nbklqyde5",
+     "name": "FK Sadograd",
+     "code": "FSD",
+     "home": "#940551",
+     "away": "#4f4f4f",
+     "stadium": "Zermatt Park (5,000)",
+     "location": "Sadograd",
+     "formation": "5-4-1",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Patya Vorobyov",
+      "nat": "GIA",
+      "born": "1895-05-16",
+      "style": "balanced",
+      "ovr": null
+     },
+     "squad": [
+      "p1717",
+      {
+       "name": "Vladislav Mirov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1904-08-01",
+       "ovr": 65
+      },
+      {
+       "name": "Dmitri Gorbachov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1912-04-19",
+       "ovr": 62
+      },
+      {
+       "name": "Mikhail Koval",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1905-06-03",
+       "ovr": 65
+      },
+      {
+       "name": "Viktor Zhdanovich",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1906-11-03",
+       "ovr": 65
+      },
+      {
+       "name": "Konstantin Dronov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1904-05-17",
+       "ovr": 67
+      },
+      {
+       "name": "Aleksandr Shestakov",
+       "pos": [
+        "LWB"
+       ],
+       "nat": "GIA",
+       "born": "1914-03-19",
+       "ovr": 61
+      },
+      {
+       "name": "Sergei Krupsky",
+       "pos": [
+        "RWB"
+       ],
+       "nat": "GIA",
+       "born": "1905-03-03",
+       "ovr": 64
+      },
+      {
+       "name": "Andrei Borkov",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1911-03-03",
+       "ovr": 64
+      },
+      "p1714",
+      "p1836",
+      {
+       "name": "Yegor Kirsanov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1910-02-28",
+       "ovr": 69
+      },
+      {
+       "name": "Oleg Belinsky",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1903-12-10",
+       "ovr": 61
+      },
+      {
+       "name": "Pavel Yaroshenko",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1909-12-12",
+       "ovr": 60
+      },
+      {
+       "name": "Nikolai Sviridov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1911-02-23",
+       "ovr": 59
+      },
+      {
+       "name": "Ruslan Ostapenko",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1904-02-16",
+       "ovr": 58
+      }
+     ]
+    },
+    {
+     "id": "mv3nbl4ubqr2",
+     "name": "Kamenetsk Archers",
+     "code": "KNA",
+     "home": "#f83f3f",
+     "away": "#008a81",
+     "stadium": "Kirov Park (2,000)",
+     "location": "Kamenetsk",
+     "formation": "3-4-3",
+     "timeWasting": "Never",
+     "manager": {
+      "name": "Borya Aleksandrov",
+      "nat": "GIA",
+      "born": "1888-03-10",
+      "style": "verticaltiki",
+      "ovr": null
+     },
+     "squad": [
+      {
+       "name": "Aleksandr Shestakov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1911-01-15",
+       "ovr": 69
+      },
+      {
+       "name": "Oleg Belinsky",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1903-11-05",
+       "ovr": 70
+      },
+      {
+       "name": "Dmitri Gorbachov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1910-10-20",
+       "ovr": 67
+      },
+      {
+       "name": "Mikhail Koval",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1904-04-19",
+       "ovr": 68
+      },
+      {
+       "name": "Sergei Krupsky",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1909-03-26",
+       "ovr": 70
+      },
+      {
+       "name": "Viktor Zhdanovich",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1910-10-08",
+       "ovr": 73
+      },
+      {
+       "name": "Yegor Kirsanov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1907-08-27",
+       "ovr": 67
+      },
+      {
+       "name": "Andrei Borkov",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1904-02-28",
+       "ovr": 71
+      },
+      {
+       "name": "Ilya Chernenko",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1912-02-11",
+       "ovr": 69
+      },
+      {
+       "name": "Pavel Yaroshenko",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1909-05-05",
+       "ovr": 67
+      },
+      {
+       "name": "Nikolai Sviridov",
+       "pos": [
+        "RM"
+       ],
+       "nat": "GIA",
+       "born": "1903-08-03",
+       "ovr": 71
+      },
+      {
+       "name": "Konstantin Dronov",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1908-01-31",
+       "ovr": 59
+      },
+      {
+       "name": "Stanislav Vetrovski",
+       "pos": [
+        "RW",
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1905-08-06",
+       "ovr": 66
+      },
+      {
+       "name": "Maxim Dorofeyev",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1905-01-25",
+       "ovr": 65
+      },
+      {
+       "name": "Ruslan Ostapenko",
+       "pos": [
+        "RW"
+       ],
+       "nat": "GIA",
+       "born": "1907-05-19",
+       "ovr": 67
+      },
+      {
+       "name": "Vladislav Mirov",
+       "pos": [
+        "LW"
+       ],
+       "nat": "GIA",
+       "born": "1909-02-20",
+       "ovr": 67
+      }
+     ]
+    },
+    {
+     "id": "mv3nblnqz4ye",
+     "name": "Zoryansk Rangers",
+     "code": "ZYR",
+     "home": "#7e4401",
+     "away": "#e84a4a",
+     "stadium": "Kyarkovich Ground (2,000)",
+     "location": "Zoryansk",
+     "formation": "4-2-2-2",
+     "timeWasting": "Never",
+     "manager": null,
+     "squad": [
+      {
+       "name": "1. Vladislav Trofimov",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1914-07-25",
+       "ovr": 60
+      },
+      {
+       "name": "12. Aleksei Dudkin",
+       "pos": [
+        "GK"
+       ],
+       "nat": "GIA",
+       "born": "1912-05-09",
+       "ovr": 58
+      },
+      {
+       "name": "2. Konstantin Rybakov",
+       "pos": [
+        "LB"
+       ],
+       "nat": "GIA",
+       "born": "1903-05-06",
+       "ovr": 56
+      },
+      {
+       "name": "3. Oleg Malakhov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1912-08-11",
+       "ovr": 54
+      },
+      {
+       "name": "5. Grigori Yefimov",
+       "pos": [
+        "RB"
+       ],
+       "nat": "GIA",
+       "born": "1914-02-28",
+       "ovr": 58
+      },
+      {
+       "name": "4. Yaroslav Bondar",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1914-09-12",
+       "ovr": 59
+      },
+      {
+       "name": "13. Matvei Zhdanov",
+       "pos": [
+        "CB"
+       ],
+       "nat": "GIA",
+       "born": "1910-01-01",
+       "ovr": 59
+      },
+      {
+       "name": "6. Leonid Knyazev",
+       "pos": [
+        "DM"
+       ],
+       "nat": "GIA",
+       "born": "1914-12-11",
+       "ovr": 61
+      },
+      {
+       "name": "7. Bogdan Lysenko",
+       "pos": [
+        "DM"
+       ],
+       "nat": "GIA",
+       "born": "1903-04-29",
+       "ovr": 60
+      },
+      {
+       "name": "15. Gleb Kostiuk",
+       "pos": [
+        "LM"
+       ],
+       "nat": "GIA",
+       "born": "1907-03-27",
+       "ovr": 60
+      },
+      {
+       "name": "14. Fyodor Klyuev",
+       "pos": [
+        "CM"
+       ],
+       "nat": "GIA",
+       "born": "1912-02-05",
+       "ovr": 63
+      },
+      {
+       "name": "16. Mark Avdeyev",
+       "pos": [
+        "ST",
+        "LW"
+       ],
+       "nat": "GIA",
+       "born": "1909-02-17",
+       "ovr": 57
+      },
+      {
+       "name": "11. Evgeny Sorokin",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1905-09-12",
+       "ovr": 58
+      },
+      {
+       "name": "8. Anatoly Shubin",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1909-03-27",
+       "ovr": 59
+      },
+      {
+       "name": "9. Stanislav Chernyak",
+       "pos": [
+        "AM"
+       ],
+       "nat": "GIA",
+       "born": "1908-08-07",
+       "ovr": 58
+      },
+      {
+       "name": "10. Nikita Vasilenko",
+       "pos": [
+        "ST"
+       ],
+       "nat": "GIA",
+       "born": "1911-01-10",
+       "ovr": 59
+      }
+     ]
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": [
+   "p:p1587",
+   "p:p1345",
+   "p:p1765",
+   "p:p1744",
+   "p:p1509",
+   "p:p1715",
+   "p:p1597",
+   "p:p1735",
+   "p:p1603",
+   "p:p1793",
+   "p:p1349",
+   "p:p1598",
+   "p:p1589",
+   "p:p1493",
+   "p:p1754",
+   "p:p1416",
+   "p:p2282",
+   "p:p1803",
+   "p:p1354",
+   "p:p1501",
+   "p:p1706",
+   "p:p2190",
+   "p:p1962",
+   "p:p1711",
+   "p:p1790",
+   "p:p1602",
+   "p:p1460",
+   "p:p1531",
+   "p:p1699",
+   "p:p1605",
+   "p:p1728",
+   "p:p1892",
+   "p:p1524",
+   "p:p1743",
+   "p:p1316",
+   "p:p1604",
+   "p:p1734",
+   "p:p1341",
+   "p:p1628",
+   "p:p1321",
+   "p:p1327",
+   "p:p1517",
+   "p:p1638",
+   "m:m0080",
+   "p:p1860",
+   "p:p1590",
+   "p:p1672",
+   "p:p1900",
+   "p:p1511",
+   "p:p1717",
+   "p:p1714",
+   "p:p1836"
+  ]
+ }
+]
