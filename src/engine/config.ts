@@ -121,7 +121,10 @@ export const SP = {
   // kicks with, and that comes from where he plays: a man whose natural place is on the left of the
   // XI is left-footed. Central players are right-footed, as most footballers are.
   spRunup: 3.0, spRunupSide: 1.7, spRunTol: 0.60, spLeftOf: 4,
-  spShootRange: 27,     // a free kick inside this is struck at goal rather than delivered
+  // A free kick nearer the goal than spShootRange in a straight line, from where the posts stand at least spShootAng degrees
+  // apart, is struck at goal; any other is delivered (setpiece.ts meFkAtGoal). 12 degrees keeps every kick from the middle
+  // out to 27 m and sends the box's corner (10) and anything wider in as a cross.
+  spShootRange: 27, spShootAng: 12,
   spWall: 4, spWallDist: 9.15,
   // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
   // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
@@ -1935,6 +1938,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // finishing is right; beyond it the bonus is scaled by (sp/spAhead)^2, so a man who can carry
   // into a much better chance loses his urge to hit it from range. See appetite in decide.ts.
   sightHoldD: 11,
+  // The keeper filling the goal at point blank (decide.ts meShotP, decision only): the share of the mouth he covers
+  // standing comes off the chance at gkFillK, in full within gkFillNear m of him and nothing past gkFillD m.
+  gkFillK: 0, gkFillNear: 3, gkFillD: 8,
+  // How much of the better chance a few strides on (spAhead, mind/decide.ts) a packed goal takes away: at 1 a goal shut
+  // by their whole block leaves him nothing ahead, at 0 the stride ahead is priced as though nobody stood in it.
+  aheadShut: 0,
   // SPEED OF THOUGHT IS A RATING. The touch budget was flat: a 92 looked up on exactly the
   // schedule a 58 did, so elite football had the same standing-on-the-ball cadence as a second
   // division. Slices shaved off (or added to) the budget per unit of meMind, centred near the
@@ -2135,6 +2144,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // dropped to recvAirZ m, unless the other side's best man would reach the ball recvAirMs sooner than he gets there,
   // when he goes up for it. While it is above recvAirZ the ground-ball stand-off and walk-in do not apply.
   recvAirZ: 1.0, recvAirMs: 300,
+  // ...but not the balls a side puts INTO THE BOX to be headed (match.ts boxBall/boxHead): the kinds listed here are
+  // attacked in the air when they meet the man in the area, and headed at goal inside headShotR.
+  boxBallK: { cross: 1, corner: 1, longthrow: 1, freekick: 1 },
   // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
@@ -2439,6 +2451,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // headNoiseDuel more with a man jumping with him, headNoisePace more on a ball coming at 20 m/s, and
   // up to headNoiseZ m/s of error in how it comes off his head vertically.
   headNoise: 11, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 3,
+  // headSigma 0 keeps that triangular error; above 0 the error is a gaussian of headSigma times it, aimed headVz0 m/s up.
+  headSigma: 0, headVz0: 0.35,
   // THE RUN-UP. shotRunV is the closing speed that buys all of it -- 5 m/s, which is a man properly
   // running onto it rather than a man shuffling forward. shotVRun is what it adds to the strike and
   // shotNoiseRun is what it costs in accuracy, because hitting one on the run is harder as well as
@@ -2518,6 +2532,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   shootAtkW: 8,
   // The highest he aims: under the bar, which a finisher past the band would otherwise aim over.
   shotAimZMax: 2.25,
+  // How high he aims: 0.25 m plus a draw over shotAimZBase m, and shotAimZSkill of the frame's height more for the finish.
+  shotAimZBase: 0.5, shotAimZSkill: 0.45,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -2655,6 +2671,10 @@ gkDiveV: 2.9,
   // in, plus most of the deflected-strike class. Applied only when the incoming ball is moving
   // at his own goal above walking pace, so attacking flicks and neutral squirts stay uniform.
   deflectAway: 3.0,
+  // A ball coming at his goal that a defender cannot control, in his own area, deflects physically when deflectPhys is
+  // on (match.ts): out along the contact normal at bodyE of the pace it hit him with, keeping deflectTan of the pace
+  // along him, deflectJit degrees of shin either way, and up to deflectVz m/s of loop.
+  deflectPhys: 0, deflectTan: 0.8, deflectJit: 12, deflectVz: 2.5,
   deflectWin: 12,
   // HOW RECENTLY AN ATTACKER HAD TO HAVE TOUCHED IT for a goal off a defender to be his rather than
   // an own goal. Without this the test was only "was the last touch theirs", which made every box
@@ -2664,6 +2684,9 @@ gkDiveV: 2.9,
   // Every goal is accounted for at all four settings -- each one is either credited to a scorer or
   // recorded as an own goal, never dropped.
   ogWin: 6,
+  // ogReal: own goals by the real game's rule instead (match.ts, the goal): a deflected shot is the shooter's only if it
+  // was on target, and any other ball a defender puts in his own net is his.
+  ogReal: 0,
   // The floor was 0.55: every fingertip pretended to be a half-firm palm, which both overdrove
   // weak deflections and made every touch look like a botched save. A real fingertip barely
   // bends the line -- and above gkParrySafe the WHOLE result (mirror and shove) refuses the
@@ -2792,7 +2815,10 @@ gkDiveV: 2.9,
   // Aiming NEARER THE POST measured worse, not better: the woodwork takes what the keeper does not.
   // Note this is not "which way he dives" -- with the capsule, a correct read is very nearly a
   // certain save, so this number is really his chance of getting it right AND reaching it.
-  spPenBack: 10, spPenSpread: 12, spPenAim: 0.84, spPenRead: 0.10, spPenReadSkill: 0.25,
+  // 12 October 2026: 89% scored over 750 open-play penalties (test/specs/setpieces.mjs), the keeper changes of early
+  // October and the Dead Ball trait having moved it. Aim 0.72 alone took it to 82%, read 0.25 alone to 87%; together, aim
+  // 0.66 and read 0.20 aim at the real 76-77%.
+  spPenBack: 10, spPenSpread: 12, spPenAim: 0.66, spPenRead: 0.20, spPenReadSkill: 0.25,
   // A SHOOTOUT KICK READS DIFFERENTLY, and the reason is positional rather than psychological.
   // The numbers above are right for open play and measurably so -- pensim puts an in-match penalty
   // at 73.6% scored and 19.8% saved against a real 76/19 -- but they are right there partly by
@@ -2857,7 +2883,9 @@ gkDiveV: 2.9,
   // the substep contest all put more balls into bodies at height), so 0.06 gave 0.42 handball penalties a
   // match, a third of them with a red for a blocked shot, and a third of all goals were penalties.
   // 0.0105 is the same one in fifteen matches on today's geometry.
-  handMinZ: 0.85, handP: 0.0105,
+  // handP 0.0105 -> 0.0063 (12 October 2026): handballs gave 0.10 penalties a match, about a third of all of them by then,
+  // against a real 0.06 (see MT.boxTackleFoul).
+  handMinZ: 0.85, handP: 0.0063,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
