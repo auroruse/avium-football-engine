@@ -2,7 +2,7 @@
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkLow, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meGroundMaxD, meLoftT } from "./ball";
+import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "./ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
 import { meTouchNear } from "./touch";
 import { meMind, meTech } from "./attributes";
@@ -98,6 +98,23 @@ export function meShotP(s, side, p, x, y, rec, gkRef) {
       const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
       const D = Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW) + meGkLow(meAttrs(gk)) * CFG.gkBeatLow;
       q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
+      // POINT BLANK, THE KEEPER IS THE GOAL (12 October 2026). Close in, the ball reaches him before he can move, so
+      // what he stops is what he already covers standing -- and from two metres a keeper a stride in front covers the
+      // whole mouth. The term above only asked whether the shooter had got BEHIND him, so a man a metre from the keeper,
+      // square in front of him, rated his chance at a quarter and hit it into him: traced, three in ten close-range
+      // shots through the middle were struck at a keeper inside two metres, and they came back off him to be struck
+      // again. The share of the mouth, as the shooter sees it, inside the keeper's reach standing (keeper.ts `set`) comes
+      // off the chance, in full within gkFillNear of him and fading out by gkFillD, where the dive takes over.
+      const fwdK = (gk.x - x) * dr, dk = Math.hypot(gk.x - x, gk.y - y);
+      if (CFG.gkFillK && fwdK > 0 && dk < CFG.gkFillD) {
+        const fwdG = Math.max(0.3, (meGoalX(side) - x) * dr);
+        const a1 = Math.atan2(ME_HALF_W - GOAL_HALF_W - y, fwdG), a2 = Math.atan2(ME_HALF_W + GOAL_HALF_W - y, fwdG);
+        const reachK = CFG.gkSetReach * (CFG.gkSetLo + (1 - CFG.gkSetLo) * meGkSkill(meAttrs(gk))) + CFG.bodyR;
+        const ak = Math.atan2(gk.y - y, fwdK), hk = Math.atan2(reachK, Math.max(0.3, dk));
+        const cover = Math.max(0, Math.min(a2, ak + hk) - Math.max(a1, ak - hk)) / Math.max(1e-3, a2 - a1);
+        const near = Math.max(0, Math.min(1, (CFG.gkFillD - dk) / Math.max(0.1, CFG.gkFillD - CFG.gkFillNear)));
+        q *= 1 - CFG.gkFillK * cover * near;
+      }
     }
   } else {
     const gxg = meGoalX(side), dr = meDir(side);

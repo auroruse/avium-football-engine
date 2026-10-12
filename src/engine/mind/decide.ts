@@ -120,9 +120,13 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   const gdx = meGoalX(side) - p.x, gdy = ME_HALF_W - p.y, gdl = Math.hypot(gdx, gdy) || 1;
   const adv = Math.max(0, Math.min(CFG.carryAdv, gdl - 3));
   const _cx = p.x + gdx / gdl * adv, _cy = p.y + gdy / gdl * adv;
+  // ...and only as likely as he is to get there. With their men packed between him and the goal (shut), the better
+  // chance a few strides on is one he will mostly not be allowed to reach, and the sight of goal he has now is what there
+  // is: the man at the edge of a crowded area has a go (CFG.aheadShut; 0 prices the stride ahead as though it were free).
   const spAhead = adv < 0.5 ? sp : meShotP(s, side, p, _cx, _cy)
                 / (1 + press * CFG.carryDelay)
-                * Math.min(1, meOppDist(s, side, _cx, _cy) / (CFG.carryAdv * CFG.carryReach));
+                * Math.min(1, meOppDist(s, side, _cx, _cy) / (CFG.carryAdv * CFG.carryReach))
+                * (1 - (CFG.aheadShut || 0) * shut);
   if (sp > CFG.shotMinP) {
     const gsh = meShotGeom(side, p.x, p.y);
     const lane = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W);
