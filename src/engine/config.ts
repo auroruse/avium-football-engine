@@ -904,7 +904,12 @@ foulAggr: 0.25,
   // leading roughly three in five. roleSpan is the band gap that counts as
   // fully leading the unit. roleRecvW is what a unit leader adds to a pass's value, less than a
   // third of the hub's pmkRecvW and centred, so it moves the ball within a unit and never adds any.
-  roleFormSd: 1.6, roleSpan: 4, roleRecvW: 0.12, roleRunOrder: 1,
+  // ...AND NOT AS MUCH AS THE BALL ITSELF (12 October 2026). At 0.12 the leader of a pair of strikers was worth 0.24
+  // more to give it to than his partner -- more than the whole positional value of a ball into the box (meVal tops
+  // out at 0.26) -- so a side's better striker had nearly every ball the pair was offered: one took 51% of his side's
+  // goals and the other 29%. At 0.04 the better man still gets more of it (League One Sim All, 1,520 fixtures, with
+  // the box runs of mind/roles.ts: a club's top scorer 34.4% -> 32.9%, clubs with a man over 40% 9 -> 4 in 40).
+  roleFormSd: 1.6, roleSpan: 4, roleRecvW: 0.04, roleRunOrder: 1,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
