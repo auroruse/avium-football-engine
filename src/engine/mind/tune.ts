@@ -187,8 +187,9 @@ export const MT = {
   // contact (0.22), and gave 0.89 penalties a match against a real 0.28, half a goal a match on its own (12 October 2026,
   // test/specs/setpieces.mjs, 2000 NL1 matches an arm). Tackles at 0.3 and the foul on purpose at 0.1 took it to 0.38
   // (0.15 or 0.5 moved it by 0.03 either way: what was left was contact, 0.18 a match, and handballs, 0.10); contact at
-  // 0.12 and CFG.handP at 0.0063 aim at the real 0.28.
-  boxTackleFoul: 0.3, boxCynFoul: 0.1, boxContactFoul: 0.12,
+  // 0.12 and CFG.handP at 0.0063 aim at the real 0.28. Contact 0.2 and handP 0.0085 the same day, when the long shot came
+  // in (CFG.shotLaneK) and men carried it into the area less: penalties scored stayed at 0.19 a match.
+  boxTackleFoul: 0.3, boxCynFoul: 0.1, boxContactFoul: 0.2,
   contactFoul: 0.05,   // a slice's chance a man tight on the carrier holds, pushes or climbs on him
   sepR: 3.2,           // m; team-mates closer than this ease apart (the shape does the real spacing)
   sepW: 0.25,

@@ -714,7 +714,14 @@ foulAggr: 0.25,
   // floor, and even a wall kept 40% of the chance. A block trading distance for bodies was trading an
   // exponential for a capped linear and losing every time.
   // At 0.25/1.10 it takes ~2.7 bodies, and deep sides now allow 12.3% against a high line's 17.2%.
-  shotClear: 3.2, shotCrowd: 0.25, shotLaneK: 1.10,
+  // ...BUT A BODY IN THE WAY IS NOT A WALL (12 October 2026). Read against what the shots actually did, the man deciding
+  // was too afraid of traffic: from 16.5-25 m with a defender or two in the line he believed 3.2% and scored 5.7%, while
+  // with a clear line he believed 5.9% and scored 5.5% -- so from the edge of a crowded area he carried it in or gave it
+  // to the striker, and only one shot in five came from outside the area against a real third. At 0.65 that belief is
+  // honest, and over 1,520 League One fixtures of the app's Sim All shots from outside the area went 18.7% -> 26.4%
+  // (real 33-37%), shots a side 9.6 -> 10.7, blocked shots up with them; goals 2.73 -> 2.66 with handP and
+  // MT.boxContactFoul putting back the penalties that fewer carries into the area cost (test/specs/spread.mjs).
+  shotClear: 3.2, shotCrowd: 0.25, shotLaneK: 0.65,
   // ---- the defensive block ------------------------------------------------------------------
   // blkDrop is how far behind the ball the deepest line sits; blkDepth is how deep the whole thing
   // is when defending its own box (real: 20-25 m) and blkStretch how much it lengthens as it steps
@@ -904,7 +911,12 @@ foulAggr: 0.25,
   // leading roughly three in five. roleSpan is the band gap that counts as
   // fully leading the unit. roleRecvW is what a unit leader adds to a pass's value, less than a
   // third of the hub's pmkRecvW and centred, so it moves the ball within a unit and never adds any.
-  roleFormSd: 1.6, roleSpan: 4, roleRecvW: 0.12, roleRunOrder: 1,
+  // ...AND NOT AS MUCH AS THE BALL ITSELF (12 October 2026). At 0.12 the leader of a pair of strikers was worth 0.24
+  // more to give it to than his partner -- more than the whole positional value of a ball into the box (meVal tops
+  // out at 0.26) -- so a side's better striker had nearly every ball the pair was offered: one took 51% of his side's
+  // goals and the other 29%. At 0.04 the better man still gets more of it (League One Sim All, 1,520 fixtures, with
+  // the box runs of mind/roles.ts: a club's top scorer 34.4% -> 32.9%, clubs with a man over 40% 9 -> 4 in 40).
+  roleFormSd: 1.6, roleSpan: 4, roleRecvW: 0.04, roleRunOrder: 1,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
@@ -1695,7 +1707,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 12 Oct 2026 (800 matches) for the goal economy rebuilt that day (keepers' reach standing, the header,
   // the shot's reads of the keeper and of a body in the way) and the penalties made the same day. [0.6, 1) has no shots
   // in the sample and is set level with the band below rather than left under it.
-  gkExp: [[0.05, 0.11], [0.10, 0.14], [0.20, 0.27], [0.30, 0.65], [0.40, 0.88], [0.60, 0.88], [1.01, 0.89]],
+  // Re-derived again that afternoon (1,200 matches) for the box runs, the long shot and its penalties (shotLaneK): the
+  // keepers had drifted to +0.09 a match of credit.
+  gkExp: [[0.05, 0.06], [0.10, 0.11], [0.20, 0.24], [0.30, 0.61], [0.40, 0.85], [0.60, 0.88], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1796,12 +1810,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ratings and prints them. Re-derive whenever a rating delta, or the football, moves. rateBend is
   // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
   ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
-  // Re-derived 12 Oct 2026 (800 matches) with gkExp above.
+  // Re-derived 12 Oct 2026 (800 matches) with gkExp above, and again that afternoon (1,200 matches) with it.
   rateFin: {
-    GK:  { mid: 0.445, up: 1.126, dn: 0.670, tail: 1.044 },
-    DEF: { mid: 0.778, up: 1.145, dn: 0.915, tail: 1.095 },
-    MID: { mid: 0.664, up: 0.804, dn: 1.261, tail: 1.048 },
-    FWD: { mid: 0.615, up: 0.725, dn: 1.369, tail: 1.236 },
+    GK:  { mid: 0.499, up: 1.231, dn: 0.676, tail: 0.975 },
+    DEF: { mid: 0.798, up: 1.171, dn: 0.965, tail: 1.163 },
+    MID: { mid: 0.710, up: 0.862, dn: 1.218, tail: 1.091 },
+    FWD: { mid: 0.650, up: 0.861, dn: 1.270, tail: 1.143 },
   },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
@@ -2903,7 +2917,9 @@ gkDiveV: 2.9,
   // 0.0105 is the same one in fifteen matches on today's geometry.
   // handP 0.0105 -> 0.0063 (12 October 2026): handballs gave 0.10 penalties a match, about a third of all of them by then,
   // against a real 0.06 (see MT.boxTackleFoul).
-  handMinZ: 0.85, handP: 0.0063,
+  // ...and 0.0085 the same day, with shotLaneK 0.65: shooting from range instead of carrying it in took penalties scored
+  // from 0.19 a match to 0.14; this and MT.boxContactFoul 0.2 put them back at 0.19.
+  handMinZ: 0.85, handP: 0.0085,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
