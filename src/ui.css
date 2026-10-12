@@ -1002,6 +1002,24 @@
 .ux-mbench { display: flex; flex-direction: column; padding-bottom: 8px; }
 .ux-mb-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 28px; padding: 0 12px; min-width: 0; font-size: 12px; }
 .ux-mb-row:nth-child(even) { background: var(--ux-panel-2); }
+/* A club's or national side's squad list (13 October 2026): one line a man, a small face beside his name, his traits after it,
+   his other position quiet after his place. */
+.ux-tbl.ux-sq td { height: 26px; }
+.ux-sqn { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ux-sqn > img { flex: none; }
+.ux-sqf { flex: none; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: var(--ux-panel-3); }
+.ux-sqf.ux-open { background: none; border: 1px dashed var(--ux-line); }
+.ux-sqnm { flex: 0 1 auto; min-width: 0; }
+.ux-pos2 { margin-left: 4px; font-size: 10px; font-weight: 600; color: var(--ux-text-3); }
+.ux-hero .ux-stage { font-size: 26px; }
+/* A club's profile (13 October 2026): its crest and name over its ground's photo and facts. */
+.ux-prof { display: flex; align-items: center; gap: 14px; padding: 2px 12px 12px; min-width: 0; flex-shrink: 0; }
+.ux-prof-id { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ux-prof-nm { display: block; min-width: 0; font: 700 22px/1.05 var(--ux-f-title); letter-spacing: .03em; text-transform: uppercase; }
+.ux-prof-sub { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--ux-text-2); }
+.ux-ph-gap { flex: 1 1 auto; }
+.ux-strip .ux-pts b { color: var(--ux-accent-ink); }
+.ux-hero .ux-lines { flex: 1 1 auto; min-width: 0; }
 /* An open place on a bench (12 October 2026): its group, and Vacant, both quiet; in the squad views only, never in a match. */
 .ux-vac, .ux-vac .ux-pos { color: var(--ux-text-3); }
 .ux-vac td:nth-child(2), .ux-vac .ux-mb-n { font-style: italic; }
