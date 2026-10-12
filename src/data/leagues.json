@@ -19,5 +19,6 @@
 {"id":"l0018","name":"Liga-ye Bālande","nation":"VAR","tier":2,"cup":"Jām-e Mellī","up":1},
 {"id":"l0019","name":"Divisione Prima Viciliana","nation":"VIC","tier":1,"cup":null},
 {"id":"l0020","name":"Livländische Liga","nation":"LVO","tier":1,"cup":null,"listed":true},
-{"id":"l0021","name":"All-Nichirin Collegiate Championship","nation":"NCH","tier":3,"cup":null,"listed":true}
+{"id":"l0021","name":"All-Nichirin Collegiate Championship","nation":"NCH","tier":3,"cup":null,"listed":true},
+{"id":"l0022","name":"Giathkik Premier League","nation":"GIA","tier":1,"cup":"Giathka Cup","listed":true}
 ]
