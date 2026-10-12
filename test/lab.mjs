@@ -52,6 +52,37 @@ const shotBook = () => ({ n: 0, xg: 0, d: 0, hdr: 0, fast: 0, xgFast: 0,
   org: Object.fromEntries(ORG.map(k => [k, 0])), oxg: Object.fromEntries(ORG.map(k => [k, 0])) });
 const r4 = (v) => Number.isFinite(v) ? Math.round(v * 1e4) / 1e4 : 0;
 
+// THE ANATOMY OF A GOAL (12 Oct 2026): every open-play strike and header by where it was taken -- the six-yard box,
+// the rest of the area, outside -- and how it ended, who took it, and every goal with what put it in. Each man's line
+// (SH) also carries his role, his big chances (0.3 xG and up), his shots and goals from outside the area and his shots
+// off a set piece; each goal (GL) its scorer's role and the set piece it came from, if any (13 Oct 2026).
+function anatomyOf(shots, prov) {
+  const AN = {};
+  const ZB = (r) => { const dep = Math.sqrt(Math.max(0, r.d * r.d - (r.y ?? 0) ** 2)), ay = Math.abs(r.y ?? 0);
+    return dep < 5.5 && ay < 9.16 ? 0 : dep < 16.5 && ay < 20.16 ? 1 : 2; };
+  for (const sd of SIDES) {
+    const A = AN[sd] = { zf: [0, 0, 0], zgf: [0, 0, 0], zh: [0, 0, 0], zgh: [0, 0, 0], frf: [0, 0, 0], frh: [0, 0, 0],
+      out: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hd: new Array(41).fill(0), hdrFrom: {}, SH: {}, GL: [] };
+    for (const r of shots) {
+      if (r.side !== sd) continue;
+      const z = ZB(r), g = r.out === "goal" ? 1 : 0;
+      if (r.hdr) { A.zh[z]++; A.zgh[z] += g; A.frh[z] += r.fr || 0; const k = r.from || "?"; A.hdrFrom[k] = (A.hdrFrom[k] || 0) + 1; }
+      else { A.zf[z]++; A.zgf[z] += g; A.frf[z] += r.fr || 0; A.hd[Math.min(40, Math.floor(r.d))]++; }
+      A.out[r.out || "other"]++;
+      if (r.nm) { const e = A.SH[r.nm] || (A.SH[r.nm] = [r.pos, 0, 0, 0, r.role || "-", 0, 0, 0, 0]); e[1]++; e[2] += g; e[3] += r.xg || 0;
+        if ((r.xg || 0) >= 0.3) e[5]++; if (z === 2) { e[6]++; e[7] += g; } if (r.spK) e[8]++; }
+    }
+    for (const g of prov) {
+      if (g.side !== sd) continue;
+      const sh = g.r >= 0 ? shots[g.r] : null;
+      const kind = g.pen ? "pen" : g.dead ? "dead" : !g.noShot ? (g.hdr ? "hdr" : "foot") : g.og ? "og" : g.par === 1 ? "parry" : g.pk0 ? "pass:" + g.pk0
+        : g.car0 ? "carried" : (g.why || "?");
+      A.GL.push([kind, g.pos || "-", g.nm || "-", sh ? Math.round(sh.d) : -1, g.last || "", g.role || "-", g.spK && g.spT < 40 ? g.spK : ""]);
+    }
+  }
+  return AN;
+}
+
 export function play(E, hT, aT, seed) {
   const st = E.createMatchState();
   st.brain = 2; st.homeAdv = null; st.injuriesOn = false;
@@ -152,30 +183,7 @@ export function play(E, hT, aT, seed) {
             : f === "feet" ? "feet" : f === "long" || f === "switch" ? "long" : f === "-" ? "solo" : "set";
     S.org[g]++; S.oxg[g] += r.xg;
   }
-  // THE ANATOMY OF A GOAL (12 Oct 2026): every open-play strike and header by where it was taken -- the six-yard box,
-  // the rest of the area, outside -- and how it ended, who took it, and every goal with what put it in.
-  const ZB = (r) => { const dep = Math.sqrt(Math.max(0, r.d * r.d - (r.y ?? 0) ** 2)), ay = Math.abs(r.y ?? 0);
-    return dep < 5.5 && ay < 9.16 ? 0 : dep < 16.5 && ay < 20.16 ? 1 : 2; };
-  const AN = {};
-  for (const sd of SIDES) {
-    const A = AN[sd] = { zf: [0, 0, 0], zgf: [0, 0, 0], zh: [0, 0, 0], zgh: [0, 0, 0], frf: [0, 0, 0], frh: [0, 0, 0],
-      out: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hd: new Array(41).fill(0), hdrFrom: {}, SH: {}, GL: [] };
-    for (const r of globalThis.__shots) {
-      if (r.side !== sd) continue;
-      const z = ZB(r), g = r.out === "goal" ? 1 : 0;
-      if (r.hdr) { A.zh[z]++; A.zgh[z] += g; A.frh[z] += r.fr || 0; const k = r.from || "?"; A.hdrFrom[k] = (A.hdrFrom[k] || 0) + 1; }
-      else { A.zf[z]++; A.zgf[z] += g; A.frf[z] += r.fr || 0; A.hd[Math.min(40, Math.floor(r.d))]++; }
-      A.out[r.out || "other"]++;
-      if (r.nm) { const e = A.SH[r.nm] || (A.SH[r.nm] = [r.pos, 0, 0, 0]); e[1]++; e[2] += g; e[3] += r.xg || 0; }
-    }
-    for (const g of globalThis.__prov) {
-      if (g.side !== sd) continue;
-      const sh = g.r >= 0 ? globalThis.__shots[g.r] : null;
-      const kind = g.pen ? "pen" : g.dead ? "dead" : !g.noShot ? (g.hdr ? "hdr" : "foot") : g.og ? "og" : g.par === 1 ? "parry" : g.pk0 ? "pass:" + g.pk0
-        : g.car0 ? "carried" : (g.why || "?");
-      A.GL.push([kind, g.pos || "-", g.nm || "-", sh ? Math.round(sh.d) : -1, g.last || ""]);
-    }
-  }
+  const AN = globalThis.__anat ? anatomyOf(globalThis.__shots, globalThis.__prov) : {};
   // A harness may keep every strike and goal record of every match it plays (scratch probes slice them).
   if (globalThis.__keep) { globalThis.__keep.shots.push(...globalThis.__shots.map(r => ({ ...r, m: globalThis.__keep.m })));
     globalThis.__keep.goals.push(...globalThis.__prov.map(g => ({ ...g, m: globalThis.__keep.m }))); globalThis.__keep.m++; }
@@ -231,16 +239,23 @@ export function play(E, hT, aT, seed) {
 // injuries in and no home side, on whichever engine build E is. A spec with runner: "sim" plays its matches this way. It
 // keeps how the side DID, and who scored (G, moved out to the row, which the summary does not average).
 export function simMatch(E, hT, aT, seed) {
+  let SO = null; globalThis.__simOut = (o) => { SO = { cor: o.corners, sh: o.shots, sot: o.onTarget }; };
+  if (globalThis.__anat) { globalThis.__shots = []; globalThis.__prov = []; }
   const r = E.simPositionalMatch(new E.RNG(seed >>> 0 || 7), hT.skill, aT.skill, false, hT.style, aT.style, hT.formation, aT.formation,
     null, hT.strategy, aT.strategy, hT.squad, aT.squad, null, null, true, { home: hT.mgmt ?? null, away: aT.mgmt ?? null });
+  const AN = globalThis.__anat ? anatomyOf(globalThis.__shots, globalThis.__prov) : null;
+  if (globalThis.__anat) { globalThis.__shots = null; globalThis.__prov = null; }
+  globalThis.__simOut = null;
   const res = {};
   for (const sd of SIDES) {
     const g = sd === "home" ? r.ftHome : r.ftAway, ga = sd === "home" ? r.ftAway : r.ftHome, men = r.playerData?.[sd] || [];
     const by = (grp) => men.filter(p => p.pos === grp).reduce((t, p) => t + (p.goals || 0), 0);
     res[sd] = { pts: g > ga ? 3 : g === ga ? 1 : 0, w: +(g > ga), d: +(g === ga), gf: g, ga,
+      cor: SO?.cor?.[sd] ?? 0, sh: SO?.sh?.[sd] ?? 0, sot: SO?.sot?.[sd] ?? 0,
       top: Math.max(0, ...men.map(p => p.goals || 0)), gFwd: by("FWD"), gMid: by("MID"), gDef: by("DEF"),
       yel: r.cards?.[sd]?.yellows ?? 0, red: r.cards?.[sd]?.reds ?? 0,
-      G: men.filter(p => p.goals).map(p => [p.fullName || p.name, p.goals]) };
+      G: men.filter(p => p.goals).map(p => [p.fullName || p.name, p.goals]),
+      ...(AN ? { AN: { ...AN[sd], SH: Object.entries(AN[sd].SH).map(([n, e]) => [n, ...e.map(v => typeof v === "number" ? +v.toFixed(3) : v)]) } } : null) };
   }
   return res;
 }
