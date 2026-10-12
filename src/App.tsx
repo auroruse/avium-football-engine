@@ -4104,6 +4104,58 @@ function WorldToggle({ value, onChange, style, btnStyle }) {
 // and nothing to watch. At rest each is the finished move: the ball's whole path into the net and
 // the players where they stood when it went in. The pointer over it, or focus, plays it from the
 // start; leaving puts the still back.
+// THE SWING OF IT, on Full Time (Moukden and Kirin, 12 October 2026: "add the momentum graph on top of it with when the
+// goals came"). The sidebar's chart drawn across the numbers: who was on top minute by minute, the home side's spells above
+// the line and the away side's below, the interval a dashed rule, and every goal a dot at the edge of its side's half with
+// its minute beside it and a faint line down to when it came. It measures its own box, so it takes whatever height the
+// team sheets leave above the numbers. last: the tick the match ended on; perMin: ticks a minute.
+function MomentumChart({ mom, perMin, last, htAt, etAt, goals, hc, ac }) {
+  const box = useRef(null);
+  const [sz, setSz] = useState(null);
+  useLayoutEffect(() => {
+    const el = box.current; if (!el) return;
+    const fit = () => { const w = el.clientWidth, h = el.clientHeight; setSz(s => (s && s.w === w && s.h === h ? s : { w, h })); };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const W = sz?.w || 0, H = sz?.h || 0;
+  let svg = null;
+  if (W > 0 && H > 20) {
+    const N = Math.max(1, Math.floor(last / perMin) + 1), bw = W / N, MID = H / 2, EDGE = 9, room = MID - EDGE - 6;
+    const raw = Array.from({ length: N }, (_, i) => { const b = mom?.b?.[i]; return b ? b.h - b.a : 0; });
+    const sm = raw.map((v, i) => 0.25 * (raw[i - 1] ?? v) + 0.5 * v + 0.25 * (raw[i + 1] ?? v));
+    const mx = Math.max(3, ...sm.map(Math.abs));
+    const rule = (tk, key) => tk == null ? null : <line key={key} x1={tk / perMin * bw} x2={tk / perMin * bw} y1={2} y2={H - 2} className="ux-mom-div" />;
+    // A minute runs right of its dot unless that would leave the chart; two close together on one side take a row each.
+    const placed = { home: [], away: [] };
+    const marks = goals.map((g, k) => {
+      const x = Math.min(W - 5, Math.max(5, g.i * bw + bw / 2)), home = g.side === "home", clr = home ? hc : ac;
+      const lw = 6.2 * g.label.length + 4, left = x + 8 + lw > W, lx = left ? x - 8 : x + 8;
+      let row = 0;
+      while (placed[g.side].some(p => p.row === row && Math.abs(p.lx - lx) < lw + 6)) row++;
+      placed[g.side].push({ lx, row });
+      const y = home ? EDGE + row * 12 : H - EDGE - row * 12;
+      return (
+        <g key={"g" + k}>
+          <line x1={x} x2={x} y1={y} y2={MID} stroke={clr} strokeOpacity={0.5} strokeWidth={1} strokeDasharray="2 2" />
+          <circle cx={x} cy={y} r={4} fill={clr} stroke="#fff" strokeWidth={1.2} />
+          <text x={lx} y={y} dy="0.35em" textAnchor={left ? "end" : "start"} className="ux-ftmom-min">{g.label}</text>
+        </g>);
+    });
+    svg = (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Momentum">
+        <line x1={0} x2={W} y1={MID} y2={MID} className="ux-mom-axis" />
+        {rule(htAt, "ht")}{rule(etAt, "et")}
+        {/* On a square root: one big chance would otherwise stand so tall that every ordinary minute is a sliver. */}
+        {sm.map((v, i) => { const h = Math.sqrt(Math.abs(v) / mx) * room; if (h < 0.6) return null;
+          return <rect key={i} x={i * bw + 0.3} width={Math.max(0.6, bw - 0.6)} y={v > 0 ? MID - h : MID} height={h} fill={v > 0 ? hc : ac} />; })}
+        {marks}
+      </svg>);
+  }
+  return <div ref={box} className="ux-ftmom">{svg}</div>;
+}
 const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
 function GoalReplay({ clip, hc, ac }) {
   const F = clip.frames, last = F.length - 1;
@@ -20303,6 +20355,15 @@ export default function App() {
                   evs.push({ side: sd, min: j.min, add: j.add, k: "injury", who: shortName(j.full || j.name),
                              det: j.part ? j.part[0].toUpperCase() + j.part.slice(1) : "Injured" });
               }
+              // The chart's goals: the momentum ledger has when each went in, the timeline the minute to print, and each
+              // side's goals come in the same order in both.
+              const momGoals = (() => {
+                const bySide = { home: [], away: [] }, seen = { home: 0, away: 0 };
+                for (const e of evs) if (e.k === "goal" || e.k === "pen" || e.k === "og") bySide[e.side].push(e);
+                for (const sd of ["home", "away"]) bySide[sd].sort((a, b) => a.min - b.min || (a.add || 0) - (b.add || 0));
+                return (m.mom?.g || []).map(g => { const e = bySide[g.side][seen[g.side]++];
+                  return { i: g.i, side: g.side, label: e ? fmtMin(e.min, e.add) : "" }; });
+              })();
               const rowsOf = (sd) => (m.s.players[sd] || []).length + (m.s.subbedOff?.[sd] || []).length
                                    + (m.s.bench?.[sd] || []).filter(Boolean).length;
               const nRows = Math.max(11, rowsOf("home"), rowsOf("away"));
@@ -20356,7 +20417,12 @@ export default function App() {
                 // gives: about 19 px a man for a 22-man squad, tighter for a bigger one, never a scrollbar.
                 const rowH = Math.max(12, Math.min(22, Math.floor((MID - 26 - 16 - 3 - 9) / nRows)));
                 // The numbers have the centre to themselves now the ground is behind the score, so their rows grow into it.
-                const statH = Math.max(20, Math.min(28, Math.floor((MID - 26 - 46 - 76 - 20) / 9)));
+                // The numbers stand on the sheets' last line and the momentum chart takes what is left over the possession
+                // bar, so their rows are as tall as leaves the chart at least 40 px: the sheet is its title (26), its column
+                // heads (18), its men and the rule over the bench (9); over the numbers sit the chart (40), its caption (18),
+                // the possession bar with its own (46) and the gap under it (18).
+                const sheetH = 26 + 18 + nRows * rowH + (nRows > 11 ? 9 : 0);
+                const statH = Math.max(18, Math.min(28, Math.floor((sheetH - 40 - 18 - 46 - 18) / 9)));
                 const zBar = { valW: 44, valFs: statH >= 25 ? 14 : 12.5, labW: 104, labFs: statH >= 25 ? 10.5 : 9.5, barH: 7, pad: 0,
                                gap: 8, rowH: statH };
                 const zMen = { cols: "26px 32px 1fr 22px 22px 28px 28px 24px 36px 44px", gap: 3, pad: 0, rowH,
@@ -20378,7 +20444,7 @@ export default function App() {
                 const sheet = (sd) => {
                   const t = sd === "home" ? m.hT : m.aT;
                   return (
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, alignSelf: "start" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 20, marginBottom: 6 }}>
                         <TeamCrest team={t} size={18} />
                         <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase",
@@ -20426,12 +20492,19 @@ export default function App() {
                                      et={!!m.et} pens={out.pens || []} />
                     </div>
 
-                    {/* The people either side, and between them the ground and the numbers. */}
+                    {/* The people either side, and between them how the match swung and the numbers. The band is as tall as
+                        the longer team sheet, and the middle column fills it from the bottom: the numbers' last line level with
+                        the sheets' last man however many sat on the bench, the possession bar over them, and the momentum chart
+                        taking what is left (Moukden and Kirin, 12 October 2026). */}
                     <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "440px minmax(0,1fr) 440px",
-                                  gap: 24, padding: "14px 24px 12px" }}>
+                                  alignContent: "start", gap: 24, padding: "14px 24px 12px" }}>
                       {sheet("home")}
-                      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 10 }}>
-                        <div style={{ flexShrink: 0 }}>
+                      <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+                        <MomentumChart mom={m.mom} perMin={ME_MATCH_TICKS / 90} last={m.t} htAt={m.htAt} etAt={m.et ? m.etAt : null}
+                                       goals={momGoals} hc={HC} ac={AC} />
+                        <div style={{ flexShrink: 0, fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
+                                      color: "var(--chrome-muted)", marginTop: 6 }}>Momentum</div>
+                        <div style={{ flexShrink: 0, marginTop: 16 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <span style={{ ...mono, width: 46, fontSize: 15, fontWeight: 700, color: HC }}>{pcH}%</span>
                             <div style={{ flex: 1, display: "flex", height: 9, borderRadius: 5, overflow: "hidden" }}>
@@ -20444,9 +20517,10 @@ export default function App() {
                           <div style={{ fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
                                         color: "var(--chrome-muted)", marginTop: 6 }}>Possession</div>
                         </div>
-                        {/* The numbers centred in what the possession bar leaves, the top player now a star in his sheet. */}
-                        <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center" }}>
-                        <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                        {/* Its last line's middle on the last man's: the rows differ in height, so the block hangs past the
+                            band's foot by half the difference (or stops short of it). */}
+                        <div style={{ flexShrink: 0, marginTop: 18, marginBottom: (rowH - statH) / 2, display: "grid",
+                                      gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
                           <div>{statsWith(zBar)}</div>
                           <div>
                             {statsWithout(zBar)}
@@ -20457,7 +20531,6 @@ export default function App() {
                               <div style={{ height: zBar.rowH, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>)}
                           </div>
-                        </div>
                         </div>
                       </div>
                       {sheet("away")}
