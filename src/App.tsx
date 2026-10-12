@@ -10490,7 +10490,9 @@ export default function App() {
   // reopens from Requests. `edNew` is the form open on this tab, and setEdNew(null) is done with it (sent or cancelled).
   const ED_FORMS_KEY = "avium-editor-forms";
   const [edForms, setEdForms] = useState(() => { try { const v = JSON.parse(localStorage.getItem(ED_FORMS_KEY));
-    return v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([, f]) => f && !f.review).map(([k, f]) => [k, { ...f, rollOpen: false }])) : {}; }
+    // (A New League or New Club form kept from before the sheet is dropped: the sheet makes clubs and leagues in its rows.)
+    return v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([k, f]) => f && !f.review && (k === "players" || k === "managers"))
+      .map(([k, f]) => [k, { ...f, rollOpen: false }])) : {}; }
     catch { return {}; } });
   useEffect(() => { try { if (Object.keys(edForms).length) localStorage.setItem(ED_FORMS_KEY, JSON.stringify(edForms)); else localStorage.removeItem(ED_FORMS_KEY); } catch {} }, [edForms]);
   const [edRev, setEdRev] = useState(null);           // a request under review: its form, never kept
@@ -10509,8 +10511,7 @@ export default function App() {
   };
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   // The sheet replaced the Teams, Players, Managers and Leagues pages; their forms are kept to review a request for a new
-  // record and to finish a New form left unfinished before the sheet (Finish, over the sheet; Moukden and Kirin, 12
-  // October 2026). With neither open the editor is the sheet again.
+  // record, and the list form for Many. With neither open the editor is the sheet again.
   useEffect(() => { if (!edNew && !["sheet", "trades", "requests"].includes(edSec)) setEdSec("sheet"); }, [edNew, edSec]);
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
@@ -11903,7 +11904,7 @@ export default function App() {
     const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : s.what === "leagues" ? "League"
       : s.what === "batch" ? "Players" : "Manager";
     const nat = s.nat ? natTeamByCode.get(s.nat) : null, joins = s.side ? teamOfKey(s.side) : null;
-    // (an unfinished New form of the same kind is put aside, so the review closes onto the sheet; Finish brings it back)
+    // (a New form of the same kind being made is put aside, so the review closes onto the sheet; New Player brings it back)
     const open = () => { setTab("editor"); setEdSec(s.what === "batch" ? "players" : s.what); setEdFormOff(o => ({ ...o, [s.what === "batch" ? "players" : s.what]: true }));
       const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
       setEdNew(s.what === "leagues" ? edLgFromRec(s, meta)
@@ -12762,7 +12763,7 @@ export default function App() {
     const num = (v) => (+v > 0 ? Math.round(+v) : null);
     const lgFields = () => ({ what: "leagues", name: (f.name || "").trim(), nation, tier: f.tier ?? 1,
       cup: f.cup === "__new" ? ((f.cupName || "").trim() || null) : f.cup || null,
-      clubs: clubs.map(cl => ({ id: cl.id, name: (cl.name || "").trim(), code: (cl.code || "").trim().toUpperCase(), home: cl.home, away: cl.away,
+      clubs: clubs.map(cl => ({ name: (cl.name || "").trim(), code: (cl.code || "").trim().toUpperCase(), home: cl.home, away: cl.away,
         stadium: (cl.ground || "").trim() + (String(cl.cap || "").trim() ? ` (${String(cl.cap).trim()})` : ""), location: cl.city || "", formation: cl.formation, timeWasting: cl.timeWasting || "Never",
         manager: edLgNew(cl.manager) ? { name: (cl.manager.name || "").trim(), nat: cl.manager.nat || nation, born: cl.manager.born, style: cl.manager.style, ovr: num(cl.manager.ovr) }
           : cl.manager || null,
@@ -14300,12 +14301,6 @@ export default function App() {
             <span className="ux-sh-fxi" style={mono}>fx</span>
             <div className="ux-sh-fxv"><SlideName text={sel ? shText(sel, shSel.c) || "–" : ""} /></div>
             {shMsg && <span className="ux-sh-msg">{shMsg}</span>}
-            {Object.entries(edForms).filter(([k2, f]) => f && !f.review && ["leagues", "teams", "players", "managers"].includes(k2)
-              && !(k2 === shFormOpen && shDock === "rec" && !shFormEdit)).map(([k2, f]) => (
-              <button key={k2} type="button" className="ux-btnreset ux-btn ux-sh-finish" title={(f.name || "").trim() || undefined}
-                onClick={() => { setEdFormOff(o => ({ ...o, [k2]: false }));
-                  if ((k2 === "players" && f.mode !== "many") || k2 === "managers") { setShFormEdit(null); setShFormOpen(k2); setShDock("rec"); } else setEdSec(k2); }}>
-                {uxIcon("edit", "ux-s")}Finish {k2 === "leagues" ? "New League" : k2 === "teams" ? "New Club" : k2 === "managers" ? "New Manager" : f.mode === "many" ? "New Players" : "New Player"}</button>))}
             <button type="button" className="ux-btnreset ux-sh-ib" aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!shHist.past.length} onClick={shUndo}>{uxIcon("undo", "ux-s")}</button>
             <button type="button" className="ux-btnreset ux-sh-ib" aria-label="Redo" title="Redo (Ctrl+Y)" disabled={!shHist.future.length} onClick={shRedo}>{uxIcon("redo", "ux-s")}</button>
             <button type="button" className="ux-btnreset ux-sh-ib" aria-label={shFull ? "Leave Fullscreen" : "Fullscreen"} aria-pressed={shFull} title={shFull ? "Leave Fullscreen (Escape)" : "Fullscreen"}
@@ -14359,8 +14354,8 @@ export default function App() {
   const renderUxEditor = () => {
     if (edSec === "requests") return renderEdRequests();
     if (edSec === "trades") return renderEdTrades();
-    if (edSec === "sheet" || !edNew || (!edRev && ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers"))) return renderEdSheet();
-    if (!edRev) return <div className="ux-body ux-ed ux-ed-solo">{edNew.kind === "leagues" ? renderEdNewLeague(edNew) : renderEdNew()}</div>;
+    if (edSec === "sheet" || !edNew || (!edRev && !(edNew.kind === "players" && edNew.mode === "many"))) return renderEdSheet();
+    if (!edRev) return <div className="ux-body ux-ed ux-ed-solo">{renderEdBatch(edNew)}</div>;
     if (edSec === "leagues") {
       const groups = edLgRows(), picked = edPick.leagues || groups.flatMap(([, l]) => l)[0]?.key;
       return (

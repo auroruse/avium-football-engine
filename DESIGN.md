@@ -470,10 +470,10 @@ each new club with all it holds and each new league with its band is one request
 it before letting it in. A rating may be left blank for the overseer to set; a new man of another nation needs a rating
 below that nation's level, its national side's rating as the app shows it (`natLevel`), and no traits come below 75. A
 new league lists on its own from its first club, and a nation's first league makes its club sheet. A New form is kept in
-the browser until it goes to the cart or is cancelled; one left for something else comes back from **Finish New Player**
-(or Manager, Club, League, Players) over the sheet: a player or manager on the dock, a list, club or league in its form,
-full width. A New form left unfinished in the old editor stays kept the same way (Moukden and Kirin, 12 October 2026,
-asked how it should come back: "Reopen the old form"). One line under the forms gives the image rules:
+the browser until it goes to the cart or is cancelled; one left for something else comes back from New Player or New
+Manager, the list on the dock or full width. (Unfinished forms from the old editor came back through Finish buttons over
+the sheet for a day; the user had them removed on 12 October 2026 once Giathka's league was in.) One line under the forms
+gives the image rules:
 badges 500 by 500 with 50px of padding on every side and a 25px white outline, portraits a chest-up headshot in a plain
 white shirt, sent as a zip to @auroruse on Discord.
 
