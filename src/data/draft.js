@@ -19,7 +19,8 @@ const KINDS = {
   // out of play for good while his record stays. born is his date of birth, "YYYY-MM-DD" (src/data/icclock.js ages it).
   players: { fields: ["name", "ovr", "nat", "born", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
   managers: { fields: ["name", "nat", "born", "style", "ovr"], key: (r) => r.id, label: (r) => r.name },
-  teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad"], key: teamKey,
+  // timeWasting is the one tactic a side keeps of its own; group and file move a club into another league (the overseer's).
+  teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting", "group", "file"], key: teamKey,
            label: (t) => t.name.trim() },
   leagues: { fields: ["name", "tier", "cup"], key: (l) => l.id, label: (l) => l.name },
 };
