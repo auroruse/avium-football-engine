@@ -339,7 +339,7 @@ export const DOCS = [
       "A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it.",
     ] },
     { id: "new-records", title: "New Players, Managers And Clubs", body: [
-      "New Player, New Manager and New Team, at the top of each list, make a request to the overseer, who may change anything in it before letting it in. The overseer's own go in when the cart is saved.",
+      "New Player, New Manager and New Team, at the top of each list, make a request to the overseer, who may change anything in it before letting it in. Add To Cart puts it in the cart, and it is sent when the cart is saved; the overseer's own go in then.",
       { dl: [
         ["New Player", "Name, nationality, date of birth, his position and a second if he has one, the side he joins (one of yours, or none), a rating, and the traits that rating can afford."],
         ["New Manager", "Name, nationality, date of birth, style and a rating."],
@@ -360,7 +360,7 @@ export const DOCS = [
       "A league made here is listed among the leagues from its first club; an older one needs six. An editor whose nation has no leagues yet starts here, as the Leagues tab opens on New League.",
     ] },
     { id: "kept-forms", title: "Unfinished Forms", body: [
-      "A New form you are filling in is kept in this browser until you send it or press Cancel, one for each tab. Going to another tab, picking a record from the list or reloading the page puts it aside, and New brings it back as you left it. A request the overseer is reviewing is not kept; it opens again from Requests.",
+      "A New form you are filling in is kept in this browser until you add it to the cart or press Cancel, one for each tab. Going to another tab, picking a record from the list or reloading the page puts it aside, and New brings it back as you left it. A request the overseer is reviewing is not kept; it opens again from Requests.",
     ] },
     { id: "images", title: "Badges And Portraits", body: [
       "Images are not uploaded in the app: send them as a zip to @auroruse on Discord. A badge, for a club or a league, is 500 by 500 pixels with 50 pixels of padding on every side and a 25 pixel white outline. A portrait is a chest-up headshot, the subject in a plain white shirt.",

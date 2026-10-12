@@ -4798,6 +4798,61 @@ const uxPlTraits = (ids) => {
       return <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id} draggable={false}
         style={{ left: `calc(50% + ${Math.cos(a).toFixed(3)} * var(--tr-r))`, top: `calc(50% + ${Math.sin(a).toFixed(3)} * var(--tr-r))` }} />; })}</span>);
 };
+// A SIDE'S ELEVEN ON A PITCH: a club's Formation, the match's team sheets and a manager's Tactics, each man drawn as the old
+// team page drew him (his portrait ringed in his place's colour, rating left, place right, his traits under him, given name
+// over SURNAME above). Every name runs in a lane worked out from where the men stand (lineupLanes), so however long it is
+// it stays on the pitch and off the names and men beside it, and slides when it does not fit (Moukden and Kirin, 12
+// October 2026: "player names never overflow off the sides of the pitch and truncate correctly").
+//
+// Read off ui.css, around a man's centre in pixels: his name's two lines end 4px over his 44px circle (26px up) and stand
+// 23.6px tall, so the middle of the name is 37.8px up; the circle and the chips either side of it reach 35px out.
+const LU_NAME_MID = 37.8, LU_NAME_H = 23.6, LU_BODY = 35;
+// A lane is as wide as the name may run: 96px at most, never past either touchline, halfway to the name of any man whose
+// name stands at the same height, and short of the circle and chips of any man standing beside the name. Never under 32px
+// for a man beside it, and not narrowed at all for one straight over it (his circle across the name's middle): on a small
+// pitch a shape's rows close up, and narrowing a name there only hides it without clearing him.
+const LU_LANE_MIN = 16;
+function lineupLanes(slots, W, H) {
+  const pts = slots.map(([x, y]) => [x / 100 * W, y / 100 * H]);
+  return pts.map(([cx, cy], i) => {
+    let h = Math.min(48, cx - 2, W - cx - 2);
+    pts.forEach(([ox, oy], j) => {
+      if (j === i) return;
+      const dx = Math.abs(ox - cx);
+      if (Math.abs(oy - cy) < LU_NAME_H + 2) h = Math.min(h, Math.max(LU_LANE_MIN, dx / 2 - 3));
+      if (Math.abs(oy - (cy - LU_NAME_MID)) <= 22 && dx >= 22) h = Math.min(h, Math.max(LU_LANE_MIN, dx - LU_BODY - 3));
+    });
+    return Math.max(0, Math.floor(2 * h));
+  });
+}
+// `men[i]` stands in slot i: { first, last, label, shot (whose portrait), code, codeTitle, clr, oop, rtg, warn, traits,
+// onClick }.
+export function UxLineup({ slots, men }) {
+  const ref = useRef(null), [box, setBox] = useState(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const measure = () => { const w = el.clientWidth, h = el.clientHeight; setBox(b => (b && b.w === w && b.h === h ? b : { w, h })); };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const lanes = box && box.w > 0 ? lineupLanes(slots, box.w, box.h) : null;
+  return (
+    <div className="ux-pitch-wrap"><div ref={ref} className="ux-pitch">
+      {UX_PITCH_LINES}
+      {men.map((m, i) => { const sp = slots[i]; if (!sp || !m) return null;
+        return (
+          <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: m.clr }}>
+            <div className="ux-pl-label" style={lanes ? { maxWidth: lanes[i] } : undefined}>
+              {m.first && <span className="ux-pl-first"><SlideName text={m.first} /></span>}<span className="ux-pl-last"><SlideName text={m.last} /></span></div>
+            <button type="button" className="ux-btnreset ux-pl-tok" aria-label={m.label} onClick={m.onClick}><PlayerShot name={m.shot} size="100%" /></button>
+            {m.rtg}
+            <span className={"ux-pl-pos" + (m.oop ? " ux-oop" : "")} style={mono} title={m.codeTitle}>{m.code}{m.warn}</span>
+            {uxPlTraits(m.traits)}
+          </div>); })}
+    </div></div>);
+}
 // THE OUT-OF-POSITION ALERT'S MARK (user, 11 October 2026): a red warning triangle. Wherever it stands, data-oop carries
 // what the card says: his own positions and each place he is out of position in, { own, rows: [{ side, place, ovr, at,
 // d }] }, the side named only where more than one may be meant, d what the place costs him.
@@ -12418,7 +12473,7 @@ export default function App() {
                 : <span className="ux-ed-acts">
                   {list.length > 0 && <span className="ux-cb-when"><span style={mono}>{list.length}</span> {list.length === 1 ? "Player" : "Players"}{side ? <>, To {side.name.trim()}</> : null}</span>}
                   <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready}
-                    onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...fieldsOf() }] }); setEdNew(null); }}>{overseer ? "Add To Cart" : "Request"}</button></span>}
+                    onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...fieldsOf() }] }); setEdNew(null); }}>Add To Cart</button></span>}
             </div>
           </div>), true)}
       </div>);
@@ -12521,7 +12576,7 @@ export default function App() {
                   <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!req || !ready || !!reqBusy}
                     onClick={async () => { const ok = await settle(req, "accept", { edits: fieldsOf() }); if (ok) setEdNew(null); }}>{reqBusy === req?.id ? "Saving" : "Approve"}</button></span>
                 : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready}
-                    onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...fieldsOf() }] }); setEdNew(null); }}>{overseer ? "Add To Cart" : "Request"}</button>}
+                    onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...fieldsOf() }] }); setEdNew(null); }}>Add To Cart</button>}
             </div>
           </div>), true)}
       </div>);
@@ -12738,7 +12793,7 @@ export default function App() {
                 onClick={async () => { const ok = await settle(req, "accept", { edits: lgFields() }); if (ok) setEdNew(null); }}>{reqBusy === req?.id ? "Saving" : "Approve"}</button></span>
             : <span className="ux-ed-acts">
               <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready}
-                onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...lgFields() }] }); setEdNew(null); }}>{overseer ? "Add To Cart" : "Request"}</button></span>}
+                onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...lgFields() }] }); setEdNew(null); }}>Add To Cart</button></span>}
         </div>
       </div>), true, "lg");
     const mg = c && edLgNew(c.manager) ? c.manager : null, setMg = (p) => updC({ manager: { ...mg, ...p } });
@@ -13645,6 +13700,11 @@ export default function App() {
       {showOvr(v)}{r && r.d != null && <span className="ux-pl-drop"><UxArrow />{r.d}</span>}</span>); };
   const uxPlWarn = (ovr, own, place) => (uxOop(own, place)
     ? <span className="ux-pl-warn" data-oop={uxOopTag(own, [uxOopRow(ovr, own, place)])} role="img" aria-label="Out Of Position" title="">{UX_WARN}</span> : null);
+  // A man on a pitch (UxLineup) off his squad entry; `code` stands in for his place where the pitch shows something else
+  // there (a manager's Tactics: the role he deals him, its name on hover).
+  const uxMan = (p, skill, code, codeTitle) => { const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = p.ovr ?? skill;
+    return { first, last, label: nm, shot: nm, code: code || pos, codeTitle, clr: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)", oop: uxOop(p.own, pos),
+             rtg: uxPitchRtg(ovr, p.own, pos), warn: uxPlWarn(ovr, p.own, pos), traits: p.badges, onClick: () => playerByName.has(nm) && openPlayer(nm) }; };
 
   // The map's pins, one kind at a time.
   const uxAtlasPins = useMemo(() => atlasPins.filter(p => p.kind === uxAtlasKind), [atlasPins, uxAtlasKind]);
@@ -13853,20 +13913,7 @@ export default function App() {
         </div>
         <div className="ux-col">
           {uxPanel("Formation", <span className="ux-chip" style={mono}>{t.formation || "4-3-3"}</span>, (
-            <div className="ux-pitch-wrap"><div className="ux-pitch">
-              {UX_PITCH_LINES}
-              {xi.map((p, i) => {
-                const sp = slots[i]; if (!sp) return null;
-                const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = p.ovr ?? t.skill;
-                return (
-                  <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
-                    <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
-                    <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                    {uxPitchRtg(ovr, p.own, pos)}
-                    <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}{uxPlWarn(ovr, p.own, pos)}</span>
-                    {uxPlTraits(p.badges)}
-                  </div>); })}
-            </div></div>), true)}
+            <UxLineup slots={slots} men={xi.map(p => uxMan(p, t.skill))} />), true)}
         </div>
         <div className="ux-col">
           {uxPanel(isNT ? "Team" : "Club", null, (<>
@@ -17180,20 +17227,7 @@ export default function App() {
                 <span style={{ ...ovrBlock(ovr, true), ...mono }}>{showOvr(ovr)}</span>
               </div>); })}
         </div></div>) : (
-        <div className="ux-pitch-wrap"><div className="ux-pitch">
-          {UX_PITCH_LINES}
-          {xi.map((p, i) => {
-            const sp = slots[i]; if (!sp) return null;
-            const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = p.ovr ?? t.skill;
-            return (
-              <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
-                <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
-                <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                {uxPitchRtg(ovr, p.own, pos)}
-                <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}{uxPlWarn(ovr, p.own, pos)}</span>
-                {uxPlTraits(p.badges)}
-              </div>); })}
-        </div></div>), true, side + "-xi");
+        <UxLineup slots={slots} men={xi.map(p => uxMan(p, t.skill))} />), true, side + "-xi");
     };
     // ── Between them ──
     // ATT, MID and DEF are the eleven's by line and BENCH the bench's (uxLinesOf; user, 11 October 2026: "only keep ATT,
@@ -17458,20 +17492,7 @@ export default function App() {
                     onClick={() => side !== t && setUxMgSide({ id: m.id, k: k2 })}>{t.name}</button>))}
               </div>) : <span className="ux-chip" style={mono}>{side.formation || "4-3-3"}</span>, (
               <div className="ux-tac">
-                <div className="ux-pitch-wrap"><div className="ux-pitch">
-                  {UX_PITCH_LINES}
-                  {xi.map((p, i) => {
-                    const sp = slots[i]; if (!sp) return null;
-                    const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = p.ovr ?? side.skill, role = roleFor(p);
-                    return (
-                      <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
-                        <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
-                        <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                        {uxPitchRtg(ovr, p.own, pos)}
-                        <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}{uxPlWarn(ovr, p.own, pos)}</span>
-                        {uxPlTraits(p.badges)}
-                      </div>); })}
-                </div></div>
+                <UxLineup slots={slots} men={xi.map(p => { const role = roleFor(p); return { ...uxMan(p, side.skill, role && role[1], role ? role[0] : undefined), traits: null }; })} />
                 <div className="ux-pbody"><table className="ux-tbl">
                   <colgroup><col style={{ width: xi.some(p => uxOop(p.own, p.spos || p.pos)) ? 86 : 46 }} /><col /><col style={{ width: 112 }} /></colgroup>
                   <thead><tr><th>Pos</th><th>Role</th><th>Player</th></tr></thead>
