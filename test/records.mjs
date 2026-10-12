@@ -178,7 +178,8 @@ else if (cmd === "export") {
   // A man in another group's bench place is the editor's choice, marked in the app: counted here, refused nowhere.
   let odd = 0;
   for (const t of T) { if (NATIONAL.has(t.file)) continue;
-    t.squad.slice(11).forEach((v, i) => { const id = typeof v === "string" ? v : v?.id, r = id && byId.get(id);
+    // The five places a club bench always had; its six newer ones take their groups from the formation, which the app marks.
+    t.squad.slice(11, 16).forEach((v, i) => { const id = typeof v === "string" ? v : v?.id, r = id && byId.get(id);
       if (r && !fitsPlace(r.pos, CLUB_BENCH[i])) odd++; }); }
   if (odd) console.log(`${odd} club substitutes sit in another group's bench place (allowed; the Editor marks them)`);
   console.log(bad ? `${bad} problems between the sheets, the records and the leagues` : `every sheet written from the records is byte-identical to src/presets, all ${L.length} leagues have their clubs, and all ${P.length} players their positions`);

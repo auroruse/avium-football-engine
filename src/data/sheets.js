@@ -3,7 +3,7 @@
 // into each sheet's text, byte for byte what src/presets holds, so the app parses exactly what it always has
 // (App.tsx reads the records through it), and test/records.mjs writes and checks the sheets with the same code.
 
-// A squad column: #1..#16 on a club sheet, #1..#11 then SUB #1..SUB #11 on a national one.
+// A squad column: #1..#22 on a club sheet (#1..#16 before 12 October 2026), #1..#11 then SUB #1..SUB #11 on a national one.
 export const isSlot = (h) => /^(SUB\s*)?#\s*\d+$/i.test(h.trim());
 // Each sheet column, by its header, to the team field that holds it. Squad columns and MANAGER are links.
 export const FIELD = { "@": "at", "#": "code", "TEAM": "name", "NATION": "name", "OVR": "ovr", "PLAYSTYLE": "style",
@@ -13,7 +13,7 @@ export const FIELD = { "@": "at", "#": "code", "TEAM": "name", "NATION": "name",
 
 // A club sheet's columns, for a nation whose first league is made in the Editor and so has no sheet yet.
 export const CLUB_HEADER = ["@", "#", "TEAM", "OVR", "PLAYSTYLE", "FORMATION", "TIME WASTING", "GK PASSING", "DL BEHAVIOR", "MANAGER",
-  ...Array.from({ length: 16 }, (_, i) => "#" + (i + 1)), "HOME", "AWAY", "LOCATION", "STADIUM", "LEAGUE"].join("\t");
+  ...Array.from({ length: 22 }, (_, i) => "#" + (i + 1)), "HOME", "AWAY", "LOCATION", "STADIUM", "LEAGUE"].join("\t");
 
 // { players, managers, teams, sheets } -> { AVIUM: "<the sheet's text>", NCH: ..., ... }; a team on a file with no sheet
 // yet gets a club sheet of its own.

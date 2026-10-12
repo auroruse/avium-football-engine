@@ -32,7 +32,11 @@ export const idOf = (v) => v && typeof v === "object" && "id" in v ? v.id : v;
 const norm = (f, v) => f === "badges" ? badgeOrder(v) : f === "squad" ? (v || []).map(s => idOf(s) ?? null)
   : f === "manager" ? idOf(v) ?? null : f === "retired" || f === "removed" ? !!v : f === "pos" ? (Array.isArray(v) ? (v.length ? v : null) : posList(v).length ? posList(v) : null)
   : f === "born" || f === "cup" ? v || null : v;
-const same = (f, a, b) => JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null);
+// A squad kept at sixteen in a cart from before clubs had twenty-two places is the same squad with six open ones.
+const padTo = (x, n) => { const out = [...x]; while (out.length < n) out.push(null); return out; };
+const same = (f, a, b) => { if (f === "squad") { const x = norm(f, a), y = norm(f, b), n = Math.max(x.length, y.length);
+  return JSON.stringify(padTo(x, n)) === JSON.stringify(padTo(y, n)); }
+  return JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null); };
 
 // One player (or manager) record in the records' own key order; born, pos, badges and retired only when they say something.
 export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null),
@@ -74,7 +78,7 @@ export function applyDraft(rec, draft) {
     teams: [...rec.teams.filter(t => !ts[teamKey(t)]?.removed).map(t => {
       const p = ts[teamKey(t)];
       let n = p ? { ...t, ...Object.fromEntries(KINDS.teams.fields.filter(f => f in p).map(f => [f, p[f]])) } : t;
-      if (p && "squad" in p) n = { ...n, squad: keepCells(t.squad, n.squad) };
+      if (p && "squad" in p) n = { ...n, squad: keepCells(t.squad, padTo(n.squad || [], t.squad.length)) };
       if (p && "manager" in p) n = { ...n, manager: keepCells([t.manager], [n.manager])[0] };
       if (n.squad.some(v => fp(v) !== v)) n = { ...n, squad: n.squad.map(fp) };
       if (fm(n.manager) !== n.manager) n = { ...n, manager: fm(n.manager) };

@@ -46,12 +46,22 @@ export const ownFor = (own, place) => { const l = posList(own); if (!l.length) r
   return l.includes(place) ? place : l.reduce((b, p) => (posFitCost(p, place) < posFitCost(b, place) ? p : b), l[0]); };
 
 // A squad's places: the formation's eleven (sposFor, from the engine's formations), then the bench, each bench place a
-// broad group. A club's five are a keeper, a defender, two midfielders and a forward; a national side's eleven take its
-// starters' groups, slot for slot.
+// broad group. A national side's eleven take its starters' groups, slot for slot. A club's bench is eleven too (Moukden
+// and Kirin, 12 October 2026: "clubs will also be given 11-man benches, similarly to national teams"): the five it always
+// had come first and in their old order (a keeper, a defender, two midfielders and a forward), so nobody already on a
+// bench moves; the other six are the groups of the eleven those five leave uncovered, in the eleven's order, so the
+// whole bench answers the starters as a national one does. A squad of sixteen (a club made before then) has the five.
+// club: the squad is a club's (a national side's eleven-man bench mirrors its starters instead).
 export const CLUB_BENCH = ["GK", "DEF", "MID", "MID", "FWD"];
-export const slotLabels = (sposFor, formation, n) => {
-  const xi = sposFor(String(formation || "4-3-3").trim());
-  return [...xi, ...(n > 16 ? xi.map(p => POS_GROUP[p] || "MID") : CLUB_BENCH)].slice(0, n);
+export const clubBenchRest = (groups) => {
+  const left = [...CLUB_BENCH], rest = [];
+  for (const g of groups) { const i = left.indexOf(g); if (i >= 0) left.splice(i, 1); else rest.push(g); }
+  while (rest.length < 6) rest.push("MID");
+  return rest.slice(0, 6);
+};
+export const slotLabels = (sposFor, formation, n, club = false) => {
+  const xi = sposFor(String(formation || "4-3-3").trim()), groups = xi.map(p => POS_GROUP[p] || "MID");
+  return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? [...CLUB_BENCH, ...clubBenchRest(groups)] : groups)].slice(0, n);
 };
 
 // WHAT A MAN IS WORTH OUT OF POSITION, as a rating: about what the skills of his own position cost him in the place he
