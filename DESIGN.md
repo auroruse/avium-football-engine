@@ -462,10 +462,14 @@ take or first on Free Agents. A manager is made the same way, from **New Manager
 style; made for a side he takes it over when let in. **+ New Club** at the foot of each league band adds a row filled in
 place: name, code, kits, city, ground, capacity, formation, manager and its sixteen places. **New League** at the foot of
 the tab adds a band for the league's name, tier and cup (picked from the nation's cups or named new), with its founding
-clubs as new rows. A club row's menu opens from its row number (a click, or the right button). **Roll Ratings**, in a
-new club's menu beside Remove, is a tool and never a field: given a team rating it rates
+clubs as new rows. A club row's menu opens from its row number (a click, or the right button). **Roll Ratings**, in the
+menu of any side with new men (a new club's, or the new men in the cart placed in one of the person's sides; the user, 12
+October 2026: "I can then use the OVR randomizer? Also add an age randomizer with an age range"), is a tool and never a
+field: given a team rating it rates
 every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of 2.3 and
-each bench man below the starter at his position, keeping typed ratings (`src/data/roll.js`). For an editor each new man,
+each bench man below the starter at his position, keeping typed ratings (`src/data/roll.js`). **Roll Ages** beside it
+draws a date of birth for an age in a range (18 to 32 to start) for every new man there, keeping a date set by hand on
+his form (`bornSet`); every new man starts with a date for an age from 18 to 32 and a rating blank unless given. For an editor each new man,
 each new club with all it holds and each new league with its band is one request to the overseer, who may change any of
 it before letting it in. A rating may be left blank for the overseer to set; a new man of another nation needs a rating
 below that nation's level, its national side's rating as the app shows it (`natLevel`), and no traits come below 75. A

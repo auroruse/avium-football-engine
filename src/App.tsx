@@ -13570,11 +13570,12 @@ export default function App() {
   const shOpenEdit = (kind, src, obj) => {
     const o = obj || (src.cart ? shNewItem(src.cart) : src.clubMgr ? shClubOf(src.clubMgr)?.c.manager : shClubOf(src.club)?.c.squad?.[src.i]); if (!o) return;
     const ps = posList(o.pos);
-    setShFormEdit({ kind, src, f: { kind, name: o.name || "", nat: o.nat || "", born: o.born || "", pos: ps[0] || "", pos2: ps[1] || "", ovr: o.ovr ?? "", badges: o.badges || [],
+    setShFormEdit({ kind, src, f: { kind, name: o.name || "", nat: o.nat || "", born: o.born || "", bornSet: !!o.bornSet, pos: ps[0] || "", pos2: ps[1] || "", ovr: o.ovr ?? "", badges: o.badges || [],
       style: o.style || "balanced", side: src.cart ? o.side || null : src.clubMgr || src.club, at: src.cart ? o.at ?? null : src.i ?? null } });
     shDropPristine(); setShFormOpen(null); setShDock("rec"); };
   const shFormObj = (kind, f) => (kind === "players"
-    ? { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, pos: posList([f.pos, f.pos2].filter(Boolean)), ovr: shNum(f.ovr), badges: f.badges?.length ? badgeOrder(f.badges) : [] }
+    ? { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, pos: posList([f.pos, f.pos2].filter(Boolean)), ovr: shNum(f.ovr), badges: f.badges?.length ? badgeOrder(f.badges) : [],
+        ...(f.bornSet ? { bornSet: true } : null) }
     : { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, style: f.style || "balanced", ovr: shNum(f.ovr) });
   // Ready to go in: a name, nationality and date of birth; a position, or a style; a rating the person may leave blank
   // (the overseer's own go live, so his are rated, but a new club's men can wait for Roll Ratings); another nation's man
@@ -13865,7 +13866,7 @@ export default function App() {
                 <td colSpan={cols.length} className="ux-sh-bandtd"><div className="ux-sh-bandin"><span className="ux-sh-bcrest" /><span className="ux-sh-btext"><button type="button" className="ux-btnreset ux-sh-add" onClick={() => shAddClub(natCode, row.addClub)}>
                   {uxIcon("plus", "ux-xs")}New Club</button></span></div></td></tr>);
             const t = row.t, k = row.k, mine = shCan(k), n = ++rowN.n, sq = edSq(t), lab = edLab(t), newAt = shNewAt(k), cat = row.fresh ? null : teamOfKey(k);
-            const nat = !row.fresh && isNational(t), placesN = sq.length, menuOn = row.fresh || (overseer && !nat);
+            const nat = !row.fresh && isNational(t), placesN = sq.length, menuOn = row.fresh || (overseer && !nat) || (mine && newAt.size > 0);
             shFlat.current.push({ k, cols: cols.filter(c2 => c2.place == null || c2.place < placesN) }); shRowNo.current.set(k, n);
             return (
               <tr key={k} className={(mine ? "" : "ux-sh-ro") + (shSel?.k === k ? " ux-sh-rowsel" : "") + (row.fresh ? " ux-sh-fresh" : "")}>
@@ -14130,12 +14131,12 @@ export default function App() {
             {row("Name", <input className="ux-sh-fi ux-sh-flat" autoFocus={mode === "new"} placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
             {row("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || !isMg)} placeholder="Search Nations" cls="ux-sh-spk" onPick={it => upd({ nat: it.k })} />)}
             {row("Born", <span className="ux-sh-born">
-              <input className={"ux-sh-fi ux-sh-flat" + (f.born ? "" : " ux-need")} type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "" })} />
+              <input className={"ux-sh-fi ux-sh-flat" + (f.born ? "" : " ux-need")} type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "", bornSet: true })} />
               <input className="ux-sh-fi ux-sh-flat ux-sh-fage" style={mono} placeholder="Age" aria-label="Age" title="Draws A Date Of Birth For This Age" key={"age" + (f.born || "")} defaultValue={age ?? ""}
-                onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= (isMg ? 90 : 60) && y !== age) upd({ born: edBornFor(y) }); }}
+                onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= (isMg ? 90 : 60) && y !== age) upd({ born: edBornFor(y), bornSet: true }); }}
                 onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
               <button type="button" className="ux-btnreset ux-sh-dice" aria-label="Another Date For This Age" title="Another Date For This Age" disabled={!f.born}
-                onClick={() => upd({ born: edBornFor(ageOf(f.born)) })}>{uxIcon("dice", "ux-s")}</button></span>)}
+                onClick={() => upd({ born: edBornFor(ageOf(f.born)), bornSet: true })}>{uxIcon("dice", "ux-s")}</button></span>)}
             {isMg ? row("Style", <select className="ux-sh-fi ux-sh-flat" aria-label="Style" value={f.style || "balanced"} onChange={e => upd({ style: e.target.value })}>
                 {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>)
               : <>{row("Position", posSel("Position", f.pos, (v) => upd({ pos: v, ...(f.pos2 === v ? { pos2: "" } : null) }), "Choose"))}
@@ -14257,33 +14258,61 @@ export default function App() {
       || held.some(id => edLockedMen.has("p:" + id) || edLockedMen.has("m:" + id))) return shSay("Waiting On A Request");
     const d = draftWith(draft, recBase, k, { removed: true }, "teams");
     shPut({ ...d, new: (d.new || []).filter(n => n.side !== k) }); if (shSel?.k === k) setShSel(null); };
+  // ROLLS on a side's new men, from its row menu: a new club's own, or the new men in the cart placed in one of this
+  // person's sides (a list's among them), each by his place (user, 12 October 2026: "I can then use the OVR randomizer?
+  // Also add an age randomizer with an age range"). Written back where each came from.
+  const shRollSquad = (k) => { const x = shClubOf(k);
+    if (x) { const sq = x.c.squad || Array(16).fill(null); return { sq, lab: slotLabels(String(x.c.formation || "4-3-3"), sq.length) }; }
+    const T = edTeamRec(k); if (!T) return null; const at = shNewAt(k);
+    return { sq: edSq(T).map((id, i) => id || at.get(i) || null), lab: edLab(T) }; };
+  const shRollWrite = (k, out) => { const isN = (v) => !!v && typeof v === "object";
+    if (shClubOf(k)) { shSetClub(k, { squad: out }); return; }
+    const one = new Map(), lists = new Map(), keep = (v) => ({ ovr: v.ovr, born: v.born, auto: !!v.auto });
+    for (const v of out) if (isN(v)) { if (v.batch) { const j = +String(v.id).slice(String(v.id).lastIndexOf(":") + 1); lists.set(v.batch, (lists.get(v.batch) || new Map()).set(j, v)); } else one.set(v.id, v); }
+    shPut({ ...draft, new: shNew.map(n => (one.has(n.id) ? { ...n, ...keep(one.get(n.id)) }
+      : lists.has(n.id) ? { ...n, men: (n.men || []).map((m, j) => (lists.get(n.id).has(j) ? { ...m, ...keep(lists.get(n.id).get(j)) } : m)) } : n)) }); };
   const shRowMenuPanel = () => {
     const mm = shRowMenu, k = mm.k, fresh = k.startsWith("new:"), x = fresh ? shClubOf(k) : null, T = fresh ? null : edTeamRec(k);
     if (fresh ? !x : !T) return null;
-    const name = fresh ? (x.c.name || "").trim() || "New Club" : T.name.trim(), close = () => setShRowMenu(null);
-    let roll = null;
-    if (fresh && mm.roll) {
-      const sq = x.c.squad || Array(16).fill(null), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length), isN = (v) => !!v && typeof v === "object";
-      const rs = sq.map(v => (!v ? null : isN(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(v => v != null), now = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
-      const rolls = sq.filter(v => isN(v) && (!(+v.ovr > 0) || v.auto)).length, typed = sq.filter(v => isN(v) && +v.ovr > 0 && !v.auto).length, goal = parseFloat(mm.target);
-      roll = (<div className="ux-sh-roll">
+    const name = fresh ? (x.c.name || "").trim() || "New Club" : T.name.trim(), close = () => setShRowMenu(null), isN = (v) => !!v && typeof v === "object";
+    const R = shRollSquad(k), men = R ? R.sq.filter(isN) : [], rolls = shCan(k) && (fresh || men.length > 0);
+    let panel = null;
+    if (rolls && mm.roll === "ovr") {
+      const rs = R.sq.map(v => (!v ? null : isN(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(v => v != null), now = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+      const free = men.filter(v => !(+v.ovr > 0) || v.auto).length, typed = men.length - free, goal = parseFloat(mm.target);
+      panel = (<div className="ux-sh-roll">
         <label className="ux-ed-rollrow"><span>Team Rating</span><input className="ux-ed-in ux-ed-age" type="number" min={25} max={99} autoFocus placeholder="–" style={mono}
           value={mm.target || ""} onChange={e => setShRowMenu(m => ({ ...m, target: e.target.value }))} /></label>
         <div className="ux-ed-rollrow"><span>Now</span><b style={mono}>{now != null ? now.toFixed(1) : "–"}</b></div>
-        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{rolls}</span>, Keeps <span style={mono}>{typed}</span> Typed</span>
-          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(goal >= 25 && goal <= 99) || !rolls} onClick={() => {
-            const out = rollSquad(sq, lab, goal, (id) => recNow(id)?.ovr, Math.random, (v) => { const lim = edCapOf(v.nat); return lim == null ? 99 : lim - 1; });
-            shSetClub(k, { squad: out.map(v => (isN(v) ? { ...v, ovr: +v.ovr > 0 ? Math.round(+v.ovr) : null } : v)) }); close(); }}>{uxIcon("dice", "ux-s")}Roll</button></div>
+        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{free}</span>, Keeps <span style={mono}>{typed}</span> Typed</span>
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(goal >= 25 && goal <= 99) || !free} onClick={() => {
+            const out = rollSquad(R.sq, R.lab, goal, (id) => recNow(id)?.ovr, Math.random, (v) => { const lim = edCapOf(v.nat); return lim == null ? 99 : lim - 1; });
+            shRollWrite(k, out.map(v => (isN(v) ? { ...v, ovr: shNum(v.ovr) } : v))); close(); }}>{uxIcon("dice", "ux-s")}Roll</button></div>
+      </div>); }
+    if (rolls && mm.roll === "age") {
+      const lo = Math.round(+mm.lo), hi = Math.round(+mm.hi), ok = lo >= 14 && hi <= 60 && lo <= hi;
+      const free = men.filter(v => !v.bornSet).length, ages = men.map(v => ageOf(v.born)).filter(a => a != null);
+      panel = (<div className="ux-sh-roll">
+        <div className="ux-ed-rollrow"><span>Ages</span><span className="ux-sh-agerange">
+          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} autoFocus aria-label="Youngest" style={mono} value={mm.lo ?? ""} onChange={e => setShRowMenu(m => ({ ...m, lo: e.target.value }))} />
+          <span>To</span>
+          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" style={mono} value={mm.hi ?? ""} onChange={e => setShRowMenu(m => ({ ...m, hi: e.target.value }))} /></span></div>
+        <div className="ux-ed-rollrow"><span>Now</span><b style={mono}>{ages.length ? `${Math.min(...ages)} To ${Math.max(...ages)}` : "–"}</b></div>
+        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{free}</span>, Keeps <span style={mono}>{men.length - free}</span> Set By Hand</span>
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ok || !free} onClick={() => {
+            shRollWrite(k, R.sq.map(v => (isN(v) && !v.bornSet ? { ...v, born: edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1))) } : v))); close(); }}>{uxIcon("dice", "ux-s")}Roll</button></div>
       </div>); }
     return (<>
       <div className="ux-scrim ux-sh-rowscrim" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
       <div className="ux-menu ux-sh-rowmenu" role="menu" aria-label={name} style={{ left: mm.x, top: mm.y }} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
         <div className="ux-menu-head"><b><SlideName text={name} /></b>{fresh ? ((x.c.name || "").trim() ? "New Club" : null) : T.group || null}</div>
-        {roll || (fresh ? <>
-          <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: true, target: m.target || "" }))}>{uxIcon("dice", "ux-s")}Roll Ratings</button>
-          <button type="button" role="menuitem" className="ux-btnreset ux-menu-item ux-sh-mdanger" onClick={() => { shDropClub(k); close(); }}>{uxIcon("trash", "ux-s")}Remove</button></>
-          : <button type="button" role="menuitem" className={"ux-btnreset ux-menu-item ux-sh-mdanger" + (mm.arm ? " ux-on" : "")}
-              onClick={() => { if (mm.arm) { shRemoveClub(k); close(); } else setShRowMenu(m => ({ ...m, arm: true })); }}>{uxIcon("trash", "ux-s")}{mm.arm ? "Confirm Remove" : "Remove Club"}</button>)}
+        {panel || <>
+          {rolls && <>
+            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "ovr", target: m.target || "" }))}>{uxIcon("dice", "ux-s")}Roll Ratings</button>
+            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "age", lo: m.lo ?? "18", hi: m.hi ?? "32" }))}>{uxIcon("dice", "ux-s")}Roll Ages</button></>}
+          {fresh && <button type="button" role="menuitem" className="ux-btnreset ux-menu-item ux-sh-mdanger" onClick={() => { shDropClub(k); close(); }}>{uxIcon("trash", "ux-s")}Remove</button>}
+          {!fresh && overseer && !isNational(T) && <button type="button" role="menuitem" className={"ux-btnreset ux-menu-item ux-sh-mdanger" + (mm.arm ? " ux-on" : "")}
+              onClick={() => { if (mm.arm) { shRemoveClub(k); close(); } else setShRowMenu(m => ({ ...m, arm: true })); }}>{uxIcon("trash", "ux-s")}{mm.arm ? "Confirm Remove" : "Remove Club"}</button>}</>}
       </div></>);
   };
   const renderEdSheet = () => {
