@@ -2153,6 +2153,8 @@ export function meTick(s, rng, out) {
   };
   // Crossing your own goal line is the same event whether you dribbled it there or shot it.
   const endOfPlay = () => {
+      if (globalThis.__prov) { globalThis.__prov._pk0 = mp.passPending ? (mp.passPending.k || "set") + (mp.passPending.side === meOther(cross.conceding) ? "" : "/D") : "";
+                               globalThis.__prov._car0 = mp.idx >= 0 ? 1 : 0; }
       resolvePending(null);
       const sh = mp.shot; mp.shot = null;
       const scorer = meOther(cross.conceding);
@@ -2178,7 +2180,8 @@ export function meTick(s, rng, out) {
           }
         }
         if (sh) out.onTarget[sh.side]++;
-        if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
+        if (sh && sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "goal";
+        if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.fk ? "freekick" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
         if (sh && globalThis.__svd) globalThis.__svd.push([sh.d, 0]);
         else if (mp.lastSide === scorer) { out.shots[scorer]++; out.onTarget[scorer]++; }
         // Parried in. The shot was counted when he struck it, so it only needs the on-target credit
@@ -2242,8 +2245,15 @@ export function meTick(s, rng, out) {
           // only one who has actually scored an own goal.
           const lastT = lg.length ? lg[lg.length - 1] : null;
           const atkNear = !!lastT && lg.some(e => e.s === scorer && lastT.t - e.t <= CFG.ogWin && e.t <= lastT.t);
-          const ownGoal = !!lastT && lastT.s === cross.conceding && !atkNear
-            && !(mp.deflect && mp.deflect.side === scorer && mp.tick - mp.deflect.t < CFG.deflectWin);
+          const defl = !!mp.deflect && mp.deflect.side === scorer && mp.tick - mp.deflect.t < CFG.deflectWin;
+          // THE REAL GAME'S RULE (CFG.ogReal). A shot that goes in off a defender is the shooter's if it was on target and
+          // an own goal if it was going wide; a cross, a pass or a loose ball a defender turns into his own net is his own
+          // goal however recently an attacker played it; a keeper's parry of a shot leaves it the shooter's. The old rule
+          // called anything an attacker had touched in the last ogWin slices the attacker's goal, so a cross deflected in
+          // went to the man who crossed it, and own goals came to 0.4% of all goals against a real 3-4%.
+          const ownGoal = CFG.ogReal
+            ? !!lastT && lastT.s === cross.conceding && (defl ? !!mp.deflect.blk && !mp.deflect.on : true)
+            : !!lastT && lastT.s === cross.conceding && !atkNear && !defl;
           if (ownGoal) gi = -1;
           else if (gi < 0) for (let k = lg.length - 1; k >= 0; k--)
             if (lg[k].s === scorer) { gi = lg[k].i; gt = lg[k].t; break; }
@@ -2298,7 +2308,9 @@ export function meTick(s, rng, out) {
           // the shot; a goal with no live shot reads it at the crossing instead. Gated on a global
           // the app never sets, so a watched match pays one truthiness test per goal.
           if (globalThis.__prov) globalThis.__prov.push({
-            side: scorer, par: globalThis.__prov._parried || 0,
+            side: scorer, par: globalThis.__prov._parried || 0, pos: gp ? gp.pos : null, nm: gp ? gp.fullName || gp.name : null,
+            r: sh && sh._r != null ? sh._r : -1, hdr: sh && sh.hdr ? 1 : 0, pk0: globalThis.__prov._pk0 || "", car0: globalThis.__prov._car0 || 0,
+            spK: mp._spLast && mp._spLast.side === scorer ? mp._spLast.k : "", spT: mp._spLast ? mp.tick - mp._spLast.t : 1e9,
             og: ownGoal ? 1 : 0, pen: sh && sh.pen ? 1 : 0,
             dead: sh && !sh.p ? 1 : 0, noShot: sh ? 0 : 1,
             lt: sh ? (sh.lt ?? 1e9) : mp.tick - (mp._loose ?? -1e9),
@@ -2393,6 +2405,7 @@ export function meTick(s, rng, out) {
       if (cross.kind === "woodwork") {
         // Off the frame and back into play: a live ball, not a stoppage.
         out.woodwork = (out.woodwork || 0) + 1; meBump(out, "woodworkSide", scorer);
+        if (sh && sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "post";
         mePenRes(out, sh);
         meEvt(out, sh && sh.pen ? "penmiss" : "block", scorer, mp.bx, mp.by, mp.bx, mp.by,
               sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
@@ -2403,6 +2416,7 @@ export function meTick(s, rng, out) {
         return;
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
+                if (sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "wide";
                 if (sh.p) meRate(sh.p, -CFG.rateShotOff);
                 mePenRes(out, sh);
                 meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
@@ -2679,6 +2693,7 @@ export function meTick(s, rng, out) {
             if (q.yc >= 2) meRed(s, out, bs, q, "second", mp.bx, mp.by); else meBook(out, bs, q);
           }
           if (!hbGoal) meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.fullName || q.name}`);
+          if (globalThis.__penWhy) globalThis.__penWhy.push({ side: meOther(bs), why: "hand" });
           meDead(s, "penalty", meOther(bs), 470, out);
           return true;
         }
@@ -2716,6 +2731,11 @@ export function meTick(s, rng, out) {
         // a crowd, which is most of the box at a corner -- exactly the low-reaction moments where
         // heading it is the point.
         const duel = !isGK && meOppDist(s, bs, q.x, q.y) < CFG.headDuelR;
+        // ...AND A BALL INTO THE BOX IS HEADED AT GOAL. In heading range of the goal he is attacking, a cross or a set
+        // piece delivered by his own side is met with his head while it is at his head: that is the chance, and letting it
+        // drop to control it is how it is taken off him.
+        const boxHead = !isGK && !!mp.passPending && mp.passPending.side === bs && !!CFG.boxBallK[mp.passPending.k]
+          && Math.hypot(meGoalX(bs) - q.x, ME_HALF_W - q.y) < CFG.headShotR;
         // Behaviour audit (test/behav.mjs): every gate that is supposed to bite reports whether
         // it ever did. A zero here is the bug -- headHoldZ sat at 0 for weeks and this veto never
         // fired once. Gated on a global the app never sets.
@@ -2724,7 +2744,7 @@ export function meTick(s, rng, out) {
           if (!(zNext > CFG.headHoldZ || duel)) globalThis.__fire.headWait = (globalThis.__fire.headWait || 0) + 1;
           else if (duel && !(zNext > CFG.headHoldZ)) globalThis.__fire.headDuel = (globalThis.__fire.headDuel || 0) + 1;
         }
-        if (!isGK && zHit > headZ && (zNext > CFG.headHoldZ || duel)) {
+        if (!isGK && zHit > headZ && (zNext > CFG.headHoldZ || duel || boxHead)) {
           // THE DUEL. A ball delivered to him in a crowd is jumped for. Whoever reached it first along the flight
           // used to have it outright, so a marker a stride behind his man never challenged and crosses into a
           // packed box found their man 35% of the time against a real 20%. With an opponent inside airR he wins
@@ -2769,6 +2789,7 @@ export function meTick(s, rng, out) {
             globalThis.__hdr.push({ k: pp0 ? (pp0.k || "set") : mp.shot ? "shot" : mp.flight && mp.fj < 0 ? (mp._looseWhy || "clear") : "loose",
                                     mine: pp0 ? (pp0.side === bs ? 1 : 0) : -1, rcv: pp0 && pp0.side === bs && pp0.fj === bi ? 1 : 0,
                                     z: +zHit.toFixed(2), duel: duel ? 1 : 0 }); }
+          const _hFrom = globalThis.__shots ? (mp.passPending ? (mp.passPending.side === bs ? mp.passPending.k || "set" : "theirs") : mp._looseWhy || "loose") : null;
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
           q.aerials = (q.aerials || 0) + 1; meRate(q, CFG.rateAerial);
           mp.idx = -1; mp.flight = true; mp.fside = bs; mp.fj = -1; mp.passPending = null;
@@ -2820,11 +2841,21 @@ export function meTick(s, rng, out) {
               const hs = meAttrs(q).air / 99;
               const hw = CFG.headNoise * (1 - CFG.headNoiseSkill * hs) * (1 + (duel ? CFG.headNoiseDuel : 0))
                        * (1 + Math.min(1, inV / 20) * CFG.headNoisePace) * Math.PI / 180;
-              const ha = Math.atan2(aimY - q.y, gxA - q.x) + (rng.u() + rng.u() - 1) * hw;
+              // ...AND IT MISSES THE WAY A HEADER MISSES: now and then badly. A triangle on [-hw, hw] has no tail, so 90% of
+              // headers at goal hit the frame (real: about two in five of all of them, a third of the misses over the bar)
+              // and the keeper, with the whole slow flight to get across, saved seven in eight of them. With headSigma set
+              // the error is a gaussian of that scale, as a struck shot's is (meShootBall), clamped at three of it.
+              const gz = () => { const u = Math.max(1e-9, rng.u()); return Math.max(-3, Math.min(3, Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng.u()))); };
+              const ha = Math.atan2(aimY - q.y, gxA - q.x) + (CFG.headSigma ? gz() * CFG.headSigma : rng.u() + rng.u() - 1) * hw;
               const hd = Math.hypot(gxA - q.x, aimY - q.y);
               meKnock(mp, rng, q.x + Math.cos(ha) * hd, q.y + Math.sin(ha) * hd, CFG.headV * power,
-                      0.35 + (rng.u() - 0.5) * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)));
+                      CFG.headSigma ? CFG.headVz0 + gz() * CFG.headSigma * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)) * 0.5
+                                    : 0.35 + (rng.u() - 0.5) * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)));
             }
+            mp.shot.fr0 = meOnFrame(mp, gxA);
+            if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
+              R.i = bi; R.nm = q.fullName || q.name; R.pos = q.pos; R.y = +(q.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0; R.from = _hFrom;
+              R.duel = duel ? 1 : 0; }
             mePlanSave(s, mp.shot);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
@@ -2923,6 +2954,7 @@ export function meTick(s, rng, out) {
           const shp = mp.shot;
           if (shp && globalThis.__svd) globalThis.__svd.push([shp.d, 1]);
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
+            if (shp._r != null && globalThis.__shots) globalThis.__shots[shp._r].out = "parry";
             meRate(q, meSaveBonus(shp.xgN ?? shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0));
             if (shp.p) meRate(shp.p, CFG.rateShotOn);
             mePenRes(out, shp, null, q);
@@ -3025,6 +3057,7 @@ export function meTick(s, rng, out) {
         }
         if (isGK && mp.shot) {                       // gathered cleanly
           if (globalThis.__svd) globalThis.__svd.push([mp.shot.d, 1]);
+          if (mp.shot._r != null && globalThis.__shots) globalThis.__shots[mp.shot._r].out = "catch";
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meRate(q, meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePenSave : 0));
           if (mp.shot.p) meRate(mp.shot.p, CFG.rateShotOn);
@@ -3058,13 +3091,14 @@ export function meTick(s, rng, out) {
           // below clears mp.shot -- so the question has to be asked here, before the answer is gone.
           const wasBlock = !!(mp.shot && bs !== mp.shot.side);
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
+            if (mp.shot._r != null && globalThis.__shots) globalThis.__shots[mp.shot._r].out = "block";
             meBump(out, "blockedSide", bs);
             meRate(q, meDefPay(s, meSideOfP(s, q), q.x, q.y, CFG.rateBlock));
             meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
             // man who hit it, not the defence putting it through their own net. Only a ball that
             // comes off the defending side twice is an own goal.
-            mp.deflect = { side: mp.shot.side, t: mp.tick,
+            mp.deflect = { side: mp.shot.side, t: mp.tick, blk: 1, on: mp.shot.fr0 !== 0,
               n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
             mePenRes(out, mp.shot); mp.shot = null; }
           // A block ends the move: a goal off the rebound is nobody's assist. A deflection of a pass
@@ -3074,6 +3108,26 @@ export function meTick(s, rng, out) {
           // Biased off the goalward line -- see CFG.deflectAway.
           const ownX = meGoalX(meOther(bs));
           const gwd = Math.sign(ownX - mp.bx) || 1;
+          // IN HIS OWN AREA, A BALL COMING AT HIS GOAL COMES OFF HIM THE WAY BALLS COME OFF PEOPLE (CFG.deflectPhys;
+          // 12 October 2026). The squirt below sends it anywhere at a third of its pace, biased away from his goal, which
+          // is right for a pass trodden on in midfield and wrong for a shot or a cross he gets a shin to by his own
+          // posts: there it comes off him -- square on, back out at bodyE of its pace; glancing, on its way past him with
+          // most of it, a few degrees off line. That is what a deflected goal and most own goals are, and with the squirt
+          // a defender was the last man to touch 0.5% of all goals against a real 8-9%.
+          const inOwnBox = Math.abs(mp.bx - ownX) < CFG.gkBoxR && Math.abs(mp.by - ME_HALF_W) < CFG.boxHalfW;
+          if (CFG.deflectPhys && inOwnBox && mp.bvx * gwd > 4 && !isGK) {
+            let nx = mp.bx - c.qx, ny = mp.by - c.qy;
+            const nl = Math.hypot(nx, ny);
+            if (nl < 1e-3) { nx = -mp.bvx / v2d; ny = -mp.bvy / v2d; } else { nx /= nl; ny /= nl; }
+            const vn = mp.bvx * nx + mp.bvy * ny;
+            const tx0 = mp.bvx - vn * nx, ty0 = mp.bvy - vn * ny;
+            const outN = vn < 0 ? -CFG.bodyE * vn : vn;
+            let rx = tx0 * CFG.deflectTan + nx * outN, ry = ty0 * CFG.deflectTan + ny * outN;
+            const jit = (rng.u() - 0.5) * 2 * CFG.deflectJit * Math.PI / 180, cj = Math.cos(jit), sj = Math.sin(jit);
+            const rx2 = rx * cj - ry * sj, ry2 = rx * sj + ry * cj, sp2 = Math.hypot(rx2, ry2) || 0.1;
+            meKnock(mp, rng, mp.bx + rx2 / sp2 * 8, mp.by + ry2 / sp2 * 8, sp2, Math.abs(mp.bvz) * 0.3 + rng.u() * CFG.deflectVz);
+            return;
+          }
           const away = mp.bvx * gwd > 4 ? -gwd * CFG.deflectAway : 0;
           meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * 8 + away, mp.by + (rng.u() - 0.5) * 8,
                   v2d * CFG.deflectKeep, 0);
@@ -3091,9 +3145,10 @@ export function meTick(s, rng, out) {
         const wasBlockSlow = !!(mp.shot && bs !== mp.shot.side);
         if (mp.shot && bs !== mp.shot.side) {
           out.blocked = (out.blocked || 0) + 1; meBump(out, "blockedSide", bs);
+          if (mp.shot._r != null && globalThis.__shots) globalThis.__shots[mp.shot._r].out = "block";
           meRate(q, meDefPay(s, meSideOfP(s, q), q.x, q.y, CFG.rateBlock));
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
-          mp.deflect = { side: mp.shot.side, t: mp.tick,
+          mp.deflect = { side: mp.shot.side, t: mp.tick, blk: 1, on: mp.shot.fr0 !== 0,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
           mePenRes(out, mp.shot); mp.shot = null;
         }
@@ -3323,7 +3378,14 @@ export function meTick(s, rng, out) {
         // toward the passer, under a ball still above his reach, which bounced behind him. With nobody to beat to it,
         // the man it was played to goes to where it has dropped to recvAirZ and takes it there; with somebody who
         // would get to it first, he goes up for it where he can reach it, as before.
-        if (rcv && airPred && q.pos !== "GK") {
+        // ...EXCEPT A BALL INTO THE BOX (user, 12 October 2026: headers a fifth of a real league's). A cross, a corner, a
+        // long throw or a free kick swung into the area is attacked in the air, where it can be headed at goal: a man who
+        // lets it drop to his waist there has given the centre-half and the keeper the time to take it off him. Waited
+        // for, four shots in five that came from a cross were struck with the foot (3.4 a match against 0.9 headed),
+        // where real football heads most of them.
+        const boxBall = rcv && airPred && q.pos !== "GK" && mp.passPending && CFG.boxBallK[mp.passPending.k]
+          && Math.abs(ic.x - meGoalX(sd)) < CFG.gkBoxR && Math.abs(ic.y - ME_HALF_W) < CFG.boxHalfW;
+        if (rcv && airPred && q.pos !== "GK" && !boxBall) {
           const lo = meIntercept(q, mp, vmax, undefined, lagM, seenMs, CFG.recvAirZ);
           if (lo.ok && mp.ttbBest[meOther(sd)] > lo.ms + CFG.recvAirMs) ic = lo;
         }
@@ -3571,6 +3633,13 @@ export function meTick(s, rng, out) {
   const forced = mp.hold >= (gkFeet ? Math.min(natural, CFG.gkFeetT) : natural);
   let act = s.brain === 2 ? mindChoose(s, side, mp.idx, mp.hold - natBase + 1, gkFeet)
                            : meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1, gkFeet);
+  // Harness-only: what a man on the ball in shooting range weighed up (globalThis.__dec).
+  if (globalThis.__dec) { const gx0 = meGoalX(side), d0 = Math.hypot(gx0 - p.x, ME_HALF_W - p.y);
+    if (d0 < 35 && Math.abs(p.y - ME_HALF_W) < 22) { const al = act.alts || [], sh0 = al.find(o => o.k === "shot"),
+        pa0 = al.find(o => o.k === "pass"), ca0 = al.find(o => o.k === "carry");
+      globalThis.__dec.push([+d0.toFixed(1), +(p.y - ME_HALF_W).toFixed(1), act.k, +(act.sc ?? 0).toFixed(4), sh0 ? +sh0.sc.toFixed(4) : null,
+        sh0 ? +sh0.p.toFixed(4) : null, pa0 ? +pa0.sc.toFixed(4) : null, ca0 ? +ca0.sc.toFixed(4) : null, forced ? 1 : 0, p.pos, +press.toFixed(2), mp.hold - natBase + 1,
+        pa0 ? +Math.hypot(meGoalX(side) - pa0.ax, ME_HALF_W - pa0.ay).toFixed(1) : null, mp.tick, side, mp.idx, +(act.p ?? 0).toFixed(3)]); } }
   if (act.k === "carry") {
     // ...but not FOREVER. The dwell tax shrinks a camped carry toward zero, and zero still wins
     // against a menu of all-negative passes, so this return was a bypass around the forced
@@ -3643,7 +3712,7 @@ export function meFoulCommit(s, rng, out, side, p, q, closeV, inArea0, lean) {
   meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
   // Giving a penalty away is its own thing, separate from whatever card came with it, and the
   // man who drew it gets the credit for it.
-  if (inArea0) { meRate(q, -CFG.ratePenGave); meRate(p, CFG.ratePenWon); }
+  if (inArea0) { meRate(q, -CFG.ratePenGave); meRate(p, CFG.ratePenWon); if (globalThis.__penWhy) globalThis.__penWhy.push({ side, why: "foul" }); }
   if (card === "yellow") {
     q.yc = (q.yc || 0) + 1;
     (out.yellows = out.yellows || { home: 0, away: 0 })[fSide]++;
@@ -3703,6 +3772,20 @@ export function meFoulCommit(s, rng, out, side, p, q, closeV, inArea0, lean) {
 // decision has already charged against his skill and the kick now spends as noise. It replaced a flat
 // division of every quick pass's skill by 1.75, which charged the lay-off into a man's stride what it
 // charged a ball driven at his shins.
+// Harness-only (globalThis.__shots): would this strike, left alone, cross the line inside the frame? Read off the
+// forecast the strike has just written, between the two slots either side of the goal line.
+function meOnFrame(mp, gx) {
+  let px = mp.bx, py = mp.by, pz = mp.bz;
+  for (const a of mp.pred || []) {
+    if ((a[0] - gx) * (px - gx) <= 0 && a[0] !== px) {
+      const f = (gx - px) / (a[0] - px), y = py + (a[1] - py) * f, z = pz + (a[2] - pz) * f;
+      return Math.abs(y - ME_HALF_W) < GOAL_HALF_W && z < GOAL_H ? 1 : 0;
+    }
+    px = a[0]; py = a[1]; pz = a[2];
+  }
+  return 0;
+}
+
 export function mePlay(s, rng, out, side, i, act, press, forced) {
   const mp = s.mePos, ps = s.players[side], p = ps[i], a = meAttrs(p);
   const exD = act.execD || 0;
@@ -3725,7 +3808,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     const wind = meWindUp(Math.hypot(gx - p.x, ME_HALF_W - p.y), meShotSit(s, side, p, gx, ME_HALF_W), exD, act.ft);
     const aimY = ME_HALF_W + away * GOAL_HALF_W * Math.min(CFG.shotAimMax, CFG.shotAimBase + sk * CFG.shotAimSkill + wind * CFG.shotAimSet);
     // ...and up into the top corner as well as along the ground, shotSetZ more of the frame's height.
-    const aimZ = Math.min(CFG.shotAimZMax, 0.25 + rng.u() * (0.5 + sk * GOAL_H * 0.45 + wind * CFG.shotSetZ));
+    const aimZ = Math.min(CFG.shotAimZMax, 0.25 + rng.u() * (CFG.shotAimZBase + sk * GOAL_H * CFG.shotAimZSkill + wind * CFG.shotSetZ));
     // out.xg is both sides pooled, which is what the calibration harnesses want. Per side as well,
     // because a sweep that asks "did this instruction make the side BETTER" needs a difference, and
     // a goal is a Poisson count with a mean of 1.6 -- a whole match of it carries more noise than
@@ -3793,7 +3876,8 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     }
     if (globalThis.__shots) globalThis.__shots.push({ side, d: mp.shot.d, pt: mp.shot.pt,
       lt: mp.shot.lt, press, xg: xgRec, gkd: mp.shot.gkd, gko: mp.shot.gko, why: mp._looseWhy,
-      ft: act.ft ? 1 : 0, exD: +exD.toFixed(2), from: p._rcvT !== undefined && mp.tick - p._rcvT <= 8 ? p._rcvK : "-" });
+      ft: act.ft ? 1 : 0, exD: +exD.toFixed(2), from: p._rcvT !== undefined && mp.tick - p._rcvT <= 8 ? p._rcvK : "-",
+      sp: +(act.p ?? 0).toFixed(3), lane: +meLaneBlock(s, side, p.x, p.y, gx, ME_HALF_W).toFixed(2) });
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted
@@ -3818,6 +3902,13 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     const sit = meShotSit(s, side, p, gx, aimY);
     if (globalThis.__shots) globalThis.__shots[globalThis.__shots.length - 1].sit = +sit.toFixed(2);
     meShootBall(mp, rng, gx, aimY, aimZ, sk * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) * Math.max(0, 1 - exD * CFG.execShotLoss), sit, undefined, undefined, run, wind);
+    // Whether it was going in the frame, left alone: a shot deflected in off a defender is his goal only if it was
+    // (the own-goal rule, CFG.ogReal), as the real game scores it.
+    mp.shot.fr0 = meOnFrame(mp, gx);
+    if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
+      R.i = shooter; R.nm = p.fullName || p.name; R.pos = p.pos; R.y = +(p.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0;
+      R.sk = +sk.toFixed(3); R.wind = +wind.toFixed(2); R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.aim = +((aimY - ME_HALF_W) * away).toFixed(2); R.az = +aimZ.toFixed(2);
+      if (gkp) { R.gkx = +Math.abs(gkp.x - gx).toFixed(2); R.gky = +(gkp.y - ME_HALF_W).toFixed(2); R.sx = +Math.abs(p.x - gx).toFixed(2); R.vy0 = +mp.bvy.toFixed(1); R.vx0 = +Math.abs(mp.bvx).toFixed(1); } }
     // THE KEEPER WATCHES IT. He used to commit to a side as it left the foot, right as often as his
     // rating said, and a right guess put him on the spot the shooter aimed at; see keeper.ts for what
     // that did to the balance between a finish and a keeper. He sets, reacts, and goes to the ball.
