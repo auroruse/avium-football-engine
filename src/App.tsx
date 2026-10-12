@@ -12508,10 +12508,10 @@ export default function App() {
     // A new club's squad: sixteen places, filled from free agents and this person's own men, each to the place he fits.
     const nation = f.nation || "", leagues = [...new Set(curRecs.teams.filter(t => !isNational(t) && t.nation === nation).map(t => t.group).filter(Boolean))];
     const squad = f.squad || Array(16).fill(null), slabs = slotLabels(f.formation || "4-3-3", 16);
-    const pool = k !== "teams" || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !squad.includes(p.id) && edHit(f.q, p.name)
+    const pool = k !== "teams" || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !artNats.has(p.nat) && !squad.includes(p.id) && edHit(f.q, p.name)
       && (overseer || !whereIs.get(p.id)?.club || edMine(whereIs.get(p.id).club.key)) && !edLockedMen.has("p:" + p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 8);
     const mgrPool = k !== "teams" ? [] : [[null, [{ k: "", name: "No Manager" }, ...curRecs.managers.filter(m => { const at = edSidesOfMgr(m.id).find(t => !isNational(t));
-      return (!at || edMine(teamKey(at))) && !edLockedMen.has("m:" + m.id); }).sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
+      return (!at || edMine(teamKey(at))) && !edLockedMen.has("m:" + m.id) && !artNats.has(m.nat); }).sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
     const fieldsOf = () => {
       const base = { what: k, name: (f.name || "").trim() };
       if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: posList([f.pos, f.pos2]), ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
@@ -12747,11 +12747,11 @@ export default function App() {
     const blanks = clubs.reduce((n, cl) => n + cl.squad.filter(unrated).length + (unrated(cl.manager) ? 1 : 0), 0);
     const ready = !!((f.name || "").trim() && nation && clubs.length && clubs.every(done) && (f.cup !== "__new" || (f.cupName || "").trim()));
     const taken = new Set(clubs.flatMap(cl => cl.squad.filter(v => typeof v === "string")));
-    const pool = !c || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !taken.has(p.id) && edHit(f.q, p.name)
+    const pool = !c || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !artNats.has(p.nat) && !taken.has(p.id) && edHit(f.q, p.name)
       && (overseer || !whereIs.get(p.id)?.club || edMine(whereIs.get(p.id).club.key)) && !edLockedMen.has("p:" + p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 6);
     const usedMgr = new Set(clubs.map(cl => cl.manager).filter(v => typeof v === "string"));
     const mgrChoices = [[null, [{ k: "", name: "No Manager" }, { k: "__new", name: "New Manager" },
-      ...curRecs.managers.filter(m => !edSidesOfMgr(m.id).some(t => !isNational(t)) && !edLockedMen.has("m:" + m.id) && (!usedMgr.has(m.id) || c?.manager === m.id))
+      ...curRecs.managers.filter(m => !artNats.has(m.nat) && !edSidesOfMgr(m.id).some(t => !isNational(t)) && !edLockedMen.has("m:" + m.id) && (!usedMgr.has(m.id) || c?.manager === m.id))
         .sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
     const np = f.np, setNp = (p) => upd({ np: { ...np, ...p } });
     const swap = (a, b) => { if (a == null || b == null || a === b || !c) return; const s2 = [...c.squad]; [s2[a], s2[b]] = [s2[b], s2[a]];
@@ -13075,9 +13075,9 @@ export default function App() {
   const trFaCol = (dl, edit) => {
     const q = trQ.trim(), signed = new Set(dl.moves.filter(m => !trFrom(m)).map(m => m.kind + m.id));
     const clubMgr = new Set(curRecs.teams.filter(t => !isNational(t)).map(t => idOf(t.manager)).filter(Boolean));
-    const ps = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat)) && (signed.has("player" + p.id) || !q || edHit(q, p.name)))
+    const ps = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && !artNats.has(p.nat) && (signed.has("player" + p.id) || !q || edHit(q, p.name)))
       .sort((a, b) => (signed.has("player" + b.id) - signed.has("player" + a.id)) || b.ovr - a.ovr).slice(0, 80);
-    const ms = curRecs.managers.filter(m => !clubMgr.has(m.id) && (arterraOn || !artNats.has(m.nat)) && (signed.has("manager" + m.id) || !q || edHit(q, m.name)))
+    const ms = curRecs.managers.filter(m => !clubMgr.has(m.id) && !artNats.has(m.nat) && (signed.has("manager" + m.id) || !q || edHit(q, m.name)))
       .sort((a, b) => (signed.has("manager" + b.id) - signed.has("manager" + a.id)) || b.ovr - a.ovr).slice(0, q ? 20 : 6);
     return (<>
       <div className="ux-tr-h">
@@ -13739,11 +13739,14 @@ export default function App() {
   // (A man who plays only for his national side is one; user, 12 October 2026: "national team-only free agents aren't shown".)
   const shFree = useMemo(() => {
     const q = shFreeQ;
-    const men = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat)) && edHit(q, p.name)).sort((a, b) => b.ovr - a.ovr);
+    // Of the tab's world: Arterra's men for the Arterra tab, Avium's for every other (user, 12 October 2026: "why are arterra
+    // managers showing in avium new team????").
+    const art = shTabIs === "ARTERRA";
+    const men = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && artNats.has(p.nat) === art && edHit(q, p.name)).sort((a, b) => b.ovr - a.ovr);
     const busy = new Set(curRecs.teams.filter(t => !isNational(t)).map(t => idOf(t.manager)).filter(Boolean));
-    const mgrs = curRecs.managers.filter(m => !busy.has(m.id) && (arterraOn || !artNats.has(m.nat)) && edHit(q, m.name)).sort((a, b) => b.ovr - a.ovr);
+    const mgrs = curRecs.managers.filter(m => !busy.has(m.id) && artNats.has(m.nat) === art && edHit(q, m.name)).sort((a, b) => b.ovr - a.ovr);
     return { men, mgrs };
-  }, [curRecs, whereIs, shFreeQ, arterraOn, artNats]);
+  }, [curRecs, whereIs, shFreeQ, artNats, shTabIs]);
   // A drag's data rides in the event too, so a drop always knows what it carries.
   const shDragStart = (e, src) => { setShDrag(src); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", JSON.stringify(src)); } catch {} };
   const shDragEnd = () => { setShDrag(null); setShOver(null); };
@@ -15980,13 +15983,15 @@ export default function App() {
           <div className={"ux-plc-ban ux-tmc-ban" + (photo ? " ux-tmc-shot" : "")} style={{ ["--c1"]: c1, ["--c2"]: c2, color: photo ? "#fff" : ink }} role="link" tabIndex={0} aria-label={t.name}
             onClick={go} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }}>
             {photo && <div className="ux-tmc-photo"><StadiumImg name={st} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 0, border: "none" }} /></div>}
-            <div className="ux-tmc-crest"><TeamCrest team={t} size={72} /></div>
-            <div className="ux-plc-id">
-              <span className="ux-plc-first">{nt ? "National Team" + (r.conf ? " · " + r.conf : "") : t.league}</span>
-              <span className="ux-plc-last">{t.name}</span>
-              {!nt && natT && <div className="ux-plc-crests">
-                <button type="button" className="ux-btnreset" aria-label={natT.name} title={natT.name} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}><TeamCrest team={natT} size={30} /></button>
-                <LeagueCrest league={t.league} size={30} /></div>}
+            <div className="ux-tmc-head">
+              <div className="ux-tmc-crest"><TeamCrest team={t} size={62} /></div>
+              <div className="ux-plc-id">
+                <span className="ux-plc-first">{nt ? "National Team" + (r.conf ? " · " + r.conf : "") : t.league}</span>
+                <span className="ux-plc-last">{t.name}</span>
+                {!nt && natT && <div className="ux-plc-crests">
+                  <button type="button" className="ux-btnreset" aria-label={natT.name} title={natT.name} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}><TeamCrest team={natT} size={30} /></button>
+                  <LeagueCrest league={t.league} size={30} /></div>}
+              </div>
             </div>
           </div>
           <dl className="ux-plc-facts ux-tmf">

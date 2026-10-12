@@ -334,7 +334,7 @@ export const DOCS = [
       { dl: [
         ["Record", "The chip you clicked: his details, the sides he plays for, his traits and his value. Sub Out on a starter and Sub In on a substitute list the men he can change places with. Trade opens Trades with him in a deal; on another nation's man it reads Make An Offer. The overseer edits the record here and can retire a player."],
         ["Lineup", "The picked side on a pitch, with its bench under it and its formation at the top. Drag men around it, or between it and the sheet. Clicking a side's badge opens it here."],
-        ["Free Agents", "Every player and manager without a club, best first, on two tabs, Players and Managers, each with a search; a man who plays only for his national side is one. Drag one onto an open place to sign him, or onto a man to sign him in that man's place. Drag a man from the sheet onto this panel to release him, or a manager to sack him. New Player and New Manager are at the top, and new men in the cart without a side show first in the list."],
+        ["Free Agents", "Every player and manager without a club, best first, on two tabs, Players and Managers, each with a search; a man who plays only for his national side is one. They are Avium's, or Arterra's on the Arterra tab. Drag one onto an open place to sign him, or onto a man to sign him in that man's place. Drag a man from the sheet onto this panel to release him, or a manager to sack him. New Player and New Manager are at the top, and new men in the cart without a side show first in the list."],
         ["Nationals", "With a national side picked: its men not called up, best first. Drag one up into the squad."],
       ] },
     ] },

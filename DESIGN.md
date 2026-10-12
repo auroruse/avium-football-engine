@@ -438,7 +438,9 @@ Record: name, nationality, date of birth, rating, positions, traits, value and h
 and can retire him; an editor sees it locked but for his positions, which are asked for. **Free Agents** lists every
 player and manager without a club, as Trades and the server count them, so a man who plays only for his national side is
 one (the user, 12 October 2026: "national team-only free agents aren't shown for some reason? Make player and manager
-free agents separate tabs"): Players and Managers are its two tabs, best first, each with a search and its New button,
+free agents separate tabs"), of the tab's world (Arterra's for the Arterra tab, Avium's otherwise; the same day: "why are
+arterra managers showing in avium new team????", which also took Arterra's men out of Trades and the new-club and
+new-league reviews): Players and Managers are its two tabs, best first, each with a search and its New button,
 and new men in the cart without a side stand first, faint. Dragging one onto an empty place signs him, onto a man sends
 that man to free agency in his stead, and dragging a man onto the panel releases him. Nationals opens while a national side is
 picked: the nation's men playing abroad, best first, to drag up. Under a record stand its actions: **Sub Out** for a
