@@ -16,6 +16,15 @@ import { ME_HALF_W } from "../geometry";
 import { meBadgeFx } from "../attributes";
 
 // ln and lane are [build-up, progression, final third]. run weights are 0..1 propensities.
+//
+// WHO ATTACKS THE BOX (12 October 2026; the user: a club's top scorer took 38-40% of its goals against a real ~25%). The
+// box weight decides who fills the box when the ball goes wide (sorted on it) and who makes the run into it (the best
+// of them, every time), and the strikers had the highest in the side, 0.85-1.0: a centre-forward made 45% of a side's box
+// runs and stood on the near post for every cross, so a striker took half of a side's shots and 62% of its goals
+// (real: centre-forwards 43%, midfielders 30%). The striker is on their last line already when the ball goes wide; the
+// runs into the box are the midfield's to make. Strikers' weights are 0.6 of what they were, central midfielders' 1.4
+// times: over 1,520 League One fixtures of the app's Sim All, a club's top scorer 39.3% -> 34.4% of its goals, goals
+// a match unchanged (2.72 / 2.71), midfielders' share 13% -> 20% (test/specs/spread.mjs).
 const R = (lane, ln, o = {}) => ({ lane, ln, run: o.run || {}, rest: o.rest ?? 0, press: o.press ?? 0.4,
   risk: o.risk ?? 0, carry: o.carry ?? 0, lnOff: o.lnOff || [0, 0, 0], hold: o.hold ?? 0 });
 export const ROLES = {
@@ -35,26 +44,26 @@ export const ROLES = {
   dm_anchor:   R(["center", "center", "center"], ["support", "hold", "hold"], { rest: 0.95, press: 0.4 }),
   dm_dlp:      R(["center", "center", "center"], ["deep", "support", "hold"], { rest: 0.75, press: 0.35, risk: 0.35, lnOff: [3, 0, 0] }),
   dm_win:      R(["center", "center", "center"], ["support", "support", "hold"], { rest: 0.6, press: 0.85 }),
-  dm_box:      R(["slot", "slot", "slot"], ["support", "support", "high"], { run: { box: 0.4, third: 0.3 }, rest: 0.4, press: 0.55 }),
-  cm:          R(["slot", "slot", "slot"], ["high", "high", "between"], { run: { box: 0.4, third: 0.3, behind: 0.1 }, rest: 0.2, press: 0.5 }),
-  cm_mez:      R(["half", "half", "half"], ["high", "between", "between"], { run: { behind: 0.4, box: 0.5, third: 0.6 }, rest: 0.05, press: 0.5, carry: 0.3 }),
-  cm_play:     R(["half", "half", "half"], ["high", "high", "high"], { run: { third: 0.3, box: 0.2 }, rest: 0.3, press: 0.4, risk: 0.4 }),
-  cm_b2b:      R(["slot", "slot", "slot"], ["high", "high", "between"], { run: { box: 0.7, third: 0.5, behind: 0.2 }, rest: 0.15, press: 0.65 }),
+  dm_box:      R(["slot", "slot", "slot"], ["support", "support", "high"], { run: { box: 0.56, third: 0.3 }, rest: 0.4, press: 0.55 }),
+  cm:          R(["slot", "slot", "slot"], ["high", "high", "between"], { run: { box: 0.56, third: 0.3, behind: 0.1 }, rest: 0.2, press: 0.5 }),
+  cm_mez:      R(["half", "half", "half"], ["high", "between", "between"], { run: { behind: 0.4, box: 0.7, third: 0.6 }, rest: 0.05, press: 0.5, carry: 0.3 }),
+  cm_play:     R(["half", "half", "half"], ["high", "high", "high"], { run: { third: 0.3, box: 0.28 }, rest: 0.3, press: 0.4, risk: 0.4 }),
+  cm_b2b:      R(["slot", "slot", "slot"], ["high", "high", "between"], { run: { box: 0.98, third: 0.5, behind: 0.2 }, rest: 0.15, press: 0.65 }),
   cm_hold:     R(["slot", "slot", "slot"], ["support", "hold", "support"], { run: { box: 0.15 }, rest: 0.6, press: 0.45 }),
-  am:          R(["center", "center", "center"], ["high", "between", "between"], { run: { box: 0.5, third: 0.4, behind: 0.2 }, press: 0.55 }),
-  am_play:     R(["center", "center", "center"], ["high", "between", "between"], { run: { third: 0.3, box: 0.3 }, press: 0.45, risk: 0.45, carry: 0.2 }),
+  am:          R(["center", "center", "center"], ["high", "between", "between"], { run: { box: 0.7, third: 0.4, behind: 0.2 }, press: 0.55 }),
+  am_play:     R(["center", "center", "center"], ["high", "between", "between"], { run: { third: 0.3, box: 0.42 }, press: 0.45, risk: 0.45, carry: 0.2 }),
   am_shadow:   R(["center", "center", "center"], ["high", "between", "attack"], { run: { behind: 0.7, box: 0.85 }, press: 0.6, lnOff: [0, 0, -2] }),
   w:           R(["wide", "wide", "wide"], ["high", "between", "attack"], { run: { behind: 0.45, box: 0.45 }, press: 0.55, carry: 0.35 }),
   w_wide:      R(["wide", "wide", "wide"], ["between", "attack", "attack"], { run: { behind: 0.3, box: 0.35 }, press: 0.5, carry: 0.55 }),
   w_inside:    R(["wide", "wide", "half"], ["between", "attack", "attack"], { run: { behind: 0.85, box: 0.6 }, press: 0.6, carry: 0.5 }),
   wm:          R(["wide", "wide", "wide"], ["support", "high", "between"], { run: { behind: 0.3, overlap: 0.2, box: 0.3 }, press: 0.45, rest: 0.1, carry: 0.3 }),
   w_def:       R(["wide", "wide", "wide"], ["support", "high", "high"], { run: { behind: 0.25, box: 0.2 }, press: 0.4, rest: 0.3 }),
-  st:          R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.5, drop: 0.35, box: 0.85 }, press: 0.75 }),
+  st:          R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.5, drop: 0.35, box: 0.51 }, press: 0.75 }),
   st_false9:   R(["center", "center", "center"], ["between", "between", "between"], { run: { drop: 0.85, behind: 0.2, box: 0.45 }, press: 0.65, risk: 0.3, carry: 0.3 }),
-  st_complete: R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { drop: 0.5, behind: 0.45, box: 0.85 }, press: 0.7, carry: 0.25 }),
-  st_target:   R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { drop: 0.3, behind: 0.1, box: 0.95 }, press: 0.55, hold: 1 }),
-  st_poach:    R(["slot", "slot", "slot"], ["attack", "attack", "attack"], { run: { behind: 0.9, box: 1.0 }, press: 0.6 }),
-  st_press:    R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.6, drop: 0.25, box: 0.85 }, press: 1.0 }),
+  st_complete: R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { drop: 0.5, behind: 0.45, box: 0.51 }, press: 0.7, carry: 0.25 }),
+  st_target:   R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { drop: 0.3, behind: 0.1, box: 0.57 }, press: 0.55, hold: 1 }),
+  st_poach:    R(["slot", "slot", "slot"], ["attack", "attack", "attack"], { run: { behind: 0.9, box: 0.6 }, press: 0.6 }),
+  st_press:    R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.6, drop: 0.25, box: 0.51 }, press: 1.0 }),
 };
 
 // WHAT THE TEAM SHEET CALLS EACH ROLE, and the letters it shows beside the man.
@@ -182,6 +191,7 @@ export function mindRoles(s, side) {
     const c = chosen?.[i];
     const r = c && ROLES[c] && (c === "gk") === (p.pos === "GK") ? c : pick[i] || (p.pos === "GK" ? "gk" : "cm");
     p._mr = r; p._role2 = traitRole(ROLES[r], p);
+    if (globalThis.__roleOv?.[r]) p._role2 = { ...p._role2, ...globalThis.__roleOv[r] };   // a lab arm rewriting a role (test/lab.mjs roleOv)
   }
 }
 
