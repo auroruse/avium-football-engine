@@ -80,7 +80,7 @@ const nationCode = (v) => typeof v === "string" && /^[A-Z]{2,4}$/.test(v);
 const STYLE_NAMES = new Set(Object.values(STYLE_LBL));
 const styleName = (v) => STYLE_LBL[v] || (STYLE_NAMES.has(v) ? v : null);
 const TEAM_VALUE = {
-  name: (v) => text(v, 40), code: (v) => typeof v === "string" && /^[A-Z0-9]{2,3}$/.test(v),
+  name: (v) => text(v, 40), code: (v) => typeof v === "string" && /^[A-Z0-9]{2,4}$/.test(v),
   home: (v) => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v), away: (v) => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v),
   stadium: (v) => text(v, 60, true), location: (v) => text(v, 60, true),
   formation: (v) => FORMATIONS.includes(v), style: (v) => STYLE_NAMES.has(v),

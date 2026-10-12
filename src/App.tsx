@@ -2069,7 +2069,7 @@ const squadSkill = (squad) => {
   if (!rated.length) return null;
   return Math.round(rated.reduce((a, p) => a + p.ovr, 0) / rated.length * 10) / 10;
 };
-const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
+const abbr = (n, code) => code ? code.toUpperCase() : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
 // Stable per-fixture identity, shared by home-advantage overrides, the host-venue pool,
 // and the replay counter — a group match, or a KO bracket slot (both legs share one tie).
 // Deal grounds to fixtures. Kept out of the component so it can be tested directly: the balance is
@@ -12200,13 +12200,13 @@ export default function App() {
           </div>
           {det ? (
             <div className="ux-ed-facts ux-ed-detform">
-              {!nat && <label><span>Code</span><input className="ux-ed-in ux-ed-num" maxLength={3} value={det.code} onChange={e => updDet({ code: e.target.value.toUpperCase() })} style={mono} /></label>}
+              {!nat && <label><span>Code</span><input className="ux-ed-in ux-ed-num" maxLength={4} value={det.code} onChange={e => updDet({ code: e.target.value.toUpperCase() })} style={mono} /></label>}
               <label><span>Ground</span><input className="ux-ed-in" value={det.ground} onChange={e => updDet({ ground: e.target.value })} /></label>
               <label><span>Capacity</span><input className="ux-ed-in ux-ed-num" value={det.cap} onChange={e => updDet({ cap: e.target.value })} style={mono} /></label>
               <label><span>City</span><UxSidePick label="City" value={det.city} groups={edCities} placeholder="Search Cities" onPick={it => updDet({ city: it.k })} /></label>
               <span className="ux-ed-acts" style={{ marginLeft: "auto" }}>
                 <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdDetails(null)}>Cancel</button>
-                <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!det.ground.trim() || (!nat && !/^[A-Z0-9]{2,3}$/.test(det.code.trim()))} onClick={sendDet}>Add To Cart</button></span>
+                <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!det.ground.trim() || (!nat && !/^[A-Z0-9]{2,4}$/.test(det.code.trim()))} onClick={sendDet}>Add To Cart</button></span>
             </div>
           ) : (
           <dl className="ux-ed-facts">
@@ -12545,7 +12545,7 @@ export default function App() {
               {k === "teams" && <>
                 {(overseer || clubNations(scope).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer, clubNations(scope))} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
                 {field("League", sel("League", f.group, leagues.map(g => [g, g]), v => upd({ group: v })))}
-                {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={3} value={f.code || ""} onChange={e => upd({ code: e.target.value.toUpperCase() })} style={mono} />)}
+                {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={4} value={f.code || ""} onChange={e => upd({ code: e.target.value.toUpperCase() })} style={mono} />)}
                 {field("Kits", <span className="ux-ed-kits ux-ed-kits-in">{[["home", "Home Kit", "#888888"], ["away", "Away Kit", "#ffffff"]].map(([q, l, dflt]) => (
                   <label key={q} className="ux-ed-kit"><span>{l}</span><input type="color" value={f[q] || dflt} onChange={e => upd({ [q]: e.target.value })} /></label>))}</span>)}
                 {field("Ground", <input className="ux-ed-in" placeholder="Ground" value={f.ground || ""} onChange={e => upd({ ground: e.target.value })} />)}
@@ -12742,7 +12742,7 @@ export default function App() {
     const starters = (cl) => cl.squad.slice(0, 11).filter(Boolean).length;
     const avgOf = (cl) => { const r = cl.squad.map(v => (!v ? null : edLgNew(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(x => x != null);
       return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null; };
-    const done = (cl) => !!((cl.name || "").trim() && /^[A-Z0-9]{2,3}$/.test(cl.code || "") && cl.city && (cl.ground || "").trim() && starters(cl) === 11);
+    const done = (cl) => !!((cl.name || "").trim() && /^[A-Z0-9]{2,4}$/.test(cl.code || "") && cl.city && (cl.ground || "").trim() && starters(cl) === 11);
     const unrated = (v) => edLgNew(v) && !(+v.ovr > 0);
     const blanks = clubs.reduce((n, cl) => n + cl.squad.filter(unrated).length + (unrated(cl.manager) ? 1 : 0), 0);
     const ready = !!((f.name || "").trim() && nation && clubs.length && clubs.every(done) && (f.cup !== "__new" || (f.cupName || "").trim()));
@@ -12821,7 +12821,7 @@ export default function App() {
       <div className="ux-ed-form">
         <dl className="ux-ed-dl">
           {field("Name", <input className="ux-ed-in" placeholder="Club Name" value={c.name} onChange={e => updC({ name: e.target.value })} />)}
-          {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={3} value={c.code} onChange={e => updC({ code: e.target.value.toUpperCase() })} style={mono} />)}
+          {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={4} value={c.code} onChange={e => updC({ code: e.target.value.toUpperCase() })} style={mono} />)}
           {field("Kits", <span className="ux-ed-kits ux-ed-kits-in">{[["home", "Home Kit"], ["away", "Away Kit"]].map(([q, l]) => (
             <label key={q} className="ux-ed-kit"><span>{l}</span><input type="color" value={c[q]} onChange={e => updC({ [q]: e.target.value })} /><b style={mono}>{c[q].toUpperCase()}</b></label>))}</span>)}
           {field("Ground", <input className="ux-ed-in" placeholder="Ground" value={c.ground} onChange={e => updC({ ground: e.target.value })} />)}
@@ -13644,7 +13644,7 @@ export default function App() {
     if (c === "mgr") { const p = shParseMan(val); if (p) shMakeMgr(k, p); return; }
     if (k.startsWith("new:") && c === "formation") { if (FORMATIONS.includes(val)) patch({ formation: val }); return; }
     if (c === "name") { if (val.trim()) patch({ name: val.trim() }); return; }
-    if (c === "code") { const x = val.trim().toUpperCase(); if (/^[A-Z0-9]{2,3}$/.test(x)) patch({ code: x }); else shSay("A Code Is Two Or Three Letters"); return; }
+    if (c === "code") { const x = val.trim().toUpperCase(); if (/^[A-Z0-9]{2,4}$/.test(x)) patch({ code: x }); else shSay("A Code Is Two To Four Letters"); return; }
     if (c === "formation") { if (!FORMATIONS.includes(val)) return; const sq = edSq(T), lab = edLab(T), n = sq.length;
       const rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
       patch({ formation: val, squad: refitLineup(rows, val).map(e => e.rid ?? null) }); return; }

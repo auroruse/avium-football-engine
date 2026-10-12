@@ -372,5 +372,10 @@ console.log("removing a club (12 October 2026)");
   const both = plan(OV, { teams: { [K]: { removed: true }, [teamKey(A)]: { squad: sa } } }), nb = both.apply && after(both.apply);
   ok("its man signed elsewhere in the same cart", !both.errors.length && !!nb && ids(nb.teams.find(t => t.id === A.id)).includes(sa[15]), both.errors); }
 
+console.log("codes of two to four letters (12 October 2026)");
+{ const four = plan(OV, { teams: { [teamKey(A)]: { code: "ARMA" } } }), five = plan(OV, { teams: { [teamKey(A)]: { code: "ARMAX" } } });
+  ok("a four-letter code is taken", !four.errors.length && after(four.apply).teams.find(t => t.id === A.id).code === "ARMA", four.errors);
+  ok("a five-letter one is not", five.errors.some(e => /code/.test(e)), five.errors); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);
