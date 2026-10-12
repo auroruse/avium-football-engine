@@ -934,7 +934,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // pointed; the loft now lands where it is pointed.
   if (aerial && q && (gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted into the net
   if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
-  if (globalThis.__prov) mp._spLast = { k: longThrow ? "longthrow" : sp.kind, t: mp.tick, side };
+  if (globalThis.__prov) mp._spLast = { k: longThrow ? "longthrow" : sp.kind, t: mp.tick, side, d: Math.hypot(meGoalX(side) - sp.x, ME_HALF_W - sp.y) };
   // ...and a throw-in is THROWN. It was struck along the ground like a pass.
   const high = sp.kind === "corner" || sp.kind === "throw"
     || (sp.kind === "goalkick" && ((s.strategy?.[side]?.gkDist || 0) > 0 || Math.hypot(tx - sp.x, ty - sp.y) > CFG.loftD))
