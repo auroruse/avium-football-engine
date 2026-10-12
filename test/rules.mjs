@@ -311,5 +311,47 @@ console.log("sheet cells a save keeps (11 October 2026)");
   const VJK = rec.teams.find(t => t.id === "t0170"), raw = after(plan(OV, { players: { p2861: { ovr: 63 } } }).apply).teams.find(t => t.id === VJK.id);
   ok("a cell kept as raw text is written fresh by any edit to its man", raw.squad[2] === "p2861", raw.squad[2]); }
 
+console.log("the sheet (12 October 2026)");
+{ const s = plan(ED, { teams: { [teamKey(A)]: { timeWasting: "Constantly" } } });
+  ok("an editor sets their side's time wasting outright", !s.errors.length && !s.requests.length && after(s.apply).teams.find(t => t.id === A.id).timeWasting === "Constantly", s.errors);
+  const bad = plan(ED, { teams: { [teamKey(A)]: { timeWasting: "Always" } } });
+  ok("only Never, Sometimes or Constantly", bad.errors.some(e => /time wasting/.test(e)), bad.errors); }
+{ const s = plan(ED, { teams: { [teamKey(A)]: { group: "2. Alemannische Oberliga" } } });
+  ok("an editor may not move a club into another league", s.errors.some(e => /overseer's to change/.test(e)), s.errors);
+  const o = plan(OV, { teams: { [teamKey(A)]: { group: "2. Alemannische Oberliga" } } });
+  ok("the overseer moves one outright", !o.errors.length && after(o.apply).teams.find(t => t.id === A.id).group === "2. Alemannische Oberliga", o.errors); }
+{ // A man dragged between two of the editor's own clubs: off one squad, onto the other's open place.
+  const a = ids(A), b = ids(A2), man = a[15], sa = [...a]; sa[15] = null; const sb = [...b]; sb[15] = man; const was = b[15];
+  const s = plan(ED, { teams: { [teamKey(A)]: { squad: sa }, [teamKey(A2)]: { squad: sb } } });
+  ok("a man moves between an editor's own clubs outright", !s.errors.length && after(s.apply).teams.find(t => t.id === A2.id).squad.map(idOf).includes(man), s.errors);
+  ok("(the one he replaced goes to free agency)", !after(s.apply).teams.some(t => t.squad.map(idOf).includes(was)) || after(s.apply).teams.filter(t => t.squad.map(idOf).includes(was)).every(t => t.file === "AVIUM")); }
+{ // A new man typed into an open place: he lands in that place, not where the best fit would put him.
+  const sq = ids(A), open = [...sq]; open[12] = null; const T = after(plan(OV, { teams: { [teamKey(A)]: { squad: open } } }).apply), at = 12;
+  const s = plan(OV, { new: [{ id: "n9", what: "players", name: "Hans MUSTER", nat: "ALE", born: "1910-05-05", pos: ["ST"], ovr: 70, side: teamKey(A), at }] }, [], T);
+  const n = s.apply && after(s.apply, T), club = n?.teams.find(t => t.id === A.id), p9 = n?.players.find(x => x.name === "Hans MUSTER");
+  ok("a new man typed into a place goes to that place", !s.errors.length && !!p9 && club.squad.map(idOf).indexOf(p9.id) === at, [s.errors, club?.squad]); }
+{ // A new club with new men of its own and its time wasting.
+  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 14), squad = clubs.map(t => ids(t)[15]).filter(Boolean).slice(0, 14);
+  squad.push({ name: "Otto NEU", nat: "ALE", born: "1912-02-02", pos: ["GK"], ovr: 68 }, { name: "Emil NEU", nat: "ALE", born: "1913-03-03", pos: ["ST"], ovr: null });
+  const s = plan(ED, { new: [{ id: "n5", what: "teams", name: "SV Neudorf", nation: "ALE", code: "NDF", home: "#224466", away: "#ffffff", stadium: "Neudorfer Platz (8,000)",
+    location: "Berelstein", group: A.group, formation: "4-3-3", timeWasting: "Sometimes", manager: null, squad }] });
+  const r = s.requests[0];
+  ok("a new club may bring new men of its own", !s.errors.length && r?.kind === "new", s.errors);
+  const r2 = { ...r, rec: { ...r.rec, squad: r.rec.squad.map(v => (v && typeof v === "object" && v.ovr == null ? { ...v, ovr: 66 } : v)) } };
+  const yes = settle(OV, r2, "accept", { rec: r2.rec }), n = yes?.apply && after(yes.apply), club = n?.teams.find(t => t.name === "SV Neudorf");
+  ok("let in, its new men are records in their places, and it keeps its time wasting", !yes.errors?.length && !!club && club.timeWasting === "Sometimes"
+    && ["Otto NEU", "Emil NEU"].every(nm => n.players.some(x => x.name === nm && club.squad.map(idOf).includes(x.id))), [yes?.errors, club?.squad?.slice(-3)]); }
+
+{ // A new manager made in a side's manager cell: a request, and let in he takes the club over with his style.
+  const was = idOf(A.manager);
+  const s = plan(ED, { new: [{ id: "n7", what: "managers", name: "Karl NEUMANN", nat: "ALE", born: "1885-04-04", style: "counterattack", ovr: null, side: teamKey(A) }] });
+  const r = s.requests[0];
+  ok("an editor's new manager for their own club is a request", !s.errors.length && r?.kind === "new", s.errors);
+  const yes = settle(OV, { ...r, rec: { ...r.rec, ovr: 70 } }, "accept", {}), n = yes?.apply && after(yes.apply), club = n?.teams.find(t => t.id === A.id), m = n?.managers.find(x => x.name === "Karl NEUMANN");
+  ok("let in, he manages the club and it plays his style; the old manager keeps only his national side", !yes.errors?.length && !!m && idOf(club.manager) === m.id
+    && club.style === "Counter-Attack" && n.teams.filter(t => idOf(t.manager) === was).every(t => t.file === "AVIUM"), [yes?.errors, club?.manager, club?.style]);
+  const no = plan(ED, { new: [{ id: "n8", what: "managers", name: "Karl NEUMANN", nat: "ALE", born: "1885-04-04", style: "balanced", ovr: null, side: teamKey(B) }] });
+  ok("not for another nation's side", no.errors.some(e => /not one of your sides/.test(e)), no.errors); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

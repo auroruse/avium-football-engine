@@ -1721,3 +1721,236 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-tr-val { flex: none; width: 58px; text-align: right; font-size: 12px; color: var(--ux-text-2); }
 .ux-tr-vals { display: flex; gap: 14px; padding: 0 0 2px 28px; font-size: 11px; color: var(--ux-text-3); }
 .ux-tr-vals b { font-size: 12px; font-weight: 600; color: var(--ux-text); }
+
+/* ── The Sheet (DESIGN.md "Editor") ──────────────────────────────────────────────────────────── */
+/* The registry as a spreadsheet: the bar with the picked cell's value, the grid (column letters, row numbers, the nation's
+   header row, crest to name frozen), the nations' tabs along the foot, and the dock on the right. */
+.ux-body.ux-sh { grid-template-columns: minmax(0, 1fr) 340px; }
+.ux-sh-main { flex: 1 1 auto; height: 100%; }
+.ux-sh-fx { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 8px 0 0; border-bottom: 1px solid var(--ux-line); flex-shrink: 0; }
+.ux-sh-ref { width: 64px; flex: none; align-self: stretch; display: grid; place-items: center; border-right: 1px solid var(--ux-line); font-size: 12px; color: var(--ux-text-2); }
+.ux-sh-fxi { flex: none; font-size: 12px; font-style: italic; color: var(--ux-text-3); }
+.ux-sh-fxv { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--ux-text); }
+.ux-sh-msg { flex: none; font-size: 12px; color: var(--ux-loss); white-space: nowrap; }
+.ux-sh-ib { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--ux-text-2); }
+.ux-sh-ib:hover:not(:disabled) { background: var(--ux-panel-3); color: var(--ux-text); }
+.ux-sh-ib:disabled { opacity: .35; cursor: default; }
+.ux-search.ux-sh-find { width: 300px; flex: none; }
+.ux-sh-hits { width: 380px; }
+.ux-sh-hits .ux-hit > span:first-child { flex: 1 1 auto; min-width: 0; }
+.ux-sh-hits .ux-hit > .ux-dim { flex: none; max-width: 150px; overflow: hidden; white-space: nowrap; font-size: 11px; }
+.ux-sh-grid { flex: 1 1 auto; min-height: 0; overflow: auto; outline: none; position: relative; background: var(--ux-bg); }
+.ux-sh-grid:focus-visible { box-shadow: inset 0 0 0 2px var(--ux-accent-ink); }
+.ux-sh-tbl { table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 12px; color: var(--ux-text); margin-bottom: 18px; }
+.ux-sh-tbl th, .ux-sh-tbl td { height: 30px; padding: 0 6px; border-right: 1px solid var(--ux-line); border-bottom: 1px solid var(--ux-line);
+  white-space: nowrap; overflow: hidden; background: var(--ux-panel); text-align: left; box-sizing: border-box; }
+.ux-sh-tbl .ux-n { text-align: right; }
+/* The column letters and the header row stay at the top while the rows scroll under them. */
+.ux-sh-let th { position: sticky; top: 0; z-index: 3; height: 20px; background: var(--ux-panel-3); color: var(--ux-text-3); font-size: 10px; font-weight: 500; text-align: center; }
+.ux-sh-hd th { position: sticky; top: 20px; z-index: 3; height: 30px; background: color-mix(in srgb, var(--hc, #3a4a66) 55%, #0a0e17); color: #fff; font-size: 11px;
+  font-weight: 700; letter-spacing: .04em; text-transform: uppercase; overflow: visible; }
+.ux-sh-let th[style*="sticky"], .ux-sh-hd th[style*="sticky"] { z-index: 4; }
+.ux-sh-hl { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.ux-sh-hd th.ux-n .ux-sh-hl { justify-content: flex-end; }
+.ux-sh-sortb { display: inline-flex; align-items: center; gap: 3px; min-width: 0; overflow: hidden; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.ux-sh-fb { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; margin-left: auto; color: rgba(255, 255, 255, .55); }
+.ux-sh-fb:hover, .ux-sh-fb.ux-on { color: #fff; background: rgba(255, 255, 255, .14); }
+.ux-sh-fmenu { position: absolute; top: calc(100% + 2px); left: 0; z-index: 20; width: 220px; max-height: 320px; overflow-y: auto; padding: 6px; border-radius: 8px;
+  background: var(--ux-panel-3); border: 1px solid var(--ux-line-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .5); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.ux-sh-fopt { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 4px; font-size: 12px; color: var(--ux-text); cursor: pointer; }
+.ux-sh-fopt > span { min-width: 0; flex: 1 1 auto; }
+.ux-sh-fclear { width: 100%; justify-content: center; margin-top: 6px; }
+.ux-sh-rn { text-align: center !important; color: var(--ux-text-3); font-size: 11px; background: var(--ux-panel-2) !important; }
+.ux-sh-grab { cursor: grab; }
+/* A row and a cell picked; a cell changed in the cart; a place lit while a man is dragged over it. */
+.ux-sh-tbl tr.ux-sh-rowsel > td.ux-sh-rn { color: var(--ux-text); background: var(--ux-panel-3) !important; }
+.ux-sh-td { cursor: default; position: relative; }
+.ux-sh-td.ux-sh-sel { box-shadow: inset 0 0 0 2px var(--ux-accent-ink); }
+.ux-sh-td.ux-sh-chg { background: color-mix(in srgb, var(--ux-draw) 14%, var(--ux-panel)); }
+.ux-sh-td.ux-sh-over, .ux-sh-band.ux-sh-over td, .ux-sh-dock.ux-sh-over { background: color-mix(in srgb, var(--ux-win) 22%, var(--ux-panel)); }
+.ux-sh-tbl tr.ux-sh-ro td.ux-sh-td { color: var(--ux-text-2); }
+.ux-sh-strong { font-weight: 600; display: block; }
+.ux-sh-dd { display: inline-flex; align-items: center; gap: 4px; }
+.ux-sh-dd .ux-i { opacity: .55; }
+.ux-sh-empty, .ux-sh-open { color: var(--ux-text-3); font-size: 11px; }
+.ux-sh-kit { display: block; margin: 0 -6px; height: 30px; line-height: 30px; padding: 0 6px; font-size: 11px; }
+/* A cell being edited may spill over its neighbours: a kit's colour, its hex code and Done need more room than the cell. */
+.ux-sh-tbl td.ux-sh-td.ux-sh-editing { overflow: visible; z-index: 4; }
+.ux-sh-kited { position: absolute; left: 0; top: 0; height: 100%; min-width: 200px; display: flex; align-items: center; gap: 6px; padding: 0 6px;
+  background: var(--ux-panel-3); box-shadow: inset 0 0 0 2px var(--ux-accent-ink), 0 6px 18px rgba(0, 0, 0, .45); border-radius: 2px; }
+.ux-sh-kited .ux-sh-in { flex: 1 1 auto; min-width: 0; outline: none; background: var(--ux-panel-2); }
+.ux-sh-kited input[type="color"] { width: 22px; height: 22px; padding: 0; border: 0; background: none; flex: none; }
+.ux-sh-in { width: 100%; height: 26px; padding: 0 6px; border: 0; border-radius: 4px; background: var(--ux-panel-3); color: var(--ux-text); font: inherit; outline: 2px solid var(--ux-accent-ink); }
+.ux-sh-asked { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; background: var(--ux-draw); color: #101418; }
+/* A league's band: a header row across the table with the league's name, tier and cup. */
+/* A band: a thin strip, lighter than the rows, the league's crest and its name in capitals; the name opens the league on the dock. */
+.ux-sh-band td { height: 24px; padding: 0 6px; background: var(--ux-panel-3); border-top: 1px solid var(--ux-line-2); overflow: visible; }
+.ux-sh-tbl .ux-sh-band td.ux-sh-rn { background: var(--ux-panel-3) !important; }
+.ux-sh-tbl td.ux-sh-bandtd { padding: 0; }
+.ux-sh-bandin { position: sticky; left: 44px; display: inline-flex; align-items: center; height: 100%; font-size: 11px; }
+.ux-sh-bcrest { flex: none; width: 36px; display: flex; justify-content: center; align-items: center; }
+.ux-sh-btext { display: inline-flex; align-items: center; gap: 10px; padding-left: 6px; }
+.ux-sh-tbl td[data-cell$="|crest"] { padding: 0; }
+.ux-sh-crw { display: flex; justify-content: center; align-items: center; }
+.ux-sh-bandin > b { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ux-text); }
+.ux-sh-bf { color: var(--ux-text-3); }
+.ux-sh-bf b { color: var(--ux-text); font-weight: 600; }
+.ux-sh-addrow td { height: 28px; background: var(--ux-panel); overflow: visible; }
+.ux-sh-add { display: inline-flex; align-items: center; gap: 5px; color: var(--ux-text-3); font-size: 12px; }
+.ux-sh-add:hover { color: var(--ux-text); }
+.ux-sh-nolg { padding: 20px; }
+/* A place: its place in the formation, then the man's chip. */
+.ux-sh-pc { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ux-sh-pl { flex: none; width: 26px; font-size: 10px; font-weight: 700; }
+.ux-sh-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 22px; padding: 0 6px 0 0; border-radius: 5px;
+  background: var(--ux-panel-3); cursor: pointer; flex: 1 1 auto; }
+.ux-sh-chip[draggable="true"] { cursor: grab; }
+.ux-sh-chip:hover { background: color-mix(in srgb, var(--ux-panel-3) 70%, #ffffff); }
+.ux-sh-rtg { flex: none; min-width: 24px; height: 22px; line-height: 22px; padding: 0 4px; border-radius: 5px 0 0 5px; font-size: 11px; font-weight: 700; text-align: center; }
+.ux-sh-rtg.ux-oop { box-shadow: inset 0 0 0 2px var(--ux-loss); }
+.ux-sh-rtg.ux-sh-blank { background: var(--ux-line-2); color: var(--ux-text-2); }
+.ux-sh-cn { flex: 1 1 auto; min-width: 0; font-size: 12px; }
+.ux-sh-nat { flex: none; font-size: 10px; color: var(--ux-text-3); }
+.ux-sh-cost { flex: none; display: inline-flex; align-items: center; gap: 1px; font-size: 10px; font-weight: 700; color: var(--ux-loss); }
+.ux-sh-st { flex: none; font-size: 10px; font-weight: 600; }
+.ux-sh-lk { flex: none; display: grid; color: var(--ux-text-3); }
+.ux-sh-chip.ux-sh-locked { opacity: .7; }
+.ux-sh-chip.ux-sh-new { background: transparent; border: 1px dashed var(--ux-line-2); }
+.ux-sh-tag { flex: none; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--ux-panel-3); color: var(--ux-text-2); }
+/* The nations' tabs along the foot, each with its nation's colour under it; All Nations at the end. */
+.ux-sh-tabs { display: flex; align-items: stretch; gap: 8px; height: 34px; border-top: 1px solid var(--ux-line); flex-shrink: 0; padding: 0 8px; background: var(--ux-panel-2); }
+.ux-sh-tabsin { flex: 1 1 auto; min-width: 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; }
+.ux-sh-tab { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; font-size: 12px; font-weight: 600; color: var(--ux-text-3);
+  border-bottom: 3px solid transparent; }
+.ux-sh-tab:hover { color: var(--ux-text); }
+.ux-sh-tab.ux-on { color: var(--ux-text); background: var(--ux-panel); border-bottom-color: var(--tc, var(--ux-accent)); }
+.ux-sh-allw { position: relative; flex: none; display: flex; }
+.ux-sh-allm { position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 30; width: 300px; max-height: 60vh; overflow-y: auto; padding: 6px; border-radius: 8px;
+  background: var(--ux-panel-3); border: 1px solid var(--ux-line-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .5); }
+.ux-sh-allr { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12px; text-align: left; }
+.ux-sh-allr > span:nth-child(2) { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+.ux-sh-allr:hover, .ux-sh-allr.ux-on { background: var(--ux-panel); }
+/* The dock: Record, Free Agents, Nationals. */
+.ux-sh-dock { height: 100%; }
+.ux-sh-dseg { margin-left: 0; }
+.ux-sh-dropnote { margin: 0 12px 8px; padding: 6px 8px; border-radius: 6px; border: 1px dashed var(--ux-line-2); font-size: 12px; color: var(--ux-text-2); text-align: center; }
+.ux-sh-free { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ux-search.ux-sh-fq { width: auto; margin: 0 12px 6px; }
+.ux-sh-flist { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 6px 10px; }
+.ux-sh-frow { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border-radius: 6px; font-size: 12px; cursor: grab; }
+.ux-sh-frow:hover { background: var(--ux-panel-2); }
+.ux-sh-fn { flex: 1 1 auto; min-width: 0; }
+.ux-sh-recact { display: flex; gap: 8px; flex-wrap: wrap; }
+.ux-sh-dlr dd/* A new club's row and a new man: faint until the overseer lets them in; a new club's row number is its remove button. */
+.ux-sh-tbl tr.ux-sh-fresh > td.ux-sh-td { background: color-mix(in srgb, var(--ux-accent) 6%, var(--ux-panel)); }
+.ux-sh-rx { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ux-text-3); }
+.ux-sh-rx:hover { color: var(--ux-loss); }
+.ux-sh-bin { height: 24px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ux-line-2); background: var(--ux-panel); color: var(--ux-text); font: inherit; width: 200px; }
+.ux-sh-bin.ux-sh-bnum { width: 40px; text-align: center; }
+/* The + in an empty place: shown while the pointer is on the cell, it opens a new man's form on the dock. */
+.ux-sh-plus { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-left: auto; border-radius: 4px; color: var(--ux-text-2); opacity: 0; }
+.ux-sh-td:hover .ux-sh-plus, .ux-sh-td.ux-sh-sel .ux-sh-plus, .ux-sh-plus:focus-visible { opacity: 1; }
+.ux-sh-plus:hover { background: var(--ux-panel-3); color: var(--ux-text); }
+/* A record on the dock: a short head, then sections a header each (Details, Plays For, Traits); a fact is its label and its
+   value on one 30px line, the value plain until clicked, then its own box in the same place. */
+.ux-sh-rec { display: flex; flex-direction: column; gap: 14px; padding: 2px 12px 12px; overflow-y: auto; min-height: 0; }
+.ux-sh-rh { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.ux-sh-rface { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--ux-panel-3); }
+.ux-sh-rnew { border: 1px dashed var(--ux-line-2); background: none; color: var(--ux-text-3); }
+.ux-sh-rh > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ux-sh-rh b { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.ux-sh-rh > div > span { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ux-text-3); white-space: nowrap; }
+.ux-sh-sec { display: flex; flex-direction: column; min-width: 0; }
+.ux-sh-sech { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 26px; border-bottom: 1px solid var(--ux-line);
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ux-text-3); }
+.ux-sh-sech .ux-dim { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11px; overflow: hidden; white-space: nowrap; }
+.ux-sh-lockh { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11px; }
+.ux-sh-facts { margin: 0; }
+.ux-sh-fr { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; height: 30px; }
+.ux-sh-fr dt { font-size: 12px; color: var(--ux-text-3); }
+.ux-sh-fr dd { margin: 0; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ux-text); }
+.ux-sh-fv { display: flex; align-items: center; gap: 6px; width: calc(100% + 6px); height: 26px; margin-left: -6px; padding: 0 6px; border-radius: 4px; text-align: left;
+  color: inherit; font: inherit; white-space: nowrap; overflow: hidden; }
+.ux-sh-fv:disabled { cursor: default; color: var(--ux-text); opacity: 1; }
+.ux-sh-fv.ux-ed:hover { background: var(--ux-panel-2); }
+.ux-sh-fv .ux-dim { margin-left: 2px; }
+.ux-sh-fi { width: calc(100% + 6px); height: 26px; margin-left: -6px; padding: 0 6px; border: 0; border-radius: 4px; background: var(--ux-panel-3); color: var(--ux-text);
+  font: inherit; font-size: 13px; outline: 2px solid var(--ux-accent-ink); color-scheme: dark; }
+.ux-sh-fi.ux-sh-flat { outline: none; background: var(--ux-panel-2); }
+.ux-sh-fi.ux-sh-flat:focus { outline: 2px solid var(--ux-accent-ink); background: var(--ux-panel-3); }
+.ux-sh-fi.ux-need { box-shadow: inset 0 0 0 1px var(--ux-draw); }
+.ux-sh-fi.ux-sh-fnum { width: 56px; text-align: center; }
+.ux-sh-fi.ux-sh-fage { width: 52px; flex: none; margin-left: 0; text-align: center; }
+.ux-sh-posed { display: flex; align-items: center; gap: 6px; }
+.ux-sh-fi.ux-sh-fsel { width: 72px; margin-left: 0; padding: 0 4px; }
+.ux-sh-posed .ux-sh-fsel:first-child { margin-left: -6px; }
+.ux-sh-done { font-size: 11px; color: var(--ux-text-2); padding: 0 4px; }
+.ux-sh-done:hover { color: var(--ux-text); }
+.ux-sh-posc { font-size: 12px; font-weight: 700; }
+.ux-sh-spk { width: calc(100% + 6px); margin-left: -6px; }
+.ux-sh-side { display: flex; align-items: center; gap: 8px; height: 30px; font-size: 13px; border-bottom: 1px solid var(--ux-line); }
+.ux-sh-side:last-child { border-bottom: 0; }
+.ux-sh-sn { flex: 1 1 auto; min-width: 0; }
+.ux-sh-side .ux-dim { flex: none; font-size: 11px; }
+.ux-sh-pts { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11px; }
+.ux-sh-pts b { color: var(--ux-text); font-weight: 600; }
+.ux-sh-trl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0 2px; font-size: 12px; }
+.ux-sh-trc { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 5px; border-radius: 13px; background: var(--ux-panel-2); font-size: 12px; }
+.ux-sh-trb { margin-left: auto; font-size: 12px; color: var(--ux-text-2); padding: 0 2px; }
+.ux-sh-trb:hover { color: var(--ux-text); }
+.ux-sh-trp { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; padding-top: 8px; }
+.ux-sh-trt { grid-column: 1 / -1; padding: 6px 2px 2px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ux-sh-trt.ux-gold { color: var(--ux-gold); } .ux-sh-trt.ux-silver { color: #c9d1dc; } .ux-sh-trt.ux-bronze { color: #c98b5e; }
+.ux-sh-trx { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px; border-radius: 6px; font-size: 12px; color: var(--ux-text-2); text-align: left; min-width: 0; }
+.ux-sh-trx > span { min-width: 0; overflow: hidden; white-space: nowrap; }
+.ux-sh-trx:hover:not(:disabled) { background: var(--ux-panel-2); color: var(--ux-text); }
+.ux-sh-trx.ux-on { background: color-mix(in srgb, var(--ux-win) 16%, transparent); color: var(--ux-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ux-win) 45%, transparent); }
+.ux-sh-trx:disabled { opacity: .35; cursor: not-allowed; }
+.ux-sh-askin { position: static; transform: none; margin-left: 4px; }
+.ux-sh-danger { color: var(--ux-loss); border-color: color-mix(in srgb, var(--ux-loss) 45%, var(--ux-line-2)); }
+.ux-sh-danger:hover { background: color-mix(in srgb, var(--ux-loss) 14%, transparent); }
+/* Past a club's sixteenth place its row simply ends; only a national side's runs on. */
+.ux-sh-tbl td.ux-sh-void { background: var(--ux-bg); border-right-color: transparent; border-bottom-color: transparent; }
+.ux-sh-bname { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ux-text); }
+.ux-sh-bname:hover { color: var(--ux-accent-ink); }
+.ux-sh-rlg { background: none; border-radius: 6px; }
+/* Sub In / Sub Out: the side's men he may change places with, a row each; a click swaps them. */
+.ux-sh-subr { display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 4px; border-bottom: 1px solid var(--ux-line); font-size: 13px; text-align: left; }
+.ux-sh-subr:hover { background: var(--ux-panel-2); }
+.ux-sh-subr:last-child { border-bottom: 0; }
+.ux-btn.ux-on { background: var(--ux-panel-3); color: var(--ux-text); }
+/* Fullscreen: the grid and the dock over the whole window. */
+.ux-body.ux-sh.ux-sh-full { position: fixed; inset: 0; z-index: 9990; height: 100vh; background: var(--ux-bg); }
+.ux-sh-kitok { flex: none; height: 24px; padding: 0 6px; font-size: 11px; color: var(--ux-text-2); }
+.ux-sh-kitok:hover { color: var(--ux-text); }
+/* The Lineup: the picked side's head (crest, name, its figures, its formation), its eleven on the pitch, its bench under it. */
+.ux-sh-line { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; min-height: 0; flex: 1 1 auto; overflow-y: auto; }
+.ux-sh-lh { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.ux-sh-lh > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ux-sh-lh b { font-size: 14px; font-weight: 700; display: block; }
+.ux-sh-lh span { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ux-text-3); }
+.ux-pick.ux-sh-lfm { margin-left: 0; height: 26px; }
+.ux-sh-lpitch { flex: none; height: 430px; display: flex; flex-direction: column; }
+.ux-sh-lpitch .ux-pitch-wrap { padding: 0; }
+.ux-pl.ux-sh-ppl { cursor: grab; }
+.ux-pl.ux-sh-pover .ux-pl-tok { box-shadow: 0 0 0 3px var(--ux-win); }
+.ux-sh-lb { display: flex; align-items: center; gap: 6px; height: 30px; border-bottom: 1px solid var(--ux-line); }
+.ux-sh-lb:last-child { border-bottom: 0; }
+.ux-sh-lb.ux-sh-over { background: color-mix(in srgb, var(--ux-win) 22%, var(--ux-panel)); }
+.ux-seg.ux-sh-dseg button { padding: 0 8px; }
+/* The Lineup's men drawn small (30px circles), their chips and names in proportion. */
+.ux-sh-lpitch .ux-pl { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+.ux-sh-lpitch .ux-pl-tok { width: 30px; height: 30px; border-width: 1.5px; }
+.ux-sh-lpitch .ux-pl-tok[draggable="true"] { cursor: grab; }
+.ux-sh-lpitch .ux-pl-label { margin-bottom: 3px; }
+.ux-sh-lpitch .ux-pl-first { font-size: 8px; }
+.ux-sh-lpitch .ux-pl-last { font-size: 9.5px; }
+.ux-sh-lpitch .ux-pl-rtg, .ux-sh-lpitch .ux-pl-pos { top: 15px; min-width: 16px; padding: 0 3px; font-size: 8.5px; line-height: 13px; border-radius: 3px; }
+.ux-sh-lpitch .ux-pl-rtg { left: -9px; }
+.ux-sh-lpitch .ux-pl-pos { right: -9px; }
+.ux-sh-lpitch .ux-pl-drop { font-size: 8.5px; bottom: calc(100% + 4px); }
+.ux-sh-lpitch .ux-pl-warn, .ux-sh-lpitch .ux-pl-warn .ux-warn-i { width: 12px; height: 12px; }
+.ux-sh-lpitch .ux-pl-warn { margin-left: -6px; bottom: calc(100% + 4px); }
+.ux-sh-lpitch { height: 400px; }

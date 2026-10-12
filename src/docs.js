@@ -294,11 +294,11 @@ export const DOCS = [
   ] },
   { id: "editing", title: "Editing", sections: [
     { id: "editors", title: "Editors And The Overseer", body: [
-      "Each editor keeps their own nation: its national side, its clubs and its leagues. An editor may also be given another nation's clubs and leagues without its national side. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The overseer can change anything, and answers the requests editors send.",
+      "Each editor keeps their own nation: its national side, its clubs and its leagues. An editor may also be given another nation's clubs and leagues without its national side. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The Editor has three pages: the Sheet, Trades and Requests. Edit Player on a player's page, and Edit Club or Edit Team on a side's page, open the sheet at that man or that side. The overseer can change anything, and answers the requests editors send.",
       { dl: [
-        ["Yours To Change", "A side's name and kits, its formation and who plays where; your national side's call-ups and manager; and a league's name, tier and cup."],
+        ["Yours To Change", "A side's name, kits, time wasting and formation, and who plays where; men and managers moved between your own sides, free agents signed and men released; your national side's call-ups; and a league's name, tier and cup."],
         ["By Request", "A side's ground, capacity and city, a club's code, one of your players' positions, and every new player, manager, club and league. The overseer answers these."],
-        ["On Trades", "Every move of a man or manager between clubs, and signing and releasing free agents. A deal between your own clubs, or with free agents, goes live at once; one with another nation's club is an offer that nation accepts."],
+        ["On Trades", "Any move between clubs can also be made on Trades, which shows every man's value. A move to or from another nation's club is made only there, as an offer that nation accepts."],
         ["The Overseer's", "Every man's own record: his name, nationality, date of birth, rating and traits, shown locked; his positions too, which you may ask to change. A club plays its manager's style, so a new manager brings his with him."],
       ] },
     ] },
@@ -317,50 +317,43 @@ export const DOCS = [
       ] },
       "Decline, Withdraw and Dismiss each ask twice.",
     ] },
-    { id: "teams", title: "Teams", body: [
-      "Teams lists your sides down the left, the national side first and then your clubs by league, under New Team and a search. The overseer sees every side. The side picked fills the page. Its name and kits are edited in place, and Request A Change opens its ground, capacity and city, and a club's code, for Add To Cart to send to the overseer.",
-      "The squad stands on a pitch in the side's formation, with the bench beside it. Drag a man onto another place to swap the two, or click one and then the other. A man out of position shows the rating he would play the place at, ringed in red, with the warning triangle and what the place costs him. A new formation moves every man to the place nearest his positions. A club's men join and leave it on Trades. On a national side, clicking a man brings up Drop to let him go, as does the cross on a bench row; if he started, the bench man who best fits his place moves up into it.",
-      "Each bench place takes a man of its group, shown beside it: a club's five are a keeper, a defender, two midfielders and a forward, and a national side's eleven follow the groups of its starting eleven. A filled place shows the man's position that fits it. Signings, trades and new players are sorted into the places their positions fit, as far as the bench allows, and a man left in another group's place is marked in red.",
-      "A national side's page has Eligible Nationals beside the pitch: its nationals not in the squad, best first, with a search. Click one to call him up. With every place filled, the squad then waits for the man he replaces: click him on the pitch or the bench, and the new man takes his place. Appoint, on the Manager panel, brings in a manager, and the cross beside him releases him. A man named in an offer or request that is still waiting cannot move, and is marked Waiting On A Request.",
+    { id: "sheet", title: "The Sheet", body: [
+      "The Sheet is the registry as a spreadsheet. Each nation has a tab along the foot, yours first and then every nation with clubs; the rest are under All Nations, and Arterra's national sides share the ARTERRA tab while Arterra is on. Every tab can be read, and another nation's is locked. A tab is one table: the national side first, then the clubs league by league, each league under a strip with its badge and name. Clubs stand best first, sorted when the tab opens, so a row stays put while you work on it.",
+      "The badge, code and name stay in place while the rest scrolls: OVR, XI, Bench and Value, worked out as men move; formation and time wasting; the manager; home and away kits; city, ground and capacity; and then the places, sixteen for a club and twenty-two for a national side. Each place starts with its position in the side's formation, SUB on the bench. A man is a chip with his rating, his name, and his nation's code when he is not the tab's. One out of position shows the rating he plays the place at, ringed in red, with what it costs him. A manager's chip carries his style.",
+      "One click opens any cell you can change: a list for formation and time wasting, a colour picker for a kit, a search for the city, a box for the rest. Enter or Tab keeps the change and Escape drops it. The arrow keys and Tab move around the sheet, typing on a cell starts on it, Enter on a chip opens his record, and Delete releases a man or sacks a manager. The bar over the grid shows the picked cell in full.",
+      "A changed cell stays marked until the cart is saved, and an editor's change to a code, ground, capacity or city shows Requested until the overseer answers. Undo and Redo, beside the bar, or Ctrl+Z and Ctrl+Y, step back and forward through your changes.",
+      { dl: [
+        ["Sort And Filter", "A column's name sorts every league by it, and its funnel keeps only the values you tick."],
+        ["Find", "Looks across every tab for a player, a manager or a side, and takes you to his cell."],
+        ["Fullscreen", "Lays the sheet and the dock over the whole screen. Escape brings it back."],
+      ] },
+    ] },
+    { id: "moving-men", title: "Moving Men", body: [
+      "Drag a chip onto a place. Onto a man, the two change places, wherever each came from: two of your clubs, or the eleven and the bench. Onto an open place, he moves there. A club's man dragged onto his national side is called up and stays at his club; dropped onto a man already there, that man leaves the squad. Managers move the same way between your sides. A starting place can't be left empty, and a man in an offer or request that is still waiting carries a lock and can't move. A move to another nation's club is made on Trades.",
+      "The dock, beside the sheet, has four panels:",
+      { dl: [
+        ["Record", "The chip you clicked: his details, the sides he plays for, his traits and his value. Sub Out on a starter and Sub In on a substitute list the men he can change places with. Trade opens Trades with him in a deal; on another nation's man it reads Make An Offer. The overseer edits the record here and can retire a player."],
+        ["Lineup", "The picked side on a pitch, with its bench under it and its formation at the top. Drag men around it, or between it and the sheet. Clicking a side's badge opens it here."],
+        ["Free Agents", "Every free player and manager, best first, with a search. Drag one onto an open place to sign him, or onto a man to sign him in that man's place. Drag a man from the sheet onto this panel to release him, or a manager to sack him."],
+        ["Nationals", "With a national side picked: its men not called up, best first. Drag one up into the squad."],
+      ] },
+    ] },
+    { id: "new-records", title: "New Players, Managers, Clubs And Leagues", body: [
+      "Type into an open place to make a new player there: his name, a comma and his position, as Kenji MORISHITA, ST. A second position goes after another comma, and a rating in brackets in front: (84) Kenji MORISHITA, ST, CF. A surname typed in lower case is put in capitals. Paste several lines to make one in each open place from there on. The + in an open place makes one and opens his form on the dock: name, nationality, date of birth or an age (a date is drawn for it), rating and positions. The positions are the codes in Positions, under Ratings.",
+      "A new manager is made the same way in an empty manager cell: type his name, with a rating in brackets if you like, or press its +. His form has his style in place of positions, and when he is let in he takes the side over.",
+      "+ New Club, at the foot of each league, adds a row to fill in place: name, code, kits, city, ground and capacity, formation and time wasting. Drag its men in from the free agents and your own clubs or type new ones into its places, and its manager from Free Agents; it needs its eleven starters, and the bench can wait. New League, under the last league, adds a strip for the league's name, tier and cup, with + New Club for its founding clubs.",
+      "Everything new goes into the cart and is sent when the cart is saved. For an editor each new man, each new club with its men, and each new league with its clubs is one request, which the overseer may change before letting it in; the overseer's own go in at once. A rating can be left blank for the overseer to set, and traits on a new player are the overseer's to add. A new player can be of any nation, but one from outside your own needs a rating below that nation's level, its national side's rating. New managers are of your own nation.",
+    ] },
+    { id: "leagues", title: "Leagues", body: [
+      "A league's name, on its strip, opens it on the dock: its name, tier and cup are yours to change without a request. Two leagues can share a tier, for regional divisions. The overseer also sees how many places go up and down, and moves a club into another league by dragging its row number onto that league's strip.",
+      "A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it.",
     ] },
     { id: "trades", title: "Trades", body: [
       "Trades is where men change clubs: signings, releases, moves between your own clubs and swaps with other nations' clubs, managers as well as players, between as many clubs as you like. Down the left are your offers: Your Move, the ones waiting on you; Waiting, yours and the ones you have accepted that still wait on others; and Declined. New Deal starts another.",
       "Your club stands on the left. Add, on the right, brings in another club, or Free Agents to sign from; each gets a tab, and the cross on a tab takes it out. Click a man to put him in the deal: with one other club he goes to it, and with more the click asks where he goes, to a club or to free agency. Click him again to take him out. Each club counts its places as the deal stands, and one that would hold too many asks who makes way, with Release beside each of its men; the deal cannot go until every squad fits. A man coming in takes the place of a man leaving, but a keeper's place only ever goes to a keeper, and a starting place left empty is filled from the bench.",
       "Each player shows his transfer value where he stands now. The Deal lists what each club gets and gives, with the value coming in and going out, and where each man coming in will play. A deal between your own clubs, or with free agents, goes live with Confirm. One with another nation's club is an offer: Send Offer sends it to that nation's editors, or to the overseer where it has none. The overseer has Apply Now as well, to put it straight in.",
       "Every club in an offer accepts the same version. Accept, Decline (with a note) or Counter answer it: a counter changes the deal from your side and sends it back to every other club to accept again. Withdraw takes back one of yours. Until it is settled only the men in it are held, and each accept checks again that it still fits.",
-      "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals on their own page (see Teams).",
-    ] },
-    { id: "players-managers", title: "Players And Managers", body: [
-      "Players lists your nation's men and everyone at your sides, and Managers the same for managers, each under New Player or New Manager and a search. Edit Player on a player's page, and Edit Club or Edit Team on your own side's page, open that record here.",
-      "A player's page shows his record, his positions among it, and his sides. Request A Change beside his positions sends new ones to the overseer. He moves on Trades, and your national side calls him up on its own page. A manager's page shows the sides he runs, and he moves on Trades too. The overseer can also change a man's record here, and retire a player.",
-    ] },
-    { id: "leagues", title: "Leagues", body: [
-      "Leagues lists your nation's leagues by tier, with each one's number of clubs. A league's name, tier and cup sit at the top of its page, yours to change without a request: a tier from 1 to 5, or none, and a cup from your nation's, none, or a new one named there. Two leagues can share a tier, for regional divisions. Below come the league's clubs, each opening on Teams, the nation's pyramid tier by tier, and its cups with the leagues that enter each.",
-      "A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it.",
-    ] },
-    { id: "new-records", title: "New Players, Managers And Clubs", body: [
-      "New Player, New Manager and New Team, at the top of each list, make a request to the overseer, who may change anything in it before letting it in. Add To Cart puts it in the cart, and it is sent when the cart is saved; the overseer's own go in then.",
-      { dl: [
-        ["New Player", "Name, nationality, date of birth, his position and a second if he has one, the side he joins (one of yours, or none), a rating, and the traits that rating can afford."],
-        ["New Manager", "Name, nationality, date of birth, style and a rating."],
-        ["New Team", "A club in one of your nation's leagues: name, code, kits, ground and capacity, a city from the map, league, formation and manager, and a squad of sixteen from free agents and your own players."],
-      ] },
-      "Beside a date of birth, Or Age picks a random date that gives that age in the world's own time, and the die picks another. A rating can be proposed or left blank, and the overseer sets every blank one before letting the man in. Traits need a rating of 75 or more: the list shows the points spent of his budget, and a trait he cannot afford cannot be ticked.",
-      "An editor's new managers are of their own nation. A new player can be of any nation, but one from outside the editor's own needs a rating below that nation's level, its national side's rating, and cannot be left blank: the Rating box shows the limit, and Roll Ratings in New League keeps him under it.",
-    ] },
-    { id: "many", title: "Many Players At Once", body: [
-      "Many, at the top of New Player, sends a whole list as one request. Type or paste the players a line each, as a name, a comma and a position code, with a second position after another comma if he has one: Kenji MORISHITA, GK or Shohei KUWABARA, CB, RB. The codes are the ones in Positions, under Ratings. A tab does for the comma, so two columns copied from a spreadsheet work as they are. The list is sorted keepers first and on up the pitch.",
-      "One nationality covers them all, and each man gets a random date of birth for an age in the range you set, 18 to 32 to start; the die draws them all again. Ratings start blank and can be typed into the table, and Traits in a player's row opens his list under it. A line that cannot be read is named under the box, and the list cannot be sent until it is fixed. The list joins one of your sides with room for every man on it, or none, and holds up to forty men.",
-      "Import, on a squad in New League, takes the same lines into that squad, each man to the open place that fits him best. Its Add stays off while there are more men than open places.",
-    ] },
-    { id: "new-leagues", title: "New Leagues", body: [
-      "New League asks for a league and its founding clubs, in three columns. The first holds the league (its name, tier, and a cup picked or named new) and its founding clubs, each ticked once it is ready, with Add Club for another. The second is the club open: name, code, kits, ground and capacity, city, formation, and a manager who is free or made new there. The third is that club's squad.",
-      "Fill a squad with free agents and your own men from the search, make a man with New Player, or paste a list with Import (see Many Players At Once). Each club needs its eleven starters, and the bench can wait. A new man reopens from the pencil on his row, and two places swap by dragging one onto the other or clicking one and then the other.",
-      "Roll Ratings, on the squad, rates the new men for you. Give it the team rating you want and Roll rates every new man left blank, or rolled before, so the squad averages it: the starters a little above it, and each bench man below the starter in his position. Ratings you typed, and men already on file, stay as they are.",
-      "A league made here is listed among the leagues from its first club; an older one needs six. An editor whose nation has no leagues yet starts here, as the Leagues tab opens on New League.",
-    ] },
-    { id: "kept-forms", title: "Unfinished Forms", body: [
-      "A New form you are filling in is kept in this browser until you add it to the cart or press Cancel, one for each tab. Going to another tab, picking a record from the list or reloading the page puts it aside, and New brings it back as you left it. A request the overseer is reviewing is not kept; it opens again from Requests.",
+      "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals in the sheet (see Moving Men).",
     ] },
     { id: "images", title: "Badges And Portraits", body: [
       "Images are not uploaded in the app: send them as a zip to @auroruse on Discord. A badge, for a club or a league, is 500 by 500 pixels with 50 pixels of padding on every side and a 25 pixel white outline. A portrait is a chest-up headshot, the subject in a plain white shirt.",

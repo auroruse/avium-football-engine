@@ -367,102 +367,144 @@ picked: the momentum chart on Full Time.
 
 ### Editor
 
-For the ACU's editors and the overseer (Moukden and Kirin, 10 October 2026, over five rounds of questions). A fourth
-section in the top bar, EDITOR, shown only to signed-in editors and the overseer. Its pages are tabs in the page bar:
-**Teams**, **Players**, **Managers**, **Leagues**, **Trades** and **Requests**. The Edit Player and Edit Club buttons on player and side pages open
-that record here; the old dialogs go.
+For the ACU's editors and the overseer (Moukden and Kirin, 10 October 2026, over five rounds of questions; rebuilt as a
+sheet on 12 October 2026, over seven more). A fourth section in the top bar, EDITOR, shown only to signed-in editors and
+the overseer. Its pages are tabs in the page bar: **Sheet**, **Trades** and **Requests**. The Edit Player and Edit Club
+buttons on player and side pages open the sheet at that man's chip or that side's row; the old Teams, Players, Managers
+and Leagues pages are gone, and their addresses open the sheet.
 
 **Who may change what.** The overseer changes everything. An editor changes only their own nation's sides, its national
-side and its clubs: their names and kits freely; their code, ground (with its capacity) and city by request to the
-overseer; their formations and the slots of their squads; who plays for them and who manages them, by moving men; and
-the name, tier and cup of their nation's leagues, outright. An editor may also keep another nation's clubs and leagues
+side and its clubs: their names, kits and time wasting freely; their code, ground (with its capacity) and city by request
+to the overseer; their formations and the places of their squads; who plays for them and who manages them, by moving men;
+and the name, tier and cup of their nation's leagues, outright. An editor may also keep another nation's clubs and leagues
 without its national side (editors.json `clubs`; the user, 11 October 2026: "Give the Karjanian access to the Turulian
 LEAGUE (not NT)"): those clubs are theirs as their own are, and that nation's players still count as another nation's. An
-editor never changes a man's rating, age or traits, and their editor shows those locked; a player's positions are
-locked too, with Request A Change beside them for one of the editor's own men (a request to the overseer). A side's style follows its
-manager: appointing a manager brings his style, and only the overseer sets a style directly.
+editor never changes a man's rating, age or traits, and sees them locked; a player's positions change only by request to
+the overseer, for one of the editor's own men. A side's style, keeper passing and defensive line follow its manager:
+appointing a manager brings them, and only the overseer sets a style directly.
 
-**Teams** is a picker rail down the left (New Team at the top, a search, then the editor's own sides; the overseer sees
-every side) with the picked side filling the rest: its name and kits, its code, ground and city (a request), its
-formation, and its squad on a pitch with the bench beside it. Drag a man onto another slot or bench place to swap the
-two, or click one and then the other. Changing the formation re-slots the eleven. A club's page arranges its own squad
-and nothing more: every move of a man between clubs is made on Trades (user, 11 October 2026). A national side's page
-calls men up side by side, like a deal: its squad beside its eligible nationals, searchable and best first. A click calls
-a man up; at 22 of 22 the man he replaces is picked from the squad, and he takes that man's place. Drop stays on the
-squad, and a national side appoints its manager on its own page.
+**The Sheet** (Moukden and Kirin, 12 October 2026: "the team, player, and league editor/creator can be merged into one
+entity – a Google Sheets clone") is the AFA Registry the records came from, rebuilt in the app's own theme: column
+letters over the columns, row numbers down the left, the picked cell's whole value in a bar over the grid, and the tabs
+along the foot. Every nation has a tab, and Arterra's national sides share one ARTERRA tab, last, while the Arterra switch
+is on. The editor's own nations come first, then every nation with clubs; nations with only a national side are reached
+from All Nations at the end of the tab bar. Every tab can be read by every editor; only their own sides take changes, and
+another nation's tab shows its cells locked. A tab's header row wears its nation's colour.
 
-**Players** is the same rail (New Player, a search, the editor's nation's men first). A player's page shows his facts
-(name, nationality, date of birth, rating, traits), locked for an editor and open to the overseer, and his sides, shown
-and not changed here: his moves are made on Trades, his call-ups on his national side's page. The overseer can also retire
-him. **Managers** works the same way: his sides are shown, his moves between clubs are made on Trades, and his rating is
-the overseer's.
+A nation's tab is one table under one header (Moukden and Kirin, 12 October 2026: two tables with their own headers were
+the main clutter): its national side first, as a band of its own, then its clubs league by league. Each band is a thin
+strip with the league's crest and name and nothing else (the same day: "The descriptions next to the league headers and
+the small colored part on the left need to go"); the name opens the league on the dock, where its name, tier and cup are
+changed and the overseer sees the places promoted and relegated. A band's clubs stand best first by OVR, sorted when the
+tab opens and not again while it is open, so a row never jumps while men are moved. Crest, code and name stay put while
+the rest scrolls sideways.
 
-**Leagues** (Moukden and Kirin, 11 October 2026, over four rounds of questions and a mock) is the same rail: each nation's
-leagues under its name, with tier and club count. A league's page has its name, tier and cup in its head, changed outright;
-its clubs in a table, each opening on Teams; the nation's pyramid tier by tier, where two leagues may share a tier; and its
-cups with the leagues that enter each. Its record is `src/data/leagues.json`: a rename keeps the old name in `formerly`, so
-the archive's seasons, its badge and the clubs a saved tournament names still find it. **New League** is a request to the
-overseer, in three columns: the league (name, tier, a cup picked or named new) with its founding clubs, the club open (name,
-code, kits, ground, capacity, city, formation, a manager or a new one) and its sixteen places, filled from free agents and
-the editor's own men or with new players made there. A new man reopens from the pencil on his row; places swap by dragging
-one onto another or clicking one then the other. **Roll Ratings** on the squad is a tool, never a field: given a team rating
-it rates every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of
-2.3 (the clubs on file, measured 11 October 2026) and each bench man below the starter at his position, keeping typed
-ratings (`src/data/roll.js`). The overseer reviews a league with every field open and sets every blank rating before
-Approve. A league made this way stands as a league of its own from its first club; the ones from before keep the six-club
-rule. A nation with no club sheet gets one with its first league, and editors without clubs start here.
+**The columns:** crest, code, name, OVR, XI, Bench, Value, formation, time wasting, manager, home and away kits, city,
+ground and capacity, and then the places, last, so a club's row ends at #16 and only a national side's runs on to #22. OVR is the squad's mean, XI the
+eleven's, Bench the bench's and Value its men's transfer values together, all worked out as men move and never typed; a
+saved side's record carries its OVR as worked out. Style, keeper passing and defensive line have no columns, since they
+follow the manager: his chip carries his style's name in its colour. Formation and time wasting are drop-downs in their
+cells, a kit is its hex code on its own colour with a picker, and a city is picked from the map's cities.
 
-**New records** are requests the overseer answers. A new player: name, nationality, date of birth, a position and a second if he has one, the side he
-joins (one of the editor's own sides, or none), the rating the editor proposes or leaves blank, and the traits that
-rating can afford (none without a rating of 75 or more). A new manager: name,
-nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
-in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). An editor's new player may be of another nation when
-rated below its level, its national side's rating as the app shows it (rules.js `natLevel`; user, 11 October 2026): his
-rating cannot be left blank, the Rating box shows the limit, and Roll Ratings keeps him under it. New managers stay the
-editor's own nationals. Beside a date of birth, Or Age picks a random date
-that gives that age in the world's own time, and a die picks another. **Many** on New Player, and **Import** on a founding club's squad,
-take new players a line each, "Name, position", or "Name, position, second position" (Moukden and Kirin, 11 October 2026): read keepers first and down the
-pitch, one nationality for them all, each age drawn from a range (18 to 32 to start) with a date of birth for it, ratings
-blank or typed. On the Players tab the list is one request to the overseer (`what: "batch"`), its men free or joining one
-side with room for them all; on a squad they take its open places, each the one that fits him. A New form being filled in is kept in this browser, one a
-tab, until it is sent or cancelled: another tab, a record picked from the rail or a reload puts it aside, and New brings
-it back as it was (Moukden and Kirin, 11 October 2026). A request under review is not kept; it reopens from Requests. The overseer may change any of it before letting it in (Moukden and Kirin, 10
-October 2026). A new club: name, code,
-kits, ground and capacity, a city from the map's cities, its league and division, formation, manager, and a full squad of
-sixteen from free agents, its nation's men and new players requested with it. One line under each form gives the image
-rules: badges 500 by 500 with 50px of padding on every side and a 25px white outline, portraits a chest-up headshot in a
-plain white shirt, sent as a zip to @auroruse on Discord.
+**A man is a chip in his place:** his rating in its metal, his given name and SURNAME, and his nation's code after them
+when he is not the tab's national. Each place cell starts with the place its side's formation gives it (GK, LB, CB and so
+on, SUB on the bench), so a row reads as its shape. A man out of position shows the rating he plays the place at, ringed
+in the loss colour, with what the place costs him. A new formation re-slots the eleven by each man's own positions. A
+manager is a chip in the manager cell: his rating, his name and his style.
 
-**Trades** (user, 11 October 2026, over four rounds of questions: "Moving players around teams is shit right now
-because it just shows that the other team is full") is where every move of a man between clubs is made: a signing, a
-release, a move between one's own clubs and a swap with other nations' clubs, managers as well as players, between any
-number of clubs ("What about multi team swaps?"). Down the left are the offers: New Deal at the top, then Your Move
-(offers and counters waiting on this person), Waiting (theirs, waiting on others) and Declined (with its note, until
-dismissed). The deal fills the rest. The editor's own club stands on the left; on the right a tab for each other club in
-the deal and for Free Agents (a search over every free player and manager, best first), with Add for another. Each club
-shows its manager, its eleven and its bench, with its places counted (16 of 16). Clicking a man puts him in the deal;
-with one other club he goes to it, and with more, or with Free Agents open, the click asks where he goes (each club, or
-free agency). Clicking him again takes him out. A man coming in takes the place of a man leaving, the one that fits him
-best, starters first, but never a keeper's place for an outfielder or the other way round; a starting place left with
-nobody coming in is filled from the bench, and anyone still coming in takes an open place. A club that would hold more
-men than places, or two managers, asks who makes way: each of its men gets Release beside him, and the man picked either
-goes in the deal (a click) or to free agency (Release). Every player shows his transfer value where he stands now
-(user, the same day). Beside the clubs the deal reads as each club's comings and goings, with the value it gets and
-gives, the place each newcomer takes, and whether it fits.
+**Editing** takes one click (Moukden and Kirin, 12 October 2026: "everything needs to be editable in one click"): a click
+opens any cell the person may change, a drop-down showing its list, a kit its colour picker and a city its search, and the
+bar shows all of the cell. The arrows and Tab move, typing on a picked cell starts it, Escape lets go of an edit, and
+Ctrl+Z and Ctrl+Y undo and redo anything not yet saved. A fact on the dock opens the same way. **Fullscreen**, in the bar,
+lays the grid and the dock over the whole window and asks the browser for the screen; Escape, the button or leaving the
+browser's fullscreen brings it back. A column's header sorts
+each band by it, and its filter narrows the rows to the values picked. Find searches every tab for a man, a manager or a
+side, and opens the tab with the cell lit. No ranges, copying or filling down.
 
-A deal between one's own clubs, or with free agency, goes live at once (Confirm). A deal with other nations' clubs is an
-offer, sent at once (Send Offer), to each of those nations' editors or, where a nation has none, the overseer. Every club
-accepts the same version: each answers Accept, Decline (with a note) or Counter, and a counter (the deal changed as they
-like, from their side) becomes the new version, which every other club then accepts again, until all have accepted, one
-declines or its sender withdraws it. The overseer has both Apply Now and Send Offer, so he can trade as Nichirin's editor
-like anyone else. While an offer waits only the men in it are locked, and the last accept checks again that it still
-fits every squad. Sending, accepting or applying a deal also saves the cart's changes to the clubs in it. Offers never go
-through the cart. National sides are not traded.
+**Moving men** happens inside one's own sheet, by dragging a chip onto a place. Onto a taken place, the two change places
+wherever each came from (two clubs, the eleven and the bench); onto an empty one, he moves there. A man dragged from a club
+onto the national side is called up and stays at his club; dropped onto a man already there, that man leaves the squad; a
+man dragged off the national side is dropped from it. Managers move the same way between one's own sides. A move between
+two sheets is a trade, made on Trades, even between two sheets the same editor keeps; and Trades still makes any move,
+domestic ones too, with the men's values beside them (the user, the same day: "The trades feature should still work
+domestically in tandem with this, so that we can still see values").
+
+**The dock** on the right holds four panels, one at a time: Record, Lineup, Free Agents and Nationals. **Lineup** (Moukden
+and Kirin, 12 October 2026: the table for the registry, a pitch for one side's shape) is the picked side's eleven on the club
+page's pitch, without traits, with its bench under it and its formation in its head; a man is dragged onto another place
+there, or between it and the grid or the Free Agents panel, as in the sheet, and the row changes with it. Clicking a
+side's crest brings it forward. Clicking a chip opens his
+Record: name, nationality, date of birth, rating, positions, traits, value and his sides. The overseer changes all of it
+and can retire him; an editor sees it locked but for his positions, which are asked for. Free Agents lists every free
+player and manager, best first, with a search: dragging one onto an empty place signs him, onto a man sends that man to
+free agency in his stead, and dragging a man onto the panel releases him. Nationals opens while a national side is
+picked: the nation's men playing abroad, best first, to drag up. Under a record stand its actions: **Sub Out** for a
+starter and **Sub In** for a substitute (the user: "an option to sub players in/out in the sidebar next to retire"), each
+opening the side's men he can change places with, a click swapping them; **Trade** on one's own man and **Make An
+Offer** on another nation's, each opening Trades with him in a deal; and the overseer's Retire.
+
+**New records** are made in the sheet. Typing "Name, position" into an empty place makes a new man there, "(84) Name, ST"
+with a rating, a second position after the first; pasting several lines into a run of places makes one in each. The +
+in an empty place opens the full form on the dock instead: name, nationality (the tab's to start), date of birth or an age
+(Or Age draws a date for it, a die another), positions, rating and the traits that rating affords. A manager is made the
+same way in an empty manager cell, with his style. **+ New Club** at the foot of each league band adds a row filled in
+place: name, code, kits, city, ground, capacity, formation, manager and its sixteen places. **New League** at the foot of
+the tab adds a band for the league's name, tier and cup (picked from the nation's cups or named new), with its founding
+clubs as new rows. **Roll Ratings**, in a new club's row menu, is a tool and never a field: given a team rating it rates
+every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of 2.3 and
+each bench man below the starter at his position, keeping typed ratings (`src/data/roll.js`). For an editor each new man,
+each new club with all it holds and each new league with its band is one request to the overseer, who may change any of
+it before letting it in. A rating may be left blank for the overseer to set; a new man of another nation needs a rating
+below that nation's level, its national side's rating as the app shows it (`natLevel`), and no traits come below 75. A
+new league lists on its own from its first club, and a nation's first league makes its club sheet. A form open on the
+dock is kept in the browser until it goes to the cart or is cancelled. One line under the forms gives the image rules:
+badges 500 by 500 with 50px of padding on every side and a 25px white outline, portraits a chest-up headshot in a plain
+white shirt, sent as a zip to @auroruse on Discord.
+
+**Requests in the cells.** An editor types into the code, ground, capacity and city cells as into any other, but those
+are the overseer's to agree: the cell keeps what it has and shows the asked-for value beside it, marked Requested, until
+he answers. A man in a waiting offer or request wears a lock on his chip; a requested man, club or league stands faintly
+in the sheet until answered, and the overseer approves it as edited, or rejects it with a note, right there.
+
+**Saving** is the cart's: a changed cell stays marked until the cart is saved, live or as requests. The sheet shows the
+records as saved; others' saves arrive when the page is reloaded, with a note when there are new ones, and a save that
+clashes with one made since is caught and shown. There is no editing together live.
+
+**The overseer** also drags a club's row into another league's band to move it there (promotion, relegation), and removes
+a club from its row menu: its men go to free agency and its seasons stay in the archive. A league's record is
+`src/data/leagues.json`: a rename keeps the old name in `formerly`, so the archive's seasons, its badge and the clubs a
+saved tournament names still find it.
+
+**Trades** (user, 11 October 2026, over four rounds of questions: "Moving players around teams is shit right now because
+it just shows that the other team is full") makes every move of a man, beside the sheet's dragging: a signing, a release,
+a move between one's own clubs, and the only way between two sheets, a swap with other nations' clubs, managers as well
+as players, between any number of clubs ("What about multi team swaps?"). Down the left are the offers: New Deal at the top, then
+Your Move (offers and counters waiting on this person), Waiting (theirs, waiting on others) and Declined (with its note,
+until dismissed). The deal fills the rest. The editor's own club stands on the left; on the right a tab for each other club
+in the deal and for Free Agents (a search over every free player and manager, best first), with Add for another. Each club shows its manager, its eleven and its bench, with its places counted (16 of
+16). Clicking a man puts him in the deal; with one other club he goes to it, and with more, or with Free Agents open, the
+click asks where he goes (each club, or free agency).
+Clicking him again takes him out. A man coming in takes the place of a man leaving, the one that fits him best, starters
+first, but never a keeper's place for an outfielder or the other way round; a starting place left with nobody coming in is
+filled from the bench, and anyone still coming in takes an open place. A club that would hold more men than places, or
+two managers, asks who makes way: each of its men gets Release beside him, and the man picked either goes in the deal (a
+click) or to free agency (Release). Every player shows his transfer value where he stands now (user, the same day). Beside
+the clubs the deal reads as each club's comings and goings, with the value it gets and gives, the place each newcomer
+takes, and whether it fits.
+
+A deal between one's own clubs, or with free agency, goes live at once (Confirm). A deal with other nations' clubs is an offer, sent at once
+(Send Offer), to each of those nations' editors or, where a nation has none, the overseer. Every club accepts the same
+version: each answers Accept, Decline (with a note) or Counter, and a counter (the deal changed as they like, from their
+side) becomes the new version, which every other club then accepts again, until all have accepted, one declines or its
+sender withdraws it. The overseer has both Apply Now and Send Offer, so he can trade as Nichirin's editor like anyone
+else. While an offer waits only the men in it are locked, and the last accept checks again that it still fits every
+squad. Sending, accepting or applying a deal also saves the cart's changes to the clubs in it. Offers never go through the
+cart. National sides are not traded.
 
 **Requests** is the full view of every request but the offers, which live on Trades: For You, Yours and, for the
-overseer, the new records waiting. A new
-record opens in the Editor with every field open to the overseer; Approve lets it in as edited, Reject sends it back with
-a note. The top bar's Cart and Requests stay as the quick view, and every change is saved from the cart, as before.
+overseer, the new records waiting. A new record opens in the sheet where it stands, with every field open to the
+overseer; Approve lets it in as edited, Reject sends it back with a note. The top bar's Cart and Requests stay as the
+quick view, and every change is saved from the cart, as before.
 
 ### Documentation
 
