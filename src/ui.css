@@ -572,12 +572,16 @@
    in and out under them. */
 .ux-rc-b.ux-trs { grid-template-columns: minmax(0, 1fr); }
 .ux-trd tbody.ux-trd-deal + tbody.ux-trd-deal tr.ux-trd-h td { border-top: 1px solid var(--ux-line); }
-.ux-trd tr.ux-trd-h td { padding-top: 12px; background: transparent; }
+/* Room around each deal (the user, 13 October 2026: "make the spacing better for each trade"): its date and kind clear of
+   the deal before and of its own men, the men a little taller than a list row, the totals clear of the last man. */
+.ux-trd tbody tr.ux-trd-h td { height: auto; padding-top: 22px; padding-bottom: 10px; background: transparent; }
+.ux-trd tbody.ux-trd-deal:first-of-type tr.ux-trd-h td { padding-top: 14px; }
+.ux-trd tbody.ux-trd-deal tr:not(.ux-trd-h):not(.ux-trd-f) td { height: 32px; }
 .ux-trd-hd { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ux-text-2); }
 .ux-trd-k { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 3px;
   background: var(--ux-panel-3); color: var(--ux-text); }
-.ux-trd tr.ux-trd-f td { padding-bottom: 12px; font-size: 11px; color: var(--ux-text-3); background: transparent; }
-.ux-trd-cl { display: inline-flex; align-items: center; gap: 5px; margin-right: 18px; white-space: nowrap; }
+.ux-trd tbody tr.ux-trd-f td { height: auto; padding-top: 10px; padding-bottom: 20px; font-size: 11px; color: var(--ux-text-3); background: transparent; }
+.ux-trd-cl { display: inline-flex; align-items: center; gap: 5px; margin-right: 28px; white-space: nowrap; }
 .ux-trd-cl b { color: var(--ux-text-2); font-weight: 600; margin-right: 2px; }
 .ux-trd-sep { margin: 0 2px; color: var(--ux-text-3); }
 .ux-trd-flt { margin-left: 0; gap: 4px; cursor: pointer; }
