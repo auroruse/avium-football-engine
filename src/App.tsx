@@ -17886,9 +17886,12 @@ export default function App() {
   const uxAct = (wide, label, icon, go, kind, title) => wide ? uxMini(label, go, kind, title) : (
     <button key={label} type="button" className={"ux-btnreset ux-mini ux-ico" + (kind ? " ux-" + kind : "")} title={title || label} aria-label={title || label} onClick={go}>{uxIcon(icon, "ux-s")}</button>);
   // A side in a list of matches: crest and name, the name against the score on the home side.
-  const uxTSide = (t, won, right, host) => {
+  // A side in a fixture: its name, or in Overview's narrow Fixtures its code, the name on hover (the user, 14 October 2026:
+  // "the fixtures should use team codes so that the team names aren't all truncated").
+  const uxTSide = (t, won, right, host, code) => {
     const cr = t ? <TeamCrest team={t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />;
-    const nm = <span className={won ? "ux-strong" : undefined}>{t?.name || "TBD"}{host && <small className="ux-dim"> H</small>}</span>;
+    const nm = <span className={won ? "ux-strong" : undefined} style={code && t?.code ? mono : undefined} title={code && t?.code ? t.name : undefined}>
+      {(code && t?.code) || t?.name || "TBD"}{host && <small className="ux-dim"> H</small>}</span>;
     return right ? <div className="ux-tc ux-rt"><span className="ux-rtn">{nm}</span>{cr}</div> : <div className="ux-tc">{cr}{nm}</div>;
   };
 
@@ -18355,15 +18358,15 @@ export default function App() {
   // played can be simmed, scored or played live, as on the old screen.
   const uxTGroupRow = (m, gi, ri, mi, wide, gcol) => {
     const key = `g${gi}_${ri}_${mi}`, gcell = gcol ? <td className="ux-dim" style={mono} title={groupName(tGroups[gi], gi)}>{groupTag(tGroups[gi], gi)}</td> : null;
-    if (m.bye) return <tr key={key}>{gcell}<td>{uxTSide(m.home, false, true)}</td><td className="ux-c ux-dim">Bye</td><td /><td /></tr>;
+    if (m.bye) return <tr key={key}>{gcell}<td>{uxTSide(m.home, false, true, false, !wide)}</td><td className="ux-c ux-dim">Bye</td><td /><td /></tr>;
     const r = m.result, editing = tEdit && tEdit.gi === gi && tEdit.ri === ri && tEdit.mi === mi, haKey = `g_${gi}_${ri}_${mi}`, haVal = tHomeAdvOverrides[haKey] || null;
     const save = () => tSetManualScore(), arm = tDelArm === key;
     return (
       <tr key={key}>
         {gcell}
-        <td>{uxTSide(m.home, r && r.ftHome > r.ftAway, true, haVal === "home")}</td>
+        <td>{uxTSide(m.home, r && r.ftHome > r.ftAway, true, haVal === "home", !wide)}</td>
         <td className="ux-c ux-strong" style={mono}>{editing ? uxTScoreIn(tEdit, setTEdit, save) : r ? `${r.ftHome}-${r.ftAway}` : <span className="ux-dim">v</span>}</td>
-        <td>{uxTSide(m.away, r && r.ftAway > r.ftHome, false, haVal === "away")}</td>
+        <td>{uxTSide(m.away, r && r.ftAway > r.ftHome, false, haVal === "away", !wide)}</td>
         <td><div className="ux-tacts">
           {editing ? <>{uxAct(wide, "Save", "check", save, "pri")}{uxAct(wide, "Cancel", "close", () => { setTEdit(null); setTScoreError(""); })}</>
             : r ? (arm ? <>{uxAct(wide, "Confirm Delete", "trash", () => { setTDelArm(null); tDeleteGroupResult(gi, ri, mi); }, "danger")}{uxAct(wide, "Cancel", "close", () => setTDelArm(null))}</>
@@ -18385,9 +18388,9 @@ export default function App() {
     return (
       <tr key={key}>
         {gcell}
-        <td>{uxTSide(m.home, !!w && w === m.home, true, haVal === "home")}</td>
+        <td>{uxTSide(m.home, !!w && w === m.home, true, haVal === "home", !wide)}</td>
         <td className="ux-c ux-strong" style={mono}>{editing ? uxTScoreIn(tKoEdit, setTKoEdit, tSetKoManualScore) : r ? uxTKoScore(m) : <span className="ux-dim">{m.bye ? "Bye" : "v"}</span>}</td>
-        <td>{uxTSide(m.away, !!w && w === m.away, false, haVal === "away")}</td>
+        <td>{uxTSide(m.away, !!w && w === m.away, false, haVal === "away", !wide)}</td>
         <td><div className="ux-tacts">
           {editing ? <>{step && wide && <span className="ux-tstep">{step}</span>}{uxAct(wide, "Save", "check", tSetKoManualScore, "pri", step ? "Save " + step : null)}
                 {uxAct(wide, "Cancel", "close", () => { setTKoEdit(null); setTScoreError(""); })}</>

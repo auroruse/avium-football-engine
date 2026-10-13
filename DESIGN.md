@@ -307,7 +307,8 @@ player stats sheet in the archive's format, to be filed by hand; a File To Archi
 written as tabs whenever there is more than one group, so a group stage filed before its knockout reads too, and the
 sides a group sent through are in bold in its table. A group a preset names (a college league's conferences) goes by its
 name wherever a group is named (its table, a side's route into the knockout, a fixture on Live Match), and by its
-initials where a column only has room for a letter.
+initials where a column only has room for a letter. Overview's Fixtures, too narrow for long names, gives each side by its code, the name on hover (the user,
+14 October 2026: "the fixtures should use team codes so that the team names aren't all truncated").
 
 The rebuild also puts right what the old screen got wrong (found reading its code, 9 October 2026, each reproduced and
 fixed 10 October): editing a played score replaces its player stats, and a knockout edit clears the rounds after it,
