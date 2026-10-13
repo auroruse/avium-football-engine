@@ -18483,7 +18483,7 @@ export default function App() {
   const renderUxTOverview = () => {
     const isKO = !!tKO && tPhase !== "groups", fin = uxTFinal();
     return (
-      <div className="ux-body ux-tsplit">
+      <div className="ux-body ux-tsplit ux-tsplit-n">
         <section className="ux-panel ux-grow">
           <div className="ux-ph"><h2 className="ux-pt">{isKO ? (tKO.losers ? "Double Elimination" : tConfig.stages?.[1] || "Knockout") : tGroups.length === 1 ? "League" : tConfig.stages?.[0] || "Group Stage"}</h2></div>
           {isKO ? uxTBracket() : uxTGroupsView()}

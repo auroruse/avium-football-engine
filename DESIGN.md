@@ -295,9 +295,10 @@ with the third-place match under the final), beside **Fixtures** (the round
 picked: each match with Sim, Score and Live, a played one with Edit and Delete, as icons in that narrow column, a
 fast-forward, a pencil and a screen, named on hover) over **Leaders** (goals, assists, average rating, chances created,
 defensive actions and saves, each opening Player Stats sorted by it; the men unavailable behind a count in its title
-row). Overview and Rules give the side column more of the window than a competition's pages do (480 to 620px), so
-every fixture keeps its sides' names whole (Moukden and Kirin, 10 October 2026: "Table can take up less space here;
-the team names in fixtures shouldn't be truncated"). Once it is over, **Summary** (the champion, the runner-up and
+row). Rules gives the side column more of the window than a competition's pages do (480 to 620px); Overview's is 340 to
+400px, its fixtures naming each side by its code with the name on hover, so the tables keep their names whole (Moukden and
+Kirin, 10 October 2026: "the team names in fixtures shouldn't be truncated", and 14 October: "the fixtures should use team
+codes so that the team names aren't all truncated"). Once it is over, **Summary** (the champion, the runner-up and
 third) takes the place of Fixtures. **Fixtures**:
 every round of every stage, the round being played scrolled into view, the same rows with the buttons' names and each
 match's home advantage. Delete asks twice, and a knockout's clears the rounds after it. **Player Stats**: as a season's.

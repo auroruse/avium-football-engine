@@ -881,6 +881,8 @@
 /* A tournament's Overview and Rules give the side column more of the window than a competition does, so the fixtures beside
    the tables keep their sides' names whole (Moukden and Kirin, 10 October 2026); the groups wrap rather than overflow. */
 .ux-body.ux-tsplit { grid-template-columns: minmax(0, 1fr) clamp(480px, 38vw, 620px); }
+/* Overview's fixtures name sides by code, so the tables get the room back (the user, 14 October 2026). */
+.ux-body.ux-tsplit.ux-tsplit-n { grid-template-columns: minmax(0, 1fr) clamp(340px, 25vw, 400px); }
 .ux-groups.ux-tgroups { grid-template-columns: repeat(auto-fill, minmax(402px, 1fr)); }
 .ux-tfx-n td.ux-c { padding: 0 2px; }
 .ux-tfx-n .ux-score-ed input { width: 22px; }
