@@ -1,1 +1,59 @@
-[]
+[
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-13T14:06:33.677Z",
+  "approved": [],
+  "id": "9b73d11a",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Taipa SAARETINEN",
+  "rec": {
+   "name": "Taipa SAARETINEN",
+   "nat": "KFK",
+   "born": "1916-05-26",
+   "pos": [
+    "GK"
+   ],
+   "ovr": 33,
+   "badges": [],
+   "bornSet": true,
+   "what": "players",
+   "side": "t0187",
+   "at": 11
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-13T14:06:33.677Z",
+  "approved": [],
+  "id": "5abe1cb2",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Hans STEINBURGER",
+  "rec": {
+   "name": "Hans STEINBURGER",
+   "nat": "AAD",
+   "born": "1914-07-31",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 35,
+   "badges": [],
+   "what": "players",
+   "side": "t0187",
+   "at": 13
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ }
+]
