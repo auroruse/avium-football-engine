@@ -10,3 +10,7 @@ REPO = "auroruse/avium-football-engine"
 APP_ID = "5241706"
 CLIENT_ID = "Iv23li9roldrMcNlHXvc"
 APP_ORIGINS = "https://auroruse.github.io,http://localhost:5173"
+
+# The college draft's clock (src/data/collegedraft.js): every five minutes, a pick whose two hours are up is made.
+[triggers]
+crons = ["*/5 * * * *"]

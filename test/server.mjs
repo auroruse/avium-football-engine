@@ -29,7 +29,7 @@ const SECRET = "client-secret";                              // what GitHub hold
 const env = { REPO, APP_ID, CLIENT_ID: "Iv-test", CLIENT_SECRET: SECRET, PRIVATE_KEY: privateKey, SESSION_SECRET: "session-secret",
               APP_ORIGINS: "https://auroruse.github.io,http://localhost:5173" };
 const start = {};
-for (const f of ["players", "managers", "teams", "sheets", "editors"]) start[`src/data/${f}.json`] = readFileSync(join(ROOT, `src/data/${f}.json`), "utf8");
+for (const f of ["players", "managers", "teams", "sheets", "editors", "leagues", "drafts"]) start[`src/data/${f}.json`] = readFileSync(join(ROOT, `src/data/${f}.json`), "utf8");
 for (const f of readdirSync(join(ROOT, "src/presets"))) if (f.endsWith(".tsv")) start[`src/presets/${f}`] = readFileSync(join(ROOT, "src/presets", f), "utf8");
 const gh = { commits: new Map([["c0", start]]), trees: new Map(), head: "c0", n: 0, refuse: 0, log: [] };
 const reply = (o, status = 200) => new Response(o === null ? null : JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -114,7 +114,47 @@ ok("a tampered session is refused", (await call("/me", { session: skj.slice(0, -
 ok("no session: sign in first", (await call("/me")).status === 401);
 ok("the overseer is the overseer", (await call("/me", { session: boss })).data?.role === "overseer");
 
+console.log("the college draft");
+let dRec, dr = await call("/draft");
+ok("anyone can read the drafts", dr.status === 200 && dr.data?.[0]?.status === "waiting", dr.data?.[0]?.status);
+const kar = await signIn("zezelandnationstates-hash");
+dRec = now();
+const nlOrder = [...dRec.teams.filter(t => t.group === "Nichirin League Two").reverse(), ...dRec.teams.filter(t => t.group === "Nichirin League One").reverse()].map(t => t.id);
+dr = await call("/draft", { method: "POST", session: varh, body: { action: "start", order: nlOrder } });
+ok("only the overseer starts it", dr.status === 422 && /overseer/.test(dr.data.errors[0]), dr.data);
+dr = await call("/draft", { method: "POST", session: boss, body: { action: "start", order: nlOrder } });
+const due = dr.data?.draft?.picks.find(p => !p.player);
+ok("started: Nichirin's clubs pick at once, the first club picking by hand is on the clock", dr.status === 200 && dr.data.draft.status === "running"
+   && dr.data.draft.clock?.n === due?.n && dr.data.draft.picks.slice(0, due.n - 1).every(p => p.auto), dr.data?.errors || dr.data?.draft?.clock);
+ok("...one commit: the draft, the records, the sheets", ["src/data/drafts.json", "src/data/teams.json"].every(f => gh.log.at(-1).paths.includes(f))
+   && gh.log.at(-1).message.startsWith("Draft: auroruse, start"), gh.log.at(-1).message);
+dRec = now();
+const holder = dRec.teams.find(t => t.id === due.club), mineEd = holder.nation === "VAR" ? varh : kar, otherEd = holder.nation === "VAR" ? kar : varh;
+const lgC = JSON.parse(gh.commits.get(gh.head)["src/data/leagues.json"]).find(l => l.college).name;
+const college = dRec.teams.find(t => t.group === lgC && ids(t).some(id => dRec.players.find(p => p.id === id)?.grad === 1936));
+const prospect = ids(college).find(id => dRec.players.find(p => p.id === id)?.grad === 1936);
+dr = await call("/draft", { method: "POST", session: otherEd, body: { action: "pick", n: due.n, player: prospect } });
+ok("another nation's editor cannot make that pick", dr.status === 422 && /not yours/.test(dr.data.errors[0]), dr.data);
+dr = await call("/draft", { method: "POST", session: mineEd, body: { action: "pick", n: due.n + 1, player: prospect } });
+ok("nor can its own editor make one not on the clock", dr.status === 422 && /not on the clock/.test(dr.data.errors[0]), dr.data);
+dr = await call("/draft", { method: "POST", session: mineEd, body: { action: "pick", n: due.n, player: prospect } });
+dRec = now();
+ok("its own editor makes it: the man leaves his college for the club", dr.status === 200 && ids(dRec.teams.find(t => t.id === due.club)).includes(prospect)
+   && !ids(dRec.teams.find(t => t.id === college.id)).includes(prospect) && !!dr.data.apply, dr.data?.errors);
+const d1 = dr.data.draft, realNow = Date.now, waits = [];
+Date.now = () => Date.parse(d1.clock.until) + 60e3;          // two hours and a minute on
+await worker.scheduled({}, env, { waitUntil: (p) => waits.push(p) }); await Promise.all(waits);
+Date.now = realNow;
+const d2 = JSON.parse(gh.commits.get(gh.head)["src/data/drafts.json"])[0], timed = d2.picks[d1.clock.n - 1];
+ok("the clock runs out: the five-minute check makes that pick", !!timed.player && timed.by === "clock" && gh.log.at(-1).message.startsWith(`Draft: pick ${d1.clock.n}, time ran out`), gh.log.at(-1).message);
+const commits = gh.log.length;
+await worker.scheduled({}, env, { waitUntil: (p) => waits.push(p) }); await Promise.all(waits);
+ok("...and with nothing due it writes nothing", gh.log.length === commits);
+dr = await call("/draft", { method: "POST", session: boss, body: { action: "pause" } });
+ok("the overseer pauses it", dr.status === 200 && dr.data.draft.status === "paused" && dr.data.draft.clock?.left > 0, dr.data?.errors);
+
 console.log("saving");
+const logAt = gh.log.length;
 let rec = now();
 const skjClub = rec.teams.find(t => t.file === "SKJ"), aleClub = rec.teams.find(t => t.file === "ALE" && t.code === "LEI");
 let r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: {}, teams: { [teamKey(skjClub)]: { formation: "4-4-2", style: "Gegenpressing" } } } } });
@@ -123,7 +163,7 @@ ok("the answer says what went live and what waits", r.data.apply?.teams?.[teamKe
 ok("the commit touches the teams file and that nation's sheet only", JSON.stringify(gh.log.at(-1).paths.sort()) === JSON.stringify(["src/data/teams.json", "src/presets/SKJ.tsv"]), gh.log.at(-1).paths);
 ok("and names who made it", gh.log.at(-1).message.startsWith("Registry: SwiftorArrow"), gh.log.at(-1).message);
 r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: { [rec.players[0].id]: { ovr: 99 } } } } });
-ok("a player's rating: refused, nothing written", r.status === 422 && /overseer/.test(r.data.errors[0]) && gh.log.length === 1, r.data);
+ok("a player's rating: refused, nothing written", r.status === 422 && /overseer/.test(r.data.errors[0]) && gh.log.length === logAt + 1, r.data);
 r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: {}, teams: { [teamKey(aleClub)]: { style: "Catenaccio" } } } } });
 ok("someone else's club: refused", r.status === 422 && /not one of your teams/.test(r.data.errors[0]), r.data);
 r = await call("/save", { method: "POST", session: nobody, body: { cart: { v: 1, players: {}, teams: { [teamKey(skjClub)]: { style: "Balanced" } } } } });

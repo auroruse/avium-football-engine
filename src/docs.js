@@ -370,6 +370,15 @@ export const DOCS = [
       "Every club in an offer accepts the same version. Accept, Decline (with a note) or Counter answer it: a counter changes the deal from your side and sends it back to every other club to accept again. Withdraw takes back one of yours. Until it is settled only the men in it are held, and each accept checks again that it still fits.",
       "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals in the sheet (see Moving Men).",
     ] },
+    { id: "college-draft", title: "The College Draft", body: [
+      "After each NL season the final-year college players are drafted in one round of 44 picks, NL2's last club picking first and NL1's champion last, except where a pick has been traded. Its board is the Draft page in the Editor, which the overseer and every editor holding a pick see.",
+      { dl: [
+        ["On The Clock", "A pick has two hours. When one of your clubs is on the clock the Draft tab carries a dot, and every man still on the board has a Draft button; Draft asks to confirm. With no open place in your squad, you name who makes way, and he leaves for free agency."],
+        ["Automatic Picks", "A Nichirian club picks the moment it is on the clock, and so does any club whose two hours run out: the best season match rating left, among the men with a sixth of the most minutes first. That is the list's order."],
+        ["The Board", "Each pick shows the club holding it and, once made, the man, his position and his college. The list under it is every final-year player left, with his season's figures; his rating stays hidden until he is drafted."],
+        ["Afterwards", "Every final-year player nobody took goes to free agency, and any club can sign him through the usual save, first come first served. The draft is then filed under the Championship, and each man's page shows his pick."],
+      ] },
+    ] },
     { id: "images", title: "Badges And Portraits", body: [
       "Images are not uploaded in the app: send them as a zip to @auroruse on Discord. A badge, for a club or a league, is 500 by 500 pixels with 50 pixels of padding on every side and a 25 pixel white outline. A portrait is a chest-up headshot, the subject in a plain white shirt.",
     ] },

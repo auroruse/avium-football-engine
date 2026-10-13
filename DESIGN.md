@@ -303,7 +303,11 @@ every round of every stage, the round being played scrolled into view, the same 
 match's home advantage. Delete asks twice, and a knockout's clears the rounds after it. **Player Stats**: as a season's.
 **Rules**: what it was set up with, and what can still change from the next match (the tiebreakers, home advantage).
 Live hands the match to Play Match and brings its result back. A finished tournament downloads its season file and its
-player stats sheet in the archive's format, to be filed by hand; a File To Archive button can follow.
+player stats sheet in the archive's format, to be filed by hand; a File To Archive button can follow. A season file is
+written as tabs whenever there is more than one group, so a group stage filed before its knockout reads too, and the
+sides a group sent through are in bold in its table. A group a preset names (a college league's conferences) goes by its
+name wherever a group is named (its table, a side's route into the knockout, a fixture on Live Match), and by its
+initials where a column only has room for a letter.
 
 The rebuild also puts right what the old screen got wrong (found reading its code, 9 October 2026, each reproduced and
 fixed 10 October): editing a played score replaces its player stats, and a knockout edit clears the rounds after it,
@@ -609,7 +613,7 @@ and Eastern 1 against Southern 2 in the other), with extra time and penalties. R
 user, 13 October 2026: "Only conference games and playoffs"). The draft follows the NL season, before the Club World Cup,
 the Club World Shield and the next NL season: one round of 44 picks, the whole pyramid worst first (NL2's last first,
 NL1's champion last). A pick trades on Trades for the coming draft only, worth the slot its club's table place gives it
-now and settled when the tables are final. The season (stage 2) and the draft (stage 3) come after this.
+now and settled when the tables are final.
 
 **Hidden men.** A player at a college shows no rating, value, traits or rating change to anyone but the overseer, wherever
 he stands in the app: squad lists and pitches, his page and banner, Players and its card, search, the Sheet's chips and
@@ -635,6 +639,67 @@ as everyone's does ("Your Refresh Only").
 overseer adds one (the user, 13 October 2026: "Stadiums should be empty right now, then below it have University, City"):
 its club page's Stadium shows the picture, or its kit colours without one, the ground's name once it has one, the city
 and capacity under it as a club's, then University, its name sliding when too long.
+
+**The season** (stage 2, the user, 13 October 2026: "Tournament itself I can just do 4 groups", then "add a tournament
+preset for ANCC"). New Tournament's preset picker lists the college league under Fields by its name. The preset is read
+off the league's record when the app loads, so a conference renamed or a club moved between conferences is in it at
+once: the 32 clubs, each conference a group in bracket order and named after it (As Drawn), each a single round robin
+with the first-listed side at home, sides level on points split by goal difference, goals, head to head and wins, and the
+top two of each into the crossed playoff (one leg, no home side, extra time and penalties, no third-place match). Its
+stages are called Conferences and Playoff wherever a tournament names its stages (the stage panel, Saved, Proceed To
+Playoff), and its fixtures read Capital Eight, Round 3.
+
+**Into the archive.** Its season file has a Conferences tab (the four tables, each under its conference's name with the
+two that went through in bold, then each conference's rounds) and a Playoff tab, and it reads halfway through as well as
+at the end. Filed as `public/avium/pstats/ancc/35-36.md` with its player stats as `35-36.tsv`, it lands on the
+Championship by its clubs, like any league season. The archive reads it as a tournament where that is the right reading
+and as a league where a club's season is concerned:
+- its season page has Conferences, Playoff and Player Stats; its Roll Of Honour, the year's page and its Records give the
+  winner, the final's score and the runner-up, and the furthest each club went;
+- a club's History gives its conference as its division, its place and record there, and a Playoff column with how far
+  it went (Winner in gold); its Overview's Season panel gives the same, with its form over every match;
+- nobody goes up or down from it, and its tables are never read for another league's promotion or relegation.
+
+Every prospect's figures (appearances, starts, minutes, goals, assists, average match rating, chances created, defensive
+actions, saves) are on the season's Player Stats and on his own page once the files are in, his match ratings included;
+his rating, value and traits stay hidden.
+
+**The draft** (stage 3, the user, 13 October 2026, with a Sleeper draft board as the reference: "Make it like a draft
+board ... instead of rounds it'll just be 1 to 44, and no queue, roster, or chat"). One round of 44 picks after the NL
+season, before the Club World Cup. Its record is `src/data/drafts.json`: each pick's number and the club holding it, and
+once made the man, when, by whom, whether it was automatic and who made way for him. The order is the NL's final tables,
+NL2's last first and NL1's champion last; until the overseer starts the draft it reads off the newest tables on file, and
+starting it fixes it. Nichirin had already traded twelve picks (the user, the same day), placed at random among the first
+twenty and kept there whatever the tables do: two to Daryā Shushabad, one to Tarāzu Dashtvār, two to Homā Nourabad, one
+to Mehrāvar AC and one each to Murmánska Partisani, Åulot FK, RöPS, XIV. District JK, VKS and Szatmár SK. The NL2 clubs
+whose places land on those picks have none. A pick traded later the overseer gives to its new club on the board ("You Move
+Them"); nothing on Trades.
+
+**Picking.** Asynchronous, two hours a pick. A club whose editor is not the overseer (Karjania's and Varahmehr's) picks by
+hand, in the Editor's Draft tab, which only the overseer and editors holding a pick see; any other club picks the moment
+it is on the clock: the best season match rating left, in the season's Player Stats order (men with a sixth of the most
+minutes first). A club whose two hours run out gets that pick too ("Auto-Pick"), the clock checked every five minutes. A
+drafted man goes to an open place in his new club's squad; with none open, the editor names who makes way as he picks
+("Editor Chooses"), the weakest bench man at the drafted man's position offered first (else the lowest-rated man on the
+bench), and an automatic pick sends that man. He goes to free agency. The overseer can pause the clock, give a pick still
+to come to another club, and pick for the club on the clock.
+
+**When it ends** every final-year man not drafted leaves his college for free agency, where any club signs him through the
+usual save, first come first served. A drafted or released man shows his rating like anyone else's. The draft is then filed
+under the Championship ("Editor Tab, Then Archive"): its Draft tab shows the board and every pick, and a drafted man's page
+says which pick took him and where. The draft keeps its own record; its moves are not in the Trades log.
+
+**The board** (Editor, Draft). The draft's name, its state and the clock over the 44 picks, eleven to a row, each cell its
+number and the club holding it by its code, the full name on hover (the user, 13 October 2026: "Show team codes"); a pick
+made shows the man on his position's colour, his first name small over his surname ("Show small first name above last
+name"), his position, his college's code and his rating, which shows the moment he is picked, everywhere ("the OVR should
+be revealed after drafting"). The pick on the clock is lit with the time it has left. Under it the draftable men: every
+final-year man at a college, ranked as the automatic pick takes them, with his nationality ("show nationality in the
+draftable table") and his season's figures once the season is filed (games, starts, minutes, goals, assists, average
+rating, chances created, defensive actions, saves), searchable and by position, Show Drafted keeping the men taken in the
+list. Whoever holds the pick on the clock has a Draft button on each row, which asks to confirm, with Who
+Makes Way when the squad is full. The overseer has Start Draft, Pause and Resume above the board and, on a pick still to
+come, Give To.
 
 ### Documentation
 

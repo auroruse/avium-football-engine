@@ -217,6 +217,9 @@
 .ux-hero .ux-t1 { display: block; width: 100%; text-align: left; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden;
   -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
 .ux-hero .ux-t1.ux-hero-nm { font: 700 28px/1 var(--ux-f-title); letter-spacing: .02em; text-transform: uppercase; }
+/* A college season's playoff under its conference (DESIGN.md, The ANCC). */
+.ux-hero .ux-t2 { font-size: 12px; font-weight: 600; color: var(--ux-text-2); white-space: nowrap; }
+.ux-hero .ux-t2.ux-gold { color: var(--ux-gold); }
 .ux-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0 12px; border-top: 1px solid var(--ux-line); border-bottom: 1px solid var(--ux-line); }
 .ux-strip div { padding: 7px 0 6px; text-align: center; }
 .ux-strip b { display: block; font-size: 15px; font-weight: 600; }
@@ -2123,3 +2126,61 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-lpitch .ux-pl-warn, .ux-sh-lpitch .ux-pl-warn .ux-warn-i { width: 12px; height: 12px; }
 .ux-sh-lpitch .ux-pl-warn { margin-left: -6px; bottom: calc(100% + 4px); }
 .ux-sh-lpitch { height: 400px; }
+
+/* ── The draft board (DESIGN.md, The ANCC, The draft): the 44 picks over the men they can take ───────────────────── */
+.ux-pb-dot { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--ux-accent); vertical-align: middle; }
+.ux-body.ux-dr { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.ux-body.ux-dr.ux-dr-arch { grid-template-rows: none; grid-auto-rows: max-content; overflow-y: auto; }
+.ux-dr .ux-chip.ux-dr-state { margin-left: 0; }
+.ux-dr-note { min-width: 0; font-size: 11px; color: var(--ux-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ux-dr-clock { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ux-text-3); }
+.ux-dr-clock b { min-width: 0; max-width: 240px; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ux-text); }
+.ux-dr-clock b.ux-dr-left { font-size: 16px; color: var(--ux-accent-ink); }
+.ux-dr-clock b.ux-dr-left.ux-late, .ux-dr-time.ux-late { color: var(--ux-loss); }
+.ux-dr-give { display: flex; align-items: center; gap: 10px; padding: 0 12px 10px; font-size: 12px; color: var(--ux-text-2); }
+.ux-dr-msg { padding: 0 12px 10px; font-size: 12px; line-height: 1.45; }
+.ux-dr-msg.ux-bad { color: var(--ux-loss); }
+.ux-dr-board { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; padding: 0 12px 12px; }
+.ux-dr-cell { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; min-width: 0; height: 78px;
+  padding: 6px 7px; border-radius: 6px; background: var(--ux-panel-2); border: 1px solid var(--ux-line); text-align: left; color: var(--ux-text);
+  transition: background var(--ux-fast), border-color var(--ux-fast); }
+button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-line-2); }
+.ux-dr-cell.ux-on { border-color: var(--ux-accent-ink); box-shadow: inset 0 0 0 1px var(--ux-accent-ink); }
+.ux-dr-cell.ux-made { background: color-mix(in srgb, var(--pos) 16%, var(--ux-panel-2)); border-color: color-mix(in srgb, var(--pos) 45%, var(--ux-line)); }
+.ux-dr-cell.ux-due { background: color-mix(in srgb, var(--ux-accent) 14%, var(--ux-panel-2)); border-color: var(--ux-accent); box-shadow: inset 0 0 0 1px var(--ux-accent); }
+.ux-dr-n { position: absolute; top: 5px; right: 7px; font-size: 11px; color: var(--ux-text-3); }
+.ux-dr-name { display: flex; flex-direction: column; min-width: 0; padding-right: 20px; }
+.ux-dr-first { display: block; min-width: 0; font-size: 10px; line-height: 1.2; color: var(--ux-text-2); }
+.ux-dr-sur { display: block; min-width: 0; font: 700 15px/1.1 var(--ux-f-title); letter-spacing: .03em; }
+.ux-dr-sub { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 14px; font-size: 10px; color: var(--ux-text-2); }
+.ux-dr-pos { flex-shrink: 0; font-size: 10px; font-weight: 700; }
+.ux-dr-ovr { flex-shrink: 0; margin-left: auto; display: inline-flex; }
+.ux-dr-time { display: block; font-size: 15px; font-weight: 700; color: var(--ux-accent-ink); }
+.ux-dr-club { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 11px; color: var(--ux-text-2); }
+.ux-dr-code { font-weight: 600; letter-spacing: .02em; }
+.ux-dr-auto { flex-shrink: 0; margin-left: auto; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; background: var(--ux-panel-3); color: var(--ux-text-2); }
+.ux-dr .ux-search.ux-dr-q { width: 220px; height: 26px; }
+.ux-dr .ux-seg.ux-dr-seg { margin-left: 0; }
+.ux-dr-tog { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ux-text-2); }
+.ux-dr-tog:hover { color: var(--ux-text); }
+.ux-dr-tbl thead tr.ux-dr-band th { padding-top: 6px; padding-bottom: 0; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ux-text-3); }
+.ux-dr-tbl tr.ux-dr-gone td { color: var(--ux-text-3); }
+.ux-dr-took { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ux-text-2); }
+.ux-dr-go { height: 22px; }
+.ux-dr-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .55); }
+.ux-dr-dlg { position: fixed; z-index: 91; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100vw - 32px));
+  display: flex; flex-direction: column; background: var(--ux-panel); border: 1px solid var(--ux-line-2); border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5); }
+.ux-dr-dlg > .ux-ph { border-bottom: 1px solid var(--ux-line); }
+.ux-dr-dlg > .ux-ph .ux-tc { min-width: 0; max-width: 60%; font-size: 12px; color: var(--ux-text-2); }
+.ux-dr-dlg-b { display: flex; flex-direction: column; gap: 12px; padding: 14px 12px; }
+.ux-dr-dlg-man { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ux-dr-dlg-man b { display: block; font-size: 16px; }
+.ux-dr-dlg-man span { display: block; margin-top: 3px; font-size: 12px; color: var(--ux-text-2); }
+.ux-dr-out { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ux-text-2); }
+.ux-dr-out select { height: 28px; padding: 0 8px; border-radius: 6px; background: var(--ux-panel-3); color: var(--ux-text); border: 1px solid var(--ux-line-2); font: inherit; cursor: pointer; }
+.ux-dr-out small { color: var(--ux-text-3); }
+.ux-dr-dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ux-line); }
+.ux-dr-chip { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 11px; color: var(--ux-text-2); white-space: nowrap; }

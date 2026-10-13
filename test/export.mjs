@@ -102,5 +102,60 @@ console.log("\ntwo-legged knockout");
   ok("legs and aggregate are their own columns", /\| Match \| Leg 1 \| Leg 2 \| Agg \|/.test(md), md.split("\n").find(l => l.includes("Leg 1")));
   ok("away goals read as a comma suffix", /3-3, ag \|/.test(md), md.split("\n").find(l => l.includes("3-3")));
 }
+console.log("\na college league's season: the preset, the export and the archive's reading of it");
+{
+  // The preset is the league's record: its clubs in their conferences, in bracket order, each group named.
+  const lg = eng.RECORDS.leagues.find(l => l.college && l.conferences?.length), P = eng.PARTICIPANT_PRESETS.get(lg?.name);
+  ok("the college league has a preset under its own name", !!P, lg?.name);
+  ok("...its groups are its conferences, in order, named after them",
+     JSON.stringify(Object.values(P.names)) === JSON.stringify(lg.conferences.map(c => c.name)), P.names);
+  ok("...every club in its conference's group, all of them placed", Object.values(P.groups).every((g, i) => g.length === lg.conferences[i].clubs.length)
+     && P.teams.length === lg.conferences.reduce((n, c) => n + c.clubs.length, 0), Object.values(P.groups).map(g => g.length));
+  const cat = new Map(eng.PRESET_CATALOG.map(t => [t.name.normalize("NFC"), t]));
+  ok("...every club found by name among the sides a tournament picks from", P.teams.every(n => cat.has(n.normalize("NFC"))), P.teams.filter(n => !cat.has(n.normalize("NFC"))));
+  ok("...played to the college format", P.config.koAllocMode === "crossover" && P.config.rrLegs === 1 && P.config.homeAdvKO === "off"
+     && !P.config.thirdPlace && P.config.qualZones[0].to === 2 && P.config.stages.join("|") === "Conferences|Playoff", P.config);
+  ok("...and the archive knows it as a college league", eng.COLLEGE_COMPS.has(lg.name));
+
+  // A season: the preset's groups, every conference match a fixed score, the crossed playoff off the tables.
+  const teams = P.teams.map(n => cat.get(n.normalize("NFC")));
+  const G = eng.allocPreset(teams, P.groups, "roundRobin", 1, P.names);
+  ok("the groups carry their conferences' names", G.map(g => eng.groupName(g)).join("|") === lg.conferences.map(c => c.name).join("|"), G.map(g => g.name));
+  ok("...and their initials where a column has room for a letter", G.map(g => eng.groupTag(g)).join("|") === "CE|WC|SC|EC", G.map(g => eng.groupTag(g)));
+  ok("...each a single round robin", G.every(g => g.schedule.length === 7 && g.schedule.every(rd => rd.length === 4)), G.map(g => g.schedule.length));
+  let n = 0;
+  for (const g of G) for (const rd of g.schedule) for (const m of rd) { n++; m.result = { ftHome: n % 4, ftAway: (n * 7) % 3 }; }
+  const tb = P.config.tiebreakers;
+  G.forEach(g => { g.standings = eng.recalcStandings(g, tb); });
+  const half = eng.buildSeasonMd({ title: "ANCC 35/36", groups: G, ko: null, tiebreakers: tb, koLegs: 1, stages: P.config.stages });
+  const H = READER.parseSeasonReport(half), HT = READER.parseTournTabs(half);
+  ok("halfway, before the playoff, it is still the tab shape, not a league's", H.rounds.length === 0 && !H.final && HT.tabs.map(t => t.name).join("|") === "Conferences",
+     HT.tabs.map(t => t.name));
+  const q = eng.collectKOTeamsFromZones(G, P.config.qualZones).all, ko = eng.buildKnockoutCrossover(q, false);
+  const top = (L, k) => G[L].standings[k - 1].name, r1 = ko.rounds[0].matches.map(m => m.home.name + " v " + m.away.name);
+  ok("the playoff is crossed: Capital 1 v Western 2, Southern 1 v Eastern 2, then Western 1 v Capital 2, Eastern 1 v Southern 2",
+     r1.join("|") === [[0, 1, 1, 2], [2, 1, 3, 2], [1, 1, 0, 2], [3, 1, 2, 2]].map(([a, x, b, y]) => top(a, x) + " v " + top(b, y)).join("|"), r1);
+  eng.propagateKO(ko);
+  const win = (m, pens) => { m.result = pens ? { ftHome: 1, ftAway: 1, pen: { home: 4, away: 2 } } : { ftHome: 2, ftAway: 0 }; };
+  ko.rounds.forEach((r, ri) => { r.matches.forEach((m, mi) => win(m, ri === 2)); eng.propagateKO(ko); });
+  const champ = ko.rounds[2].matches[0].home.name, runner = ko.rounds[2].matches[0].away.name, semi = ko.rounds[1].matches[0].away.name;
+  const md = eng.buildSeasonMd({ title: "ANCC 35/36", groups: G, ko, tiebreakers: tb, koLegs: 1, stages: P.config.stages });
+  const T = READER.parseTournTabs(md);
+  ok("the season file's tabs are Conferences then Playoff", T.tabs.map(t => t.name).join("|") === "Conferences|Playoff", T.tabs.map(t => t.name));
+  ok("each conference's table under its name", lg.conferences.every(c => md.includes("### " + c.name + "\n")));
+  ok("...its rounds under the round and its name", md.includes("### Round 7 — Capital Eight\n") && md.includes("### Round 1 — Eastern Conference\n"));
+  ok("the two each conference sent through are in bold, and nobody else", (md.match(/^\| \d+ \| \*\*/gm) || []).length === 8, (md.match(/^\| \d+ \| \*\*/gm) || []).length);
+  ok("the champion is the playoff's", READER.tournWinner(md) === champ, READER.tournWinner(md));
+  const won = eng.archResult(md, champ), lost = eng.archResult(md, runner), sf = eng.archResult(md, semi), out = eng.archResult(md, top(0, 8));
+  ok("a club's season is its conference line, as a league's", won.league && won.college && won.of === 8 && won.pos >= 1 && won.pos <= 2 && !!won.conf && won.pts != null, won);
+  ok("...with how far it went: the champion Winner, the final's loser Runner-up, a semi-finalist Semi-finals",
+     won.stage === "Winner" && lost.stage === "Runner-up" && sf.stage === "Semi-finals", [won.stage, lost.stage, sf.stage]);
+  ok("...and a club out in its conference the conference stage, its place and its conference", out.stage === "Conference stage" && out.pos === 8 && out.conf === "Capital Eight", out);
+  // A tournament of lettered groups still writes Group A, and Knockouts.
+  const plain = eng.buildSeasonMd({ title: "Cup", groups: G.map(({ name, ...g }) => g), ko, tiebreakers: tb, koLegs: 1 });
+  ok("lettered groups still read Group A, its rounds Round 1 — Group A, the knockout Knockouts",
+     plain.includes("### Group A\n") && plain.includes("### Round 1 — Group A\n") && plain.includes("## Group Stage\n") && plain.includes("## Knockouts\n"));
+  ok("...and a World Cup group's club still went out in the Group stage", eng.archResult(plain, top(0, 8)).stage === "Group stage", eng.archResult(plain, top(0, 8)));
+}
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

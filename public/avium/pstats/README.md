@@ -71,6 +71,14 @@ the ones in its last table), the clubs that table sends up and down carry the ar
 the places a league's record gives in `up` and `down` (`src/data/leagues.json`), and besides those, a
 playoff's last match, its winner going up from the division below or its loser down from the one above.
 
+**A college league's season** (the All-Nichirin Collegiate Championship, filed as `ancc/<YY>-<YY>`) is written in the tab
+format below, with its two tabs named for what they are: `## Conferences` (each conference's table under `### <its
+name>`, the two it sent through in bold, then its rounds as `### Round N — <its name>`) and `## Playoff` (`### Quarter-finals`,
+`### Semi-finals`, `### Final`). Its clubs file it under the league, as any league season's do, and the app reads it as a
+tournament for its champion, its Roll Of Honour and its Records, and as a league for a club's season: its place and record
+in its conference, and how far it went in the playoff. Nobody goes up or down from it, and its tables are never read for
+another league's promotion or relegation. It reads the same filed halfway, before the playoff.
+
 **Everything else** — every tournament — is the canonical tab format: each `## Heading` renders
 as a tab inside the season, what sits above the first `##` is the preamble, and a `### Sub`
 heading captions whatever follows it. The tab sets are fixed: a group tournament is

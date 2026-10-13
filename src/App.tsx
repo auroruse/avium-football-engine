@@ -11,11 +11,13 @@ import managersRec from "./data/managers.json";
 import teamsRec from "./data/teams.json";
 import sheetsRec from "./data/sheets.json";
 import leaguesRec from "./data/leagues.json";
+import draftsRec from "./data/drafts.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { leagueMaps } from "./data/leagues.js";
 import { parseTrades } from "./data/trades.js";
 import { COLLEGE_SEASON, YEARS, collegeLeagues, collegeMen, gradFor, yearOf } from "./data/colleges.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
+import { autoOrder, currentDraft, draftPool, makesWay, pickDue } from "./data/collegedraft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
 import { STYLE_LBL } from "./data/styles.js";
@@ -73,6 +75,9 @@ const SHEETS = sheetsFromRecords(RECORDS);
 // THE LEAGUES (src/data/leagues.js): each one's tier, cup and nation by name, the name it carries now for any it had, and
 // the name its clubs' IDs were made with, so a rename loses none of its seasons, its badge or a saved tournament's clubs.
 const LG = leagueMaps(RECORDS.leagues);
+// THE COLLEGE LEAGUES (DESIGN.md, The ANCC) by every name they have gone by. A season of one is conference tables and a
+// playoff: the archive reads it as a tournament where that is the right reading, and nobody goes up or down from it.
+const COLLEGE_COMPS = new Set(RECORDS.leagues.filter(l => l.college).flatMap(l => [l.name, ...(l.formerly || [])]));
 // THE REGISTRY SERVER (server/worker.js) signs editors in with GitHub, checks each save against the rules and commits it.
 // Coming back from GitHub, the address carries the session (#avium_session=...): it is taken out here, before the app's
 // own address handling reads the hash, and the page the person left is put back. The session says who they are and
@@ -2106,6 +2111,16 @@ function dealVenues(keys, pool, prev, rand = Math.random) {
 // A preset may also carry the groups it was drawn into. GROUP is optional: leave it blank and the
 // preset is a field only, fill it in and the allocation is fixed too — the draw already happened
 // somewhere else and re-running it here would produce a different tournament from the one on paper.
+// THE COLLEGE FORMAT (DESIGN.md, The ANCC): each conference a single round robin with the first-listed side at home, its
+// top two into a playoff crossed so that two sides of one conference can meet only in the final, one leg with no home side,
+// extra time and penalties. Its stages are called Conferences and Playoff wherever a tournament names its stages.
+function collegeFormat(n) {
+  return { mode: "double", singleType: "groups", numGroups: n, matchFormat: "roundRobin", rrLegs: 1, allocMode: "preset", homeAdvGroup: "first",
+    homeAdvKO: "off", homeAdvTeams: [], thirdPlace: false, koLegs: 1, koAwayGoals: false, koFormat: "single", advPerGroup: 2, numPots: 4,
+    swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, suspensions: true,
+    tiebreakers: ["gd", "gf", "h2h", "wins"], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Playoff", color: "#5e9c6b", type: "advance" }],
+    stages: ["Conferences", "Playoff"] };
+}
 const PARTICIPANT_PRESETS = (() => {
   const m = new Map();
   for (const line of participantsTSV.split("\n").slice(1)) {
@@ -2124,13 +2139,24 @@ const PARTICIPANT_PRESETS = (() => {
     const placed = Object.values(p.groups).reduce((n, g) => n + g.length, 0);
     if (placed !== p.teams.length) p.groups = null;
   }
+  // A COLLEGE LEAGUE'S SEASON (Moukden and Kirin, 13 October 2026: "add a tournament preset for ANCC"): its clubs in their
+  // conferences, in the order its playoff crosses them, each group named after its conference, to the college format. Read
+  // off the league's record, so a conference renamed or a club moved between them is the preset at once.
+  const clubName = new Map(RECORDS.teams.map(t => [t.id, String(t.name).trim()]));
+  for (const l of RECORDS.leagues) {
+    if (!l.college || !l.conferences?.length) continue;
+    const p = { teams: [], groups: {}, names: {}, format: null, config: collegeFormat(l.conferences.length) };
+    l.conferences.forEach((c, i) => { const k = String.fromCharCode(65 + i);
+      p.names[k] = c.name; p.groups[k] = (c.clubs || []).map(id => clubName.get(id)).filter(Boolean); p.teams.push(...p.groups[k]); });
+    m.set(l.name, p);
+  }
   return m;
 })();
 // Groups exactly as drawn. Anything in the field the plan does not name joins the smallest group, so
 // a team added by hand afterwards lands somewhere sane instead of disappearing.
-function allocPreset(teams, plan, format, legs) {
+function allocPreset(teams, plan, format, legs, names) {
   const labels = Object.keys(plan);
-  const grps = labels.map(l => ({ label: l, teams: [], schedule: [], standings: [] }));
+  const grps = labels.map(l => ({ label: l, ...(names?.[l] ? { name: names[l] } : null), teams: [], schedule: [], standings: [] }));
   const where = new Map();
   labels.forEach((l, i) => plan[l].forEach(n => where.set(n.normalize("NFC"), i)));
   const spare = [];
@@ -2139,6 +2165,11 @@ function allocPreset(teams, plan, format, legs) {
   grps.forEach(g => initGroup(g, format, legs));
   return grps;
 }
+// A group as a screen or a season file names it: its own name where a preset gave it one (a college league's conference),
+// else Group and its letter; and where a column only has room for a letter, a named group's initials (Capital Eight, CE).
+const initialsOf = (s) => String(s || "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+const groupName = (g, gi) => g?.name || "Group " + (g?.label ?? String.fromCharCode(65 + (gi || 0)));
+const groupTag = (g, gi) => (g?.name ? initialsOf(g.name) : g?.label ?? String.fromCharCode(65 + (gi || 0)));
 
 function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_${t.gi}_${t.ri}_${t.mi}`; if (t.tp) return "tp"; if (t.bracket === "gf") return "gf"; if (t.bracket === "reset") return "reset"; if (t.bracket === "lb") return `lb_${t.ri}_${t.mi}`; return `ko_${t.ri}_${t.mi}`; }
 // City\tStadium, one per line — parses the host-nation venue pool pasted in tournament setup.
@@ -3017,7 +3048,7 @@ const uxStageRank = (st) => {
   let m;
   if (/^winner$/i.test(s)) return 1; if (/^runner-?up$/i.test(s)) return 2; if (/^third$/i.test(s)) return 3; if (/^fourth$/i.test(s)) return 4;
   if (/semi/i.test(s)) return 4.5; if (/quarter/i.test(s)) return 8; if ((m = s.match(/round\s+of\s+(\d+)/i))) return +m[1];
-  if ((m = s.match(/^LB\s+Round\s+(\d+)/i))) return 64 - +m[1]; if (/group/i.test(s)) return 100;
+  if ((m = s.match(/^LB\s+Round\s+(\d+)/i))) return 64 - +m[1]; if (/group|conference/i.test(s)) return 100;
   return 90;
 };
 // A label off a report, in Title Case.
@@ -3213,6 +3244,8 @@ const uxStageAbbr = (st, h2) => {
   const s = String(st || "").trim(), g = String(h2 || "");
   let m;
   if ((m = s.match(/^Round\s+(\d+)\s*[—–-]\s*Group/i))) return "G" + m[1];
+  // A named group's round (Round 3 — Capital Eight): a college league's conference round is its league round.
+  if ((m = s.match(/^Round\s+(\d+)\s*[—–-]/i))) return (/conference/i.test(g) ? "R" : "G") + m[1];
   if ((m = s.match(/^Round\s+(\d+)$/i))) return (/group/i.test(g) ? "G" : "R") + m[1];
   if ((m = s.match(/^Round\s+of\s+(\d+)$/i))) return "R" + m[1];
   if ((m = s.match(/^LB\s+Round\s+(\d+)/i))) return "LB" + m[1];
@@ -3234,6 +3267,7 @@ const uxStage = (st) => {
   if (/^third$/i.test(s)) return "Third Place";
   if (/^fourth$/i.test(s)) return "Fourth Place";
   if (/group/i.test(s)) return "Group Stage";
+  if (/conference/i.test(s)) return "Conference Stage";
   if ((m = s.match(/^round of\s+(\d+)/i))) return "Last " + m[1];
   if (/quarter/i.test(s)) return "Quarter-Final";
   if (/semi/i.test(s)) return "Semi-Final";
@@ -3365,6 +3399,27 @@ function reportTableRecs(text) {
   }
   return out;
 }
+// A COLLEGE LEAGUE'S SEASON (DESIGN.md, The ANCC): a club's line in its conference's table, under the season's
+// `## Conferences`, read as a league's final table is: its place, of how many, its record, and the conference's name.
+function confLine(text, key) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  const cells = (r) => r.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+  let h2 = "", h3 = "";
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^(#{2,4})\s+(.*?)\s*$/);
+    if (h) { if (h[1].length === 2) { h2 = h[2]; h3 = ""; } else h3 = h[2]; continue; }
+    if (!/conference/i.test(h2) || !lines[i].trim().startsWith("|")) continue;
+    const head = cells(lines[i]).map(c => c.toLowerCase()), body = [];
+    for (i++; i < lines.length && lines[i].trim().startsWith("|"); i++) if (!/^\|[\s:|-]+\|?$/.test(lines[i].trim())) body.push(cells(lines[i]));
+    i--;
+    const ti = head.findIndex(c => /^(team|club)$/.test(c)), at = ti < 0 ? -1 : body.findIndex(r => archKey(r[ti]) === key);
+    if (at < 0) continue;
+    const r = body[at], col = (re) => { const j = head.findIndex(c => re.test(c)); return j >= 0 ? r[j] : null; };
+    return { conf: h3 || null, pos: parseInt(col(/^(#|pos)$/), 10) || at + 1, of: body.length,
+             p: col(/^(p|pld|gp)$/), w: col(/^w$/), d: col(/^d$/), l: col(/^l$/), gf: col(/^gf$/), ga: col(/^ga$/), pts: col(/^pts$/) };
+  }
+  return null;
+}
 function archResult(text, name) {
   const key = archKey(name);
   const F = parseSeasonReport(text).final;
@@ -3390,11 +3445,18 @@ function archResult(text, name) {
     if (hit < 0 || /standing|statistic|scorer|award|team of|final table/i.test(stage)) continue;
     last = { h2, stage, won: vs && /^\*\*.*\*\*$/.test(sides[hit].trim()) };
   }
+  // A college club's season is its conference's line, and how far it went after: the playoff round it went out in, or the
+  // conference stage.
+  const cl = confLine(text, key);
+  if (cl) return { league: true, college: true, ...cl, stage: last && !/conference/i.test(last.h2) ? stageOf(last) : "Conference stage" };
   if (!last) return null;
-  if (/^(grand\s+)?final$/i.test(last.stage)) { const w = tournWinner(text); return { stage: !w ? "Final" : archKey(w) === key ? "Winner" : "Runner-up" }; }
-  if (/3rd|third/i.test(last.stage)) return { stage: last.won ? "Third" : "Fourth" };
-  if (/group/i.test(last.h2) || /^(group\b|round\s+\d+$)/i.test(last.stage)) return { stage: "Group stage" };
-  return { stage: last.stage };
+  return { stage: stageOf(last) };
+  function stageOf(x) {
+    if (/^(grand\s+)?final$/i.test(x.stage)) { const w = tournWinner(text); return !w ? "Final" : archKey(w) === key ? "Winner" : "Runner-up"; }
+    if (/3rd|third/i.test(x.stage)) return x.won ? "Third" : "Fourth";
+    if (/group/i.test(x.h2) || /^(group\b|round\s+\d+$)/i.test(x.stage)) return "Group stage";
+    return x.stage;
+  }
 }
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
@@ -3690,10 +3752,11 @@ const seasonKoScore = (r) => {
   if (!r.pen && !r.et && r.twoLeg && r.agg && r.agg.home === r.agg.away && r.awayGoalsRule) sfx.push("ag");
   return [sfx];
 };
-const seasonMdStandings = (rows) => {
+// The sides a group sent through are in bold (`through`, by name).
+const seasonMdStandings = (rows, through) => {
   const L = ["| # | Team | P | W | D | L | GF | GA | GD | Pts |",
              "|---|------|---|---|---|---|----|----|----|-----|"];
-  rows.forEach((s, i) => L.push(`| ${i + 1} | ${s.name} | ${s.p} | ${s.w} | ${s.d} | ${s.l} | ${s.gf} | ${s.ga} | ${s.gf - s.ga >= 0 ? "+" : ""}${s.gf - s.ga} | ${s.pts} |`));
+  rows.forEach((s, i) => L.push(`| ${i + 1} | ${through?.has(s.name) ? `**${s.name}**` : s.name} | ${s.p} | ${s.w} | ${s.d} | ${s.l} | ${s.gf} | ${s.ga} | ${s.gf - s.ga >= 0 ? "+" : ""}${s.gf - s.ga} | ${s.pts} |`));
   return L.join("\n");
 };
 // A league round: no winner to mark, because a draw is a result.
@@ -3736,37 +3799,40 @@ const seasonKoRows = (matches, twoLeg) => {
 //   a tournament     -> `## Group Stage` (standings, then the rounds) + `## Knockouts`, which the
 //                       reader turns into tabs. A group tournament must NOT use the league shape:
 //                       eight group tables to a round is not something a round stepper can show.
-function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
+// More than one group is always the tab shape, a knockout to come or not, so a group stage filed before its knockout reads
+// as one. A group goes by its name (groupName), and `stages` names the two tabs where its format does (a college league's
+// Conferences and Playoff, DESIGN.md, The ANCC).
+function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs, stages }) {
   const L = [`# ${title}`, ""];
   const hasKO = !!(ko?.rounds?.length || ko?.grandFinal || ko?.thirdPlace);
   const played = (g) => (g.schedule || []).some(rd => rd.some(m => m?.result));
-  const gs = (groups || []).filter(played);
+  const many = (groups || []).length > 1;
+  const gs = (groups || []).map((g, gi) => ({ g, gl: many ? groupName(g, gi) : "" })).filter(x => played(x.g));
+  // Who the groups sent through: every side in the knockout's first round, a bye's included.
+  const through = new Set((hasKO ? ko.rounds?.[0]?.matches || [] : []).flatMap(m => [m?.home?.name, m?.away?.name]).filter(Boolean));
   if (gs.length) {
-    if (hasKO) {
+    if (hasKO || many) {
       // Tab format: the tables first, then how they were arrived at.
-      L.push("## Group Stage", "");
-      gs.forEach((g, gi) => {
-        L.push(`### ${groups.length > 1 ? `Group ${String.fromCharCode(65 + gi)}` : "Final Table"}`, "",
-               seasonMdStandings(recalcStandings(g, tiebreakers)), "");
+      L.push(`## ${stages?.[0] || "Group Stage"}`, "");
+      gs.forEach(({ g, gl }) => {
+        L.push(`### ${gl || "Final Table"}`, "", seasonMdStandings(recalcStandings(g, tiebreakers), through), "");
       });
-      gs.forEach((g, gi) => {
-        const gl = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
+      gs.forEach(({ g, gl }) => {
         (g.schedule || []).forEach((rd, ri) => {
           if (!rd.some(m => m?.result)) return;
-          L.push(`### Round ${ri + 1}${gl}`, "", seasonFixtureRows(rd), "");
+          L.push(`### Round ${ri + 1}${gl ? " — " + gl : ""}`, "", seasonFixtureRows(rd), "");
         });
       });
     } else {
       // League format: the stepper reads this one.
-      gs.forEach((g, gi) => {
-        const gl = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
+      gs.forEach(({ g }) => {
         (g.schedule || []).forEach((rd, ri) => {
           if (!rd.some(m => m?.result)) return;
-          L.push("---", "", `## Round ${ri + 1}${gl}`, "", seasonFixtureRows(rd), "");
+          L.push("---", "", `## Round ${ri + 1}`, "", seasonFixtureRows(rd), "");
           const upto = { ...g, schedule: g.schedule.slice(0, ri + 1) };
-          L.push(`### Table after Round ${ri + 1}${gl}`, "", seasonMdStandings(recalcStandings(upto, tiebreakers)), "");
+          L.push(`### Table after Round ${ri + 1}`, "", seasonMdStandings(recalcStandings(upto, tiebreakers)), "");
         });
-        L.push("---", "", `## Final Table${gl}`, "", seasonMdStandings(recalcStandings(g, tiebreakers)), "");
+        L.push("---", "", `## Final Table`, "", seasonMdStandings(recalcStandings(g, tiebreakers)), "");
       });
     }
   }
@@ -3777,7 +3843,7 @@ function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
       L.push(`### ${label}`, "", seasonKoRows(matches, two), "");
     };
     const de = !!(ko.losers?.length || ko.grandFinal);
-    L.push(de ? "## Upper Bracket" : "## Knockouts", "");
+    L.push(de ? "## Upper Bracket" : `## ${stages?.[1] || "Knockouts"}`, "");
     ko.rounds?.forEach((r, ri) => stage(r.name || koRoundLabel(ko.rounds.length === 1 ? 2 : 2 ** (ko.rounds.length - ri)), r.matches));
     if (!de && ko.thirdPlace) stage("3rd Place", [ko.thirdPlace]);
     if (de) {
@@ -6021,9 +6087,9 @@ export default function App() {
     setTPresetName(name);
     // A field and the format it is played under arrive together where the preset names one, so
     // loading the Shield does not also mean remembering to pick Legacy UCL from the other menu.
-    const fmt = p.format && !T_PRESETS[p.format]?.divider ? T_PRESETS[p.format]?.config : null;
+    const fmt = p.config || (p.format && !T_PRESETS[p.format]?.divider ? T_PRESETS[p.format]?.config : null);
     setTConfig(c => {
-      const next = { ...c, ...(fmt || {}) };
+      const next = { ...c, stages: null, ...(fmt || {}) };
       // A preset that names its groups fixes the allocation as well as the field.
       if (p.groups && !missing.length) { next.numGroups = Object.keys(p.groups).length; next.allocMode = "preset"; }
       else if (next.allocMode === "preset") next.allocMode = "seed";
@@ -8685,9 +8751,25 @@ export default function App() {
   // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
   const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
   // Who is hidden, and whether this person sees them (DESIGN.md, The ANCC): the men at a college, from all but the overseer.
-  const hiddenMen = useMemo(() => collegeMen(curRecs), [curRecs]);
+  // THE COLLEGE DRAFT (DESIGN.md, The ANCC, The draft): the drafts as the server keeps them (src/data/drafts.json), the one
+  // being run, and the clubs in it this editor picks for. Its board is the Editor's Draft page, for the overseer and the
+  // editors holding a pick; once it is over it is filed under its league.
+  const [drafts, setDrafts] = useState(draftsRec);
+  const loadDrafts = useCallback(() => fetch(`${REGISTRY}/draft`).then(r => (r.ok ? r.json() : null))
+    .then(ds => { if (Array.isArray(ds)) setDrafts(ds); }).catch(() => {}), []);
+  // A drafted man shows his rating the moment he is picked (the user, 13 October 2026: "the OVR should be revealed after
+  // drafting"), before the records that move him reach this page.
+  const hiddenMen = useMemo(() => { const m = collegeMen(curRecs);
+    for (const d of drafts) for (const p of d.picks || []) if (p.player) m.delete(p.player);
+    return m; }, [curRecs, drafts]);
   HIDDEN.men = hiddenMen; HIDDEN.see = overseer;
   const collegeNames = useMemo(() => collegeLeagues(curRecs.leagues), [curRecs]);
+  const draftNow = useMemo(() => currentDraft(drafts), [drafts]);
+  const draftMine = useMemo(() => (!draftNow || overseer || scope.role !== "editor" ? []
+    : [...new Set(draftNow.picks.map(p => p.club).filter(Boolean))].filter(k => { const t = curRecs.teams.find(x => teamKey(x) === k); return !!t && owns(scope, t); })),
+    [draftNow, overseer, scope, curRecs]);
+  const draftSees = !!draftNow && !!session && (overseer || draftMine.length > 0);
+  const draftYours = !!draftNow && draftNow.status === "running" && draftMine.includes(pickDue(draftNow)?.club);
   const whereIs = useMemo(() => {
     const m = new Map();
     for (const t of curRecs.teams) {
@@ -9166,7 +9248,7 @@ export default function App() {
   const tSlotName = () => tSlots.find(s => s.id === tActiveSlot)?.name || "Season";
   const tExportSeasonMd = () => {
     const md = buildSeasonMd({ title: tSlotName(), groups: tGroups, ko: tKO,
-      tiebreakers: tConfig.tiebreakers, koLegs: tConfig.koLegs });
+      tiebreakers: tConfig.tiebreakers, koLegs: tConfig.koLegs, stages: tConfig.stages });
     dlText(`${tSlotName()}.md`, md, "text/markdown;charset=utf-8");
   };
   const tExportStatsTsv = () => {
@@ -9353,7 +9435,7 @@ export default function App() {
     // The chip is hidden once the field stops matching, but the setting can outlive it — an edit
     // between choosing the preset and pressing Create would otherwise allocate to a stale plan.
     if (m === "preset" && !tActivePreset) m = "seed";
-    if (m === "preset") { setTGroups(allocPreset(genTeams, tActivePreset.groups, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    if (m === "preset") { setTGroups(allocPreset(genTeams, tActivePreset.groups, fmt, tConfig.rrLegs, tActivePreset.names)); setTPhase("groups"); }
     else if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
     else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
     // The draw gets its own screen for the rules before any ball comes out — the teams are
@@ -10657,7 +10739,7 @@ export default function App() {
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   // The sheet replaced the Teams, Players, Managers and Leagues pages; their forms are kept to review a request for a new
   // record, and the list form for Many. With neither open the editor is the sheet again.
-  useEffect(() => { if (!edNew && !["sheet", "trades", "requests"].includes(edSec)) setEdSec("sheet"); }, [edNew, edSec]);
+  useEffect(() => { if (!edNew && !["sheet", "trades", "requests", "draft"].includes(edSec)) setEdSec("sheet"); }, [edNew, edSec]);
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
@@ -10728,6 +10810,7 @@ export default function App() {
       else if (reg.comp) {
         segs.push(compSlug(reg.comp));
         if (reg.tab === "records") segs.push("records");
+        else if (reg.tab === "draft") segs.push("draft");
         else if (reg.tab === "season" && reg.season) { segs.push("seasons", reg.season); if (reg.view) segs.push(reg.view); if (reg.round) segs.push("results-" + reg.round); }
       }
     }
@@ -10771,7 +10854,7 @@ export default function App() {
       }
       if (t === "docs") { const pg = DOCS.find(p => p.id === (segs[1] || "").toLowerCase()), id = pg && segs[2] ? segs[2].toLowerCase() : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["sheet", "trades", "requests"].includes(s) ? s : "sheet"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["sheet", "trades", "requests", "draft"].includes(s) ? s : "sheet"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -10811,6 +10894,7 @@ export default function App() {
       if (f === "teams") { const nat = uxNatOf(comp); if (nat) setReg({ ...REG_HOME, nation: nat }); else go({ comp }); return; }
       if (f === "players") { people("players"); setPlayerCompFilter(comp); return; }
       if (f === "records") { go({ comp, tab: "records" }); return; }
+      if (f === "draft") { go({ comp, tab: "draft" }); return; }
       if ((f === "seasons" || f === "cup") && cs[2]) {
         const rest = cs.slice(3).map(x => urlSlug(x)), rd = rest.find(x => /^results-/.test(x)), old = rest.find(x => /^round-\d+$/.test(x));
         const v0 = rest.find(x => !/^results-/.test(x) && !/^round-\d+$/.test(x)) || null;
@@ -11030,7 +11114,7 @@ export default function App() {
     for (const c of by.keys()) { const n = uxNatOf(c); if (n && uxKindOf(c) === "league") natRank.set(n, Math.min(natRank.get(n) ?? 999, lgOrd.get(c) ?? 999)); }
     const rank = (c) => { const k = uxKindOf(c), n = uxNatOf(c);
       return k === "intl" ? [0, intlOrd.get(c) ?? 99, 0] : k === "retired" ? [3, ARCHIVED_COMPS.indexOf(c), 0] : [n ? 1 : 2, natRank.get(n) ?? 999, k === "cup" ? 9 : leagueTier(c) || 1]; };
-    return [...by.entries()].map(([name, ss]) => ({ name, kind: uxKindOf(name), nat: uxNatOf(name), seasons: ss.slice().sort((a, b) => a.ord - b.ord) }))
+    return [...by.entries()].map(([name, ss]) => ({ name, kind: uxKindOf(name), nat: uxNatOf(name), college: COLLEGE_COMPS.has(name), seasons: ss.slice().sort((a, b) => a.ord - b.ord) }))
       .sort((a, b) => { const x = rank(a.name), y = rank(b.name); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2] || a.name.localeCompare(b.name); });
   }, [pstats]);
   const uxArcBy = useMemo(() => new Map(uxArc.map(c => [c.name, c])), [uxArc]);
@@ -11075,6 +11159,10 @@ export default function App() {
     // Play Match reads both sides' competitions, for their form and their meetings.
     if (tab === "live") { const comps = new Set([teamById(lmH), teamById(lmA)].filter(Boolean).flatMap(regRecordComps));
       return pstats.seasons.filter(s => s.md && comps.has(s.comp)).map(s => s.id.replace(/\.tsv$/i, ".md")); }
+    // The draft board reads the newest table of each division whose places give the picks.
+    if (tab === "editor") { if (edSec !== "draft" || !draftNow) return [];
+      const lg = curRecs.leagues.find(l => l.id === draftNow.league), divs = new Set(curRecs.leagues.filter(l => lg && l.nation === lg.nation && !l.college && l.tier > 0).map(l => l.name));
+      return [...divs].map(c => pstats.seasons.filter(s => s.comp === c && s.md).sort((a, b) => b.ord - a.ord)[0]).filter(Boolean).map(s => s.id.replace(/\.tsv$/i, ".md")); }
     if (tab !== "leagues") return [];
     // A player's page reads the report of every season he has figures in, for his titles; a keeper's reads every report
     // with figures in it, since his Performance judges every keeper's sides.
@@ -11127,7 +11215,7 @@ export default function App() {
     const comps = regTeamObj ? (reg.tab === "history" || reg.tab === "honours" || overview ? regRecordComps(regTeamObj) : [])
       : reg.nation ? natComps(reg.nation) : [];
     return pstats.seasons.filter(s => s.md && comps.includes(s.comp)).map(s => s.id.replace(/\.tsv$/i, ".md"));
-  }, [tab, reg, regTeamObj, pstats, playerOpen, uxBoardIdx, uxCareers, uxManagers, uxTenures, world, lmH, lmA, teamById, uxTmView, uxTmPick, teams, arterraOn]);
+  }, [tab, reg, regTeamObj, pstats, playerOpen, uxBoardIdx, uxCareers, uxManagers, uxTenures, world, lmH, lmA, teamById, uxTmView, uxTmPick, teams, arterraOn, edSec, draftNow, curRecs]);
   const regMdBusy = useRef(new Set());
   useEffect(() => {
     const need = regWant.filter(p => lgMd[p] === undefined && !regMdBusy.current.has(p));
@@ -11633,7 +11721,7 @@ export default function App() {
     : reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team) ? "home"
     : reg.sec === "nations" && !reg.team && reg.nation && regNationBy.has(reg.nation) ? "nation"
     : reg.sec === "nations" && regTeamObj ? (reg.tab === "history" || reg.tab === "honours" ? "clubhist" : "club")
-    : reg.sec === "competitions" ? (reg.page === "h2h" ? "h2h" : reg.page === "years" || reg.year ? "cyear" : !reg.comp ? "comps" : reg.tab === "season" ? "cseason" : reg.tab === "records" ? "crecords" : "comp")
+    : reg.sec === "competitions" ? (reg.page === "h2h" ? "h2h" : reg.page === "years" || reg.year ? "cyear" : !reg.comp ? "comps" : reg.tab === "season" ? "cseason" : reg.tab === "records" ? "crecords" : reg.tab === "draft" ? "cdraft" : "comp")
     : null;
   // Play Match: its page while no match is on (a live or finished match draws over the whole window).
   const uxMScreen = tab === "live" && meView === "setup";
@@ -11667,15 +11755,15 @@ export default function App() {
   // After a league's newest season: its clubs' sheets now, or while they are still the clubs of its table, who its rules
   // send (seasonMoves, as the pyramid marks them). `move` keys a club by archKey to "up" or "down"; `zone` gives its
   // place: "up", "down", or "playoff" for every club its season's playoff took, won or lost, `playoff` naming it. Null
-  // while a table it reads is still loading.
+  // while a table it reads is still loading. A college league (COLLEGE_COMPS) moves nobody and is never read for anyone.
   const uxTableNames = (s) => { const R = uxRep(s), F = R?.final || (R?.rounds?.length ? R.rounds[R.rounds.length - 1].table : null);
     const ti = F ? F.head.findIndex(h => /^(team|club)$/i.test(String(h).trim())) : -1;
     return ti < 0 ? null : F.body.map(r => String(r[ti]).replace(/\*+/g, "").trim()); };
   const uxSeasonMoves = (s) => {
-    const nat = s && !s.hist && uxKindOf(s.comp) === "league" ? uxNatOf(s.comp) : null, names = nat ? uxTableNames(s) : null;
+    const nat = s && !s.hist && uxKindOf(s.comp) === "league" && !COLLEGE_COMPS.has(s.comp) ? uxNatOf(s.comp) : null, names = nat ? uxTableNames(s) : null;
     if (!names?.length) return null;
     const T = leagueTier(s.comp) || 1, y = uxYearOf(s), keys = names.map(archKey), R = uxRep(s);
-    const lgs = (pstats?.seasons || []).filter(x => !x.hist && x.md && uxKindOf(x.comp) === "league" && uxNatOf(x.comp) === nat);
+    const lgs = (pstats?.seasons || []).filter(x => !x.hist && x.md && uxKindOf(x.comp) === "league" && !COLLEGE_COMPS.has(x.comp) && uxNatOf(x.comp) === nat);
     const ny = Math.min(...lgs.filter(x => x.comp === s.comp).map(uxYearOf).filter(v => v > y));
     let move = new Map();
     if (Number.isFinite(ny)) {
@@ -11691,7 +11779,7 @@ export default function App() {
     } else {
       const lgOf = (t) => (t.league === MISC_LEAGUE ? t.comp : t.league), now = new Set(teams.filter(t => lgOf(t) === s.comp).map(t => archKey(t.name)));
       if (now.size === keys.length && keys.every(k => now.has(k))) {
-        const tiers = Object.keys(LEAGUE_NAT).filter(l => LEAGUE_NAT[l] === nat && uxKindOf(l) === "league").map(l => leagueTier(l) || 1);
+        const tiers = Object.keys(LEAGUE_NAT).filter(l => LEAGUE_NAT[l] === nat && uxKindOf(l) === "league" && !COLLEGE_COMPS.has(l)).map(l => leagueTier(l) || 1);
         const ties = (R?.extra || []).map(x => playoffTie(x.body)).filter(Boolean).map(x => ({ win: archKey(x.win), lose: archKey(x.lose) }));
         move = seasonMoves(keys, { up: LG.up.get(s.comp), down: LG.down.get(s.comp) }, ties, tiers.some(n => n < T), tiers.some(n => n > T));
       } else for (const k of keys) { const t = teamByArch.get(k); if (!t || isIntlLeague(t.league) || uxNatOf(lgOf(t)) !== nat) continue;
@@ -13527,6 +13615,254 @@ export default function App() {
       </div>);
   };
 
+  // ════ THE DRAFT BOARD (DESIGN.md, The ANCC, The draft; Moukden and Kirin, 13 October 2026, after a Sleeper draft board) ════
+  // The 44 picks over the men they can take. Read from the server when the page opens and every half minute while it is
+  // open, the clock ticking each second; a pick is confirmed in a dialog, and the overseer gives a pick to another club from
+  // the bar under the board's head.
+  const [drConfirm, setDrConfirm] = useState(null);      // { n, man, out }: a pick waiting to be confirmed
+  const [drGive, setDrGive] = useState(null);            // the pick the overseer is giving to another club
+  const [drBusy, setDrBusy] = useState(false);
+  const [drMsg, setDrMsg] = useState("");
+  const [drArm, setDrArm] = useState(false);             // Start Draft's second step
+  const [drQ, setDrQ] = useState(""), [drPos, setDrPos] = useState("ALL"), [drTaken, setDrTaken] = useState(false);
+  const [drNow, setDrNow] = useState(() => Date.now());
+  const drOpen = tab === "editor" && edSec === "draft" && draftSees;
+  useEffect(() => {
+    if (!drOpen) return;
+    loadDrafts();
+    const a = setInterval(loadDrafts, 30e3), b = setInterval(() => setDrNow(Date.now()), 1000);
+    return () => { clearInterval(a); clearInterval(b); };
+  }, [drOpen, loadDrafts]);
+  // The clubs the tables give the picks as they stand: the college league's nation's divisions, the lowest first, each from
+  // its last place up. Null while a table is loading or missing.
+  const drTables = useMemo(() => {
+    if (!draftNow || !pstats) return null;
+    const lg = curRecs.leagues.find(l => l.id === draftNow.league);
+    if (!lg) return null;
+    const out = [];
+    for (const l of curRecs.leagues.filter(x => x.nation === lg.nation && !x.college && x.tier > 0).sort((a, b) => b.tier - a.tier)) {
+      const L = lastTable(l.name);
+      if (!L?.names?.length) return null;
+      for (const k of [...L.names].reverse()) out.push(teamByArch.get(k)?.rkey || null);
+    }
+    return out;
+  }, [draftNow, pstats, curRecs, lgMd, teamByArch]);
+  // The season's figures (the college league's season ending the draft's year): each man's, by name and college code.
+  const drSeason = useMemo(() => (draftNow && pstats ? pstats.seasons.find(s => COLLEGE_COMPS.has(s.comp) && uxYearOf(s) === draftNow.year
+    && Object.keys(s.boards || {}).length) || null : null), [draftNow, pstats]);
+  const drFigs = useMemo(() => {
+    const m = new Map();
+    for (const [k, list] of Object.entries(drSeason?.boards || {})) for (const e of list) {
+      const key = pFold(e.player) + "|" + e.team, x = m.get(key) || { gp: 0, st: 0, min: 0 };
+      x.gp = Math.max(x.gp, e.gp || 0); x.st = Math.max(x.st, e.st || 0); x.min = Math.max(x.min, e.min || 0); x[k] = e.v; m.set(key, x);
+    }
+    return m;
+  }, [drSeason]);
+  // The men left, and their order for the automatic picks: the season's rating board, as the server reads it.
+  const drPool = useMemo(() => (draftNow ? draftPool(curRecs, draftNow) : new Map()), [curRecs, draftNow]);
+  const drRank = useMemo(() => new Map(autoOrder(curRecs, drPool, (drSeason?.boards?.RTG || []).map(e => ({ name: e.player, team: e.team })))
+    .map((id, i) => [id, i + 1])), [curRecs, drPool, drSeason]);
+  const drClubGroups = useMemo(() => {
+    const by = new Map();
+    for (const t of curRecs.teams) { if (isNational(t) || t.removed) continue;
+      const n = natTeamByCode.get(t.nation)?.name || t.nation || "Other";
+      if (!by.has(n)) by.set(n, []);
+      by.get(n).push({ k: teamKey(t), name: t.name.trim(), team: teamOfKey(teamKey(t)), code: t.code }); }
+    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([n, l]) => [n, l.sort((a, b) => a.name.localeCompare(b.name))]);
+  }, [curRecs, natTeamByCode, teams]);
+  const drNameOf = useMemo(() => new Map(playerIndex.filter(p => p.rid).map(p => [p.rid, p.fullName || p.name])), [playerIndex]);
+  const drName = (id) => drNameOf.get(id) || fullDisplayName(recById.get(id)?.name || "");
+  // The drafts that are over, for a league's Draft tab and a man's page.
+  const drDoneOf = (comp) => drafts.filter(d => d.status === "done" && curRecs.leagues.find(l => l.id === d.league)?.name === comp);
+  const drChipOf = (rid) => {
+    const hit = rid ? drafts.filter(d => d.status === "done").flatMap(d => d.picks.filter(p => p.player === rid).map(p => ({ d, p })))[0] : null;
+    if (!hit) return null;
+    const club = teamOfKey(hit.p.club);
+    return <span className="ux-dr-chip" title={`Drafted by ${club?.name || "a club"} with pick ${hit.p.n} of the ${hit.d.year} draft`}>
+      {club && <TeamCrest team={club} size={14} />}Pick {hit.p.n}, {hit.d.year} Draft</span>;
+  };
+  const drLeft = (ms) => { if (ms == null) return null; if (ms <= 0) return "Time Up";
+    const t = Math.floor(ms / 1000); return `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  const drAct = async (body, after) => {
+    if (drBusy || !session || !draftNow) return false;
+    setDrBusy(true); setDrMsg("");
+    try {
+      const res = await authed("/draft", { id: draftNow.id, ...body }), data = await res.json().catch(() => ({}));
+      if (res.status === 401) { signOut(); setDrMsg("Your sign-in ran out. Sign in again."); return false; }
+      if (!res.ok) { setDrMsg((data.errors || [data.error || `The registry answered ${res.status}`]).join(" ")); loadDrafts(); return false; }
+      if (data.draft) setDrafts(ds => ds.map(x => (x.id === data.draft.id ? data.draft : x)));
+      if (data.apply) showRecords(applyDraft(landed(data.apply), draft));
+      after?.();
+      return true;
+    } catch (e) { setDrMsg(String(e?.message || e)); return false; }
+    finally { setDrBusy(false); }
+  };
+  // A pick on the board: its number, the club holding it by its code (the tables' club until the draft starts), and once
+  // made the man (his first name small over his surname, his position and his college's code) on his position's colour;
+  // the pick on the clock lit, with its time left. Each club's full name is on hover (the user, 13 October 2026: "Show team
+  // codes", "Show small first name above last name").
+  const uxDraftCell = (d, p, live) => {
+    const k = p.club || (d.status === "waiting" ? drTables?.[p.n - 1] : null) || null, club = k ? teamOfKey(k) : null, man = p.player ? recById.get(p.player) : null;
+    const due = live && (d.status === "running" || d.status === "paused") && pickDue(d)?.n === p.n;
+    const pos = man ? posList(man.pos)[0] || "" : "", grp = pos === "GK" ? "GK" : POS_GROUP[pos] || "", from = p.from ? teamOfKey(p.from) : null;
+    const left = due ? (d.status === "paused" ? d.clock?.left ?? null : d.clock?.until ? Date.parse(d.clock.until) - drNow : null) : null;
+    const give = live && overseer && !p.player && d.status !== "done";
+    const nm = man ? splitSurname(drName(p.player), man.name) : null;
+    const body = (<>
+      <span className="ux-dr-n" style={mono}>{p.n}</span>
+      {man ? (<>
+        <span className="ux-dr-name"><span className="ux-dr-first"><SlideName text={nm.first || "\u00a0"} /></span>
+          <b className="ux-dr-sur"><SlideName text={nm.last.toUpperCase()} /></b></span>
+        <span className="ux-dr-sub" title={from?.name || undefined}><span className="ux-dr-pos" style={{ ...mono, color: POS_CLR[grp] }}>{pos}</span>
+          {from && <TeamCrest team={from} size={13} />}<span style={mono}>{from?.code || ""}</span><span className="ux-dr-ovr">{manBadge(p.player, man.ovr)}</span></span>
+      </>) : due ? <b className={"ux-dr-time" + (left != null && left <= 0 ? " ux-late" : "")} style={mono}>{d.status === "paused" ? "Paused" : drLeft(left) || "On The Clock"}</b>
+        : <span className="ux-dr-sub" />}
+      <span className="ux-dr-club" title={club?.name || undefined}>{club ? <TeamCrest team={club} size={14} /> : <span className="ux-crest-gap" style={{ width: 14 }} />}
+        <span className="ux-dr-code" style={mono}>{club?.code || "TBD"}</span>
+        {p.auto && <small className="ux-dr-auto" title={p.by === "clock" ? "Made when the two hours ran out" : "Made automatically"}>{p.by === "clock" ? "Late" : "Auto"}</small>}</span>
+    </>);
+    const cls = "ux-dr-cell" + (man ? " ux-made" : "") + (due ? " ux-due" : "") + (drGive === p.n ? " ux-on" : "");
+    const st = man && grp ? { ["--pos"]: POS_CLR[grp] } : undefined;
+    return give
+      ? <button key={p.n} type="button" className={"ux-btnreset " + cls} style={st} aria-pressed={drGive === p.n}
+          aria-label={`Pick ${p.n}, ${club?.name || "no club yet"}: give it to another club`} onClick={() => setDrGive(g => (g === p.n ? null : p.n))}>{body}</button>
+      : <div key={p.n} className={cls} style={st}>{body}</div>;
+  };
+  const uxDraftBoard = (d, live) => <div className="ux-dr-board">{d.picks.map(p => uxDraftCell(d, p, live))}</div>;
+  const DR_STATS = [["gp", "GP", "Games Played"], ["st", "ST", "Starts"], ["min", "MIN", "Minutes"], ["G", "G", "Goals"], ["A", "A", "Assists"],
+                    ["RTG", "Avg", "Average Rating"], ["CC", "CC", "Chances Created"], ["DC", "DC", "Defensive Actions"], ["SV", "SV", "Saves"]];
+  const renderEdDraft = () => {
+    const d = draftNow, due = pickDue(d), live = d.status === "running" || d.status === "paused";
+    const dueClub = live && due ? teamOfKey(due.club) : null;
+    const left = live && due ? (d.status === "paused" ? d.clock?.left ?? null : d.clock?.until ? Date.parse(d.clock.until) - drNow : null) : null;
+    const canPick = d.status === "running" && !!due && (overseer || draftMine.includes(due.club));
+    const ready = !!drTables && drTables.length === d.picks.length && drTables.every(Boolean) && new Set(drTables).size === drTables.length;
+    const why = !ready ? "The Tables Do Not Yet Give Every Pick A Club" : !drSeason ? "File The Season's Player Stats First" : null;
+    const state = d.status === "waiting" ? "Not Started" : d.status === "done" ? "Over" : d.status === "paused" ? "Paused" : `Pick ${due?.n} Of ${d.picks.length}`;
+    const byPick = new Map(d.picks.filter(p => p.player).map(p => [p.player, p]));
+    const collegeOf = (id) => teamOfKey(byPick.get(id)?.from || drPool.get(id));
+    const figsOf = (id) => { const r = recById.get(id), c = collegeOf(id); return r && c ? drFigs.get(pFold(drName(id)) + "|" + c.code) || drFigs.get(pFold(r.name) + "|" + c.code) || null : null; };
+    const grpOf = (id) => { const p0 = posList(recById.get(id)?.pos)[0] || ""; return p0 === "GK" ? "GK" : POS_GROUP[p0] || ""; };
+    const q = pFold(drQ.trim());
+    const ok = (id) => (drPos === "ALL" || grpOf(id) === drPos) && (!q || pFold(drName(id)).includes(q));
+    const left0 = d.status === "done" ? [] : [...drPool.keys()].filter(ok)
+      .sort((a, b) => ((figsOf(a) ? drRank.get(a) : 1e9) - (figsOf(b) ? drRank.get(b) : 1e9)) || drName(a).localeCompare(drName(b)));
+    const taken = d.status === "done" || drTaken ? d.picks.filter(p => p.player && ok(p.player)).map(p => p.player) : [];
+    const rows = [...left0, ...taken];
+    const own = due ? curRecs.teams.find(t => teamKey(t) === due.club) : null, full = !!own && !(own.squad || []).some(v => !idOf(v));
+    const confirm = drConfirm && due && drConfirm.n === due.n ? drConfirm : null;
+    const cman = confirm ? recById.get(confirm.man) : null, cclub = confirm ? teamOfKey(due.club) : null;
+    const outOpts = full ? (own.squad || []).map((v, i) => ({ id: idOf(v), i })).filter(x => x.id).sort((a, b) => (b.i >= 11) - (a.i >= 11) || a.i - b.i) : [];
+    return (
+      <div className="ux-body ux-dr">
+        <section className="ux-panel ux-dr-top" aria-label="Draft Board">
+          <div className="ux-ph"><h2 className="ux-pt">{d.year} Draft</h2>
+            <span className="ux-chip ux-dr-state">{state}</span>
+            {d.status === "waiting" && <span className="ux-dr-note">{d.picks.length} Picks, Two Hours Each; The Order As The Tables Stand</span>}
+            <span className="ux-ph-gap" />
+            {live && dueClub && (
+              <span className="ux-dr-clock">On The Clock<TeamCrest team={dueClub} size={16} /><b><SlideName text={dueClub.name} /></b>
+                <b className={"ux-dr-left" + (left != null && left <= 0 ? " ux-late" : "")} style={mono}>{d.status === "paused" ? "Paused" : drLeft(left) || ""}</b></span>)}
+            {overseer && d.status === "waiting" && (
+              <button type="button" className={"ux-btnreset ux-btn " + (drArm ? "ux-danger" : "ux-btn-pri")} disabled={!!why || drBusy} title={why || undefined}
+                onBlur={() => setDrArm(false)} onClick={() => { if (!drArm) { setDrArm(true); return; } setDrArm(false);
+                  drAct({ action: "start", order: drTables, stats: drSeason ? "public/avium/pstats/" + drSeason.id : null }); }}>
+                {drArm ? "Confirm Start" : "Start Draft"}</button>)}
+            {overseer && d.status === "running" && <button type="button" className="ux-btnreset ux-btn" disabled={drBusy} onClick={() => drAct({ action: "pause" })}>Pause</button>}
+            {overseer && d.status === "paused" && <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={drBusy} onClick={() => drAct({ action: "resume" })}>Resume</button>}
+          </div>
+          {overseer && drGive != null && d.status !== "done" && (
+            <div className="ux-dr-give">
+              <span>Pick <b style={mono}>{drGive}</b>: Give To</span>
+              <UxSidePick key={drGive} startOpen label="Give Pick To" value={null} groups={drClubGroups} placeholder="Search Clubs" cls="ux-dr-sp"
+                onPick={it => drAct({ action: "give", n: drGive, club: it.k }, () => setDrGive(null))} />
+              {d.status === "waiting" && d.picks[drGive - 1]?.club && (
+                <button type="button" className="ux-btnreset ux-btn" disabled={drBusy} onClick={() => drAct({ action: "give", n: drGive, club: null }, () => setDrGive(null))}>Back To The Tables</button>)}
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => setDrGive(null)}>Cancel</button>
+            </div>)}
+          {drMsg && <div className="ux-dr-msg ux-bad" role="alert">{drMsg}</div>}
+          {uxDraftBoard(d, true)}
+        </section>
+        <section className="ux-panel ux-grow" aria-label="Draftable Players">
+          <div className="ux-ph"><h2 className="ux-pt">{d.status === "done" ? "Drafted" : "Draftable"}</h2>
+            <label className="ux-search ux-dr-q">{uxIcon("search", "ux-s")}<input value={drQ} onChange={e => setDrQ(e.target.value)} placeholder="Find Player" aria-label="Find Player" /></label>
+            <div className="ux-seg ux-dr-seg" role="group" aria-label="Position">{[["ALL", "All"], ["GK", "GK"], ["DEF", "DEF"], ["MID", "MID"], ["FWD", "FWD"]].map(([k, l]) => (
+              <button key={k} type="button" className={"ux-btnreset" + (drPos === k ? " ux-on" : "")} aria-pressed={drPos === k} onClick={() => setDrPos(k)}>{l}</button>))}</div>
+            {d.status !== "done" && (
+              <button type="button" role="checkbox" aria-checked={drTaken} className="ux-btnreset ux-dr-tog" onClick={() => setDrTaken(v => !v)}>{uxCheck(drTaken)}Show Drafted</button>)}
+            <span className="ux-ph-gap" />
+            <span className="ux-fcount"><span style={mono}>{rows.length}</span> {rows.length === 1 ? "Player" : "Players"}</span>
+          </div>
+          <div className="ux-pbody"><table className="ux-tbl ux-dr-tbl">
+            <colgroup><col style={{ width: 48 }} /><col style={{ width: 250 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 210 }} /><col style={{ width: 48 }} />
+              {DR_STATS.map(([k]) => <col key={k} style={{ width: 50 }} />)}<col style={{ width: 150 }} /></colgroup>
+            <thead>
+              <tr className="ux-dr-band"><th colSpan={6} /><th colSpan={DR_STATS.length} className="ux-c">{drSeason ? `Season ${uxSeasonName(drSeason)}` : "Season Not Filed Yet"}</th><th /></tr>
+              <tr><th className="ux-n">Rk</th><th>Player</th><th>Pos</th><th>Nat</th><th>College</th><th className="ux-n">Age</th>
+                {DR_STATS.map(([k, l, t]) => <th key={k} className="ux-n" title={t}>{l}</th>)}<th /></tr>
+            </thead>
+            <tbody>
+              {rows.map(id => { const r = recById.get(id), f = figsOf(id), c = collegeOf(id), pk = byPick.get(id), pos = posList(r?.pos)[0] || "", nm = drName(id);
+                const age = r?.born ? ageOf(r.born) : null, rank = !pk && f ? drRank.get(id) : null, natT = r?.nat ? natTeamByCode.get(r.nat) : null;
+                return (
+                  <tr key={id} className={pk ? "ux-dr-gone" : undefined}>
+                    <td className="ux-n ux-dim" style={mono}>{rank ?? (pk ? "" : "–")}</td>
+                    <td><div className="ux-tc"><PlayerShot name={nm} size={20} />{playerByName.has(nm)
+                      ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openPlayer(nm)}>{nm}</button></span> : <span>{nm}</span>}</div></td>
+                    <td style={{ ...mono, color: POS_CLR[pos] || "var(--ux-text-2)", fontWeight: 700, fontSize: 11 }}>{pos}</td>
+                    <td title={natT?.name || r?.nat || undefined}><div className="ux-tc">{natT ? <TeamCrest team={natT} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}
+                      <span style={mono}>{r?.nat || "–"}</span></div></td>
+                    <td><div className="ux-tc">{c ? <TeamCrest team={c} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}<SlideName text={c?.name || "–"} /></div></td>
+                    <td className={"ux-n" + (age == null ? " ux-dim" : "")} style={mono}>{age ?? "–"}</td>
+                    {DR_STATS.map(([k]) => { const v = f?.[k]; return (
+                      <td key={k} className={"ux-n" + (v == null || (!v && k !== "RTG") ? " ux-dim" : "")} style={{ ...mono, ...(k === "RTG" && v != null ? { color: ratingColor(v), fontWeight: 600 } : null) }}>
+                        {v == null ? "–" : k === "RTG" ? Number(v).toFixed(2).replace(/0$/, "") : v}</td>); })}
+                    <td className="ux-c">{pk ? <span className="ux-dr-took" title={teamOfKey(pk.club)?.name}>{teamOfKey(pk.club) && <TeamCrest team={teamOfKey(pk.club)} size={14} />}Pick {pk.n}{manBadge(id, r?.ovr)}</span>
+                      : canPick ? <button type="button" className="ux-btnreset ux-btn ux-dr-go" disabled={drBusy}
+                          onClick={() => { setDrMsg(""); setDrConfirm({ n: due.n, man: id, out: full ? makesWay(curRecs, own.squad, id) : null }); }}>Draft</button> : null}</td>
+                  </tr>); })}
+              {!rows.length && <tr><td colSpan={7 + DR_STATS.length} className="ux-dim">{d.status === "done" ? "Nobody Drafted" : drPool.size ? "No Players Found" : "Nobody Left To Draft"}</td></tr>}
+            </tbody>
+          </table></div>
+        </section>
+        {confirm && cman && (<>
+          <div className="ux-dr-scrim" onClick={() => !drBusy && setDrConfirm(null)} />
+          <div className="ux-dr-dlg" role="dialog" aria-modal="true" aria-label={`Pick ${confirm.n}`} onKeyDown={e => { if (e.key === "Escape" && !drBusy) setDrConfirm(null); }}>
+            <div className="ux-ph"><h2 className="ux-pt">Pick {confirm.n}</h2><span className="ux-ph-gap" />{cclub && <span className="ux-tc"><TeamCrest team={cclub} size={16} /><SlideName text={cclub.name} /></span>}</div>
+            <div className="ux-dr-dlg-b">
+              <div className="ux-dr-dlg-man"><PlayerShot name={drName(confirm.man)} size={44} />
+                <div><b>{drName(confirm.man)}</b><span>{posList(cman.pos).join(" / ")}{collegeOf(confirm.man) ? ", " + collegeOf(confirm.man).name : ""}</span></div></div>
+              {full && (
+                <label className="ux-dr-out"><span>Who Makes Way</span>
+                  <select value={confirm.out || ""} onChange={e => setDrConfirm(c => ({ ...c, out: e.target.value }))} aria-label="Who Makes Way">
+                    {outOpts.map(({ id, i }) => { const r = recById.get(id); return <option key={id} value={id}>{showOvr(r?.ovr)} {fullDisplayName(r?.name || id)}, {posList(r?.pos).join("/")}{i < 11 ? " (Starter)" : ""}</option>; })}
+                  </select>
+                  <small>He leaves for free agency. {own?.name.trim()} has no open place.</small></label>)}
+              {drMsg && <div className="ux-dr-msg ux-bad" role="alert">{drMsg}</div>}
+            </div>
+            <div className="ux-dr-dlg-f">
+              <button type="button" className="ux-btnreset ux-btn" disabled={drBusy} onClick={() => setDrConfirm(null)}>Cancel</button>
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={drBusy} autoFocus
+                onClick={() => drAct({ action: "pick", n: confirm.n, player: confirm.man, ...(full ? { out: confirm.out } : null) }, () => setDrConfirm(null))}>
+                {drBusy ? "Drafting" : "Draft " + splitSurname(drName(confirm.man), cman.name).last.toUpperCase()}</button>
+            </div>
+          </div></>)}
+      </div>);
+  };
+  // A league's draft once it is over (Competitions, the league's Draft tab): the board, and every pick in a list.
+  const renderUxCompDraft = (comp) => {
+    const ds = drDoneOf(comp);
+    if (!ds.length) return <div className="ux-body"><section className="ux-panel ux-grow"><div className="ux-ph"><h2 className="ux-pt">Draft</h2></div><div className="ux-empty">No Draft On File</div></section></div>;
+    return (
+      <div className="ux-body ux-dr ux-dr-arch">
+        {[...ds].reverse().map(d => (
+          <section key={d.id} className="ux-panel" aria-label={`${d.year} Draft`}>
+            <div className="ux-ph"><h2 className="ux-pt">{d.year} Draft</h2><span className="ux-chip ux-dr-state">{d.picks.length} Picks</span></div>
+            {uxDraftBoard(d, false)}
+          </section>))}
+      </div>);
+  };
+
   // ════ THE SHEET (DESIGN.md "Editor": the Sheet; Moukden and Kirin, 12 October 2026) ════
   // The registry the records came from, rebuilt as a spreadsheet in the app's theme: a tab a nation (its national side's
   // table, then its clubs league by league), every man a chip in his place, and the dock on the right for a record, the
@@ -13553,7 +13889,7 @@ export default function App() {
   const [shFreeKind, setShFreeKind] = useState("p");     // the Free Agents panel's tab: players or managers
   const [shRowMenu, setShRowMenu] = useState(null);      // a club row's menu: { k, x, y, arm?, roll?, target? }
   // A New Player (one) or New Manager form belongs on the dock; a list of new players, a club and a league open full width.
-  useEffect(() => { if (edRev || !edNew || ["sheet", "trades", "requests"].includes(edSec)) return;
+  useEffect(() => { if (edRev || !edNew || ["sheet", "trades", "requests", "draft"].includes(edSec)) return;
     if ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers") { setShFormOpen(edNew.kind); setShFormEdit(null); setShDock("rec"); setEdSec("sheet"); } },
     [edRev, edNew, edSec]);
   const shOrder = useRef(new Map()), shGrid = useRef(null), shFlat = useRef([]), shRowNo = useRef(new Map());
@@ -14627,6 +14963,7 @@ export default function App() {
       </div>);
   };
   const renderUxEditor = () => {
+    if (edSec === "draft" && draftSees) return renderEdDraft();
     if (edSec === "requests") return renderEdRequests();
     if (edSec === "trades") return renderEdTrades();
     if (edSec === "sheet" || !edNew || (!edRev && !(edNew.kind === "players" && edNew.mode === "many"))) return renderEdSheet();
@@ -14775,11 +15112,12 @@ export default function App() {
       // section: Overview, Years (the year picked) and Head To Head.
       const c = reg.comp && !reg.year && !reg.page ? uxArcBy.get(reg.comp) || { name: reg.comp, nat: uxNatOf(reg.comp), seasons: [] } : null;
       if (c) {
-        const n = c.nat ? regNationBy.get(c.nat) : null, cur = reg.tab === "season" || reg.tab === "records" ? reg.tab : "overview";
+        const n = c.nat ? regNationBy.get(c.nat) : null, cur = reg.tab === "season" || reg.tab === "records" || reg.tab === "draft" ? reg.tab : "overview";
         title = (<>
           {n && <button type="button" className="ux-btnreset ux-pb-up" onClick={() => openNation(n.code)}><TeamCrest team={n.nt} size={18} />{n.nt.name}{uxIcon("fwd", "ux-s")}</button>}
           <LeagueCrest league={c.name} size={22} /><h1>{c.name}</h1></>);
-        [["overview", "Overview"], ["season", "Season"], ["records", "Records"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoComp(c.name, id))));
+        [["overview", "Overview"], ["season", "Season"], ["records", "Records"], ...(drDoneOf(c.name).length ? [["draft", "Draft"]] : [])]
+          .forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoComp(c.name, id))));
         const pages = c.seasons.filter(s => !s.hist);
         if (cur === "season" && pages.length) {
           const opts = pages.map(s => [urlSlug(s.season), uxSeasonName(s)]), now = opts.some(([v]) => v === reg.season) ? reg.season : opts[opts.length - 1][0];
@@ -14852,7 +15190,8 @@ export default function App() {
     } else if (tab === "editor") {
       // The Editor: Teams, Players, Managers, Leagues, Trades and Requests.
       title = <h1>Editor</h1>;
-      [["sheet", "Sheet"], ["trades", "Trades"], ["requests", "Requests"]].forEach(([id, l]) =>
+      [["sheet", "Sheet"], ["trades", "Trades"], ["requests", "Requests"],
+       ...(draftSees ? [["draft", <>Draft{draftYours && <i className="ux-pb-dot" title="Your Pick" />}</>]] : [])].forEach(([id, l]) =>
         tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdCall(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.
@@ -15196,6 +15535,8 @@ export default function App() {
     // The season itself: where they finished, how, and the league matches its form is read from.
     const res = ss ? archOf(ss, t.name) : null, rep = uxRep(ss);
     const matches = [];
+    // A college season has no rounds of a league's: its form is every match it played, conference and playoff.
+    if (res?.college) for (const m of [...(uxClubRows(ss, key) || [])].sort((a, b) => a.t - b.t)) matches.push({ o: m.o });
     for (const r of rep?.rounds || []) {
       const F = r.fixtures; if (!F) continue;
       const mi = Math.max(0, F.head.findIndex(h => /match/i.test(h))), si = F.head.findIndex(h => /score/i.test(h));
@@ -15379,7 +15720,9 @@ export default function App() {
               {res?.league ? (<>
                 <div className="ux-hero">
                   <span className="ux-big">{res.pos}<small>{ord.replace(/^\d+/, "")}</small></span>
-                  <div className="ux-lines"><span className="ux-t1"><SlideName text={t.league} /></span></div>
+                  <div className="ux-lines"><span className="ux-t1"><SlideName text={(res.college && res.conf) || t.league} /></span>
+                    {res.college && res.stage && !/conference/i.test(res.stage) && (
+                      <span className={"ux-t2" + (res.stage === "Winner" ? " ux-gold" : "")}>{res.stage === "Winner" ? "Champions" : "Playoff, " + uxStage(res.stage)}</span>)}</div>
                 </div>
                 {/* The points lead the figures, so the league's name has the line beside the place to itself. */}
                 <div className="ux-strip">
@@ -15449,7 +15792,7 @@ export default function App() {
     // tier above or below or out of the leagues; after the newest, where the club is now or where its rules send it.
     const moved = (i) => { const L = years[i].league, nm = L?.res?.league ? sideNameIn(t, L.s) : null;
       return nm ? uxSeasonMoves(L.s)?.move.get(archKey(nm)) || null : null; };
-    const hasCup = years.some(r => r.cup), hasIntl = years.some(r => r.intl);
+    const hasCup = years.some(r => r.cup), hasIntl = years.some(r => r.intl), hasPo = years.some(r => r.league?.res?.college);
     const seasonLink = (x, label, cls) => (x.s.hist ? <span className={cls}>{label}</span>
       : <button type="button" className={"ux-btnreset ux-a " + (cls || "")} onClick={() => openSeasonPage(x.s)}>{label}</button>);
     // A Final the stage reader could not settle is settled by the season's winner, which also reads a report's Winner line.
@@ -15491,15 +15834,18 @@ export default function App() {
             </table></div>) : (
             <div className="ux-pbody"><table className="ux-tbl">
               <colgroup><col style={{ width: 80 }} /><col style={{ width: 200 }} /><col style={{ width: 92 }} />
-                {STATS.map(([h]) => <col key={h} style={{ width: 40 }} />)}{hasCup && <col style={hasIntl ? { width: 140 } : undefined} />}{hasIntl && <col />}
-                {!hasCup && !hasIntl && <col />}<col style={{ width: 150 }} /></colgroup>
-              <thead><tr><th>Season</th><th>Division</th><th>Pos</th>{STATS.map(([h]) => <th key={h} className="ux-n">{h}</th>)}
-                {hasCup && <th>Cup</th>}{hasIntl && <th>International</th>}{!hasCup && !hasIntl && <th />}<th>Manager</th></tr></thead>
-              <tbody>{years.map((r, i) => { const L = r.league, res = L?.res, mv = moved(i), won = res ? (res.league ? res.pos === 1 : res.stage === "Winner") : false;
+                {STATS.map(([h]) => <col key={h} style={{ width: 40 }} />)}{hasPo && <col style={hasCup || hasIntl ? { width: 130 } : undefined} />}
+                {hasCup && <col style={hasIntl ? { width: 140 } : undefined} />}{hasIntl && <col />}
+                {!hasCup && !hasIntl && !hasPo && <col />}<col style={{ width: 150 }} /></colgroup>
+              <thead><tr><th>Season</th><th>Division</th><th>Pos</th>{STATS.map(([h]) => <th key={h} className="ux-n">{h}</th>)}{hasPo && <th>Playoff</th>}
+                {hasCup && <th>Cup</th>}{hasIntl && <th>International</th>}{!hasCup && !hasIntl && !hasPo && <th />}<th>Manager</th></tr></thead>
+              {/* A college season (DESIGN.md, The ANCC): its conference for the division, its place and record there, and how
+                  far it went in the playoff, the title in gold there rather than on its conference place. */}
+              <tbody>{years.map((r, i) => { const L = r.league, res = L?.res, mv = moved(i), won = res ? (res.college ? false : res.league ? res.pos === 1 : res.stage === "Winner") : false;
                 return (
                 <tr key={r.y}>
                   <td className="ux-dim" style={mono}>{uxSeasonLabel(r.y)}</td>
-                  <td>{L ? <div className="ux-tc"><LeagueCrest league={L.s.comp} size={16} /><span className="ux-hist-lg">{seasonLink(L, L.s.comp)}</span></div> : <span className="ux-dim">&#8211;</span>}</td>
+                  <td>{L ? <div className="ux-tc"><LeagueCrest league={L.s.comp} size={16} /><span className="ux-hist-lg">{seasonLink(L, (res?.college && res.conf) || L.s.comp)}</span></div> : <span className="ux-dim">&#8211;</span>}</td>
                   <td>{res ? (
                     <div className="ux-posc">
                       <b className={won ? "ux-gold" : undefined} style={mono}>{res.league ? ordinal(res.pos) : res.stage === "Winner" ? "1st" : uxStage(res.stage)}</b>
@@ -15509,10 +15855,11 @@ export default function App() {
                     </div>) : <span className="ux-dim">&#8211;</span>}</td>
                   {STATS.map(([h, k]) => { const v = stat(res, k);
                     return <td key={h} className={"ux-n" + (v == null ? " ux-dim" : h === "Pts" ? " ux-strong" : "")} style={mono}>{v ?? "–"}</td>; })}
+                  {hasPo && <td>{res?.college && res.stage && !/conference/i.test(res.stage) ? stage(L) : <span className="ux-dim">&#8211;</span>}</td>}
                   {hasCup && <td>{r.cup ? stage(r.cup) : <span className="ux-dim">&#8211;</span>}</td>}
                   {hasIntl && <td>{r.intl ? <div className="ux-tc"><LeagueCrest league={r.intl.s.comp} size={16} /><span title={r.intl.s.comp}>{stage(r.intl)}</span></div>
                     : <span className="ux-dim">&#8211;</span>}</td>}
-                  {!hasCup && !hasIntl && <td />}
+                  {!hasCup && !hasIntl && !hasPo && <td />}
                   {mgrs(r)}
                 </tr>); })}</tbody>
             </table></div>), true)}
@@ -15556,10 +15903,10 @@ export default function App() {
       return null; };
     // A division whose clubs are still the ones in its last table has not started its next season: who that table sends
     // up and down is marked where they stand (seasonMoves), and nobody moves until the next season moves them.
-    const tierNums = tiers.map(g => leagueTier(g.comp) || 1);
+    const tierNums = tiers.filter(g => !COLLEGE_COMPS.has(g.comp)).map(g => leagueTier(g.comp) || 1);
     const going = new Map(tiers.map(g => {
       const L = lasts.get(g.comp), tier = leagueTier(g.comp) || 1;
-      if (!L?.names?.length) return [g.comp, null];
+      if (!L?.names?.length || COLLEGE_COMPS.has(g.comp)) return [g.comp, null];
       const keys = new Set(g.clubs.map(t => archKey(t.name)));
       if (keys.size !== L.names.length || !L.names.every(k => keys.has(k))) return [g.comp, null];
       const ties = (uxRep(L.s)?.extra || []).map(x => playoffTie(x.body)).filter(Boolean).map(x => ({ win: archKey(x.win), lose: archKey(x.lose) }));
@@ -15937,7 +16284,7 @@ export default function App() {
         </div>
         {right && (
           <div className="ux-col">
-            {uxPanel("Career", null, (<>
+            {uxPanel("Career", drChipOf(rid), (<>
               <div className="ux-pbody"><table className="ux-tbl">
                 <colgroup><col style={{ width: 86 }} /><col /><col style={{ width: 48 }} /><col style={{ width: 52 }} /></colgroup>
                 <thead><tr><th>Years</th><th>Team</th><th className="ux-n">Apps</th><th className="ux-n">Goals</th></tr></thead>
@@ -16751,7 +17098,7 @@ export default function App() {
     const c = uxArcBy.get(name), pages = c ? c.seasons.filter(s => !s.hist) : [];
     const keep = reg.comp === name && reg.season && pages.some(s => urlSlug(s.season) === reg.season) ? reg.season : null;
     if (world !== "avium") setWorld("avium");
-    regGo({ sec: "competitions", comp: name, tab: tb === "season" || tb === "records" ? tb : null,
+    regGo({ sec: "competitions", comp: name, tab: tb === "season" || tb === "records" || tb === "draft" ? tb : null,
             season: keep || (tb === "season" && pages.length ? urlSlug(pages[pages.length - 1].season) : null) });
   };
   const uxGoYear = (y) => { if (world !== "avium") setWorld("avium"); regGo({ sec: "competitions", page: "years", year: y ?? null }); };
@@ -16812,7 +17159,7 @@ export default function App() {
   // kind. Each table takes room in proportion to its rows.
   const renderUxYear = (y) => {
     const all = uxArc.flatMap(c => c.seasons.filter(s => uxYearOf(s) === y).map(s => ({ c, s, sum: uxArcSum(s) })));
-    const isLg = (x) => (x.sum?.league ? true : x.sum?.score ? false : x.c.kind === "league");
+    const isLg = (x) => (x.sum?.league ? true : x.sum?.score ? false : x.c.kind === "league" && !x.c.college);
     const dash = <span className="ux-dim">&#8211;</span>;
     const table = (title, rows, league) => {
       const tops = rows.some(r => r.sum?.top), COLS = league ? [280, 90, 250, 60, 250, 70] : [280, 90, 250, 80, 250];
@@ -16987,7 +17334,7 @@ export default function App() {
 
   // ── A competition: Overview ──
   const renderUxComp = (c) => {
-    const league = c.kind === "league", rows = c.seasons.slice().reverse().map(s => ({ s, sum: uxArcSum(s) })), tally = uxArcTally(c);
+    const league = c.kind === "league" && !c.college, rows = c.seasons.slice().reverse().map(s => ({ s, sum: uxArcSum(s) })), tally = uxArcTally(c);
     const COLS = league ? [76, 200, 52, 200, 64, 200, 170] : [76, 200, 72, 200, 200, 170];
     const mgrOf = (s, nm) => { const t = uxArcT(nm); return t && uxYearOf(s) >= TRACKED_FROM ? uxMgrAt(t, s) : null; };
     return (
@@ -17162,7 +17509,7 @@ export default function App() {
   // A tournament's stage: its groups two abreast, and its knockout rounds as a bracket. A group stage's fixtures are
   // Results'.
   const uxStageView = (v) => {
-    const blocks = uxStageBlocks(v.body), groups = blocks.filter(b => b.stand), ko = /group/i.test(v.name) ? [] : blocks.filter(b => b.fix);
+    const blocks = uxStageBlocks(v.body), groups = blocks.filter(b => b.stand), ko = /group|conference/i.test(v.name) ? [] : blocks.filter(b => b.fix);
     if (!groups.length && !ko.length) return <div className="ux-empty">Nothing On File</div>;
     return (
       <div className="ux-pbody">
@@ -17223,7 +17570,7 @@ export default function App() {
     const hw = hg > ag || (hg === ag && !!pens && pens[0] > pens[1]), aw = ag > hg || (hg === ag && !!pens && pens[1] > pens[0]);
     return (
       <tr key={k}>
-        {group !== undefined && <td className="ux-dim" style={mono}>{group || ""}</td>}
+        {group !== undefined && <td className="ux-dim" style={mono} title={group && group.length > 2 ? group : undefined}>{group && group.length > 2 ? initialsOf(group) : group || ""}</td>}
         <td>{uxArcSide(home, hw, true)}</td>
         <td className="ux-c ux-strong" style={mono}>{uxScore(`${hg}-${ag}`, pens, aet)}</td>
         <td>{uxArcSide(away, aw)}</td>
@@ -17253,7 +17600,10 @@ export default function App() {
       // A tournament's results, a stage at a time (a group stage's rounds take every group's matches together).
       const by = new Map();
       for (const m of uxAllRows(s) || []) {
-        const lab = String(m.stage).replace(/\s*[–—-]+\s*Group\s+.+$/i, "").trim(), grp = (String(m.stage).match(/Group\s+(.+)$/i) || [])[1] || null;
+        // A group stage's round names its group after it (Round 3 — Group A, or a conference's Round 3 — Capital Eight).
+        const gm = /group|conference/i.test(m.h2 || "") ? String(m.stage).match(/^(.*?)\s*[–—-]+\s*(?:Group\s+)?(.+)$/i) : null;
+        const lab = gm ? gm[1].trim() : String(m.stage).replace(/\s*[–—-]+\s*Group\s+.+$/i, "").trim();
+        const grp = gm ? gm[2].trim() : (String(m.stage).match(/Group\s+(.+)$/i) || [])[1] || null;
         if (!by.has(lab)) by.set(lab, []);
         by.get(lab).push({ ...m, grp });
       }
@@ -17262,7 +17612,7 @@ export default function App() {
         const opts = labs.map(l => [urlSlug(l), uxTitle(l)]), dflt = opts[opts.length - 1][0], pick = opts.find(([id]) => id === reg.round) ? reg.round : dflt;
         const ms = by.get(labs[opts.findIndex(([id]) => id === pick)]), grouped = ms.some(m => m.grp);
         results = { grouped, control: uxStepper("Stage", opts, pick, id => setRound(id, dflt)),
-          body: <tbody>{ms.slice().sort((a, b) => String(a.grp || "").localeCompare(String(b.grp || ""))).map((m, k) => uxMatchRow(m.home, m.away, m.hg, m.ag, m.pens, k, grouped ? m.grp : undefined, m.aet))}</tbody> };
+          body: <tbody>{ms.slice().sort((a, b) => a.k - b.k || String(a.grp || "").localeCompare(String(b.grp || ""))).map((m, k) => uxMatchRow(m.home, m.away, m.hg, m.ag, m.pens, k, grouped ? m.grp : undefined, m.aet))}</tbody> };
       }
     }
     // The season's champions and its men of the year; a season of tables alone has its best attack and defence instead.
@@ -17321,7 +17671,7 @@ export default function App() {
   const uxRecData = useMemo(() => {
     if (uxScreen !== "crecords" || !reg.comp) return null;
     const c = uxArcBy.get(reg.comp); if (!c) return null;
-    const league = c.kind === "league", by = new Map();
+    const league = c.kind === "league" && !c.college, by = new Map();
     const row = (nm) => { const k = archKey(nm); let r = by.get(k);
       if (!r) by.set(k, r = { name: nm, seasons: 0, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, titles: 0, finals: 0, best: Infinity, bestLbl: null }); return r; };
     const better = (r, rank, lbl) => { if (rank < r.best) { r.best = rank; r.bestLbl = lbl; } };
@@ -17380,7 +17730,7 @@ export default function App() {
     const team = [
       ...(league ? [["pts", "Most Points In A Season", (x) => x.v + " Pts"], ["gf", "Most Goals In A Season", (x) => x.v], ["ga", "Fewest Conceded In A Season", (x) => x.v],
                     ["margin", "Widest Title Margin", (x) => "+" + x.v]]
-                 : [["gf", "Most Goals In A Tournament", (x) => x.v]]),
+                 : [["gf", c.college ? "Most Goals In A Season" : "Most Goals In A Tournament", (x) => x.v]]),
       ["run", "Most Titles In A Row", (x) => x.v], ["win", "Biggest Win", (x) => x.v], ["goals", "Most Goals In A Match", (x) => x.v],
     ].filter(([k]) => rec[k] && !(k === "run" && rec[k].v < 2)).map(([k, label, fmt]) => ({ k, label, side: rec[k].side, opp: rec[k].opp, s: rec[k].s, from: rec[k].from, v: fmt(rec[k]) }));
     // The men's: a season's best on each board, the best average rating over half the season's football, and the most goals
@@ -17478,10 +17828,10 @@ export default function App() {
     if (done) stage = "Complete";
     else if (!stage && phase === "groups") {
       const rd = (groups[0]?.schedule || []).findIndex((_, ri) => groups.some(g => (g.schedule[ri] || []).some(m => !m.bye && !m.result)));
-      stage = ((+cfg.numGroups || 0) <= 1 ? "League" : "Group Stage") + (rd >= 0 ? ", Round " + (rd + 1) : "");
+      stage = ((+cfg.numGroups || 0) <= 1 ? "League" : cfg.stages?.[0] || "Group Stage") + (rd >= 0 ? ", Round " + (rd + 1) : "");
     } else if (!stage && ko) {
       const rd = [...(ko.rounds || []), ...(ko.losers || [])].find(r => r.matches.some(open));
-      stage = rd ? uxTitle(rd.name) : open(ko.thirdPlace) ? "Third Place" : open(ko.grandFinal) ? "Grand Final" : open(ko.reset) ? "Reset Match" : "Knockout";
+      stage = rd ? uxTitle(rd.name) : open(ko.thirdPlace) ? "Third Place" : open(ko.grandFinal) ? "Grand Final" : open(ko.reset) ? "Reset Match" : cfg.stages?.[1] || "Knockout";
     }
     const g0 = phase === "groups" && groups.length === 1 ? groups[0] : null, top = g0?.standings?.[0];
     const lead = ko?.champion || (top ? (g0.teams || []).find(t => t.name === top.name) || top : null);
@@ -17603,7 +17953,7 @@ export default function App() {
         out.push(btn("n", `Pair Round ${tSwissRoundsPlayed + 1}`, tGenNextSwissRound, true));
       if (allDone && tHasKO) out.push(tHasUnresolved
         ? <button key="k" type="button" className="ux-btnreset ux-btn ux-warn" disabled title="Level On Every Tiebreaker: Swap Them In The Table">Tiebreaker Needed</button>
-        : btn("k", "Proceed To Knockout", tProceedKO, true));
+        : btn("k", "Proceed To " + (tConfig.stages?.[1] || "Knockout"), tProceedKO, true));
     } else if (tPhase === "knockout") {
       const a = koActionable, fRi = uxTFinalOpen();
       const next = a.wbRi >= 0 ? () => tScorinateKO(a.wbRi, -1, tConfig.koLegs === 2 ? 0 : undefined)
@@ -17630,7 +17980,7 @@ export default function App() {
       ...(PARTICIPANT_PRESETS.size ? [["Fields", [...PARTICIPANT_PRESETS.keys()].map(n => ["p:" + n, n])]] : [])];
     const many = tHasGroups && tConfig.numGroups > 1;
     return (<>
-      {uxPickG("Preset", "", presets, v => { if (v.startsWith("f:")) setTConfig(c => ({ ...c, ...T_PRESETS[v.slice(2)].config })); else if (v.startsWith("p:")) applyParticipantPreset(v.slice(2)); })}
+      {uxPickG("Preset", "", presets, v => { if (v.startsWith("f:")) setTConfig(c => ({ ...c, stages: null, ...T_PRESETS[v.slice(2)].config })); else if (v.startsWith("p:")) applyParticipantPreset(v.slice(2)); })}
       <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!tValid} onClick={() => createTournament()}>
         {many && tConfig.allocMode === "manual" ? "Begin Allocation" : many && tConfig.allocMode === "draw" ? "Set Up Draw" : "Create Tournament"}</button></>);
   };
@@ -17875,7 +18225,7 @@ export default function App() {
     </table>);
   const uxTGroupTable = (g, gi) => (
     <div key={gi} className="ux-grp">
-      <div className="ux-grp-h">Group {g.label}</div>
+      <div className="ux-grp-h">{groupName(g, gi)}</div>
       <table className="ux-tbl">
         <colgroup><col style={{ width: 26 }} /><col style={{ width: 136 }} />{T_HEADS.map(h => <col key={h} style={{ width: 30 }} />)}</colgroup>
         <thead><tr><th>#</th><th>Team</th>{T_HEADS.map(h => <th key={h} className="ux-n">{h}</th>)}</tr></thead>
@@ -18004,7 +18354,7 @@ export default function App() {
   // A group match: its group, the two sides either side of the score, and what can be done with it. Only the round being
   // played can be simmed, scored or played live, as on the old screen.
   const uxTGroupRow = (m, gi, ri, mi, wide, gcol) => {
-    const key = `g${gi}_${ri}_${mi}`, gcell = gcol ? <td className="ux-dim" style={mono}>{tGroups[gi].label}</td> : null;
+    const key = `g${gi}_${ri}_${mi}`, gcell = gcol ? <td className="ux-dim" style={mono} title={groupName(tGroups[gi], gi)}>{groupTag(tGroups[gi], gi)}</td> : null;
     if (m.bye) return <tr key={key}>{gcell}<td>{uxTSide(m.home, false, true)}</td><td className="ux-c ux-dim">Bye</td><td /><td /></tr>;
     const r = m.result, editing = tEdit && tEdit.gi === gi && tEdit.ri === ri && tEdit.mi === mi, haKey = `g_${gi}_${ri}_${mi}`, haVal = tHomeAdvOverrides[haKey] || null;
     const save = () => tSetManualScore(), arm = tDelArm === key;
@@ -18132,7 +18482,7 @@ export default function App() {
     return (
       <div className="ux-body ux-tsplit">
         <section className="ux-panel ux-grow">
-          <div className="ux-ph"><h2 className="ux-pt">{isKO ? (tKO.losers ? "Double Elimination" : "Knockout") : tGroups.length === 1 ? "League" : "Group Stage"}</h2></div>
+          <div className="ux-ph"><h2 className="ux-pt">{isKO ? (tKO.losers ? "Double Elimination" : tConfig.stages?.[1] || "Knockout") : tGroups.length === 1 ? "League" : tConfig.stages?.[0] || "Group Stage"}</h2></div>
           {isKO ? uxTBracket() : uxTGroupsView()}
         </section>
         <div className="ux-col">
@@ -18256,9 +18606,11 @@ export default function App() {
       <span className="ux-slot-t">{tail}{x}</span>
     </div>);
   // Where a side comes from: a club's division, a national side's conference, or its group and place after a group stage.
-  const uxTFrom = (t) => t.groupLabel ? `Group ${t.groupLabel}, ${ordinal(t.groupPos)}` : isIntlLeague(t.league)
+  // A group by the letter a side carries out of it, and its place in the list (for its name).
+  const tGroupOf = (label) => { const gi = tGroups.findIndex(g => g.label === label); return gi >= 0 ? [tGroups[gi], gi] : [{ label }, 0]; };
+  const uxTFrom = (t) => t.groupLabel ? `${groupName(...tGroupOf(t.groupLabel))}, ${ordinal(t.groupPos)}` : isIntlLeague(t.league)
     ? (confLabel(t.conference || CONF_BY_CODE.get(t.code)) || "National Team") : (t.league || "");
-  const uxTagOf = (t) => t?.groupLabel ? t.groupLabel + t.groupPos : null;
+  const uxTagOf = (t) => t?.groupLabel ? groupTag(...tGroupOf(t.groupLabel)) + t.groupPos : null;
   // A side waiting to be placed by hand: clicked, it is in hand and the next box clicked takes it; or it is dragged there.
   const uxPickRow = (t, hand) => (
     <button key={t.name} type="button" draggable className={"ux-btnreset ux-prow" + (hand === t.name ? " ux-on" : "")} aria-pressed={hand === t.name}
@@ -18508,7 +18860,7 @@ export default function App() {
                   className="ux-btnreset ux-chkbtn" onClick={e => { e.stopPropagation(); tByeToggle(t); }}>{uxCheck(on)}</button></td>
                 <td className="ux-dim" style={mono}>{i + 1}</td>
                 <td><div className="ux-tc"><TeamCrest team={t} size={16} /><span className={on ? "ux-strong" : undefined}>{t.name}</span></div></td>
-                {grouped && <td className="ux-dim">{uxTagOf(t) ? `Group ${t.groupLabel}, ${ordinal(t.groupPos)}` : ""}</td>}
+                {grouped && <td className="ux-dim">{t.groupLabel ? uxTFrom(t) : ""}</td>}
                 {grouped && [t.p, t.w, t.d, t.l, t.gf, t.ga].map((v, k) => <td key={k} className="ux-n" style={mono}>{v ?? 0}</td>)}
                 {grouped && <td className="ux-n" style={mono}>{gd > 0 ? "+" + gd : gd}</td>}
                 {grouped && <td className="ux-n ux-strong" style={mono}>{t.pts ?? 0}</td>}
@@ -18635,7 +18987,7 @@ export default function App() {
   // A tournament fixture's name: its group and round, or its knockout round and leg.
   const lmFixtureName = (tg) => {
     if (!tg) return "Friendly";
-    if (tg.type === "group") return `${tGroups.length > 1 ? "Group " + String.fromCharCode(65 + (tg.gi || 0)) + ", " : ""}Round ${(tg.ri || 0) + 1}`;
+    if (tg.type === "group") return `${tGroups.length > 1 ? groupName(tGroups[tg.gi || 0], tg.gi || 0) + ", " : ""}Round ${(tg.ri || 0) + 1}`;
     if (tg.tp) return "Third Place";
     if (tg.bracket === "gf") return "Grand Final";
     if (tg.bracket === "reset") return "Grand Final Reset";
@@ -19202,6 +19554,7 @@ export default function App() {
           {uxScreen === "comp" && uxCompPage(renderUxComp)}
           {uxScreen === "cseason" && uxCompPage(renderUxSeason)}
           {uxScreen === "crecords" && uxCompPage(renderUxRecords)}
+          {uxScreen === "cdraft" && renderUxCompDraft(reg.comp)}
           {uxTScreen && renderUxTournaments()}
           {uxMScreen && renderUxMatch()}
           {tab === "docs" && renderUxDocs()}

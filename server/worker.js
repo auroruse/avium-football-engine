@@ -9,6 +9,11 @@
 //   POST /save                     { cart }  -> { sha, applied, apply, requests, waiting } or 422 { errors }
 //   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" | "counter", edits?, note?, moves?, sides? }
 //                                  -> { sha, done, apply, request, waiting }
+//   GET  /draft                    the drafts (src/data/drafts.json)
+//   POST /draft                    { action: "pick", n, player, out? } the club on the clock's editor or the overseer;
+//                                  { action: "start", order, stats } | "pause" | "resume" | { action: "give", n, club } the
+//                                  overseer; "tick" anyone -> { sha, draft, apply } or 422 { errors }
+//   (every five minutes)           a draft whose clock has run out makes that pick (wrangler.toml's cron)
 //                                  (edits: the overseer's changes to a new record he accepts; note: what a decline sends back;
 //                                  moves and sides: a counter's deal, src/data/deals.js)
 //
@@ -16,9 +21,10 @@
 // redeploys; `waiting` is every request still open afterwards.
 //
 // Secrets (wrangler secret put): CLIENT_SECRET, PRIVATE_KEY (the App's key, as GitHub gave it), SESSION_SECRET.
-import { applyDraft, draftChanges, dumpRecords } from "../src/data/draft.js";
+import { applyDraft, draftChanges, dumpRecords, teamKey } from "../src/data/draft.js";
 import { sheetsFromRecords } from "../src/data/sheets.js";
-import { planSave, scopeOf, settleRequest } from "../src/data/rules.js";
+import { owns, ownersOf, planSave, scopeOf, settleRequest } from "../src/data/rules.js";
+import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, startDraft, steerDraft } from "../src/data/collegedraft.js";
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { TRADES_FILE, dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, trendsFrom } from "../src/data/trades.js";
 import { icNow } from "../src/data/icclock.js";
@@ -109,9 +115,10 @@ async function tradeLog(env, head, rec, next, by) {
 async function readMain(env) {
   const head = await mainHead(env);
   const tree = (await gh(env, `/repos/${env.REPO}/git/commits/${head}`)).tree.sha;
-  const [players, managers, teams, sheets, editors, requests, leagues] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
-    .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", []), readJson(env, head, "src/data/leagues.json", [])));
-  return { head, tree, rec: { players, managers, teams, sheets, leagues }, editors, requests };
+  const [players, managers, teams, sheets, editors, requests, leagues, drafts] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
+    .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", []), readJson(env, head, "src/data/leagues.json", []),
+      readJson(env, head, DRAFT_FILE, [])));
+  return { head, tree, rec: { players, managers, teams, sheets, leagues }, editors, requests, drafts };
 }
 // One commit to main with these files, or a 422 if main moved meanwhile (the caller reads again and redoes).
 async function commit(env, head, tree, files, message) {
@@ -132,6 +139,45 @@ function filesFor(rec, next) {
 // How squads are judged, against these records.
 const judge = (rec) => { const ovr = new Map(rec.players.map(r => [r.id, r.ovr])), pos = new Map(rec.players.map(r => [r.id, posList(r.pos)]));
   return { labels: (t) => slotLabels(sposFor, t.formation, t.squad.length, !NATIONAL_FILES.has(t.file)), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0, pos: (id) => pos.get(id) || [] }; };
+
+// ── the college draft (src/data/collegedraft.js) ──────────────────────────────────────────────────
+// A club picks by hand when somebody other than the overseer answers for it; the overseer's own (Nichirin's) pick at once.
+const handOf = (rec, editors) => { const over = new Set((editors?.overseers || []).map(o => o.toLowerCase())), T = new Map(rec.teams.map(t => [teamKey(t), t]));
+  return (k) => { const t = T.get(k); return !!t && ownersOf(editors, t).some(u => !over.has(u.toLowerCase())); }; };
+// One step of a draft: the overseer's start, pause, resume or giving a pick, a pick, or a tick; then every pick due made at
+// once. { files, message, result } to commit, { result } when nothing changed, or { errors }.
+async function draftStep(env, head, rec, editors, drafts, login, a, now) {
+  const scope = scopeOf(editors, login), over = scope.role === "overseer";
+  const d0 = (a.id ? drafts.find(d => d.id === a.id) : null) || currentDraft(drafts);
+  if (!d0) return { errors: ["There is no draft"] };
+  let d = d0;
+  if (["start", "pause", "resume", "give"].includes(a.action) && !over) return { errors: ["That is the overseer's to do"] };
+  if (a.action === "start") { const s = startDraft(rec, d, a.order, a.stats ?? null, now); if (s.errors) return s; d = s.draft; }
+  else if (["pause", "resume", "give"].includes(a.action)) { const s = steerDraft(rec, d, a.action, { n: a.n, club: a.club ?? null, now }); if (s.errors) return s; d = s.draft; }
+  else if (a.action === "pick") {
+    const p = pickDue(d), t = p ? rec.teams.find(x => teamKey(x) === p.club) : null;
+    if (!p || p.n !== a.n) return { errors: [`Pick ${a.n} is not on the clock`] };
+    if (!over && !(t && owns(scope, t))) return { errors: ["That pick is not yours to make"] };
+  } else if (a.action !== "tick") return { errors: ["Unknown action"] };
+  const board = d.stats ? ratingBoard(await readText(env, head, d.stats, "")) : [];
+  const r = runDraft(rec, d, { now, hand: handOf(rec, editors), board, h: judge(rec),
+    pick: a.action === "pick" ? { n: a.n, player: a.player, out: a.out ?? null, by: login } : null });
+  if (r.errors) return r;
+  if (!r.patch && JSON.stringify(r.draft) === JSON.stringify(d0)) return { result: { draft: d0, apply: null } };
+  const files = { [DRAFT_FILE]: dumpDrafts(drafts.map(x => (x.id === d0.id ? r.draft : x))), ...(r.patch ? filesFor(rec, applyDraft(rec, r.patch)) : null) };
+  const own = a.action === "pick" ? 1 : 0, auto = r.made.slice(own), late = r.made.filter(n => r.draft.picks[n - 1].by === "clock");
+  const what = a.action === "pick" ? `${login}, pick ${a.n}` : a.action === "tick" ? (late.length ? `pick ${late[0]}, time ran out` : "the clock")
+    : `${login}, ${a.action}${a.action === "give" ? ` pick ${a.n}` : ""}`;
+  return { files, message: `Draft: ${what}${auto.length - late.length > 0 ? `, ${auto.length - late.length} automatic` : ""}${r.draft.status === "done" && d0.status !== "done" ? ", over" : ""}`,
+           result: { draft: r.draft, apply: r.patch } };
+}
+// Every five minutes: a draft whose clock has run out makes that pick, and the ones after it nobody picks by hand.
+async function draftClock(env) {
+  const d = currentDraft(await readOne(env, DRAFT_FILE, []));
+  if (!d || d.status !== "running" || !(d.clock?.until && Date.parse(d.clock.until) <= Date.now())) return null;
+  return withMain(env, async ({ head, rec, editors, drafts }) => { const r = await draftStep(env, head, rec, editors, drafts, "", { action: "tick" }, new Date(Date.now()));
+    return r.errors ? { result: null } : r; });
+}
 
 // ── the web ───────────────────────────────────────────────────────────────────────────────────────
 const origins = (env) => String(env.APP_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -198,6 +244,7 @@ async function handle(req, env) {
     return redirect(`${st.r}#avium_session=${session}`);
   }
   if (path === "/requests" && req.method === "GET") return json(await readOne(env, "src/data/requests.json", []));
+  if (path === "/draft" && req.method === "GET") return json(await readOne(env, DRAFT_FILE, []));
 
   const login = await who(req, env);
   if (!login) return json({ error: "Sign in first" }, 401);
@@ -221,6 +268,16 @@ async function handle(req, env) {
       const parts = [applied && `${applied} change${applied > 1 ? "s" : ""}`, plan.requests.length && `${plan.requests.length} request${plan.requests.length > 1 ? "s" : ""}`].filter(Boolean);
       return { files, message: `Registry: ${login}, ${parts.join(" and ")}`,
                result: { applied, apply: applied ? plan.apply : null, requests: plan.requests, waiting } };
+    });
+    return errors ? json({ errors }, 422) : json(result);
+  }
+  if (path === "/draft" && req.method === "POST") {
+    const { id, action, n, player, out, club, order, stats } = await body(req);
+    let errors = null;
+    const result = await withMain(env, async ({ head, rec, editors, drafts }) => {
+      const r = await draftStep(env, head, rec, editors, drafts, login, { id, action, n, player, out, club, order, stats }, new Date(Date.now()));
+      if (r.errors) { errors = r.errors; return { result: null }; }
+      return r;
     });
     return errors ? json({ errors }, 422) : json(result);
   }
@@ -251,4 +308,5 @@ export default {
     try { return cors(req, env, await handle(req, env)); }
     catch (e) { return cors(req, env, json({ error: String(e?.message || e) }, e?.status && e.status < 600 ? e.status : 500)); }
   },
+  async scheduled(event, env, ctx) { ctx.waitUntil(draftClock(env).catch((e) => console.error("draft clock:", e?.message || e))); },
 };
