@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIELD, isSlot, sheetsFromRecords } from "../src/data/sheets.js";
 import { dumpRecords, playerRecord } from "../src/data/draft.js";
-import { CLUB_BENCH, fitsPlace, posList } from "../src/data/positions.js";
+import { CLUB_BENCH, clubBench, fitsPlace, posList } from "../src/data/positions.js";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PRE = join(ROOT, "src/presets"), DATA = join(ROOT, "src/data");
@@ -177,12 +177,15 @@ else if (cmd === "export") {
   const P = records().players, byId = new Map(P.map(r => [r.id, r]));
   for (const r of P) { const raw = Array.isArray(r.pos) ? r.pos : [];
     if (!raw.length || raw.length > 2 || posList(raw).length !== raw.length) { bad++; if (bad < 40) console.log(`${r.name} (${r.id}) has positions ${JSON.stringify(r.pos)}`); } }
-  // A man in another group's bench place is the editor's choice, marked in the app: counted here, refused nowhere.
+  // A man in another group's bench place is the editor's choice, marked in the app: counted here, refused nowhere. A club's
+  // bench places in line order (src/data/positions.js clubBench), from its eleven's groups as Slots.tsv has them.
+  const LINE = { G: "GK", D: "DEF", M: "MID", F: "FWD" };
+  const SLOTS = new Map(readFileSync(join(PRE, "Slots.tsv"), "utf8").trim().split("\n").slice(1).map(l => l.split("\t")).map(c => [c[0], [...c[2]].map(x => LINE[x])]));
   let odd = 0;
   for (const t of T) { if (NATIONAL.has(t.file)) continue;
-    // The five places a club bench always had; its six newer ones take their groups from the formation, which the app marks.
-    t.squad.slice(11, 16).forEach((v, i) => { const id = typeof v === "string" ? v : v?.id, r = id && byId.get(id);
-      if (r && !fitsPlace(r.pos, CLUB_BENCH[i])) odd++; }); }
+    const g = SLOTS.get(String(t.formation).trim()), lab = t.squad.length > 16 && g ? clubBench(g) : CLUB_BENCH;
+    t.squad.slice(11).forEach((v, i) => { const id = typeof v === "string" ? v : v?.id, r = id && byId.get(id);
+      if (r && lab[i] && !fitsPlace(r.pos, lab[i])) odd++; }); }
   if (odd) console.log(`${odd} club substitutes sit in another group's bench place (allowed; the Editor marks them)`);
   console.log(bad ? `${bad} problems between the sheets, the records and the leagues` : `every sheet written from the records is byte-identical to src/presets, all ${L.length} leagues have their clubs, and all ${P.length} players their positions`);
   process.exit(bad ? 1 : 0);

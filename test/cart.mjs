@@ -16,7 +16,7 @@ const DIR = mkdtempSync(join(tmpdir(), "cart-")), ENTRY = join(DIR, "entry.js"),
 writeFileSync(ENTRY, ["data/cart.js", "data/draft.js", "data/squads.js", "data/positions.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
-const { cartItems, withoutItem, applyDraft, draftSize, draftWith, idOf, teamKey, vacate, placeFor, without, posFitCost, slotLabels, sposFor } = await import(pathToFileURL(OUT).href);
+const { cartItems, withoutItem, applyDraft, draftSize, draftWith, idOf, teamKey, vacate, placeFor, without, posFitCost, slotLabels, sposFor, clubBenchOrder, POS_GROUP } = await import(pathToFileURL(OUT).href);
 
 let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined ? "" : "   " + JSON.stringify(got)}`); };
@@ -24,6 +24,10 @@ const rec = Object.fromEntries(["players", "managers", "teams", "sheets"].map(k 
 const byKey = new Map(rec.teams.map(t => [teamKey(t), t])), ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
 const ids = (t) => t.squad.map(v => idOf(v) ?? null), lab = (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length, !["AVIUM", "ARTERRA"].includes(t.file));
 const ovrOf = (id) => ovr.get(id) ?? 0, nat = (t) => t.file === "AVIUM" || t.file === "ARTERRA";
+// A bench place as clubs laid it out before 13 October 2026 (the five, then the six), where it stands now in line order
+// (src/data/positions.js clubBenchOrder): the cases below were written against the old places and keep their men.
+const old = (t, i) => (i < 11 || t.squad.length <= 16 || nat(t) ? i
+  : 11 + clubBenchOrder(sposFor(String(t.formation).trim()).map(p => POS_GROUP[p] || "MID")).indexOf(i - 11));
 const team = (f) => rec.teams.find(f);
 
 // The cart, built the way the app builds each change.
@@ -36,13 +40,13 @@ const Z = rec.players.find(p => clubOf.has(p.id) && ntOf.has(p.id) && !used.has(
 const D = clubOf.get(Z), E = ntOf.get(Z), Y = ids(A)[3];
 let d = { v: 1, players: {} };
 // 1. A transfer: A's number 10 to B, whose last bench man is released to make room.
-const star = ids(A)[10], r1 = ids(B)[15];
-let sqB = vacate(ids(B), 15, lab(B), posFitCost, ovrOf); sqB[placeFor(sqB, lab(B), posFitCost, lab(A)[10])] = star;
+const star = ids(A)[10], r1 = ids(B)[old(B, 15)];
+let sqB = vacate(ids(B), old(B, 15), lab(B), posFitCost, ovrOf); sqB[placeFor(sqB, lab(B), posFitCost, lab(A)[10])] = star;
 d = draftWith(d, rec, teamKey(B), { squad: sqB }, "teams");
 d = draftWith(d, rec, teamKey(A), { squad: without(ids(A), star, lab(A), posFitCost, ovrOf) }, "teams");
 // 2. A release from C.
-const x = ids(C)[14];
-d = draftWith(d, rec, teamKey(C), { squad: vacate(ids(C), 14, lab(C), posFitCost, ovrOf) }, "teams");
+const x = ids(C)[old(C, 14)];
+d = draftWith(d, rec, teamKey(C), { squad: vacate(ids(C), old(C, 14), lab(C), posFitCost, ovrOf) }, "teams");
 // 3. A call-up: N drops its last man for another of its nationals.
 const callee = rec.players.find(p => p.nat === N.code && !p.retired && !ids(N).includes(p.id)).id, sqN = ids(N); sqN[21] = callee;
 d = draftWith(d, rec, teamKey(N), { squad: sqN }, "teams");

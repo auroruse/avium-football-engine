@@ -8,7 +8,7 @@
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
 import { FORMATIONS, FORM_SPOS, FPOS2, ME_MATCH_TICKS, formAtkW, meAdded, meAddedMin, meFinalise, meInit, meManagersPreMatch, meMinute, meShootout, meTick, pitchSlots, sposFor } from "../engine";
-import { CLUB_BENCH, clubBenchRest, ovrAt } from "../data/positions.js";
+import { CLUB_BENCH, POS_GROUP, clubBenchOrder, clubBenchRest, ovrAt } from "../data/positions.js";
 // The formation tables live in the engine now (src/engine/formations.ts); the app still reads them here.
 export { FORMATIONS, FORM_SPOS, FPOS2, pitchSlots, sposFor };
 
@@ -429,9 +429,13 @@ export function buildSquad(formation, names, benchSize, club = false) {
     for (const p of sq) { const i = left.indexOf(p.pos); if (i >= 0) { left.splice(i, 1); taken.add(p); } }
     rest = want.map(g => { const p = sq.find(q => q.pos === g && !taken.has(q)); if (p) { taken.add(p); return p; }
       return { pos: g, spos: g === "DEF" ? "CB" : g === "FWD" ? "ST" : g === "GK" ? "GK" : "CM", atkW: 20 }; }); }
-  const benchPos = benchN === 11 ? (club ? [...FIVE.pos, ...rest.map(p => p.pos)] : sq.map(p => p.pos)) : FIVE.pos;
-  const benchSpos = benchN === 11 ? (club ? [...FIVE.spos, ...rest.map(p => p.spos)] : sq.map(p => p.spos)) : FIVE.spos;
-  const benchAtk = benchN === 11 ? (club ? [...FIVE.atk, ...rest.map(p => p.atkW)] : sq.map(p => p.atkW)) : FIVE.atk;
+  const benchPos0 = benchN === 11 ? (club ? [...FIVE.pos, ...rest.map(p => p.pos)] : sq.map(p => p.pos)) : FIVE.pos;
+  const benchSpos0 = benchN === 11 ? (club ? [...FIVE.spos, ...rest.map(p => p.spos)] : sq.map(p => p.spos)) : FIVE.spos;
+  const benchAtk0 = benchN === 11 ? (club ? [...FIVE.atk, ...rest.map(p => p.atkW)] : sq.map(p => p.atkW)) : FIVE.atk;
+  // The eleven places in line order (Moukden and Kirin, 13 October 2026), as the app lays them out (src/data/positions.js
+  // clubBenchOrder): each place moves with the duty it had, so a man keeps the place he held.
+  const ord = benchN === 11 && club ? clubBenchOrder(sposArr.map(p => POS_GROUP[p] || "MID")) : null;
+  const benchPos = ord ? ord.map(i => benchPos0[i]) : benchPos0, benchSpos = ord ? ord.map(i => benchSpos0[i]) : benchSpos0, benchAtk = ord ? ord.map(i => benchAtk0[i]) : benchAtk0;
   // A roster with gaps simply has a smaller bench. An unfilled slot is left out rather than filled
   // with a "#14" placeholder, because a placeholder is a selectable substitute rated at the team's
   // own skill — a nation listing 6 subs was getting 5 more for free. With no real names at all this

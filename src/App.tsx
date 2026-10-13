@@ -23,6 +23,7 @@ import { AFA_RANKINGS } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
 import { ageOf, birthDateOk, icNow } from "./data/icclock.js";
 import { rollSquad } from "./data/roll.js";
+import { readManLine } from "./data/menlines.js";
 // What a player is worth, worked out as it is shown (src/data/value.js, shared with test/values.mjs).
 import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data/value.js";
 // Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
@@ -36,7 +37,7 @@ import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
-import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, clubBenchRest, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
+import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, clubBench, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -3447,8 +3448,10 @@ function attachRecords(catalog, records) {
     const r = rec.get(key(c.league === AVIUM_LEAGUE ? "AVIUM" : c.league === ARTERRA_LEAGUE ? "ARTERRA" : "", c.code, c.name));
     if (!r) continue;
     c.rkey = teamKey(r);
+    // By his place (buildSquad's `slot`), not his place in the list: a bench place left open is left out of the parsed squad,
+    // so a man after one read the record of a place before his own, his rating, positions and traits included (13 October 2026).
     (c.squad || []).forEach((e, i) => {
-      const s = r.squad[i], id = typeof s === "string" ? s : s?.id;
+      const s = r.squad[e?.slot ?? i], id = typeof s === "string" ? s : s?.id;
       if (!e || !id) return;
       e.rid = id;
       const b = P.get(id)?.badges;
@@ -8658,7 +8661,7 @@ export default function App() {
   // A squad's places (src/data/positions.js slotLabels): the eleven's positions, then each bench place's group.
   // club: a club's squad, whose bench keeps its old five first (src/data/positions.js); a national side's mirrors its eleven.
   const slotLabels = (formation, n, club = false) => { const xi = sposFor(formation), g = xi.map(p => GROUP_OF[p] || "MID");
-    return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? [...CLUB_BENCH, ...clubBenchRest(g)] : g)].slice(0, n); };
+    return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? clubBench(g) : g)].slice(0, n); };
   const teamLabels = (t) => slotLabels(String(t.formation).trim(), t.squad.length, !isNational(t));
   // A SIDE'S BENCH IN ITS PLACES, the open ones as well (Moukden and Kirin, 12 October 2026: "Vacant spots should be shown",
   // in the squad views and never in a match): each man at the place he was named in, an open place as { vacant, lab }
@@ -8667,7 +8670,7 @@ export default function App() {
     const n = (bench || []).reduce((k, p) => Math.max(k, p.benchSize || 0), 0) || 11;
     const lab = slotLabels(String(t?.formation || "4-3-3").trim(), 11 + n, !nt).slice(11);
     const bySlot = new Map((bench || []).filter(p => p.slot != null).map(p => [p.slot, p]));
-    const out = lab.map((l, i) => bySlot.get(11 + i) || { vacant: true, lab: l, slot: 11 + i });
+    const out = lab.map((l, i) => { const p = bySlot.get(11 + i); return p ? { ...p, lab: l } : { vacant: true, lab: l, slot: 11 + i }; });
     for (const p of (bench || []).filter(p => p.slot == null)) { const i = out.findIndex(x => x.vacant); if (i >= 0) out[i] = p; else out.push(p); }
     return out;
   };
@@ -11094,12 +11097,12 @@ export default function App() {
       return pstats.seasons.filter(s => s.md && comps.has(s.comp) && uxYearOf(s) >= TRACKED_FROM).map(s => s.id.replace(/\.tsv$/i, ".md"));
     }
     // Competitions: its Overview, a year and Head To Head read every report; a competition its own, and its nation's other
-    // divisions' (where its clubs went the season after).
+    // divisions' and cup's (where its clubs went the season after, and whether a club gone from them still played).
     if (reg.sec === "competitions") {
       const md = pstats.seasons.filter(s => s.md);
       if (!reg.comp || reg.page || reg.year) return md.map(s => s.id.replace(/\.tsv$/i, ".md"));
       const nat = uxNatOf(reg.comp);
-      return md.filter(s => s.comp === reg.comp || (nat && uxNatOf(s.comp) === nat && uxKindOf(s.comp) === "league")).map(s => s.id.replace(/\.tsv$/i, ".md"));
+      return md.filter(s => s.comp === reg.comp || (nat && uxNatOf(s.comp) === nat && ["league", "cup"].includes(uxKindOf(s.comp)))).map(s => s.id.replace(/\.tsv$/i, ".md"));
     }
     if (reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team)) {
       // The Champions panel's newest seasons, and for the map's cards every season of a title a national side can win
@@ -11274,7 +11277,7 @@ export default function App() {
         const L = lastTable(g.comp), i = L?.names ? L.names.indexOf(key) : -1;
         if (i < 0) continue;
         place = { comp: g.comp, pos: i + 1, of: L.names.length, season: L.s.season };
-        if (g.comp !== t.league) moved = (leagueTier(g.comp) || 1) > (leagueTier(t.league) || 1) ? "up" : "down";
+        moved = g.comp !== t.league ? ((leagueTier(g.comp) || 1) > (leagueTier(t.league) || 1) ? "up" : "down") : uxSeasonMoves(L.s)?.move.get(key) || null;
         break;
       }
     }
@@ -11649,6 +11652,50 @@ export default function App() {
   const uxRepMemo = useRef(new Map());
   const uxRep = (s) => { const text = s ? lgMd[s.id.replace(/\.tsv$/i, ".md")] : null; if (typeof text !== "string") return null;
     if (!uxRepMemo.current.has(text)) uxRepMemo.current.set(text, parseSeasonReport(text)); return uxRepMemo.current.get(text); };
+  // WHO A LEAGUE SEASON SENT UP AND DOWN, AND FROM WHICH PLACES (user, 13 October 2026: "Add correct pro/rel zones &
+  // markers in nichirian and alemannian leagues", as zones at a row's left edge and an arrow by each club that went, on
+  // the archive's pages). Read off the nation's tables in the next season this league has on file, over any years with
+  // none (the war): a tier up or down, or, for a club in none of them, down out of the leagues, unless its nation's cup
+  // that season was played without it too and no club on file has its name, which is a club that folded.
+  // After a league's newest season: its clubs' sheets now, or while they are still the clubs of its table, who its rules
+  // send (seasonMoves, as the pyramid marks them). `move` keys a club by archKey to "up" or "down"; `zone` gives its
+  // place: "up", "down", or "playoff" for every club its season's playoff took, won or lost, `playoff` naming it. Null
+  // while a table it reads is still loading.
+  const uxTableNames = (s) => { const R = uxRep(s), F = R?.final || (R?.rounds?.length ? R.rounds[R.rounds.length - 1].table : null);
+    const ti = F ? F.head.findIndex(h => /^(team|club)$/i.test(String(h).trim())) : -1;
+    return ti < 0 ? null : F.body.map(r => String(r[ti]).replace(/\*+/g, "").trim()); };
+  const uxSeasonMoves = (s) => {
+    const nat = s && !s.hist && uxKindOf(s.comp) === "league" ? uxNatOf(s.comp) : null, names = nat ? uxTableNames(s) : null;
+    if (!names?.length) return null;
+    const T = leagueTier(s.comp) || 1, y = uxYearOf(s), keys = names.map(archKey), R = uxRep(s);
+    const lgs = (pstats?.seasons || []).filter(x => !x.hist && x.md && uxKindOf(x.comp) === "league" && uxNatOf(x.comp) === nat);
+    const ny = Math.min(...lgs.filter(x => x.comp === s.comp).map(uxYearOf).filter(v => v > y));
+    let move = new Map();
+    if (Number.isFinite(ny)) {
+      const at = new Map(), cup = new Set();
+      for (const x of lgs.filter(x2 => uxYearOf(x2) === ny)) { const ns = uxTableNames(x); if (!ns) return null; for (const nm of ns) at.set(archKey(nm), leagueTier(x.comp) || 1); }
+      const cups = (pstats?.seasons || []).filter(x => !x.hist && x.md && uxKindOf(x.comp) === "cup" && uxNatOf(x.comp) === nat && uxYearOf(x) === ny)
+        .map(x => lgMd[x.id.replace(/\.tsv$/i, ".md")]);
+      if (cups.some(c => c === undefined)) return null;
+      for (const c of cups.filter(c2 => typeof c2 === "string")) for (const m of reportMatches(c)) { cup.add(archKey(m.home)); cup.add(archKey(m.away)); }
+      for (const k of keys) { const t2 = at.get(k);
+        const mv = t2 != null ? (t2 < T ? "up" : t2 > T ? "down" : null) : teamByArch.has(k) || !cup.size || cup.has(k) ? "down" : null;
+        if (mv) move.set(k, mv); }
+    } else {
+      const lgOf = (t) => (t.league === MISC_LEAGUE ? t.comp : t.league), now = new Set(teams.filter(t => lgOf(t) === s.comp).map(t => archKey(t.name)));
+      if (now.size === keys.length && keys.every(k => now.has(k))) {
+        const tiers = Object.keys(LEAGUE_NAT).filter(l => LEAGUE_NAT[l] === nat && uxKindOf(l) === "league").map(l => leagueTier(l) || 1);
+        const ties = (R?.extra || []).map(x => playoffTie(x.body)).filter(Boolean).map(x => ({ win: archKey(x.win), lose: archKey(x.lose) }));
+        move = seasonMoves(keys, { up: LG.up.get(s.comp), down: LG.down.get(s.comp) }, ties, tiers.some(n => n < T), tiers.some(n => n > T));
+      } else for (const k of keys) { const t = teamByArch.get(k); if (!t || isIntlLeague(t.league) || uxNatOf(lgOf(t)) !== nat) continue;
+        const t2 = leagueTier(lgOf(t)) || 1; if (t2 !== T) move.set(k, t2 < T ? "up" : "down"); }
+    }
+    const mine = new Set(keys), pz = (R?.extra || []).map(x => ({ name: x.name,
+      ks: new Set(reportMatches(x.body.join("\n")).flatMap(m => [archKey(m.home), archKey(m.away)]).filter(k => mine.has(k))) })).filter(x => x.ks.size);
+    const zone = new Map();
+    for (const k of keys) { const z = pz.some(x => x.ks.has(k)) ? "playoff" : move.get(k); if (z) zone.set(k, z); }
+    return { move, zone, playoff: pz.length ? uxTitle(pz[0].name) : null };
+  };
   // The matches a report records for one club, from the club's side: each report read and its sides keyed once, each club
   // picked out once.
   const uxMatchMemo = useRef(new Map());
@@ -12527,36 +12574,47 @@ export default function App() {
       </div>);
   };
 
-  // ── NEW PLAYERS BY THE LINE (Moukden and Kirin, 11 October 2026): "Name, position" a line (a tab does for the comma),
-  // read keepers first and down the pitch, every man of one nationality, his age drawn from a range and his date of birth
-  // for it, his rating left blank. Used on a founding club's squad and on the Players tab. ──
+  // ── NEW PLAYERS BY THE LINE (Moukden and Kirin, 11 and 13 October 2026): a man a line as src/data/menlines.js reads him,
+  // "(OVR) Name SURNAME, Position, Age, Badge 1, Badge 2, Badge 3", only the name needed (a tab does for the comma); read
+  // keepers first and down the pitch, a man with no position last. His nation is the list's unless his line tags his own,
+  // his age the line's or drawn from the list's range, his date of birth for it. Used on a founding club's squad and on
+  // the Players tab. ──
   const edParseMen = (text) => {
     const men = [], bad = [];
     String(text || "").split(/\r?\n/).forEach((raw, i) => {
       const L = raw.trim(); if (!L) return;
-      // "Name, position" or "Name, position, second position"; a name may carry commas of its own.
-      const parts = L.split(/[,\t]/).map(x => x.trim()), up = (x) => String(x || "").toUpperCase(), n = parts.length;
-      const two = n >= 3 && POS_ROLE[up(parts[n - 2])] && POS_ROLE[up(parts[n - 1])];
-      const pos = n < 2 ? [] : two ? [up(parts[n - 2]), up(parts[n - 1])] : [up(parts[n - 1])], name = parts.slice(0, n - (two ? 2 : 1)).join(", ").trim();
-      if (n < 2) bad.push({ line: i + 1, why: "no position", text: L });
-      else if (two && n >= 4 && POS_ROLE[up(parts[n - 3])]) bad.push({ line: i + 1, why: "a player has one or two positions", text: L });
-      else if (!name || name.length > 60) bad.push({ line: i + 1, why: "no name", text: L });
-      else if (!POS_ROLE[pos[0]]) bad.push({ line: i + 1, why: `${pos[0] || "nothing"} is not a position`, text: L });
-      else men.push({ name, pos: posList(pos) });
+      const r = readManLine(L.replace(/\t/g, ","));
+      if (!r) bad.push({ line: i + 1, why: "no name", text: L });
+      else if (r.bad.length) bad.push({ line: i + 1, why: r.bad[0], text: L });
+      else if (r.man.nat && !natTeamByCode.get(r.man.nat)) bad.push({ line: i + 1, why: `${r.man.nat} is not a nation`, text: L });
+      else men.push({ ...r.man, pos: posList(r.man.pos), line: i + 1 });
     });
     const order = Object.keys(POS_ROLE).sort((a, b) => POS_ROLE[a][0] - POS_ROLE[b][0] || POS_ROLE[a][1] - POS_ROLE[b][1]);
-    return { men: men.map((m, i) => [m, i]).sort((a, b) => order.indexOf(a[0].pos[0]) - order.indexOf(b[0].pos[0]) || a[1] - b[1]).map(([m]) => m), bad };
+    const rank = (m) => (m.pos.length ? order.indexOf(m.pos[0]) : order.length);
+    return { men: men.map((m, i) => [m, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([m]) => m), bad };
   };
   const edAges = (f) => { const lo = Math.max(14, parseInt(f?.amin, 10) || 18); return [lo, Math.max(lo, parseInt(f?.amax, 10) || 32)]; };
   const edBornIn = ([lo, hi]) => edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1)));
-  // The list again after a change: a line kept keeps its date of birth (and any rating typed), unless the ages changed.
+  // The list again after a change: a line kept keeps its date of birth (and any rating or traits set in the table), unless
+  // the ages changed; what his line gives wins. A man whose line has no position plays the place he takes in the side he
+  // joins, each after the men with positions are placed; a free agent needs his given.
   const edReList = (f, patch) => {
     const g = { ...(f || {}), ...patch }, { men, bad } = edParseMen(g.text), ages = edAges(g);
-    const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, was = new Map((f?.list || []).map(m => [m.name + "|" + posText(m.pos), m]));
-    const list = men.map(m => { const old = was.get(m.name + "|" + posText(m.pos));
-      return { ...m, nat: g.nat || "", born: !redraw && old?.born ? old.born : edBornIn(ages), ovr: old?.ovr ?? "", ...(old?.badges?.length ? { badges: old.badges } : null) }; });
+    const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, key = (m) => m.name + "|" + posText(m.lp ?? m.pos);
+    const was = new Map((f?.list || []).map(m => [key(m), m]));
+    const T = g.side ? edTeamRec(g.side) : null, sq = T ? [...edSq(T)] : null, lab = T ? edLab(T) : null;
+    const list = [];
+    for (const m of men) {
+      const old = was.get(key(m)), { age, line, badges, ...man } = m;
+      let pos = m.pos;
+      if (sq) { const i = placeFor(sq, lab, posFitCost, pos); if (i >= 0) { sq[i] = "#"; if (!pos.length) pos = [shDefPos(lab[i])].filter(Boolean); } }
+      if (!pos.length) { bad.push({ line, why: "a free agent needs a position", text: m.name }); continue; }
+      const born = age != null ? (!redraw && old?.born && ageOf(old.born) === age ? old.born : edBornFor(age)) : !redraw && old?.born ? old.born : edBornIn(ages);
+      const bs = badges.length ? badges : old?.badges || [];
+      list.push({ ...man, lp: m.pos, pos, nat: m.nat || g.nat || "", born, ovr: m.ovr != null ? String(m.ovr) : old?.ovr ?? "", ...(bs.length ? { badges: bs } : null) });
+    }
     delete g.redraw;
-    return { ...g, list, bad };
+    return { ...g, list, bad: bad.sort((a, b) => a.line - b.line) };
   };
   const edBadLines = (bad) => bad.length > 0 && (
     <p className="ux-ed-rule ux-bad ux-ed-impbad">{bad.slice(0, 3).map(b => `Line ${b.line}: ${b.why}`).join(". ")}{bad.length > 3 ? `, and ${bad.length - 3} more` : ""}.</p>);
@@ -12587,7 +12645,7 @@ export default function App() {
           <div className="ux-ed-form ux-ed-batch">
             {!review && <dl className="ux-ed-dl">
               {field("Players", <textarea className="ux-ed-in ux-ed-ta" rows={7} spellCheck={false} aria-label="Players, One A Line"
-                placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB\nKoji MINAMI, ST"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
+                placeholder={"(86) Koji MINAMI, ST, 24, Finisher, Composed\nShohei KUWABARA, CB, RB, 19\nKenji MORISHITA, GK"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
               {field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => relist({ nat: it.k })} />)}
               {field("Ages", <span className="ux-ed-born">
                 <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={f.amin ?? 18} onChange={e => relist({ amin: e.target.value })} style={mono} />
@@ -12595,7 +12653,7 @@ export default function App() {
                 <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" value={f.amax ?? 32} onChange={e => relist({ amax: e.target.value })} style={mono} />
                 <button type="button" className="ux-btnreset ux-cb-x" title="Draw The Dates Again" aria-label="Draw The Dates Again" disabled={!list.length}
                   onClick={() => relist({ redraw: true })}>{uxIcon("dice", "ux-s")}</button></span>)}
-              {field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k || null })} />)}
+              {field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => relist({ side: it.k || null })} />)}
             </dl>}
             {edBadLines(bad)}
             <div className="ux-pbody ux-ed-blist"><table className="ux-tbl">
@@ -13033,12 +13091,14 @@ export default function App() {
         </div>
         {f.imp ? (() => { const imp = f.imp, read = edParseMen(imp.text), room = c.squad.filter(v => !v).length, setImp = (p) => upd({ imp: { ...imp, ...p } });
             const add = () => { const ages = edAges(imp), sq = [...c.squad];
-              for (const m of read.men) { const i = placeFor(sq, slabs, posFitCost, m.pos); if (i >= 0) sq[i] = { name: m.name, pos: m.pos, nat: imp.nat || nation, born: edBornIn(ages), ovr: "" }; }
+              for (const m of read.men) { const i = placeFor(sq, slabs, posFitCost, m.pos);
+                if (i >= 0) sq[i] = { name: m.name, pos: m.pos.length ? m.pos : [shDefPos(slabs[i])].filter(Boolean), nat: m.nat || imp.nat || nation,
+                  born: m.age != null ? edBornFor(m.age) : edBornIn(ages), ovr: m.ovr ?? "", ...(m.badges.length ? { badges: m.badges } : null) }; }
               upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: sq } : x)), imp: null }); };
             return (
           <div className="ux-ed-np">
             <div className="ux-ed-lh">Import Players</div>
-            <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB"}
+            <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"(86) Koji MINAMI, ST, 24, Finisher, Composed\nShohei KUWABARA, CB, RB, 19\nKenji MORISHITA, GK"}
               value={imp.text} onChange={e => setImp({ text: e.target.value })} />
             <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
               {field("Nationality", <UxSidePick label="Nationality" value={imp.nat || nation} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => setImp({ nat: it.k })} />)}
@@ -13626,44 +13686,43 @@ export default function App() {
     shPut({ ...d, new: (d.new || []).filter(n => !(n.what === "managers" && n.side === k2)) });
   };
   const shSack = (src) => { const k = src.from?.k; if (!k || !shCan(k)) return; shPut(draftWith(draft, recBase, k, { manager: null }, "teams")); };
-  // A NEW MAN TYPED INTO A PLACE: "Name, position" or "(84) Name, ST", a second position after the first. He is a new
-  // record in the cart at that place, a request for an editor, the tab's national, his surname set in capitals.
-  const shParseMan = (s) => {
-    // A man typed ("Name, ST", "(84) Name, ST, CF") or as the registry's cells wrote him ("(76) Cihan KARTACA [SEL]", his
-    // nation tagged when it is not the side's); a tier mark ([*], [+]) says nothing about him and is dropped.
-    const m = String(s || "").replace(/\s*\[[*+]\]/g, "").trim()
-      .match(/^(?:\((\d{1,2})\)\s*)?([^,[\]]+?)\s*(?:\[([A-Za-z]{2,4})\])?\s*(?:,\s*([A-Za-z]{2,3}))?\s*(?:,\s*([A-Za-z]{2,3}))?$/);
-    if (!m || !m[2].trim()) return null;
-    const words = m[2].trim().split(/\s+/), caps = words.some(w => /\p{L}/u.test(w) && w === w.toUpperCase() && w.length > 1);
-    const name = caps || words.length < 2 ? words.join(" ") : [...words.slice(0, -1), words[words.length - 1].toUpperCase()].join(" ");
-    return { name, ovr: m[1] ? +m[1] : null, nat: m[3] ? m[3].toUpperCase() : null, pos: [m[4], m[5]].filter(Boolean).map(x => x.toUpperCase()).filter(x => POSITIONS.includes(x)) };
-  };
+  // A NEW MAN TYPED INTO A PLACE, a line as src/data/menlines.js reads it (the user, 13 October 2026): "(OVR) Name SURNAME,
+  // Position, Age, Badge 1, Badge 2, Badge 3", only the name needed; or a cell as the registry wrote him ("(76) Cihan
+  // KARTACA [SEL]", his nation tagged when it is not the side's). He is a new record in the cart at that place, a request
+  // for an editor, the tab's national, his surname set in capitals; with no position the place's, with no age one drawn.
+  const shParseMan = (s) => { const r = readManLine(s); return r ? { ...r.man, bad: r.bad } : null; };
   // Lines into men: a line a man, or a row of cells copied from a sheet, a man a cell, going to places one after another
   // (user, 12 October 2026: "I need to be able to bulk import names like this ... and they should go to separate slots").
   // A cell holding only a position gives it to the man before; an empty cell keeps its place, so a registry row lines up
-  // with the places it came from.
-  const shReadMen = (lines) => { const out = [];
+  // with the places it came from. A line or cell that cannot be read whole makes nobody (a cell still keeps its place),
+  // and is said.
+  const shReadMen = (lines) => { const out = [], bad = [];
+    const take = (p, keep) => { if (!p) return; if (!p.bad.length) out.push(p); else { bad.push(p); if (keep) out.push(null); } };
     for (const line of lines) {
-      if (!line.includes("\t")) { const p = shParseMan(line); if (p) out.push(p); continue; }
+      if (!line.includes("\t")) { take(shParseMan(line), false); continue; }
       for (const raw of line.split("\t")) { const c = raw.trim().replace(/^"(.*)"$/, "$1").trim(), prev = out[out.length - 1];
         if (!c) { out.push(null); continue; }
-        if (POSITIONS.includes(c.toUpperCase())) { if (prev && prev.pos.length < 2) prev.pos.push(c.toUpperCase()); continue; }
-        const p = shParseMan(c); if (p) out.push(p); } }
+        if (POSITIONS.includes(c.toUpperCase())) { if (prev && prev.pos.length < 2 && !prev.pos.includes(c.toUpperCase())) prev.pos.push(c.toUpperCase()); continue; }
+        take(shParseMan(c), true); } }
     while (out.length && !out[out.length - 1]) out.pop();
-    return out; };
+    return { men: out, bad }; };
   const shNewMen = (k, i, lines) => {
-    const men = shReadMen(lines), read = men.filter(Boolean).length, unknown = new Set();
+    const { men, bad } = shReadMen(lines), read = men.filter(Boolean).length, unknown = new Set();
     // His nation: the tag he came with, else the side's; a tag naming no nation is said so, and the side's taken.
     const natOf = (p, own) => { if (!p.nat || p.nat === own) return own; if (natTeamByCode.get(p.nat)) return p.nat; unknown.add(p.nat); return own; };
-    const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : ""].filter(Boolean).join(" · "));
-    const span = shCollege(k) ? 4 : 15;          // a college's men are 18 to 21 (DESIGN.md, The ANCC), anyone else's 18 to 32
+    const why = bad.length ? `${bad[0].name}: ${uxTitle(bad[0].bad[0])}${bad.length > 1 ? ` (And ${bad.length - 1} More)` : ""}` : "";
+    const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : "", why].filter(Boolean).join(" · "));
+    // His age the line's, else drawn: a college's men 18 to 21 (DESIGN.md, The ANCC), anyone else's 18 to 32. A college
+    // man's year follows from it (withGrads).
+    const span = shCollege(k) ? 4 : 15;
     const man = (p, own, lab) => { const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
-      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(18 + Math.floor(Math.random() * span)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr }; };
+      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(p.age ?? (18 + Math.floor(Math.random() * span))), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr,
+        ...(p.badges.length ? { badges: p.badges } : null) }; };
     if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = padSq(x.c.squad), nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length, true);
       let at = i, n = 0, last = -1;
       for (const p of men) { if (!p) { at++; continue; } while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
         sq[at] = man(p, nat, lab[at]); last = at; at++; n++; }
-      if (!n) return shSay(read ? "No Open Place From Here" : "Type A Name And A Position: Name, ST");
+      if (!n) return shSay(read ? "No Open Place From Here" : why || "Type A Name: (84) Name SURNAME, ST, 24, Finisher");
       shSetClub(k, { squad: sq }); note(n);
       if (n === 1 && read === 1) shOpenEdit("players", { club: k, i: last }, sq[last]); return; }
     const T = edTeamRec(k); if (!T || !shCan(k)) return;
@@ -13673,7 +13732,7 @@ export default function App() {
       while (at < sq.length && (sq[at] || taken.has(at))) at++;
       if (at >= sq.length) break;
       add.push({ ...man(p, nat, lab[at]), what: "players", side: k, at }); at++; }
-    if (!add.length) return shSay(read ? "No Open Place From Here" : "Type A Name And A Position: Name, ST");
+    if (!add.length) return shSay(read ? "No Open Place From Here" : why || "Type A Name: (84) Name SURNAME, ST, 24, Finisher");
     shPut({ ...draft, new: [...shNew, ...add] }); note(add.length);
     if (add.length === 1 && read === 1) shOpenEdit("players", { cart: add[0].id }, add[0]);
   };
@@ -13907,10 +13966,11 @@ export default function App() {
     if (s.kind === "p" && c.startsWith("p")) shMovePlayer(s, k, +c.slice(1));
     else if (s.kind === "m" && c === "mgr") shMoveMgr(s, k); };
   // A man's chip: his rating in its metal, given name and SURNAME, his nation's code when he is not the tab's national,
-  // and in a place he plays out of position the rating he plays it at, ringed, with what it costs him.
+  // and in a place he plays out of position, a bench place of another group too, the rating he plays it at, ringed, with
+  // what it costs him.
   const shChip = (id, k, i, place, natCode, mine) => {
     const r = recNow(id); if (!r) return <span className="ux-sh-chip ux-sh-gone">{id}</span>;
-    const ovr = seen(id, r.ovr), own = ownOfId(id), oop = i < 11 && place && uxOop(own, place), at = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
+    const ovr = seen(id, r.ovr), own = ownOfId(id), oop = place && uxOop(own, place), at = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
     const lock = edLockedMen.has("p:" + id), drag = mine && !lock, yr = hidMan(id) ? yearOf(r.grad) : null;
     return (
       <span className={"ux-sh-chip" + (lock ? " ux-sh-locked" : "")} draggable={drag} title={`${r.name} (${posText(own) || place})${yr ? ", " + YEARS[yr - 1] : ""}`}
@@ -14084,7 +14144,7 @@ export default function App() {
                           onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); shOpenNew("managers", k); }}>{uxIcon("plus", "ux-xs")}</button>}</span>); }
                   else if (c === "home" || c === "away") { const hex = String(t[c] || ""); body = <span className="ux-sh-kit" style={{ background: hex, color: (lumOf(hex) ?? 0) > 0.55 ? "#101418" : "#ffffff", ...mono }}>{hex.toUpperCase()}</span>; }
                   else if (col.place != null) { const i = col.place, id = sq[i], nm = newAt.get(i), place = lab[i];
-                    body = (<span className="ux-sh-pc"><span className="ux-sh-pl" style={{ color: POS_CLR[place] || "var(--ux-text-3)", ...mono }}>{i >= 11 ? "SUB" : place}</span>
+                    body = (<span className="ux-sh-pc"><span className="ux-sh-pl" style={{ color: POS_CLR[place] || "var(--ux-text-3)", ...mono }}>{place}</span>
                       {id ? shChip(id, k, i, place, nat ? t.code : t.nation, mine) : nm ? shNewChip(nm, k, i) : shClubMan(k, i) ? shNewChip(shClubMan(k, i), k, i)
                         : <span className="ux-sh-open">{mine ? "Open" : "–"}</span>}
                       {mine && !id && !nm && !shClubMan(k, i) && <button type="button" className="ux-btnreset ux-sh-plus" aria-label="New Player Here" title="New Player Here"
@@ -14192,7 +14252,7 @@ export default function App() {
           {sq.slice(11).map((id, x) => { const i = 11 + x, cell = k + "|p" + i;
             return (
               <div key={i} className={"ux-sh-lb" + (shOver === cell ? " ux-sh-over" : "")} {...drop(i)}>
-                <span className="ux-sh-pl" style={{ color: POS_CLR[lab[i]] || "var(--ux-text-3)", ...mono }}>SUB</span>
+                <span className="ux-sh-pl" style={{ color: POS_CLR[lab[i]] || "var(--ux-text-3)", ...mono }}>{lab[i]}</span>
                 {id ? shChip(id, k, i, lab[i], isNational(T) ? T.code : T.nation, mine) : <span className="ux-sh-open">{mine ? "Open" : "–"}</span>}
               </div>); })}
         </section>
@@ -14284,7 +14344,7 @@ export default function App() {
         </div>
         <section className="ux-sh-sec">
           <div className="ux-sh-sech"><span>Details</span>{sideName && <span className="ux-dim ux-sh-joins">
-            <SlideName text={(isMg ? "Manages " : "Joins ") + sideName + (place ? " · " + (f.at >= 11 ? "SUB" : place) : "")} /></span>}</div>
+            <SlideName text={(isMg ? "Manages " : "Joins ") + sideName + (place ? " · " + place : "")} /></span>}</div>
           <dl className="ux-sh-facts ux-sh-wide">
             {row("Name", <input className="ux-sh-fi ux-sh-flat" autoFocus={mode === "new"} placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
             {row("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || !isMg)} placeholder="Search Nations" cls="ux-sh-spk" onPick={it => upd({ nat: it.k })} />)}
@@ -14418,7 +14478,7 @@ export default function App() {
                 {cands.map(([v, j]) => { const m = recNow(v);
                   return (
                     <button key={v} type="button" className="ux-btnreset ux-sh-subr" onClick={() => swap(j)}>
-                      <span className="ux-sh-pl" style={{ color: POS_CLR[lab[j]] || "var(--ux-text-3)", ...mono }}>{j >= 11 ? "SUB" : lab[j]}</span>
+                      <span className="ux-sh-pl" style={{ color: POS_CLR[lab[j]] || "var(--ux-text-3)", ...mono }}>{lab[j]}</span>
                       <span className="ux-sh-sn"><SlideName text={m?.name || v} /></span>
                       <b style={{ ...mono, color: POS_CLR[posOfId(v)] }}>{posText(ownOfId(v)) || posOfId(v)}</b>{uxBadge(m?.ovr)}</button>); })}
               </section>)}
@@ -15102,13 +15162,14 @@ export default function App() {
       const rec = p.rid ? recNow(p.rid) : null, own = posList(rec?.pos ?? p.own), age = rec?.born ? ageOf(rec.born) : null;
       const value = rec && pstats && !veiled(p.rid) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null;
       const traits = badgeOrder(seen(p.rid, rec?.badges) || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
-      const oop = !p.bench && uxOop(p.own, pos), other = own.find(q => q !== pos);
+      const place = p.bench ? p.lab || p.pos : pos, oop = uxOop(p.own, place), other = own.find(q => q !== pos);
       return (
         <tr key={i} className="ux-link" onClick={() => pe && openPlayer(nm)}>
           {/* Where he plays (user, 11 October 2026): the eleven's place, a bench man his own first position; out of position
-              (uxOop) in red, with the alert after it, else his other position quiet after it. */}
-          <td><span className="ux-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
-            {oop ? uxOopMark(seen(p.rid, p.ovr ?? t.skill), p.own, pos) : other && <span className="ux-pos2" style={mono}>{other}</span>}</td>
+              (uxOop) in red, with the alert after it, else his other position quiet after it. A bench man out of his place's
+              group (13 October 2026) shows that group in red. */}
+          <td><span className="ux-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{oop ? place : pos}</span>
+            {oop ? uxOopMark(seen(p.rid, p.ovr ?? t.skill), p.own, place) : other && <span className="ux-pos2" style={mono}>{other}</span>}</td>
           <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span>
             <span className="ux-strong ux-sqnm"><SlideName text={nm} /></span></div></td>
           <td><div className="ux-sqtr">{traits.map(id => <BadgeIcon key={id} id={id} size={14} />)}</div></td>
@@ -15263,15 +15324,16 @@ export default function App() {
                 <div className="ux-bn-l" role="list">{benchPlaces(t, bench, isNT).map((p, i) => { if (p.vacant) return (
                     <div key={i} role="listitem" className="ux-bn-m ux-vac"><span className="ux-bn-nm">Vacant</span>
                       <span className="ux-bn-c"><span className="ux-bn-tok ux-open" /><span className="ux-pl-pos" style={mono}>{p.lab}</span></span></div>);
-                  const nm = p.fullName || p.name, pos = posOf(p), { last } = splitSurname(nm, p.name);
+                  const nm = p.fullName || p.name, pos = posOf(p), { last } = splitSurname(nm, p.name), own = p.own?.length ? p.own : [pos];
+                  const ovr = seen(p.rid, p.ovr ?? t.skill), place = p.lab || p.pos, oop = uxOop(own, place);
                   return (
                     <div key={i} role="listitem" className="ux-bn-m" style={{ ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
                       <span className="ux-bn-nm"><SlideName text={last} /></span>
                       <span className="ux-bn-c">
                         <button type="button" className="ux-btnreset ux-bn-tok" aria-label={nm} title={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}>
                           <PlayerShot name={nm} size="100%" /></button>
-                        {uxPitchRtg(seen(p.rid, p.ovr ?? t.skill), [pos], pos, ringed(p.rid))}
-                        <span className="ux-pl-pos" style={mono}>{pos}</span>
+                        {uxPitchRtg(ovr, own, place, ringed(p.rid))}
+                        <span className={"ux-pl-pos" + (oop ? " ux-oop" : "")} style={mono}>{oop ? place : pos}{uxPlWarn(ovr, own, place)}</span>
                       </span></div>); })}</div>
               </div>
             </div>), true)}
@@ -15367,14 +15429,10 @@ export default function App() {
     // still count toward who managed it.
     const years = [...byYear.values()].filter(r => r.league || r.cup || r.intl || r.wc || r.q || r.nl).sort((a, b) => b.y - a.y);
     const titles = isNT ? record.titles.filter(([c]) => UX_HONOURS.includes(c)) : record.titles;
-    // Up or down at the end of a season: the division the club played the next season in, a tier above or below (after
-    // the newest season, the division it is in now).
-    const moved = (i) => {
-      const r = years[i]; if (!r.league) return null;
-      const next = i > 0 && years[i - 1].y === r.y + 1 ? years[i - 1].league?.s.comp : i === 0 ? t.league : null;
-      const a = leagueTier(r.league.s.comp), b = next ? leagueTier(next) : null;
-      return a && b && a !== b ? (b < a ? "up" : "down") : null;
-    };
+    // Up or down at the end of a season, as its table marks it (uxSeasonMoves): the next season its nation has on file, a
+    // tier above or below or out of the leagues; after the newest, where the club is now or where its rules send it.
+    const moved = (i) => { const L = years[i].league, nm = L?.res?.league ? sideNameIn(t, L.s) : null;
+      return nm ? uxSeasonMoves(L.s)?.move.get(archKey(nm)) || null : null; };
     const hasCup = years.some(r => r.cup), hasIntl = years.some(r => r.intl);
     const seasonLink = (x, label, cls) => (x.s.hist ? <span className={cls}>{label}</span>
       : <button type="button" className={"ux-btnreset ux-a " + (cls || "")} onClick={() => openSeasonPage(x.s)}>{label}</button>);
@@ -16588,15 +16646,15 @@ export default function App() {
   const uxArcT = (name) => (name ? teamByArch.get(archKey(name)) || null : null);
   const uxArcCrest = (name, size = 16) => { const t = uxArcT(name), fc = FORMER_BY_NAME[name];
     return t || fc ? <TeamCrest team={t || { code: fc }} size={size} /> : <span className="ux-crest-gap" style={{ width: size }} />; };
-  const uxArcSide = (name, bold, right) => {
+  const uxArcSide = (name, bold, right, after) => {
     if (!name) return <span className="ux-dim">&#8211;</span>;
     const t = uxArcT(name), go = (e) => { e.stopPropagation(); openTeam(t); };
     if (right) return (
       <div className="ux-tc ux-rt"><span className="ux-rtn">{t ? <button type="button" className={"ux-btnreset ux-a" + (bold ? " ux-strong" : "")} onClick={go}>{name}</button>
         : <span className={bold ? "ux-strong" : undefined}>{name}</span>}</span>{uxArcCrest(name)}</div>);
     return (
-      <div className="ux-tc">{uxArcCrest(name)}{t ? <span className={"ux-hist-lg" + (bold ? " ux-strong" : "")}><button type="button" className="ux-btnreset ux-a" onClick={go}>{name}</button></span>
-        : <span className={bold ? "ux-strong" : undefined}>{name}</span>}</div>);
+      <div className={"ux-tc" + (after ? " ux-tc-mv" : "")}>{uxArcCrest(name)}{t ? <span className={"ux-hist-lg" + (bold ? " ux-strong" : "")}><button type="button" className="ux-btnreset ux-a" onClick={go}>{name}</button></span>
+        : <span className={bold ? "ux-strong" : undefined}>{name}</span>}{after}</div>);
   };
   // A man off a season's figures: his portrait and name (opening his page), and a figure after it.
   const uxArcMan = (e, fig) => {
@@ -16994,28 +17052,8 @@ export default function App() {
     }
     return out;
   };
-  // Where a league's clubs went the season after: a tier up or down, read off the next season's tables of the nation's
-  // divisions (a top flight's club missing from them went down); after the newest season, off each club's sheet now.
-  const uxMovesOf = (s) => {
-    const nat = uxNatOf(s.comp), T = leagueTier(s.comp) || 1, y = uxYearOf(s);
-    if (!nat) return null;
-    const lgs = (pstats?.seasons || []).filter(x => !x.hist && x.md && uxKindOf(x.comp) === "league" && uxNatOf(x.comp) === nat);
-    const next = lgs.filter(x => uxYearOf(x) === y + 1);
-    if (next.some(x => x.comp === s.comp)) {
-      const at = new Map();
-      for (const x of next) {
-        const R = uxRep(x), F = R?.final || (R?.rounds?.length ? R.rounds[R.rounds.length - 1].table : null); if (!F) continue;
-        const ti = F.head.findIndex(h => /^(team|club)$/i.test(String(h).trim())); if (ti < 0) continue;
-        for (const r of F.body) at.set(archKey(r[ti]), leagueTier(x.comp) || 1);
-      }
-      return (nm) => { const t2 = at.get(archKey(nm)); return t2 == null ? (T === 1 ? "down" : null) : t2 < T ? "up" : t2 > T ? "down" : null; };
-    }
-    if (lgs.some(x => x.comp === s.comp && uxYearOf(x) > y)) return null;
-    return (nm) => { const t = uxArcT(nm); if (!t || isIntlLeague(t.league) || uxNatOf(t.league) !== nat) return null;
-      const t2 = leagueTier(t.league) || 1; return t2 < T ? "up" : t2 > T ? "down" : null; };
-  };
-  // A league's table: after the round picked, or the final one with the champion, the clubs that went up and the clubs
-  // that went down marked at the left, over their key.
+  // A league's table: after the round picked, or the final one with the champion and the places that went up, into a
+  // playoff and down marked at the left, over their key, and an arrow by each club that went (uxSeasonMoves).
   const uxLeagueTable = (s, R, ri) => {
     const rd = ri != null ? R.rounds[ri] : null, last = !rd || ri === R.rounds.length - 1;
     // A round filed without a table of its own: the table worked out from every result up to it (three points a win,
@@ -17041,12 +17079,12 @@ export default function App() {
     if (!T) return <div className="ux-empty">No Table On File</div>;
     const col = (re) => T.head.findIndex(h => re.test(String(h).trim()));
     const ti = col(/^(team|club)$/i), pi = col(/^(#|pos)$/i), ptsJ = col(/^pts$/i), figs = T.head.map((_, j) => j).filter(j => j !== ti && j !== pi);
-    const mv = last ? uxMovesOf(s) : null, zones = new Set();
+    const sm = last ? uxSeasonMoves(s) : null, zones = new Set();
     const rows = T.body.map((r, i) => {
-      const nm = String(r[ti]).replace(/\*+/g, "").trim(), pos = (pi >= 0 && parseInt(r[pi], 10)) || i + 1;
-      const z = last ? (pos === 1 ? "champ" : mv?.(nm) || null) : null;
+      const nm = String(r[ti]).replace(/\*+/g, "").trim(), pos = (pi >= 0 && parseInt(r[pi], 10)) || i + 1, k = archKey(nm);
+      const z = last ? (pos === 1 ? "champ" : sm?.zone.get(k) || null) : null;
       if (z) zones.add(z);
-      return { r, nm, pos, z, bold: /\*\*/.test(String(r[ti])) };
+      return { r, nm, pos, z, mv: last ? sm?.move.get(k) || null : null, bold: /\*\*/.test(String(r[ti])) };
     });
     return (<>
       <div className="ux-pbody"><table className="ux-tbl">
@@ -17055,12 +17093,13 @@ export default function App() {
         <tbody>{rows.map(x => (
           <tr key={x.nm} className={x.z ? "ux-z-" + x.z : undefined}>
             <td className="ux-dim" style={mono}>{x.pos}</td>
-            <td>{uxArcSide(x.nm, x.bold)}</td>
+            <td>{uxArcSide(x.nm, x.bold, false, x.mv && (
+              <span className={"ux-pyr-mv ux-card-mv ux-" + x.mv} title={x.mv === "up" ? "Promoted" : "Relegated"}><UxArrow up={x.mv === "up"} /></span>))}</td>
             {figs.map(j => <td key={j} className={"ux-n" + (j === ptsJ ? " ux-strong" : "")} style={mono}>{x.r[j]}</td>)}
           </tr>))}</tbody>
       </table></div>
       {zones.size > 0 && (
-        <div className="ux-zkey">{[["champ", "Champions"], ["up", "Promoted"], ["down", "Relegated"]].filter(([k]) => zones.has(k))
+        <div className="ux-zkey">{[["champ", "Champions"], ["up", "Promoted"], ["playoff", sm?.playoff || "Playoff"], ["down", "Relegated"]].filter(([k]) => zones.has(k))
           .map(([k, l]) => <span key={k}><i className={"ux-z-" + k} />{l}</span>)}</div>)}
     </>);
   };

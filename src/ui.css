@@ -22,6 +22,7 @@
   --ux-loss: var(--ui-form-l);    --ux-loss-bg: var(--ui-form-l-bg);
   --ux-up: var(--ui-ok);          --ux-down: var(--ui-danger);
   --ux-gold: var(--ui-warn);
+  --ux-playoff: var(--ui-qual-pool);
   --ux-f-title: 'Barlow Condensed', var(--chrome-font);
   --ux-fast: 120ms;
   --ux-fade: linear-gradient(90deg, #000 calc(100% - 18px), transparent);
@@ -652,14 +653,24 @@
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px); mask-image: linear-gradient(90deg, transparent, #000 18px); }
 .ux-rtn > * { flex: none; white-space: nowrap; }
 .ux-tc.ux-ctr { justify-content: center; gap: 6px; }
-/* A season's table: a bar at a row's left for the champion, the clubs that went up and the clubs that went down; the key under it. */
+/* A season's table: a bar at a row's left for the champion and the places that went up, into a playoff and down; the key
+   under it. */
 .ux-tbl tbody tr.ux-z-champ td:first-child { box-shadow: inset 3px 0 0 var(--ux-gold); }
 .ux-tbl tbody tr.ux-z-up td:first-child { box-shadow: inset 3px 0 0 var(--ux-up); }
+.ux-tbl tbody tr.ux-z-playoff td:first-child { box-shadow: inset 3px 0 0 var(--ux-playoff); }
 .ux-tbl tbody tr.ux-z-down td:first-child { box-shadow: inset 3px 0 0 var(--ux-loss); }
+/* The arrow of a club that went, close after its name. The name's fade is measured on the cell, not the name, so a name
+   that fits never fades: 48px is the crest, the arrow and the two gaps. */
+.ux-tc.ux-tc-mv { container-type: inline-size; }
+.ux-tc.ux-tc-mv > span:not(.ux-pyr-mv):not(.ux-crest-gap) { flex: 0 1 auto;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100cqw - 66px), transparent calc(100cqw - 48px));
+  mask-image: linear-gradient(90deg, #000 calc(100cqw - 66px), transparent calc(100cqw - 48px)); }
+.ux-tc > .ux-pyr-mv { flex: none; display: grid; overflow: visible; -webkit-mask-image: none; mask-image: none; }
 .ux-zkey { display: flex; gap: 20px; padding: 0 12px; height: 32px; align-items: center; flex: none; border-top: 1px solid var(--ux-line); font-size: 11px; color: var(--ux-text-2); }
 .ux-zkey span { display: inline-flex; align-items: center; gap: 7px; }
 .ux-zkey i { width: 3px; height: 12px; border-radius: 1px; }
 .ux-zkey i.ux-z-champ { background: var(--ux-gold); } .ux-zkey i.ux-z-up { background: var(--ux-up); } .ux-zkey i.ux-z-down { background: var(--ux-loss); }
+.ux-zkey i.ux-z-playoff { background: var(--ux-playoff); }
 /* A tournament's groups, two abreast. */
 .ux-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding: 2px 12px 12px; }
 .ux-grp-h { font: 700 12px/1 var(--ux-f-title); letter-spacing: .06em; text-transform: uppercase; color: var(--ux-text-2); margin: 2px 0 4px 6px; }

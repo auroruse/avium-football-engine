@@ -13,12 +13,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "rules-")), ENTRY = join(DIR, "entry.js"), OUT = join(DIR, "rules.mjs");
-writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js", "data/trades.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
+writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js", "data/trades.js", "data/menlines.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
 const R = await import(pathToFileURL(OUT).href);
 const { planSave, settleRequest, applyDraft, draftWith, idOf, teamKey, vacate, posFitCost, slotLabels, sposFor, OVERSEER, sheetsFromRecords } = R;
 const { tradeMoves, tradeDeals, tradeRows, dumpTrades, parseTrades, latestWorldCup } = R;
+const { readManLine } = R;
 
 let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined || cond ? "" : "   " + JSON.stringify(got).slice(0, 300)}`); };
@@ -28,6 +29,10 @@ const ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
 const posOfRec = new Map(rec.players.map(p => [p.id, p.pos || []]));
 const h = { labels: (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length, !["AVIUM", "ARTERRA"].includes(t.file)), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0, pos: (id) => posOfRec.get(id) || [] };
 const ids = (t) => t.squad.map(v => idOf(v) ?? null);
+// A bench place as clubs laid it out before 13 October 2026 (the five, then the six), where it stands now in line order
+// (src/data/positions.js clubBenchOrder): the cases below were written against the old places and keep their men.
+const old = (t, i) => { if (i < 11 || t.squad.length <= 16 || ["AVIUM", "ARTERRA"].includes(t.file)) return i;
+  return 11 + R.clubBenchOrder(sposFor(String(t.formation).trim()).map(p => R.POS_GROUP[p] || "MID")).indexOf(i - 11); };
 const ED = "mrrv533-creator", OV = "auroruse", NCH_ED = "auroruse";       // ALE's editor; the overseer (who also edits NCH)
 const A = rec.teams.find(t => t.file === "ALE" && t.code === "ARM"), A2 = rec.teams.find(t => t.file === "ALE" && t.code === "HAN");
 const B = rec.teams.find(t => t.file === "NCH" && t.code === "SPK");
@@ -56,7 +61,7 @@ console.log("an editor's own sides and the overseer's things");
   ok("an editor may not touch another nation's side", s.errors.some(e => /not one of your teams/.test(e)), s.errors); }
 
 console.log("trades");
-const star = ids(B)[10], mine = ids(A)[13];
+const star = ids(B)[10], mine = ids(A)[old(A, 13)];
 { const s = plan(ED, { trades: [{ id: "x", side: teamKey(A), other: teamKey(B), ins: [{ kind: "player", id: star }], outs: [] }] }, [], fullOf([teamKey(A), teamKey(B)]));
   ok("a one-way trade into a full squad is refused before it is sent", s.errors.some(e => /no free place/.test(e)), s.errors); }
 let tradeReq;
@@ -64,7 +69,7 @@ let tradeReq;
   tradeReq = s.requests[0];
   ok("an exchange becomes a request to the other nation", !s.errors.length && tradeReq?.kind === "trade" && tradeReq.needs[teamKey(B)] && !s.apply, s);
   ok("it locks only the men in it", JSON.stringify(tradeReq.locks.sort()) === JSON.stringify(["p:" + mine, "p:" + star].sort()), tradeReq?.locks);
-  const busy = plan(ED, { teams: { [teamKey(A)]: { squad: vacate(ids(A), 13, h.labels(A), posFitCost, h.ovr) } } }, [tradeReq]);
+  const busy = plan(ED, { teams: { [teamKey(A)]: { squad: vacate(ids(A), old(A, 13), h.labels(A), posFitCost, h.ovr) } } }, [tradeReq]);
   ok("a man in a waiting trade cannot be moved", busy.errors.some(e => /waiting on a request/.test(e)), busy.errors);
   const other = plan(ED, { teams: { [teamKey(A)]: { formation: "4-4-2", squad: ids(A) } } }, [tradeReq]);
   ok("the rest of the side stays editable", !other.errors.length, other.errors);
@@ -73,23 +78,23 @@ let tradeReq;
   ok("the other nation's accept swaps the two men", !yes.errors.length && ids(n.teams.find(t => t.id === A.id)).includes(star) && ids(n.teams.find(t => t.id === B.id)).includes(mine)
     && !ids(n.teams.find(t => t.id === A.id)).includes(mine), yes.errors); }
 { // A one-way trade once the side has made room: a bench man released in the same cart.
-  const sq = vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr);
+  const sq = vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr);
   const s = plan(ED, { teams: { [teamKey(A)]: { squad: sq } }, trades: [{ id: "y", side: teamKey(A), other: teamKey(B), ins: [{ kind: "player", id: star }], outs: [] }] });
   ok("a one-way trade fits once a place is open", !s.errors.length && s.requests[0]?.kind === "trade" && s.apply, s.errors);
   const next = after(s.apply), yes = settle(NCH_ED, s.requests[0], "accept", {}, next);
   ok("accepted later, it lands in the open place", !yes.errors.length && ids(after(yes.apply, next).teams.find(t => t.id === A.id)).includes(star), yes.errors); }
-{ const s = plan(ED, { trades: [{ id: "z", side: teamKey(A), other: teamKey(A2), ins: [{ kind: "player", id: ids(A2)[12] }], outs: [{ kind: "player", id: ids(A)[12] }] }] });
+{ const s = plan(ED, { trades: [{ id: "z", side: teamKey(A), other: teamKey(A2), ins: [{ kind: "player", id: ids(A2)[old(A2, 12)] }], outs: [{ kind: "player", id: ids(A)[old(A, 12)] }] }] });
   ok("a trade between two of one's own clubs is refused", s.errors.some(e => /both are yours/.test(e)), s.errors); }
 { const s = plan(OV, { trades: [{ id: "o", side: teamKey(A), other: teamKey(B), ins: [{ kind: "player", id: star }], outs: [{ kind: "player", id: mine }] }] });
   ok("the overseer's trade goes live as it stands", !s.errors.length && !s.requests.length && ids(after(s.apply).teams.find(t => t.id === A.id)).includes(star), s.errors); }
 { const d = settle(NCH_ED, tradeReq, "decline", { note: "Not for sale" });
   ok("a decline keeps the request with its note", !d.errors.length && d.request?.declined?.note === "Not for sale", d);
-  const free = plan(ED, { teams: { [teamKey(A)]: { squad: vacate(ids(A), 13, h.labels(A), posFitCost, h.ovr) } } }, [d.request]);
+  const free = plan(ED, { teams: { [teamKey(A)]: { squad: vacate(ids(A), old(A, 13), h.labels(A), posFitCost, h.ovr) } } }, [d.request]);
   ok("a declined request locks nobody", !free.errors.length, free.errors);
   const w = settle(ED, d.request, "withdraw"); ok("its maker dismisses it", !w.errors.length && w.request === null, w); }
 
 console.log("new records");
-const freeA = vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr);
+const freeA = vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr);
 { const s = plan(ED, { new: [{ id: "n1", what: "players", name: "Hans MÜLLER", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: 70, side: teamKey(A) }] }, [], fullOf([teamKey(A)]));
   ok("a new player needs a free place at his side", s.errors.some(e => /no free place/.test(e)), s.errors); }
 { const s = plan(ED, { teams: { [teamKey(A)]: { squad: freeA } }, new: [{ id: "n1", what: "players", name: "Hans MÜLLER", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: 70, side: teamKey(A) }] });
@@ -124,8 +129,8 @@ const hans = (ovr, badges) => ({ id: "n5", what: "players", name: "Hans TRAIT", 
   const r = s.requests[0], yes = r && settle(OV, r, "accept");
   ok("a new manager is let in by the overseer", !s.errors.length && !yes.errors.length && after(yes.apply).managers.some(m => m.name === "Karl BAUER" && m.style === "Counter-Attack"), [s.errors, yes?.errors]); }
 { // A new club: sixteen men from the bench of each other ALE club, and no manager.
-  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 16), squad = clubs.map(t => ids(t)[15]).filter(Boolean);
-  while (squad.length < 16) squad.push(ids(clubs[0])[14 - (16 - squad.length)]);
+  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 16), squad = clubs.map(t => ids(t)[old(t, 15)]).filter(Boolean);
+  while (squad.length < 16) squad.push(ids(clubs[0])[old(clubs[0], 14 - (16 - squad.length))]);
   const group = A.group;
   const s = plan(ED, { new: [{ id: "n4", what: "teams", name: "FC Neustadt", nation: "ALE", code: "NEU", home: "#123456", away: "#ffffff", stadium: "Neustadion (12,000)",
     location: "Berelstein", group, formation: "4-3-3", manager: null, squad }] });
@@ -210,7 +215,7 @@ let batchReq;
   ok("a man in a list carries what his rating affords, and no more", !ok1.errors.length && bad1.errors.some(e => /^Fritz SILBER: traits worth 3 points, over the 2 a 78 has/.test(e)), [ok1.errors, bad1.errors]); }
 { const s = plan(ED, { new: [{ ...LIST, side: teamKey(A) }] }, [], fullOf([teamKey(A)]));
   ok("a list joining a full side is refused", s.errors.some(e => /has room for 0 of the 3/.test(e)), s.errors); }
-{ const two = vacate(vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr), 14, h.labels(A), posFitCost, h.ovr);
+{ const two = vacate(vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr), old(A, 14), h.labels(A), posFitCost, h.ovr);
   const men = [lad("Hans LINKS", "ST", 60), lad("Karl RECHTS", "GK", 61)];
   const s = plan(ED, { teams: { [teamKey(A)]: { squad: two } }, new: [{ ...LIST, side: teamKey(A), men }] }), next = s.apply && after(s.apply);
   const yes = settle(OV, s.requests[0], "accept", {}, next), n = yes.apply && after(yes.apply, next), club = n?.teams.find(t => t.id === A.id);
@@ -237,8 +242,8 @@ console.log("positions (Moukden and Kirin, 11 October 2026)");
   const np = s.apply && after(s.apply).players.find(x => x.name === "Test TWOPOS");
   ok("a new player keeps both his positions", !s.errors.length && np?.pos?.join("/") === "CB/RB", s.errors); }
 { // A release, then a signing into the place it opened: the substitutes end in the places their groups fit.
-  const sq = ids(A), lab = slotLabels(sposFor, String(A.formation).trim(), sq.length), gk = sq[11], fwd = sq[15];
-  const swapped = [...sq]; swapped[11] = fwd; swapped[15] = gk;
+  const sq = ids(A), lab = slotLabels(sposFor, String(A.formation).trim(), sq.length), gk = sq[11], fwd = sq[old(A, 15)];
+  const swapped = [...sq]; swapped[11] = fwd; swapped[old(A, 15)] = gk;
   const s = plan(OV, { teams: { [teamKey(A)]: { squad: swapped } } });
   ok("a substitute may sit in another group's place: the app marks it, nothing refuses it", !s.errors.length, s.errors); }
 
@@ -259,13 +264,13 @@ console.log("deals (Trades, 11 October 2026)");
   const full = fullOf([k(A), k(B)]);
   const one = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[1], to: k(B) }] }] }, [], full);
   ok("one man into a full squad asks who makes way", one.errors.some(e => /pick who makes way/.test(e)), one.errors);
-  const way = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[1], to: k(B) }, { kind: "player", id: b[15], to: null }] }] }, [], full);
+  const way = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[1], to: k(B) }, { kind: "player", id: b[old(B, 15)], to: null }] }] }, [], full);
   ok("with one of theirs released it is an offer", !way.errors.length && way.requests[0]?.kind === "deal", way.errors);
-  const own = plan(ED, { deals: [{ sides: [k(A), k(A2)], moves: [{ kind: "player", id: a[12], to: k(A2) }, { kind: "player", id: ids(A2)[12], to: k(A) }] }] });
-  ok("a deal between one's own clubs goes live", !own.errors.length && !own.requests.length && clubOf(own.apply, a[12]) === A2.id, own.errors);
+  const own = plan(ED, { deals: [{ sides: [k(A), k(A2)], moves: [{ kind: "player", id: a[old(A, 12)], to: k(A2) }, { kind: "player", id: ids(A2)[old(A2, 12)], to: k(A) }] }] });
+  ok("a deal between one's own clubs goes live", !own.errors.length && !own.requests.length && clubOf(own.apply, a[old(A, 12)]) === A2.id, own.errors);
   const clubbed = new Set(rec.teams.filter(t => !["AVIUM", "ARTERRA"].includes(t.file)).flatMap(ids)), fa = rec.players.find(p => !p.retired && !clubbed.has(p.id));
-  const sign = plan(ED, { deals: [{ sides: [k(A)], moves: [{ kind: "player", id: fa.id, to: k(A) }, { kind: "player", id: a[15], to: null }] }] });
-  ok("a signing with a release goes live", !sign.errors.length && clubOf(sign.apply, fa.id) === A.id && clubOf(sign.apply, a[15]) === "free", sign.errors);
+  const sign = plan(ED, { deals: [{ sides: [k(A)], moves: [{ kind: "player", id: fa.id, to: k(A) }, { kind: "player", id: a[old(A, 15)], to: null }] }] });
+  ok("a signing with a release goes live", !sign.errors.length && clubOf(sign.apply, fa.id) === A.id && clubOf(sign.apply, a[old(A, 15)]) === "free", sign.errors);
   // The first offer sent their keeper's place a midfielder's way: the bench keeper takes it, the midfielder the bench.
   ok("a keeper's place goes to no outfielder", after(y1.apply).teams.find(t => t.id === A.id).squad.map(idOf)[0] === a[11], after(y1.apply).teams.find(t => t.id === A.id).squad.map(idOf));
   const ov = plan(OV, { deals: [{ sides: [k(B), k(A)], moves: [{ kind: "player", id: b[5], to: k(A) }, { kind: "player", id: a[0], to: k(B) }] }] });
@@ -273,15 +278,15 @@ console.log("deals (Trades, 11 October 2026)");
   const ovo = plan(OV, { deals: [{ sides: [k(B), k(A)], offer: true, moves: [{ kind: "player", id: b[5], to: k(A) }, { kind: "player", id: a[0], to: k(B) }] }] });
   ok("sent as an offer, the overseer's waits on the other nation's editor", !ovo.errors.length && !ovo.apply && JSON.stringify(ovo.requests[0]?.needs) === JSON.stringify({ [k(A)]: [ED] }), ovo);
   const B2 = rec.teams.find(t => t.file === "NCH" && t.id !== B.id);
-  const ovn = plan(OV, { deals: [{ sides: [k(B), k(B2)], offer: true, moves: [{ kind: "player", id: b[12], to: k(B2) }, { kind: "player", id: ids(B2)[12], to: k(B) }] }] });
+  const ovn = plan(OV, { deals: [{ sides: [k(B), k(B2)], offer: true, moves: [{ kind: "player", id: b[old(B, 12)], to: k(B2) }, { kind: "player", id: ids(B2)[old(B2, 12)], to: k(B) }] }] });
   ok("an offer between his own nation's clubs is refused", ovn.errors.some(e => /Nobody else answers/.test(e)), ovn.errors);
-  const tri = plan(ED, { deals: [{ sides: [k(A), k(B), k(C)], moves: [{ kind: "player", id: a[12], to: k(B) }, { kind: "player", id: b[12], to: k(C) }, { kind: "player", id: c[12], to: k(A) }] }] }), r3 = tri.requests[0];
+  const tri = plan(ED, { deals: [{ sides: [k(A), k(B), k(C)], moves: [{ kind: "player", id: a[old(A, 12)], to: k(B) }, { kind: "player", id: b[old(B, 12)], to: k(C) }, { kind: "player", id: c[old(C, 12)], to: k(A) }] }] }), r3 = tri.requests[0];
   ok("a three-club swap waits on both other nations", !tri.errors.length && Object.keys(r3?.needs || {}).sort().join() === [k(B), k(C)].sort().join() && r3.sides.length === 3, tri);
   const n3 = settle(SKJ_ED, r3, "accept");
   ok("one club's accept leaves it waiting on the other", !n3.done && JSON.stringify(n3.request?.approved) === JSON.stringify([k(C)]), n3);
   const y3 = settleRequest(rec, { ...editors, overseers: [] }, n3.request, NCH_ED, "accept", h);
-  ok("the last club's accept puts it live", y3.done && clubOf(y3.apply, a[12]) === B.id && clubOf(y3.apply, b[12]) === C.id && clubOf(y3.apply, c[12]) === A.id, y3);
-  const c3 = settle(SKJ_ED, r3, "counter", { moves: [{ kind: "player", id: a[12], to: k(B) }, { kind: "player", id: b[12], to: k(C) }, { kind: "player", id: c[13], to: k(A) }], others: [r3] });
+  ok("the last club's accept puts it live", y3.done && clubOf(y3.apply, a[old(A, 12)]) === B.id && clubOf(y3.apply, b[old(B, 12)]) === C.id && clubOf(y3.apply, c[old(C, 12)]) === A.id, y3);
+  const c3 = settle(SKJ_ED, r3, "counter", { moves: [{ kind: "player", id: a[old(A, 12)], to: k(B) }, { kind: "player", id: b[old(B, 12)], to: k(C) }, { kind: "player", id: c[old(C, 13)], to: k(A) }], others: [r3] });
   ok("a counter from one club waits on every other again", !c3.errors.length && c3.request.team === k(C) && Object.keys(c3.request.needs).sort().join() === [k(A), k(B)].sort().join() && !c3.request.approved.length, c3); }
 
 console.log("a nation's clubs without its national side (the user, 11 October 2026)");
@@ -296,7 +301,7 @@ console.log("a nation's clubs without its national side (the user, 11 October 20
   const lg = L && plan(KAR_ED, { leagues: { [L.id]: { tier: 2 } } });
   ok("they change the Turulian league outright", L && !lg.errors.length, lg?.errors);
   ok("they answer for a Turulian club, and only for its club", R.ownersOf(editors, TC).includes(KAR_ED) && !R.ownersOf(editors, TN).includes(KAR_ED), [R.ownersOf(editors, TC), R.ownersOf(editors, TN)]);
-  const dl = plan(ED, { deals: [{ sides: [teamKey(A), teamKey(TC)], moves: [{ kind: "player", id: ids(A)[12], to: teamKey(TC) }, { kind: "player", id: ids(TC)[12], to: teamKey(A) }] }] });
+  const dl = plan(ED, { deals: [{ sides: [teamKey(A), teamKey(TC)], moves: [{ kind: "player", id: ids(A)[old(A, 12)], to: teamKey(TC) }, { kind: "player", id: ids(TC)[old(TC, 12)], to: teamKey(A) }] }] });
   ok("an offer to a Turulian club waits on them", !dl.errors.length && JSON.stringify(dl.requests[0]?.needs) === JSON.stringify({ [teamKey(TC)]: [KAR_ED] }), dl); }
 
 console.log("sheet cells a save keeps (11 October 2026)");
@@ -331,17 +336,17 @@ console.log("the sheet (12 October 2026)");
   const o = plan(OV, { teams: { [teamKey(A)]: { group: "2. Alemannische Oberliga" } } });
   ok("the overseer moves one outright", !o.errors.length && after(o.apply).teams.find(t => t.id === A.id).group === "2. Alemannische Oberliga", o.errors); }
 { // A man dragged between two of the editor's own clubs: off one squad, onto the other's open place.
-  const a = ids(A), b = ids(A2), man = a[15], sa = [...a]; sa[15] = null; const sb = [...b]; sb[15] = man; const was = b[15];
+  const a = ids(A), b = ids(A2), man = a[old(A, 15)], sa = [...a]; sa[old(A, 15)] = null; const sb = [...b]; sb[old(A2, 15)] = man; const was = b[old(A2, 15)];
   const s = plan(ED, { teams: { [teamKey(A)]: { squad: sa }, [teamKey(A2)]: { squad: sb } } });
   ok("a man moves between an editor's own clubs outright", !s.errors.length && after(s.apply).teams.find(t => t.id === A2.id).squad.map(idOf).includes(man), s.errors);
   ok("(the one he replaced goes to free agency)", !after(s.apply).teams.some(t => t.squad.map(idOf).includes(was)) || after(s.apply).teams.filter(t => t.squad.map(idOf).includes(was)).every(t => t.file === "AVIUM")); }
 { // A new man typed into an open place: he lands in that place, not where the best fit would put him.
-  const sq = ids(A), open = [...sq]; open[12] = null; const T = after(plan(OV, { teams: { [teamKey(A)]: { squad: open } } }).apply), at = 12;
+  const sq = ids(A), open = [...sq]; open[old(A, 12)] = null; const T = after(plan(OV, { teams: { [teamKey(A)]: { squad: open } } }).apply), at = old(A, 12);
   const s = plan(OV, { new: [{ id: "n9", what: "players", name: "Hans MUSTER", nat: "ALE", born: "1910-05-05", pos: ["ST"], ovr: 70, side: teamKey(A), at }] }, [], T);
   const n = s.apply && after(s.apply, T), club = n?.teams.find(t => t.id === A.id), p9 = n?.players.find(x => x.name === "Hans MUSTER");
   ok("a new man typed into a place goes to that place", !s.errors.length && !!p9 && club.squad.map(idOf).indexOf(p9.id) === at, [s.errors, club?.squad]); }
 { // A new club with new men of its own and its time wasting.
-  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 14), squad = clubs.map(t => ids(t)[15]).filter(Boolean).slice(0, 14);
+  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 14), squad = clubs.map(t => ids(t)[old(t, 15)]).filter(Boolean).slice(0, 14);
   squad.push({ name: "Otto NEU", nat: "ALE", born: "1912-02-02", pos: ["GK"], ovr: 68 }, { name: "Emil NEU", nat: "ALE", born: "1913-03-03", pos: ["ST"], ovr: null });
   const s = plan(ED, { new: [{ id: "n5", what: "teams", name: "SV Neudorf", nation: "ALE", code: "NDF", home: "#224466", away: "#ffffff", stadium: "Neudorfer Platz (8,000)",
     location: "Berelstein", group: A.group, formation: "4-3-3", timeWasting: "Sometimes", manager: null, squad }] });
@@ -378,9 +383,9 @@ console.log("removing a club (12 October 2026)");
   const held = plan(OV, { teams: { [K]: { removed: true } } }, offer);
   ok("not while an offer names it", held.errors.some(e => /waiting on a request/.test(e)), held.errors);
   // One of its men signed by another club in the same cart, the club then removed.
-  const a = ids(A), sa = [...a]; sa[15] = men[15] || men[men.length - 1];
+  const a = ids(A), sa = [...a]; sa[old(A, 15)] = men[15] || men[men.length - 1];
   const both = plan(OV, { teams: { [K]: { removed: true }, [teamKey(A)]: { squad: sa } } }), nb = both.apply && after(both.apply);
-  ok("its man signed elsewhere in the same cart", !both.errors.length && !!nb && ids(nb.teams.find(t => t.id === A.id)).includes(sa[15]), both.errors); }
+  ok("its man signed elsewhere in the same cart", !both.errors.length && !!nb && ids(nb.teams.find(t => t.id === A.id)).includes(sa[old(A, 15)]), both.errors); }
 
 console.log("codes of two to four letters (12 October 2026)");
 { const four = plan(OV, { teams: { [teamKey(A)]: { code: "ARMA" } } }), five = plan(OV, { teams: { [teamKey(A)]: { code: "ARMAX" } } });
@@ -419,11 +424,11 @@ console.log("the trades log (13 October 2026)");
   ok("a swap between two nations' clubs is one deal of two men", !swap.errors.length && rows.length === 2 && new Set(rows.map(r => r.deal)).size === 1
     && rows.some(r => r.id === a[3] && r.from === teamKey(A) && r.to === teamKey(B)) && rows.every(r => r.season === 1935 && r.value > 0 && Math.abs(Date.parse(r.date) - Date.now()) < 60000), [swap.errors, rows]);
   const free = rec.players.find(p => !p.retired && !rec.teams.some(t => ids(t).includes(p.id))), C = rec.teams.find(t => t.file === "ALE" && t.code === "HAN");
-  const c = ids(C), sC = [...c]; sC[14] = free.id;
+  const c = ids(C), sC = [...c]; sC[old(C, 14)] = free.id;
   const sign = plan(OV, { teams: { [teamKey(C)]: { squad: sC } } }), r2 = log(sign);
   ok("a free agent signed, and the man making way released, is one deal", !sign.errors.length && r2.length === 2 && r2.some(r => r.id === free.id && !r.from && r.to === teamKey(C))
-    && r2.some(r => r.id === c[14] && r.from === teamKey(C) && !r.to) && new Set(r2.map(r => r.deal)).size === 1, [sign.errors, r2]);
-  const both = plan(OV, { teams: { [teamKey(A)]: { squad: a.map((v, i) => (i === 15 ? null : v)) }, [teamKey(C)]: { squad: c.map((v, i) => (i === 15 ? null : v)) } } });
+    && r2.some(r => r.id === c[old(C, 14)] && r.from === teamKey(C) && !r.to) && new Set(r2.map(r => r.deal)).size === 1, [sign.errors, r2]);
+  const both = plan(OV, { teams: { [teamKey(A)]: { squad: a.map((v, i) => (i === old(A, 15) ? null : v)) }, [teamKey(C)]: { squad: c.map((v, i) => (i === old(C, 15) ? null : v)) } } });
   ok("two releases at two clubs are two deals", new Set(log(both).map(r => r.deal)).size === 2, log(both));
   const N = rec.teams.find(t => t.file === "AVIUM" && t.code === "ALE"), n = ids(N), cand = rec.players.find(p => p.nat === "ALE" && !n.includes(p.id) && rec.teams.some(t => t.file === "ALE" && ids(t).includes(p.id)));
   const sN = [...n]; sN[21] = cand.id;
@@ -436,6 +441,28 @@ console.log("the trades log (13 October 2026)");
   const back = parseTrades(dumpTrades(rows));
   ok("the log reads back as written", JSON.stringify(back) === JSON.stringify(rows.map(r => ({ ...r, value: r.value, ovr: r.ovr, age: r.age }))), back);
   ok("the season is the latest World Cup on file", latestWorldCup(["1932.md", "1935.tsv", "1935.md", "winners.tsv"]) === 1935 && latestWorldCup([]) === null); }
+
+// NEW MEN BY THE LINE (src/data/menlines.js, 13 October 2026): "(OVR) Name SURNAME, Position, Age, Badge 1, Badge 2, Badge 3".
+console.log("\nnew men by the line");
+{ const m = (s) => readManLine(s)?.man, b = (s) => readManLine(s)?.bad || [];
+  const full = m("(84) Kenji MORISHITA, ST, 24, Finisher, Rapid, Quick Step");
+  ok("the whole line reads", full && full.name === "Kenji MORISHITA" && full.ovr === 84 && full.pos.join() === "ST" && full.age === 24
+    && full.badges.join() === "finisher,rapid,quickstep" && !b("(84) Kenji MORISHITA, ST, 24, Finisher, Rapid, Quick Step").length, full);
+  const bare = m("Kenji Morishita");
+  ok("only the name is needed, the surname put in capitals", bare && bare.name === "Kenji MORISHITA" && bare.ovr === null && !bare.pos.length && bare.age === null && !bare.badges.length, bare);
+  const two = m("Shohei KUWABARA, CB, RB, 19, tackler, long-shot");
+  ok("two positions, an age and traits in any case", two && two.pos.join() === "CB,RB" && two.age === 19 && two.badges.join() === "tackler,longshot", two);
+  const any = m("Shohei KUWABARA, Tackler, 19, CB");
+  ok("the fields after the name in any order", any && any.pos.join() === "CB" && any.age === 19 && any.badges.join() === "tackler", any);
+  const cell = m("(76) Cihan KARTACA [SEL] [*]");
+  ok("a registry cell reads, nation tagged, tier mark dropped", cell && cell.name === "Cihan KARTACA" && cell.ovr === 76 && cell.nat === "SEL", cell);
+  ok("a name may carry a comma", m("Smith, Jr., ST")?.pos.join() === "ST" && m("Smith, Jr., ST")?.name.startsWith("Smith, "), m("Smith, Jr., ST"));
+  ok("an unknown field is said", b("Koji MINAMI, ST, 24, Finsher").some(x => /Finsher/.test(x)), b("Koji MINAMI, ST, 24, Finsher"));
+  ok("three positions are too many", b("Koji MINAMI, ST, CM, CB").includes("a player has one or two positions"), b("Koji MINAMI, ST, CM, CB"));
+  ok("an age is 14 to 60", b("Koji MINAMI, 12").includes("an age is 14 to 60") && b("Koji MINAMI, 24, 25").includes("a man has one age"));
+  ok("at most three traits", b("Koji MINAMI, Finisher, Rapid, Vision, Strong").includes("at most three traits"));
+  ok("a rating is 25 to 99", b("(20) Koji MINAMI").includes("a rating is 25 to 99"));
+  ok("no name, no man", readManLine("") === null && readManLine("(84)") === null); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

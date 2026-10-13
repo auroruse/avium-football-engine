@@ -48,10 +48,10 @@ export const ownFor = (own, place) => { const l = posList(own); if (!l.length) r
 // A squad's places: the formation's eleven (sposFor, from the engine's formations), then the bench, each bench place a
 // broad group. A national side's eleven take its starters' groups, slot for slot. A club's bench is eleven too (Moukden
 // and Kirin, 12 October 2026: "clubs will also be given 11-man benches, similarly to national teams"): the five it always
-// had come first and in their old order (a keeper, a defender, two midfielders and a forward), so nobody already on a
-// bench moves; the other six are the groups of the eleven those five leave uncovered, in the eleven's order, so the
-// whole bench answers the starters as a national one does. A squad of sixteen (a club made before then) has the five.
-// club: the squad is a club's (a national side's eleven-man bench mirrors its starters instead).
+// had (a keeper, a defender, two midfielders and a forward) and the groups of the eleven those five leave uncovered, so
+// the whole bench answers the starters as a national one does; all eleven in line order, the keeper, the defenders, the
+// midfielders, the forwards (13 October 2026, "This needs to be organized properly"). A squad of sixteen (a club made
+// before then) has the five. club: the squad is a club's (a national side's eleven-man bench mirrors its starters).
 export const CLUB_BENCH = ["GK", "DEF", "MID", "MID", "FWD"];
 export const clubBenchRest = (groups) => {
   const left = [...CLUB_BENCH], rest = [];
@@ -59,15 +59,24 @@ export const clubBenchRest = (groups) => {
   while (rest.length < 6) rest.push("MID");
   return rest.slice(0, 6);
 };
+// Where a club's eleven bench places stand, from the eleven's groups: `order[j]` is the place that stands j-th, counted
+// as they were laid out from 12 October (the five, then the six), each keeping its group and its order within it. The
+// engine's bench (src/sim/core.ts buildSquad) is put in the same order, so each place keeps the duty it had.
+export const clubBenchOrder = (groups) => [...CLUB_BENCH, ...clubBenchRest(groups)].map((g, i) => [g, i])
+  .sort((a, b) => GROUPS.indexOf(a[0]) - GROUPS.indexOf(b[0]) || a[1] - b[1]).map(([, i]) => i);
+export const clubBench = (groups) => { const g = [...CLUB_BENCH, ...clubBenchRest(groups)]; return clubBenchOrder(groups).map(i => g[i]); };
 export const slotLabels = (sposFor, formation, n, club = false) => {
   const xi = sposFor(String(formation || "4-3-3").trim()), groups = xi.map(p => POS_GROUP[p] || "MID");
-  return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? [...CLUB_BENCH, ...clubBenchRest(groups)] : groups)].slice(0, n);
+  return [...xi, ...(n <= 16 ? CLUB_BENCH : club ? clubBench(groups) : groups)].slice(0, n);
 };
 
 // WHAT A MAN IS WORTH OUT OF POSITION, as a rating: about what the skills of his own position cost him in the place he
 // is playing (the engine plays him on those skills; this is the figure the app shows). POS_DROP[own][place] is the
 // rating he loses there, worked out by test/posdrop.mjs from what each skill is worth in each line, measured in the lab.
 // In goal, or a keeper out of it, a man plays at half his rating, as the engine has always played an outfielder in goal.
+// A bench place is a group (Moukden and Kirin, 13 October 2026: "if a player DEF for example is placed in MID there should
+// be an alert and OVR decrease"): a man of the group fills it at no cost, any other at the least that one of the group's
+// positions costs him, since the side turns to that place's man for that line.
 // POS_DROP BEGIN (test/posdrop.mjs write, weights measured, lab/positions2 run 38101243006 and lab/positions run 38098352381)
 export const POS_DROP = {
   LB: {CB: 0, RB: 0, LWB: 0, RWB: 0, DM: 3, CM: 3, AM: 3, LM: 3, RM: 3, LW: 3, RW: 3, ST: 10},
@@ -86,7 +95,10 @@ export const POS_DROP = {
 };
 // POS_DROP END
 export const posDrop = (own, place) => {
-  const l = posList(own); if (!l.length || !POS_ROLE[place] || l.includes(place)) return 0;
+  const l = posList(own);
+  if (l.length && place !== "GK" && GROUP_POS[place]) { if (l.some(p => POS_GROUP[p] === place)) return 0;
+    const ds = GROUP_POS[place].map(q => posDrop(l, q)); return ds.includes(null) ? null : Math.min(...ds); }
+  if (!l.length || !POS_ROLE[place] || l.includes(place)) return 0;
   const p = ownFor(l, place);
   if ((p === "GK") !== (place === "GK")) return null;                      // half his rating: see ovrAt
   return POS_DROP?.[p]?.[place] ?? 0;

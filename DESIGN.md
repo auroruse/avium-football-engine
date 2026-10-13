@@ -76,9 +76,12 @@ rating's width over it; in a list the triangle and the cost after his place; eac
 (TraitCard, `data-oop`). A player's page lights his own positions and puts a place a side plays him out of position in
 the loss colour, with a line for each such side under the pitch (and on his Players card); the Players list puts the
 alert beside his positions. Lists of a side show where each man plays, one place: the eleven's place, a bench man his
-first position (the editor's bench, his position that fits the place); his banner and the Players list give both. Bench places keep a broad group (a club's keeper, defender, two midfielders and forward; a
-national side's the groups of its eleven): substitutes are sorted into the places their positions fit wherever men come
-or go, and a man left in another group's place is marked, not refused. Substitutions, injury and ban cover, rotation,
+first position (the editor's bench, his position that fits the place); his banner and the Players list give both. Bench places keep a broad group (a club's keeper, defender, two midfielders and forward and the groups of the eleven those
+leave uncovered; a national side's the groups of its eleven), in line order, keeper, defenders, midfielders, forwards
+(Moukden and Kirin, 13 October 2026, "This needs to be organized properly"): substitutes are sorted into the places their
+positions fit wherever men come or go, and a man left in another group's place is marked, not refused, with the rating
+he plays it at, the least any of its positions costs him ("if a player DEF for example is placed in MID there should be an
+alert and OVR decrease"). Substitutions, injury and ban cover, rotation,
 formation changes and the manager's shape change all place men by their own positions; a substitute takes the slot of
 the man he replaces. Positions are the overseer's: an editor asks for a change by request (`kind: "pos"`). The first
 positions were set from where everyone played on 11 October 2026: club slot, then national slot (both where they
@@ -220,8 +223,12 @@ cup's or a tournament's winner, the final's score and the runner-up; then the to
 **Season** is one season, picked in the page bar between the seasons before and after. Its main panel switches in the
 title row between the season's stages and its **Player Stats** (every man with figures, sortable, with a search and
 filters by position and side). A league's stage is its **Table**, after the round picked in Results (the last at
-first), a bar at the left of a row marking the champion (`--gold`), the clubs that went up (`--up`) and the clubs that
-went down (`--loss`), read off the division each played the season after, with a key. A tournament's stages are its
+first). On the final table a bar at the left of a row marks the champion (`--gold`) and the places that went up (`--up`),
+into a playoff (`--playoff`, every club the playoff took) and down (`--loss`), with a key, and an arrow after a club's
+name marks that it went (Moukden and Kirin, 13 October 2026). Both are read off the nation's tables in the next season
+the league has on file, over the war years: a club in none of them went down out of the leagues, unless its nation's cup
+that season was played without it too and no club on file has its name, which is a club that folded and carries no mark. The newest season, before anyone has moved, marks who
+its rules send, as the pyramid does. A club's History carries the same arrow beside its finish. A tournament's stages are its
 report's (Group Stage and Knockouts; a double-elimination one's Upper Bracket, Lower Bracket and Grand Final): groups as
 tables two abreast, knockouts as a bracket, a round a column. Beside the main panel, **Results** (the round or stage
 picked, every match) over **Summary** (champion, runner-up, top scorer, top playmaker, MVP and golden glove; a season
@@ -457,8 +464,9 @@ cells, a kit is its hex code on its own colour with a picker, and a city is pick
 
 **A man is a chip in his place:** his rating in its metal, his given name and SURNAME, and his nation's code after them
 when he is not the tab's national. Each place cell starts with the place its side's formation gives it (GK, LB, CB and so
-on, SUB on the bench), so a row reads as its shape. A man out of position shows the rating he plays the place at, ringed
-in the loss colour, with what the place costs him. A new formation re-slots the eleven by each man's own positions. A
+on, and on the bench its group, GK, DEF, MID or FWD), so a row reads as its shape. A man out of position, a substitute
+in another group's place too, shows the rating he plays the place at, ringed in the loss colour, with what the place
+costs him. A new formation re-slots the eleven by each man's own positions. A
 manager is a chip in the manager cell: his rating, his name and his style.
 
 **Editing** takes one click (Moukden and Kirin, 12 October 2026: "everything needs to be editable in one click"): a click
@@ -497,8 +505,11 @@ starter and **Sub In** for a substitute (the user: "an option to sub players in/
 opening the side's men he can change places with, a click swapping them; **Trade** on one's own man and **Make An
 Offer** on another nation's, each opening Trades with him in a deal; and the overseer's Retire.
 
-**New records** are made in the sheet. Typing "Name, position" into an empty place makes a new man there, "(84) Name, ST"
-with a rating, a second position after the first; pasting several lines into a run of places makes one in each, and a
+**New records** are made in the sheet. Typing a man into an empty place makes him there, a line as src/data/menlines.js
+reads it (the user, 13 October 2026): "(OVR) Name SURNAME, Position, Age, Badge 1, Badge 2, Badge 3", only the name needed,
+each field after the name told by what it is (a position or two, an age, a trait by its name); with no position he plays
+the place's, with no age one is drawn, and a college's man starts in the year his age gives. Pasting several lines into a
+run of places makes one in each, and a
 row copied from a sheet makes one a cell, as the registry wrote them ("(76) Cihan KARTACA [SEL]", the user, 12 October
 2026: "they should go to separate slots"), an empty cell keeping its place and a position-only cell going to the man
 before it. **New Player** on Free Agents, and the + in an empty place, open the full form on the dock (the user,
@@ -508,7 +519,8 @@ before it. **New Player** on Free Agents, and the + in an empty place, open the 
 rating with another nation's limit, the traits that rating affords for editors too, and the portrait line; **Add To
 Cart** puts him in the cart and **Cancel** discards the form. A new man already made, in the cart or typed into a new
 club, opens in the same form, with **Done** and **Remove**. **Many**, on the form's head, opens the list form full width
-(a line a man, one nationality, an age range, a table to rate them): one request, its men shown in the places they will
+(a line a man as above, one nationality unless a line tags his own, an age range for lines without an age, a table to
+rate them; a free agent's line needs his position, a man joining a side plays the place he takes): one request, its men shown in the places they will
 take or first on Free Agents. A manager is made the same way, from **New Manager** or an empty manager cell, with his
 style; made for a side he takes it over when let in. **+ New Club** at the foot of each league band adds a row filled in
 place: name, code, kits, city, ground, capacity, formation, manager and its twenty-two places. **New League** at the foot of
@@ -651,6 +663,7 @@ in `design/ui.css`; nothing in a screen names a hex.
 | `--up`, `--down` | #a3be8c, #bf616a | rises and falls, relegation |
 | `--gold` | #ebcb8b | champions |
 | `--cont` | #4a7ab5 | continental places |
+| `--playoff` | #4a7ab5 | a league's playoff places |
 
 Ratings keep the app's own two scales: the metal tiers for a rating badge (copper, silver, gold, emerald, amethyst,
 iridescent) and the match-rating colours for a performance.
