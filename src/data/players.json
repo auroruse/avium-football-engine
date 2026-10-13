@@ -5080,5 +5080,6 @@
 {"id":"p5118","name":"Soren HALLORAN","nat":"GIA","ovr":54,"born":"1915-05-09","pos":["RB"]},
 {"id":"p5119","name":"Lev KHARITONOV","nat":"GIA","ovr":57,"born":"1907-04-17","pos":["CM"]},
 {"id":"p5120","name":"Maksim LUKIN","nat":"GIA","ovr":57,"born":"1914-10-21","pos":["AM"]},
-{"id":"p5121","name":"Kwame MASLOV","nat":"GIA","ovr":58,"born":"1908-02-15","pos":["ST"]}
+{"id":"p5121","name":"Kwame MASLOV","nat":"GIA","ovr":58,"born":"1908-02-15","pos":["ST"]},
+{"id":"p5122","name":"Taipa SAARETINEN","nat":"KFK","ovr":33,"born":"1916-05-26","pos":["GK"]}
 ]
