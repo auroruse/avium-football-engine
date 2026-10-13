@@ -34,7 +34,7 @@ console.log("\nthe draft on file");
 const d0 = D.currentDraft(drafts);
 ok("one draft waiting, 44 picks, two hours each", d0 && d0.status === "waiting" && d0.picks.length === 44 && d0.window === 7200, d0 && [d0.status, d0.picks.length]);
 const traded = d0.picks.filter(p => p.club);
-ok("Nichirin's twelve traded picks, all among the first twenty", traded.length === 12 && traded.every(p => p.n <= 20), traded.map(p => p.n));
+ok("Nichirin's twelve traded picks, all among NL1's (25 to 44)", traded.length === 12 && traded.every(p => p.n >= 25 && p.n <= 44), traded.map(p => p.n));
 const tally = {}; for (const p of traded) { const t = rec0.teams.find(x => x.id === p.club); tally[t.name.trim()] = (tally[t.name.trim()] || 0) + 1; }
 ok("two each to Daryā and Homā, one each to the other eight", tally["Daryā Shushabad"] === 2 && tally["Homā Nourabad"] === 2
    && ["Tarāzu Dashtvār", "Mehrāvar AC", "Murmánska Partisani", "Åulot FK", "RöPS", "XIV. District JK", "VKS", "Szatmár SK"].every(n => tally[n] === 1), tally);

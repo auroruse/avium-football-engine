@@ -669,10 +669,11 @@ board ... instead of rounds it'll just be 1 to 44, and no queue, roster, or chat
 season, before the Club World Cup. Its record is `src/data/drafts.json`: each pick's number and the club holding it, and
 once made the man, when, by whom, whether it was automatic and who made way for him. The order is the NL's final tables,
 NL2's last first and NL1's champion last; until the overseer starts the draft it reads off the newest tables on file, and
-starting it fixes it. Nichirin had already traded twelve picks (the user, the same day), placed at random among the first
-twenty and kept there whatever the tables do: two to Daryā Shushabad, one to Tarāzu Dashtvār, two to Homā Nourabad, one
-to Mehrāvar AC and one each to Murmánska Partisani, Åulot FK, RöPS, XIV. District JK, VKS and Szatmár SK. The NL2 clubs
-whose places land on those picks have none. A pick traded later the overseer gives to its new club on the board ("You Move
+starting it fixes it. Nichirin had already traded twelve picks (the user, the same day), placed at random among NL1's
+picks, 25 to 44 (the user, 14 October 2026: "disperse the foreign picks across the LATTER half, the NL1 clubs. The NL2
+clubs lowkey need the picks"), and kept there whatever the tables do: two to Daryā Shushabad, one to Tarāzu Dashtvār, two
+to Homā Nourabad, one to Mehrāvar AC and one each to Murmánska Partisani, Åulot FK, RöPS, XIV. District JK, VKS and
+Szatmár SK. The NL1 clubs whose places land on those picks have none. A pick traded later the overseer gives to its new club on the board ("You Move
 Them"); nothing on Trades.
 
 **Picking.** Asynchronous, two hours a pick. A club whose editor is not the overseer (Karjania's and Varahmehr's) picks by
