@@ -1,5 +1,5 @@
 [
-{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"running","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:20:03.384Z","ended":null,"clock":{"n":18,"until":"2026-10-14T01:32:46.764Z"},"picks":[
+{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"running","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:20:03.384Z","ended":null,"clock":{"n":19,"until":"2026-10-14T01:33:18.549Z"},"picks":[
 {"n":1,"club":"t0246","player":"p5126","from":"t0318","out":null,"at":"2026-10-13T23:20:12.593Z","by":"auroruse","auto":false},
 {"n":2,"club":"t0245","player":"p5573","from":"t0338","out":null,"at":"2026-10-13T23:21:30.540Z","by":"auroruse","auto":false},
 {"n":3,"club":"t0235","player":"p5300","from":"t0326","out":null,"at":"2026-10-13T23:22:34.083Z","by":"auroruse","auto":false},
@@ -17,7 +17,7 @@
 {"n":15,"club":"t0238","player":"p5310","from":"t0326","out":null,"at":"2026-10-13T23:31:22.054Z","by":"auroruse","auto":false},
 {"n":16,"club":"t0232","player":"p5302","from":"t0326","out":null,"at":"2026-10-13T23:32:04.997Z","by":"auroruse","auto":false},
 {"n":17,"club":"t0229","player":"p5661","from":"t0342","out":null,"at":"2026-10-13T23:32:46.764Z","by":"auroruse","auto":false},
-{"n":18,"club":"t0226"},
+{"n":18,"club":"t0226","player":"p5772","from":"t0347","out":null,"at":"2026-10-13T23:33:18.549Z","by":"auroruse","auto":false},
 {"n":19,"club":"t0227"},
 {"n":20,"club":"t0228"},
 {"n":21,"club":"t0230"},
