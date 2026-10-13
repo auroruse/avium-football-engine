@@ -23,7 +23,7 @@
 // Secrets (wrangler secret put): CLIENT_SECRET, PRIVATE_KEY (the App's key, as GitHub gave it), SESSION_SECRET.
 import { applyDraft, draftChanges, dumpRecords, teamKey } from "../src/data/draft.js";
 import { sheetsFromRecords } from "../src/data/sheets.js";
-import { owns, ownersOf, planSave, scopeOf, settleRequest } from "../src/data/rules.js";
+import { owns, planSave, scopeOf, settleRequest } from "../src/data/rules.js";
 import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, startDraft, steerDraft } from "../src/data/collegedraft.js";
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { TRADES_FILE, dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, trendsFrom } from "../src/data/trades.js";
@@ -141,9 +141,9 @@ const judge = (rec) => { const ovr = new Map(rec.players.map(r => [r.id, r.ovr])
   return { labels: (t) => slotLabels(sposFor, t.formation, t.squad.length, !NATIONAL_FILES.has(t.file)), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0, pos: (id) => pos.get(id) || [] }; };
 
 // ── the college draft (src/data/collegedraft.js) ──────────────────────────────────────────────────
-// A club picks by hand when somebody other than the overseer answers for it; the overseer's own (Nichirin's) pick at once.
-const handOf = (rec, editors) => { const over = new Set((editors?.overseers || []).map(o => o.toLowerCase())), T = new Map(rec.teams.map(t => [teamKey(t), t]));
-  return (k) => { const t = T.get(k); return !!t && ownersOf(editors, t).some(u => !over.has(u.toLowerCase())); }; };
+// Every club picks by hand, the overseer for Nichirin's (the user, 14 October 2026, after the start picked NL2's 24 at
+// once: "Undo, You Pick NL By Hand"); a pick is made automatically only when its two hours run out.
+const BY_HAND = () => true;
 // One step of a draft: the overseer's start, pause, resume or giving a pick, a pick, or a tick; then every pick due made at
 // once. { files, message, result } to commit, { result } when nothing changed, or { errors }.
 async function draftStep(env, head, rec, editors, drafts, login, a, now) {
@@ -160,7 +160,7 @@ async function draftStep(env, head, rec, editors, drafts, login, a, now) {
     if (!over && !(t && owns(scope, t))) return { errors: ["That pick is not yours to make"] };
   } else if (a.action !== "tick") return { errors: ["Unknown action"] };
   const board = d.stats ? ratingBoard(await readText(env, head, d.stats, "")) : [];
-  const r = runDraft(rec, d, { now, hand: handOf(rec, editors), board, h: judge(rec),
+  const r = runDraft(rec, d, { now, hand: BY_HAND, board, h: judge(rec),
     pick: a.action === "pick" ? { n: a.n, player: a.player, out: a.out ?? null, by: login } : null });
   if (r.errors) return r;
   if (!r.patch && JSON.stringify(r.draft) === JSON.stringify(d0)) return { result: { draft: d0, apply: null } };

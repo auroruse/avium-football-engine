@@ -374,7 +374,7 @@ export const DOCS = [
       "After each NL season the final-year college players are drafted in one round of 44 picks, NL2's last club picking first and NL1's champion last, except where a pick has been traded. Its board is the Draft page in the Editor, which the overseer and every editor holding a pick see.",
       { dl: [
         ["On The Clock", "A pick has two hours. When one of your clubs is on the clock the Draft tab carries a dot, and every man still on the board has a Draft button; Draft asks to confirm. With no open place in your squad, you name who makes way, and he leaves for free agency."],
-        ["Automatic Picks", "A Nichirian club picks the moment it is on the clock, and so does any club whose two hours run out: the best season match rating left, among the men with a sixth of the most minutes first. That is the list's order."],
+        ["Automatic Picks", "A club whose two hours run out gets the best season match rating left, among the men with a sixth of the most minutes first. That is the list's order."],
         ["The Board", "Each pick shows the club holding it and, once made, the man, his position and his college. The list under it is every final-year player left, with his season's figures; his rating stays hidden until he is drafted."],
         ["Afterwards", "Every final-year player nobody took goes to free agency, and any club can sign him through the usual save, first come first served. The draft is then filed under the Championship, and each man's page shows his pick."],
       ] },

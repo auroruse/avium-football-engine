@@ -8769,7 +8769,10 @@ export default function App() {
     : [...new Set(draftNow.picks.map(p => p.club).filter(Boolean))].filter(k => { const t = curRecs.teams.find(x => teamKey(x) === k); return !!t && owns(scope, t); })),
     [draftNow, overseer, scope, curRecs]);
   const draftSees = !!draftNow && !!session && (overseer || draftMine.length > 0);
-  const draftYours = !!draftNow && draftNow.status === "running" && draftMine.includes(pickDue(draftNow)?.club);
+  // Yours: a club of your own on the clock, or for the overseer one nobody else answers for (Nichirin's).
+  const draftYours = !!draftNow && draftNow.status === "running" && (draftMine.includes(pickDue(draftNow)?.club) || (overseer && (() => {
+    const t = curRecs.teams.find(x => teamKey(x) === pickDue(draftNow)?.club), over = new Set((editorsRec.overseers || []).map(o => o.toLowerCase()));
+    return !!t && !ownersOf(editorsRec, t).some(u => !over.has(u.toLowerCase())); })()));
   const whereIs = useMemo(() => {
     const m = new Map();
     for (const t of curRecs.teams) {

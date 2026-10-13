@@ -124,12 +124,12 @@ dr = await call("/draft", { method: "POST", session: varh, body: { action: "star
 ok("only the overseer starts it", dr.status === 422 && /overseer/.test(dr.data.errors[0]), dr.data);
 dr = await call("/draft", { method: "POST", session: boss, body: { action: "start", order: nlOrder } });
 const due = dr.data?.draft?.picks.find(p => !p.player);
-ok("started: Nichirin's clubs pick at once, the first club picking by hand is on the clock", dr.status === 200 && dr.data.draft.status === "running"
-   && dr.data.draft.clock?.n === due?.n && dr.data.draft.picks.slice(0, due.n - 1).every(p => p.auto), dr.data?.errors || dr.data?.draft?.clock);
-ok("...one commit: the draft, the records, the sheets", ["src/data/drafts.json", "src/data/teams.json"].every(f => gh.log.at(-1).paths.includes(f))
-   && gh.log.at(-1).message.startsWith("Draft: auroruse, start"), gh.log.at(-1).message);
+ok("started: nobody picks at once, pick 1 is on the clock", dr.status === 200 && dr.data.draft.status === "running" && due?.n === 1
+   && dr.data.draft.clock?.n === 1, dr.data?.errors || dr.data?.draft?.clock);
+ok("...one commit, the draft alone: nobody has moved", JSON.stringify(gh.log.at(-1).paths) === JSON.stringify(["src/data/drafts.json"])
+   && gh.log.at(-1).message.startsWith("Draft: auroruse, start"), gh.log.at(-1));
 dRec = now();
-const holder = dRec.teams.find(t => t.id === due.club), mineEd = holder.nation === "VAR" ? varh : kar, otherEd = holder.nation === "VAR" ? kar : varh;
+const holder = dRec.teams.find(t => t.id === due.club), mineEd = holder.nation === "VAR" ? varh : holder.nation === "NCH" ? boss : kar, otherEd = holder.nation === "VAR" ? kar : varh;
 const lgC = JSON.parse(gh.commits.get(gh.head)["src/data/leagues.json"]).find(l => l.college).name;
 const college = dRec.teams.find(t => t.group === lgC && ids(t).some(id => dRec.players.find(p => p.id === id)?.grad === 1935));
 const prospect = ids(college).find(id => dRec.players.find(p => p.id === id)?.grad === 1935);

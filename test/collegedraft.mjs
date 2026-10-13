@@ -26,7 +26,10 @@ const judge = (rec) => { const P = new Map(rec.players.map(p => [p.id, p]));
   return { labels: (t) => slotLabels(E.sposFor, t.formation, t.squad.length, !["AVIUM", "ARTERRA"].includes(t.file)), fit: posFitCost,
            ovr: (id) => P.get(id)?.ovr ?? 0, pos: (id) => posList(P.get(id)?.pos) }; };
 const over = new Set(editors.overseers.map(o => o.toLowerCase()));
-const handOf = (rec) => (k) => { const t = rec.teams.find(x => teamKey(x) === k); return !!t && ownersOf(editors, t).some(u => !over.has(u.toLowerCase())); };
+// Every club picks by hand, the overseer for Nichirin's (the server's rule since 14 October 2026); `editorOf` is whether
+// someone other than the overseer answers for a club.
+const handOf = () => () => true;
+const editorOf = (rec) => (k) => { const t = rec.teams.find(x => teamKey(x) === k); return !!t && ownersOf(editors, t).some(u => !over.has(u.toLowerCase())); };
 const name = (id) => rec0.players.find(p => p.id === id)?.name;
 const clubOf = (rec, id) => rec.teams.find(t => (t.squad || []).some(v => idOf(v) === id)) || null;
 
@@ -38,7 +41,7 @@ ok("Nichirin's twelve traded picks, all among NL1's (25 to 44)", traded.length =
 const tally = {}; for (const p of traded) { const t = rec0.teams.find(x => x.id === p.club); tally[t.name.trim()] = (tally[t.name.trim()] || 0) + 1; }
 ok("two each to Daryā and Homā, one each to the other eight", tally["Daryā Shushabad"] === 2 && tally["Homā Nourabad"] === 2
    && ["Tarāzu Dashtvār", "Mehrāvar AC", "Murmánska Partisani", "Åulot FK", "RöPS", "XIV. District JK", "VKS", "Szatmár SK"].every(n => tally[n] === 1), tally);
-ok("every one of them picks by hand", traded.every(p => handOf(rec0)(p.club)));
+ok("every one of them answered for by an editor", traded.every(p => editorOf(rec0)(p.club)));
 const pool = D.draftPool(rec0, d0);
 ok("the pool is every final-year man at a college", pool.size === rec0.players.filter(p => p.grad === 1935).length && pool.size > 100, pool.size);
 
@@ -56,10 +59,10 @@ const board = [...pool.keys()].sort().reverse().map(id => ({ name: name(id), tea
 let t0 = new Date("2026-10-14T12:00:00Z"), run = D.runDraft(rec0, st.draft, { now: t0, hand: handOf(rec0), board, h: judge(rec0) });
 let d = run.draft, rec = applyDraft(rec0, run.patch);
 const first = d.picks.find(p => !p.player);
-ok("Nichirin's clubs pick at once, up to the first pick made by hand", run.made.length === first.n - 1 && handOf(rec0)(first.club)
-   && d.picks.slice(0, first.n - 1).every(p => p.auto && p.by === "auto"), [run.made.length, first.n]);
-ok("...each taking the best man left on the board", d.picks[0].player === board.map(b => [...pool].find(([id]) => name(id) === b.name)[0])[0]);
-ok("...who leaves his college and joins the club", !!d.picks[0].player && clubOf(rec, d.picks[0].player)?.id === d.picks[0].club);
+ok("nobody picks at once: pick 1 goes on the clock", run.made.length === 0 && first.n === 1, [run.made.length, first.n]);
+const auto1 = D.runDraft(rec0, st.draft, { now: t0, hand: editorOf(rec0), board, h: judge(rec0) });
+ok("a club nobody picks by hand would take the best man left on the board", auto1.draft.picks[0].player === board.map(b => [...pool].find(([id]) => name(id) === b.name)[0])[0]);
+ok("...who leaves his college and joins the club", clubOf(applyDraft(rec0, auto1.patch), auto1.draft.picks[0].player)?.id === auto1.draft.picks[0].club);
 ok("the club on the clock has two hours", d.clock?.n === first.n && Date.parse(d.clock.until) - t0.getTime() === 7200e3, d.clock);
 ok("the drafted men's ratings now show: none is at a college", d.picks.filter(p => p.player).every(p => clubOf(rec, p.player).group !== "All-Nichirin Collegiate Championship"));
 

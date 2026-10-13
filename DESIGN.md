@@ -681,10 +681,11 @@ to Homā Nourabad, one to Mehrāvar AC and one each to Murmánska Partisani, Åu
 Szatmár SK. The NL1 clubs whose places land on those picks have none. A pick traded later the overseer gives to its new club on the board ("You Move
 Them"); nothing on Trades.
 
-**Picking.** Asynchronous, two hours a pick. A club whose editor is not the overseer (Karjania's and Varahmehr's) picks by
-hand, in the Editor's Draft tab, which only the overseer and editors holding a pick see; any other club picks the moment
-it is on the clock: the best season match rating left, in the season's Player Stats order (men with a sixth of the most
-minutes first). A club whose two hours run out gets that pick too ("Auto-Pick"), the clock checked every five minutes. A
+**Picking.** Asynchronous, two hours a pick. Every club picks by hand, in the Editor's Draft tab, which only the overseer
+and editors holding a pick see: Karjania's and Varahmehr's editors for theirs, the overseer for Nichirin's (the user, 14
+October 2026, after starting the draft picked NL2's 24 at once by the earlier rule: "Undo, You Pick NL By Hand"). A club
+whose two hours run out gets the best season match rating left ("Auto-Pick"), in the season's Player Stats order (men with
+a sixth of the most minutes first), the clock checked every five minutes. A
 drafted man goes to an open place in his new club's squad; with none open, the editor names who makes way as he picks
 ("Editor Chooses"), the weakest bench man at the drafted man's position offered first (else the lowest-rated man on the
 bench), and an automatic pick sends that man. He goes to free agency. The overseer can pause the clock, give a pick still
