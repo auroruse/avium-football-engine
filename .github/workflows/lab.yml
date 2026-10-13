@@ -13,7 +13,7 @@ jobs:
     # ARM and this exact Node: the same arithmetic as the Mac the lab was built on, so a cloud run replays a local one
     # match for match (on x64 under Node 24.21 the same code drifted apart, equal only on average).
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 150
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:
@@ -32,7 +32,11 @@ jobs:
           mkdir -p out
           # LAB_TEST names a test file that splits itself the same way (SHARD=i/n) and prints its tallies, to be merged
           # after (test/cards.mjs merge). A match that never finishes is cut off at fifteen minutes; the log names it.
-          if [ -n "$LAB_TEST" ]; then
+          # LAB_NT names a job list for the tactics search (test/nt-app.mjs): each shard plays every 20th job on all its
+          # cores, appending each result as it finishes.
+          if [ -n "$LAB_NT" ]; then
+            SHARD=${{ matrix.shard }}/20 node test/nt-app.mjs "test/specs/$LAB_NT" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
+          elif [ -n "$LAB_TEST" ]; then
             SHARD=${{ matrix.shard }}/20 timeout 900 node "test/$LAB_TEST" > "out/lab-${{ matrix.shard }}.jsonl"
           else
             SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
