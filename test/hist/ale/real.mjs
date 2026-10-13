@@ -14,12 +14,12 @@ const TB = ["gd", "gf", "h2h", "wins"], V = 60, TRIES = 3000000, CAP = 12, ARM =
 let seed = 20261013;
 const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 
-// Every result, by season, competition and fixture.
+// Every result, by season and fixture: a fixture is the same two sides whichever league it was played in.
 const res = new Map();
 let errs = 0;
 for (const f of rfs) for (const l of readFileSync(f, "utf8").split("\n")) { if (!l.trim()) continue;
   const r = JSON.parse(l); if (r.err != null) { errs++; console.error("error in " + r.id + ": " + r.err); continue; }
-  const [y, c, h, a] = r.id.split("|"), key = `${y}|${c}`, fx = h + "|" + a;
+  const [y, , h, a] = r.id.split("|"), key = y, fx = h + "|" + a;
   if (!res.has(key)) res.set(key, new Map());
   const m = res.get(key); if (!m.has(fx)) m.set(fx, []); m.get(fx).push([r.hg, r.ag]); }
 
@@ -29,7 +29,7 @@ const same = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 const inAll = (xs, ys) => xs.every(x => ys.includes(x));
 
 function season(y, comp, clubs, ok, near) {
-  const m = res.get(`${y}|${comp}`);
+  const m = res.get(String(y));
   const fx = []; for (const h of clubs) for (const a of clubs) if (h !== a) { const o = m?.get(h + "|" + a); if (!o?.length) throw new Error(`missing ${y} ${comp} ${h} v ${a}`); fx.push([h, a, o]); }
   const idx = new Map(clubs.map((c, i) => [c, i])), n = clubs.length, kept = [];
   const pts = new Float64Array(n), gd = new Float64Array(n), gf = new Float64Array(n);

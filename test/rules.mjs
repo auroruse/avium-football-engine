@@ -305,13 +305,15 @@ console.log("sheet cells a save keeps (11 October 2026)");
 { const k = teamKey, DYM = rec.teams.find(t => t.id === "t0205"), CSR = rec.teams.find(t => t.id === "t0200");
   // Compared as a set: the bench sort may move a man into one of the six new places that fits him (12 October 2026).
   const cells = (t) => t.squad.filter(v => v && typeof v === "object").map(v => JSON.stringify(v)).sort();
-  const swap = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: "p1182", to: k(CSR) }, { kind: "player", id: "p1422", to: k(DYM) }] }] });
+  // The two keepers swapped, whichever way round the clubs hold them now (the trade itself was made for real, 13 October 2026).
+  const atD = (id) => ids(DYM).includes(id), gkD = atD("p1182") ? "p1182" : "p1422", gkC = gkD === "p1182" ? "p1422" : "p1182";
+  const swap = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: gkD, to: k(CSR) }, { kind: "player", id: gkC, to: k(DYM) }] }] });
   const csr = swap.apply && after(swap.apply).teams.find(t => t.id === CSR.id);
-  ok("a swap leaves the other men's tagged cells as they were", !swap.errors.length && JSON.stringify(cells(csr)) === JSON.stringify(cells(CSR)) && cells(CSR).length === 7, [swap.errors, csr && cells(csr)]);
+  ok("a swap leaves the other men's tagged cells as they were", !swap.errors.length && JSON.stringify(cells(csr)) === JSON.stringify(cells(CSR)) && cells(CSR).length > 0, [swap.errors, csr && cells(csr)]);
   ok("...and the sheet still writes them", !!csr && sheetsFromRecords(after(swap.apply)).MISC.includes("[RUD]\t") && (sheetsFromRecords(after(swap.apply)).MISC.match(/\[RUD\]/g) || []).length === (sheetsFromRecords(rec).MISC.match(/\[RUD\]/g) || []).length);
-  const out = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: "p1182", to: k(CSR) }, { kind: "player", id: "p1222", to: k(DYM) }] }] });
+  const out = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: gkD, to: k(CSR) }, { kind: "player", id: "p1222", to: k(DYM) }] }] });
   const n = out.apply && after(out.apply), dym = n?.teams.find(t => t.id === DYM.id), csr2 = n?.teams.find(t => t.id === CSR.id);
-  ok("a tagged man who leaves is written from his record at his new club", !out.errors.length && dym.squad.includes("p1222") && cells(csr2).length === 6, [out.errors, dym?.squad, csr2 && cells(csr2)]);
+  ok("a tagged man who leaves is written from his record at his new club", !out.errors.length && dym.squad.includes("p1222") && cells(csr2).length === cells(CSR).length - 1, [out.errors, dym?.squad, csr2 && cells(csr2)]);
   const rate = after(plan(OV, { players: { p1222: { ovr: 70 } } }).apply).teams.find(t => t.id === CSR.id);
   ok("a new rating keeps his tag", JSON.stringify(rate.squad[1]) === JSON.stringify({ id: "p1222", tag: "RUD" }), rate.squad[1]);
   const natd = after(plan(OV, { players: { p1222: { nat: "ALE" } } }).apply).teams.find(t => t.id === CSR.id);

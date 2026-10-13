@@ -17,7 +17,8 @@
 //     over the years rather than spent early.
 // Ratings: an Oberliga club's each season is fitted from the table on record (they all played every season from their
 // founding); a 2. Liga club has no table on record, so it plays at its rating today, wandering a little from season to
-// season.
+// season. Those are the sides the engine plays. With PLAN_EFF=<eff.json> (eff.mjs) the stand-in plans on each side's
+// strength as the engine played it instead, its style and shape priced in; the sides themselves stay as they were.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fitTable, lambdas, hash } from "../model.mjs";
 
@@ -45,14 +46,16 @@ for (const n of names) {
   for (const y of [...ord, 1934]) { w = 0.8 * w + gauss(n, y); R[n][y] = D.clubs[n].ovr + w; }
 }
 for (const n of names) for (const y of [...ord, 1934]) if (R[n][y] == null && y >= D.clubs[n].start) throw new Error(`${n} has no rating for ${y}`);
+const EFF = process.env.PLAN_EFF ? JSON.parse(readFileSync(process.env.PLAN_EFF, "utf8")) : null;
+const RS = EFF ? Object.fromEntries(names.map(n => [n, Object.fromEntries(Object.keys(R[n]).map(y => [y, EFF[n]?.[y] ?? R[n][y]]))])) : R;
 
 // ---- the stand-in -------------------------------------------------------------------------------------------------
 const lam = {}, conv = {};
 const pois = (l, k) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
 for (const y of [...ord, 1934]) {
   const L = new Float64Array(N * N * 2), C = new Float64Array(N * N);
-  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (i !== j && R[names[i]][y] != null && R[names[j]][y] != null) {
-    const [lh, la] = lambdas(M, R[names[i]][y], R[names[j]][y]); L[(i * N + j) * 2] = lh; L[(i * N + j) * 2 + 1] = la;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (i !== j && RS[names[i]][y] != null && RS[names[j]][y] != null) {
+    const [lh, la] = lambdas(M, RS[names[i]][y], RS[names[j]][y]); L[(i * N + j) * 2] = lh; L[(i * N + j) * 2 + 1] = la;
     let d = 0; for (let k = 0; k < 12; k++) d += pois(lh, k) * pois(la, k);
     C[i * N + j] = Math.max(0, (M.drawK - 1) * d / (1 - d));
   }
@@ -129,7 +132,7 @@ const pick = parts[Math.floor(rnd() * parts.length)];
 const recs = [];
 for (let n = pick.node; n; n = n.up) recs.unshift(n.rec);
 const nm = (c) => names[c], nms = (xs) => (xs || []).map(nm);
-const plan = { A, cap: CAP, arm: pick.arm, distinct: new Set(parts.map(p => p.node)).size, tried,
+const plan = { A, cap: CAP, arm: pick.arm, distinct: new Set(parts.map(p => p.node)).size, tried, eff: !!EFF,
   seasons: recs.map(r => ({ y: r.y, ao: nms(r.ao), l2: nms(r.l2), champ: nm(r.champ), champ2: nm(r.champ2), down: nms(r.down), up: nms(r.up), into: nms(r.into), born: nms(r.born) })),
   held: { y: 1934, l2: D.target.l2 },
   ratings: Object.fromEntries(names.map(n => [n, Object.fromEntries(Object.entries(R[n]).map(([y, v]) => [y, Math.round(v * 10) / 10]))])) };

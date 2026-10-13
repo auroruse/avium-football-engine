@@ -8,7 +8,9 @@
 // - The sheets' moves of 6 September, 2 October and 5 October 2026 are real, and fall at the first season filed after
 //   them: 6 September's from the 1935 World Cup, 2 and 5 October's after it. So are 9 October's, after it as well: three
 //   national sides given a coach whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping
-//   Tierra Arcadia and Axerfreditenshin), since a manager owns the style his sides play. Every other change in the sheets' history
+//   Tierra Arcadia and Axerfreditenshin), since a manager owns the style his sides play. So are 12 October's, after it too:
+//   the Giathkik Premier League's founding clubs took two men out of work since then, Sonobe at Zoryansk Rangers and
+//   Ōkōchi at Svyatogorsk Spearmen. Every other change in the sheets' history
 //   is a cleanup and not canon, and so are 6 September's swaps at Spartak, Dynamo and ISS and 5 October's at Eivorie
 //   (Dæltun Leah has had Eivorie throughout).
 // Seasons are public/avium/pstats folders and seasons; sides are team records (src/data/teams.json); managers are
@@ -64,4 +66,6 @@ export const MANAGER_HISTORY = [
   { side: "t0223", name: "AC Shirasagi", spells: [["m0093", "1932"], ["m0068", EARLY_1935]] },           // Horie; von Schöning
   { side: "t0235", name: "Metallurg Motohora", spells: [["m0247", "1932"], ["m0093", EARLY_1935]] },     // Ōkōchi; Horie
   { side: "t0243", name: "Concordia Hakata", spells: [["m0246", "1932"], ["m0194", EARLY_1935]] },       // Takahata; Zarubin
+  { side: "t0364", name: "Zoryansk Rangers", spells: [["m0096", EARLY_1935]] },                       // Sonobe, from Shiome Matsuumi
+  { side: "t0353", name: "Svyatogorsk Spearmen", spells: [["m0247", EARLY_1935]] },                   // Ōkōchi, from Metallurg Motohora
 ];

@@ -115,7 +115,7 @@ sides that file lists, which name their managers in order and the season each to
 September, 2 October and 5 October 2026 are real, apart from 6 September's swaps at Spartak, Dynamo and ISS and 5
 October's at Eivorie; every
 other change in the sheets' history was a cleanup. 9 October's moves are real too: three national sides took a coach
-whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping Tierra Arcadia and Axerfreditenshin). test/tenures.mjs checks the file against the records.
+whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping Tierra Arcadia and Axerfreditenshin). So are 12 October's: the Giathkik Premier League's founding clubs took Sonobe (Zoryansk Rangers) and Ōkōchi (Svyatogorsk Spearmen), both out of work since leaving their Nichirian clubs. test/tenures.mjs checks the file against the records.
 A bar in League Finishes opens that season, and hovering it (or reaching it by keyboard) shows a card over it: the
 season, the place and the points (an AFA Rankings bar: the year and the place).
 
