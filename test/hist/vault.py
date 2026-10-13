@@ -56,10 +56,15 @@ raw = open(wf, encoding="utf-8", newline="").read()
 crlf = "\r\n" in raw
 lines = raw.replace("\r\n", "\n").split("\n")
 by = {slash(y): c for y, c in champs.items()}
+cupw = {}
+for l in open(P + "stsc/winners.tsv", encoding="utf-8").read().splitlines()[1:]:
+    y, w = l.split("\t")[:2]
+    if int(y) in champs: cupw[slash(int(y))] = w
 out = []
 for l in lines:
     c = l.split("\t")
     if len(c) >= 2 and c[0] in by: c[1] = by[c[0]]
+    if len(c) >= 3 and c[0] in cupw: c[2] = cupw[c[0]]
     out.append("\t".join(c))
 open(wf, "w", encoding="utf-8", newline="").write(("\r\n" if crlf else "\n").join(out))
 
@@ -67,20 +72,25 @@ open(wf, "w", encoding="utf-8", newline="").write(("\r\n" if crlf else "\n").joi
 # current name, a merged club's titles under its own name with where it went.
 MERGED = {"Zōsensho": "Takarazuka Kaigun", "Kurihama Chinjufu": "Takarazuka Kaigun", "Suirai Sentai": "Takarazuka Kaigun",
           "Dai-Ichi Konoe": "Dai-Ichi Sen'ninhara", "Sasebo Shuto": "Dai-Ichi Sen'ninhara"}
-won = {}
-for l in open(wf, encoding="utf-8").read().splitlines()[1:]:
-    c = l.split("\t")
-    if len(c) >= 2 and c[1]:
-        n = "Dai-Ichi Sen'ninhara (all names)" if c[1] in ("343 Kōkūtai", "Dai-Ichi Sen'ninhara") else (f"{c[1]} (→ {MERGED[c[1]]})" if c[1] in MERGED else c[1])
-        won.setdefault(n, []).append(c[0])
-won.setdefault(final(P + "nl1/1934.md")[0]["club"], []).append("33/34")
 yr = lambda s: int(s[:2]) + (1800 if int(s[:2]) >= 50 else 1900)
-rows = sorted(won.items(), key=lambda kv: (-len(kv[1]), yr(kv[1][0])))
-table = "| Club | Titles | Seasons |\n|---|---|---|\n" + "\n".join(f"| {n} | {len(s)} | {', '.join(s)} |" for n, s in rows)
+def titles(col, extra):
+    won = {}
+    for l in open(wf, encoding="utf-8").read().splitlines()[1:]:
+        c = l.split("\t")
+        if len(c) > col and c[col]:
+            n = "Dai-Ichi Sen'ninhara (all names)" if c[col] in ("343 Kōkūtai", "Dai-Ichi Sen'ninhara") else (f"{c[col]} (→ {MERGED[c[col]]})" if c[col] in MERGED else c[col])
+            won.setdefault(n, []).append(c[0])
+    won.setdefault(extra, []).append("33/34")
+    rows = sorted(won.items(), key=lambda kv: (-len(kv[1]), yr(kv[1][0])))
+    return "| Club | Titles | Seasons |\n|---|---|---|\n" + "\n".join(f"| {n} | {len(s)} | {', '.join(s)} |" for n, s in rows)
+def cup_final(y):
+    t = open(P + f"stsc/{y}.md", encoding="utf-8").read().split("### Final")[-1]
+    return re.findall(r"\*\*([^*]+)\*\*", t)[0].strip()
 lf = ROOT + "Club Lore.md"
 lore = open(lf, encoding="utf-8").read()
-m = re.search(r"(### League\n\n)(\| Club \| Titles \| Seasons \|\n\|---\|---\|---\|\n(?:\|.*\|\n)+)", lore)
-assert m, "League table not found"
-lore = lore[:m.start(2)] + table + "\n" + lore[m.end(2):]
+for head, col, extra in (("League", 1, final(P + "nl1/1934.md")[0]["club"]), ("Cup", 2, cup_final(1934))):
+    m = re.search(r"(### " + head + r"\n\n)(\| Club \| Titles \| Seasons \|\n\|---\|---\|---\|\n(?:\|.*\|\n)+)", lore)
+    assert m, head + " table not found"
+    lore = lore[:m.start(2)] + titles(col, extra) + "\n" + lore[m.end(2):]
 open(lf, "w", encoding="utf-8").write(lore)
-print(f"vault: {len(champs)} season tables, winners list and Club Lore's League table updated")
+print(f"vault: {len(champs)} season tables, the winners list (league and cup) and Club Lore's League and Cup tables updated")
