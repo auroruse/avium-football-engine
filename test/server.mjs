@@ -131,8 +131,8 @@ ok("...one commit: the draft, the records, the sheets", ["src/data/drafts.json",
 dRec = now();
 const holder = dRec.teams.find(t => t.id === due.club), mineEd = holder.nation === "VAR" ? varh : kar, otherEd = holder.nation === "VAR" ? kar : varh;
 const lgC = JSON.parse(gh.commits.get(gh.head)["src/data/leagues.json"]).find(l => l.college).name;
-const college = dRec.teams.find(t => t.group === lgC && ids(t).some(id => dRec.players.find(p => p.id === id)?.grad === 1936));
-const prospect = ids(college).find(id => dRec.players.find(p => p.id === id)?.grad === 1936);
+const college = dRec.teams.find(t => t.group === lgC && ids(t).some(id => dRec.players.find(p => p.id === id)?.grad === 1935));
+const prospect = ids(college).find(id => dRec.players.find(p => p.id === id)?.grad === 1935);
 dr = await call("/draft", { method: "POST", session: otherEd, body: { action: "pick", n: due.n, player: prospect } });
 ok("another nation's editor cannot make that pick", dr.status === 422 && /not yours/.test(dr.data.errors[0]), dr.data);
 dr = await call("/draft", { method: "POST", session: mineEd, body: { action: "pick", n: due.n + 1, player: prospect } });

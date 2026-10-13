@@ -630,7 +630,8 @@ by rating or value puts a hidden man last, as a man with none. The records still
 college side (the same day: "Hidden In The App"), and the moment a man leaves a college he shows like anyone else.
 
 **Years.** A college player's record carries `grad`, the year his course ends, which is the draft he enters. His year
-reads off it against the college season (1935/36 to start, feeding the 1936 draft): Final Year when the two meet, then
+reads off it against the college season (1934/35 to start, feeding the 1935 draft; the user filed the first season as
+1935 beside the NL's and moved everything back a year, 14 October 2026): Final Year when the two meet, then
 Third, Second and First. A man made at a college takes it from his age, 21 or more Final Year, 20 Third, 19 Second, 18 or
 less First, and the overseer changes it on his Record. On the Sheet his chip carries his year (Y1 to Y4) where another
 nation's code would stand. New men at a college are aged 18 to 21, typed or pasted into its places, from Many and in Roll

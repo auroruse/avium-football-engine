@@ -40,7 +40,7 @@ ok("two each to Daryā and Homā, one each to the other eight", tally["Daryā Sh
    && ["Tarāzu Dashtvār", "Mehrāvar AC", "Murmánska Partisani", "Åulot FK", "RöPS", "XIV. District JK", "VKS", "Szatmár SK"].every(n => tally[n] === 1), tally);
 ok("every one of them picks by hand", traded.every(p => handOf(rec0)(p.club)));
 const pool = D.draftPool(rec0, d0);
-ok("the pool is every final-year man at a college", pool.size === rec0.players.filter(p => p.grad === 1936).length && pool.size > 100, pool.size);
+ok("the pool is every final-year man at a college", pool.size === rec0.players.filter(p => p.grad === 1935).length && pool.size > 100, pool.size);
 
 console.log("\nstarting it");
 // The tables: NL2 then NL1, each in a made-up finishing order, worst first.
@@ -117,9 +117,9 @@ while (dd.status === "running" && guard++ < 50) {
 }
 ok("all 44 picks made and the draft over", dd.status === "done" && dd.picks.every(p => p.player) && !!dd.ended, dd.status);
 ok("44 different men", new Set(dd.picks.map(p => p.player)).size === 44);
-const finals = rr.players.filter(p => p.grad === 1936).map(p => p.id), drafted = new Set(dd.picks.map(p => p.player));
+const finals = rr.players.filter(p => p.grad === 1935).map(p => p.id), drafted = new Set(dd.picks.map(p => p.player));
 ok("every final-year man nobody took has left his college for free agency", finals.filter(id => !drafted.has(id)).every(id => !clubOf(rr, id)), finals.filter(id => !drafted.has(id) && clubOf(rr, id)).length);
-ok("the men in their other years stay", rr.players.filter(p => p.grad > 1936).every(p => clubOf(rr, p.id)?.group === "All-Nichirin Collegiate Championship"));
+ok("the men in their other years stay", rr.players.filter(p => p.grad > 1935).every(p => clubOf(rr, p.id)?.group === "All-Nichirin Collegiate Championship"));
 const seen = new Map(); let twice = 0;
 for (const t of rr.teams.filter(t => !["AVIUM", "ARTERRA"].includes(t.file))) for (const v of t.squad || []) { const id = idOf(v); if (!id) continue; if (seen.has(id)) twice++; seen.set(id, t.id); }
 ok("nobody at two clubs, every squad still 22 places", twice === 0 && rr.teams.every(t => !t.squad || t.squad.length === 22 || ["AVIUM", "ARTERRA"].includes(t.file)), twice);

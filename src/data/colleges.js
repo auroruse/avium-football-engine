@@ -2,9 +2,10 @@
 // says `college` is a college competition. Its players' ratings, values and traits are hidden in the app from everyone but
 // the overseer (App.tsx), and each carries `grad`, the year his course ends, which is the draft he enters.
 
-// The season the colleges are playing, by the year it ends, which is also the draft it feeds: 1935/36 and the 1936 draft
+// The season the colleges are playing, by the year it ends, which is also the draft it feeds: 1934/35 and the 1935 draft
+// (the user filed the first season as 1935 beside the NL's, 14 October 2026: "Shift Back To 1935")
 // to start. It moves on once a draft is held (the draft, stage 3).
-export const COLLEGE_SEASON = 1936;
+export const COLLEGE_SEASON = 1935;
 
 // A course is four years.
 export const YEARS = ["First Year", "Second Year", "Third Year", "Final Year"];
