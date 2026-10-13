@@ -17,3 +17,9 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 4	1935	2026-10-13T12:58:56.453Z	player	p1122	Andrea FERRARI	CB	81	27	12000000	t0212	AFC Makinohara	t0203	Spartak Kanagawa	auroruse
 4	1935	2026-10-13T12:58:56.453Z	player	p1106	Kemar BROWNER	CM/DM	81	32	7000000	t0212	AFC Makinohara	t0203	Spartak Kanagawa	auroruse
 4	1935	2026-10-13T12:58:56.453Z	player	p3309	Tōgo TANIOKA	ST	80	25	16000000	t0212	AFC Makinohara	t0203	Spartak Kanagawa	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p3242	Kazuki FONDO	RB	80	29	9000000	t0204	Viridia Shikisen	t0223	AC Shirasagi	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p3245	Wolfram EBERHARDT	CB	77	26	5800000	t0204	Viridia Shikisen	t0223	AC Shirasagi	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p3247	Genga URA	ST	74	30	2800000	t0204	Viridia Shikisen	t0223	AC Shirasagi	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p1465	Anirban GOSWAMI	CB	77	26	7600000	t0223	AC Shirasagi	t0204	Viridia Shikisen	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p1213	Orlando CORREA	RB	75	21	4400000	t0223	AC Shirasagi	t0204	Viridia Shikisen	auroruse
+5	1935	2026-10-13T12:59:52.682Z	player	p3426	Ryōsuke TSUGAWA	ST	75	24	6900000	t0223	AC Shirasagi	t0204	Viridia Shikisen	auroruse
