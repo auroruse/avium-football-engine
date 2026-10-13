@@ -15275,19 +15275,19 @@ export default function App() {
               {/* The ground at its photograph's own proportions (Moukden and Kirin, 13 October 2026: "the stadium image needs to
                   be displayed at original aspect ratio"), its name, city and capacity under it. No photograph on file keeps the
                   kit colours, as Full Time does. A college's (the same day: "Stadiums should be empty right now, then below it
-                  have University, City"): its ground's name and capacity once it has one, then its university and city. */}
+                  have University, City"; "keep the city where it is like in clubs"): its ground's name once it has one, the city
+                  and capacity under it as a club's, then its university, sliding when it is too long ("Can't this just scroll?"). */}
               <section className="ux-psec"><h3 className="ux-psec-h">Stadium</h3>
                 {photo ? (
                   <button type="button" className="ux-btnreset ux-pstad-ph" aria-label={st} onClick={() => setUxPhoto({ name: st, cap })}>
                     <StadiumImg name={st} style={{ borderRadius: 0, border: "none" }} /></button>)
                   : <div className="ux-pstad-kit" aria-hidden="true" style={{ background: `linear-gradient(135deg, ${t.primaryColor || "var(--ux-panel-3)"} 0 50%, ${t.secondaryColor || t.primaryColor || "var(--ux-panel-3)"} 50% 100%)` }} />}
                 {!isNT && collegeNames.has(t.league) ? (
-                  <div className="ux-pstad-cap">{st && <b><FitLine>{st}</FitLine></b>}{st && cap && <span><span style={mono}>Capacity {cap}</span></span>}
-                    <dl className="ux-pstad-dl">
-                      <div><dt>University</dt><dd><FitLine>{rec?.university || "–"}</FitLine></dd></div>
-                      <div><dt>City</dt><dd>{t.city ? <CityLink name={t.city} /> : "–"}</dd></div></dl></div>)
+                  <div className="ux-pstad-cap">{st && <b><FitLine>{st}</FitLine></b>}
+                    <span>{t.city && <CityLink name={t.city} />}{cap && <span>Capacity {cap}</span>}</span>
+                    <dl className="ux-pstad-dl"><div><dt>University</dt><dd><SlideName text={rec?.university || "–"} /></dd></div></dl></div>)
                   : (<div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b>
-                  <span>{t.city && <CityLink name={t.city} />}{cap && <span style={mono}>Capacity {cap}</span>}</span></div>)}</section>
+                  <span>{t.city && <CityLink name={t.city} />}{cap && <span>Capacity {cap}</span>}</span></div>)}</section>
               <section className="ux-psec"><h3 className="ux-psec-h">Manager</h3>
                 <div className="ux-pmgr">
                   <span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={t.manager || ""} size="100%" /></span>

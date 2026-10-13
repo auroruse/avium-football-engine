@@ -633,8 +633,8 @@ as everyone's does ("Your Refresh Only").
 
 **Grounds.** A college's record carries `university`, its institution's name, beside a `stadium` left empty until the
 overseer adds one (the user, 13 October 2026: "Stadiums should be empty right now, then below it have University, City"):
-its club page's Stadium shows the picture, or its kit colours without one, the ground's name and capacity once it has
-one, then University and City.
+its club page's Stadium shows the picture, or its kit colours without one, the ground's name once it has one, the city
+and capacity under it as a club's, then University, its name sliding when too long.
 
 ### Documentation
 

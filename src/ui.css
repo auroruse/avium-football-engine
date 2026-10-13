@@ -1051,7 +1051,7 @@
 .ux-pstad-cap { margin-top: 8px; min-width: 0; }
 .ux-pstad-cap b { display: block; font-size: 13px; font-weight: 600; color: var(--ux-text); overflow: hidden; }
 .ux-pstad-cap > span { display: flex; gap: 10px; margin-top: 3px; font-size: 11px; color: var(--ux-text-2); white-space: nowrap; }
-/* A college's university and city under its ground (13 October 2026). */
+/* A college's university under its ground and city (13 October 2026). */
 .ux-pstad-dl { display: grid; gap: 5px; margin: 8px 0 0; font-size: 12px; }
 .ux-pstad-dl > div { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: baseline; min-width: 0; }
 .ux-pstad-dl dt { font-size: 11px; color: var(--ux-text-3); }
