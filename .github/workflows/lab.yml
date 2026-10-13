@@ -1,19 +1,13 @@
 name: Lab
-
-# THE TACTICS LAB ON GITHUB'S MACHINES. Push a branch named lab/<anything> and the experiment named in
-# test/specs/run.env runs split across twenty runners (test/lab.mjs SHARD); each shard uploads its records, and
-# `gh run download <run id>` brings them back to concatenate into the same file one machine would have written.
-# Only lab/ branches: a push to main deploys the app (deploy.yml) and runs nothing here.
+# lab/ branch only: the history re-sim's matches (test/hist/play.mjs), twenty of twenty-one shares on ARM runners; the
+# twenty-first plays on the Mac. Each share uploads one result a line.
 on:
   push:
     branches: ['lab/**']
-
 jobs:
   shard:
-    # ARM and this exact Node: the same arithmetic as the Mac the lab was built on, so a cloud run replays a local one
-    # match for match (on x64 under Node 24.21 the same code drifted apart, equal only on average).
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 150
+    timeout-minutes: 330
     strategy:
       fail-fast: false
       matrix:
@@ -26,20 +20,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: bash test/rebuild.sh
-      - name: Run shard ${{ matrix.shard }} of 20
+      - name: Play share ${{ matrix.shard }} of 21
         run: |
-          set -a; . test/specs/run.env; set +a
           mkdir -p out
-          # LAB_TEST names a test file that splits itself the same way (SHARD=i/n) and prints its tallies, to be merged
-          # after (test/cards.mjs merge). A match that never finishes is cut off at fifteen minutes; the log names it.
-          if [ -n "$LAB_TEST" ]; then
-            SHARD=${{ matrix.shard }}/20 timeout 900 node "test/$LAB_TEST" > "out/lab-${{ matrix.shard }}.jsonl"
-          else
-            SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
-          fi
+          SHARD=${{ matrix.shard }}/21 node test/hist/play.mjs test/hist/jobs.json "$(nproc)" > "out/hist-${{ matrix.shard }}.jsonl"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lab-${{ matrix.shard }}
-          path: out/lab-${{ matrix.shard }}.jsonl
+          name: hist-${{ matrix.shard }}
+          path: out/hist-${{ matrix.shard }}.jsonl
           retention-days: 7
