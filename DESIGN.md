@@ -29,6 +29,11 @@ turned off. Off, the world is Avium alone: the four world switches go (Registry'
 picker, the tournament's Sides), and search, addresses and the Editor drop Arterra's sides, players and managers. A match
 or tournament already holding an Arterra side plays on.
 
+**Viewer Mode** (Moukden and Kirin, 13 October 2026: "add a viewer mode in settings for the overseer so I can view the app
+as a normie") is the overseer's switch in the settings menu, kept in his browser: on, the app treats him as someone signed
+out, his session kept. The Editor, Requests and the Cart go, no side is his, and a college player's rating, value and
+traits are hidden from him as from everyone else; the account menu says so.
+
 ### Pages (the page bar)
 
 Each section's pages are tabs in the page bar under the top bar. A page about one thing (a club, a nation, a player)
@@ -625,6 +630,11 @@ Ages. The overseer makes all of them on the Sheet (the user, 13 October 2026), a
 as everyone's does ("Your Refresh Only").
 
 **Kits** come from each college's badge: its main colour at home, its next away.
+
+**Grounds.** A college's record carries `university`, its institution's name, beside a `stadium` left empty until the
+overseer adds one (the user, 13 October 2026: "Stadiums should be empty right now, then below it have University, City"):
+its club page's Stadium shows the picture, or its kit colours without one, the ground's name and capacity once it has
+one, then University and City.
 
 ### Documentation
 

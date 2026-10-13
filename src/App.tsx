@@ -8575,7 +8575,14 @@ export default function App() {
     try { const c = JSON.parse(localStorage.getItem(SCOPE_KEY)); if (c && c.login === s.login && c.role) return c; } catch {}
     return { ...VIEWER, login: s.login }; });
   const [acctOpen, setAcctOpen] = useState(false);              // the account menu in the header
-  const overseer = scope.role === "overseer", isEditor = scope.role !== "viewer";
+  // VIEWER MODE (Moukden and Kirin, 13 October 2026: "add a viewer mode in settings for the overseer so I can view the app
+  // as a normie"): the overseer sees the app as someone signed out does, his session kept. Settings turns it on and off,
+  // and this browser remembers it.
+  const [viewMode, setViewMode] = useState(() => { try { return localStorage.getItem("avium-viewer-mode") === "on"; } catch { return false; } });
+  useEffect(() => { try { if (viewMode) localStorage.setItem("avium-viewer-mode", "on"); else localStorage.removeItem("avium-viewer-mode"); } catch {} }, [viewMode]);
+  const asViewer = viewMode && scope.role === "overseer";
+  const overseer = scope.role === "overseer" && !asViewer, isEditor = scope.role !== "viewer" && !asViewer;
+  useEffect(() => { if (asViewer && tab === "editor") setTab("leagues"); }, [asViewer, tab]);
   const signIn = () => { window.location.href = `${REGISTRY}/login?return=${encodeURIComponent(window.location.href)}`; };
   const signOut = () => { try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SCOPE_KEY); } catch {}
     setSession(null); setScope(VIEWER); setAcctOpen(false); };
@@ -11643,7 +11650,7 @@ export default function App() {
     : (tPhase === "groups" && tGroups.length > 0) || ((tPhase === "knockout" || tPhase === "complete") && tKO) ? ({ fixtures: "tfix", stats: "tstats", rules: "trules" }[tView] || "tover")
     : null;
   // The signed-in editor's nation: what the server says they edit, or failing that the editors file.
-  const uxMyCode = session ? ((scope.nations || [])[0] || (editorsRec.editors?.[session.login] || [])[0] || null) : null;
+  const uxMyCode = session && !asViewer ? ((scope.nations || [])[0] || (editorsRec.editors?.[session.login] || [])[0] || null) : null;
   const uxMy = uxMyCode ? regNationBy.get(uxMyCode) || null : null;
   // The titles still contested, each at its newest season. Who won comes from the report (winnerOfSeason), which reads a
   // double-elimination Nations League off its Grand Final.
@@ -14703,6 +14710,9 @@ export default function App() {
                   </select></label>)}
               <button type="button" role="menuitemcheckbox" aria-checked={arterraOn} className="ux-btnreset ux-menu-item" onClick={() => setArterraOn(v => !v)}>
                 Arterra<span className={"ux-tog" + (arterraOn ? " ux-on" : "")} aria-hidden="true"><i /></span></button>
+              {scope.role === "overseer" && (
+                <button type="button" role="menuitemcheckbox" aria-checked={viewMode} className="ux-btnreset ux-menu-item" onClick={() => { closeCart(); closeInbox(); setViewMode(v => !v); }}>
+                  Viewer Mode<span className={"ux-tog" + (viewMode ? " ux-on" : "")} aria-hidden="true"><i /></span></button>)}
               <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => { setUxMenu(null); setTab("docs"); }}>Documentation</button>
             </div></>)}
         </div>
@@ -14713,7 +14723,7 @@ export default function App() {
               {uxIcon("inbox")}{reqFor.length > 0 && <span className="ux-count">{reqFor.length}</span>}</button>
             {inboxOpen && renderUxRequests()}
           </div>)}
-        {(isEditor || draftCount > 0 || draftOpen) && (
+        {!asViewer && (isEditor || draftCount > 0 || draftOpen) && (
           <div className="ux-menu-wrap">
             <button type="button" className={"ux-btnreset ux-iconbtn" + (draftOpen ? " ux-on" : "")} aria-haspopup="dialog" aria-expanded={draftOpen}
               aria-label={draftCount ? `Cart, ${draftCount} ${draftCount === 1 ? "Change" : "Changes"}` : "Cart"} onClick={() => (draftOpen ? closeCart() : openCart())}>
@@ -14729,7 +14739,7 @@ export default function App() {
               <div className="ux-scrim" onClick={() => setAcctOpen(false)} />
               <div className="ux-menu" role="menu" aria-label="Account" onKeyDown={e => { if (e.key === "Escape") setAcctOpen(false); }}>
                 <div className="ux-menu-head"><b>{session.login}</b>
-                  {overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {[...scope.nations.map(c => natOptions.name.get(c) || c), ...(scope.clubs || []).map(c => `${natOptions.name.get(c) || c} Clubs`)].join(", ")}</> : "Viewer"}</div>
+                  {asViewer ? "Overseer, In Viewer Mode" : overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {[...scope.nations.map(c => natOptions.name.get(c) || c), ...(scope.clubs || []).map(c => `${natOptions.name.get(c) || c} Clubs`)].join(", ")}</> : "Viewer"}</div>
                 <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" autoFocus onClick={signOut}>Sign Out</button>
               </div></>)}
           </div>
@@ -15264,14 +15274,20 @@ export default function App() {
                   <div key={l} className="ux-pkit">{shirt(c)}<span><b>{l}</b><span style={mono}>{c ? String(c).toUpperCase() : "–"}</span></span></div>))}</div></section>
               {/* The ground at its photograph's own proportions (Moukden and Kirin, 13 October 2026: "the stadium image needs to
                   be displayed at original aspect ratio"), its name, city and capacity under it. No photograph on file keeps the
-                  kit colours, as Full Time does. */}
+                  kit colours, as Full Time does. A college's (the same day: "Stadiums should be empty right now, then below it
+                  have University, City"): its ground's name and capacity once it has one, then its university and city. */}
               <section className="ux-psec"><h3 className="ux-psec-h">Stadium</h3>
                 {photo ? (
                   <button type="button" className="ux-btnreset ux-pstad-ph" aria-label={st} onClick={() => setUxPhoto({ name: st, cap })}>
                     <StadiumImg name={st} style={{ borderRadius: 0, border: "none" }} /></button>)
                   : <div className="ux-pstad-kit" aria-hidden="true" style={{ background: `linear-gradient(135deg, ${t.primaryColor || "var(--ux-panel-3)"} 0 50%, ${t.secondaryColor || t.primaryColor || "var(--ux-panel-3)"} 50% 100%)` }} />}
-                <div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b>
-                  <span>{t.city && <CityLink name={t.city} />}{cap && <span style={mono}>Capacity {cap}</span>}</span></div></section>
+                {!isNT && collegeNames.has(t.league) ? (
+                  <div className="ux-pstad-cap">{st && <b><FitLine>{st}</FitLine></b>}{st && cap && <span><span style={mono}>Capacity {cap}</span></span>}
+                    <dl className="ux-pstad-dl">
+                      <div><dt>University</dt><dd><FitLine>{rec?.university || "–"}</FitLine></dd></div>
+                      <div><dt>City</dt><dd>{t.city ? <CityLink name={t.city} /> : "–"}</dd></div></dl></div>)
+                  : (<div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b>
+                  <span>{t.city && <CityLink name={t.city} />}{cap && <span style={mono}>Capacity {cap}</span>}</span></div>)}</section>
               <section className="ux-psec"><h3 className="ux-psec-h">Manager</h3>
                 <div className="ux-pmgr">
                   <span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={t.manager || ""} size="100%" /></span>

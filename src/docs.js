@@ -8,7 +8,7 @@ export const DOCS = [
       "Every page has its own address. The browser's back and forward buttons work, the arrows beside the wordmark do the same, and any page can be sent to someone as a link.",
       { dl: [
         ["Search", "Finds nations, clubs, players, managers and competitions by the start of any word in the name, and a side by its code. The arrow keys move through the results and Enter opens one."],
-        ["Settings", "The gear: the colour theme, the Arterra switch, and this Documentation. With Arterra off, the app shows Avium only: no world switches, and no Arterra sides, players or managers in any list, search or picker. It is saved in your browser and changes nothing for anyone else."],
+        ["Settings", "The gear: the colour theme, the Arterra switch, and this Documentation. With Arterra off, the app shows Avium only: no world switches, and no Arterra sides, players or managers in any list, search or picker. It is saved in your browser and changes nothing for anyone else. The overseer's also has Viewer Mode, which shows the app as someone signed out sees it."],
         ["Sign In", "With a GitHub account, for the ACU's editors. Reading needs no account. See Editing."],
         ["Requests And Cart", "An editor's: what is waiting on an answer, and the changes not yet saved. See Editing."],
         ["Play Match", "The match screen. See Matches."],
