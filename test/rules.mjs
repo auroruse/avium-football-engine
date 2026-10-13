@@ -394,7 +394,9 @@ console.log("codes of two to four letters (12 October 2026)");
 
 console.log("the colleges: graduation years and conferences (13 October 2026)");
 { const L = rec.leagues.find(l => l.college), C = rec.teams.find(t => t.group === L.name), K = teamKey(C);
-  const s = plan(OV, { new: [{ id: "c1", what: "players", name: "Taro GAKUSEI", nat: "NCH", born: "1914-05-05", ovr: 60, pos: ["CM"], side: K, grad: 1938 }] });
+  // The colleges are full (13 October 2026), so his place is made in the same cart: the last substitute released.
+  const room = { [K]: { squad: ids(C).map((v, i) => (i === 21 ? null : v)) } };
+  const s = plan(OV, { teams: room, new: [{ id: "c1", what: "players", name: "Taro GAKUSEI", nat: "NCH", born: "1914-05-05", ovr: 60, pos: ["CM"], side: K, grad: 1938 }] });
   const n = s.apply && after(s.apply), p = n?.players.find(x => x.name === "Taro GAKUSEI");
   ok("the overseer's new man at a college keeps his graduation year", !s.errors.length && p?.grad === 1938 && ids(n.teams.find(t => t.id === C.id)).includes(p?.id), s.errors);
   const bad = plan(OV, { new: [{ id: "c2", what: "players", name: "Jiro GAKUSEI", nat: "NCH", born: "1914-05-05", ovr: 60, pos: ["CM"], side: K, grad: 1938.5 }] });
