@@ -121,7 +121,7 @@ console.log("\na college league's season: the preset, the export and the archive
   const teams = P.teams.map(n => cat.get(n.normalize("NFC")));
   const G = eng.allocPreset(teams, P.groups, "roundRobin", 1, P.names);
   ok("the groups carry their conferences' names", G.map(g => eng.groupName(g)).join("|") === lg.conferences.map(c => c.name).join("|"), G.map(g => g.name));
-  ok("...and their initials where a column has room for a letter", G.map(g => eng.groupTag(g)).join("|") === "CE|WC|SC|EC", G.map(g => eng.groupTag(g)));
+  ok("...and their initials where a column has room for a letter", G.map(g => eng.groupTag(g)).join("|") === "CE|FL|SC|BW", G.map(g => eng.groupTag(g)));
   ok("...each a single round robin", G.every(g => g.schedule.length === 7 && g.schedule.every(rd => rd.length === 4)), G.map(g => g.schedule.length));
   let n = 0;
   for (const g of G) for (const rd of g.schedule) for (const m of rd) { n++; m.result = { ftHome: n % 4, ftAway: (n * 7) % 3 }; }
@@ -143,7 +143,7 @@ console.log("\na college league's season: the preset, the export and the archive
   const T = READER.parseTournTabs(md);
   ok("the season file's tabs are Conferences then Playoff", T.tabs.map(t => t.name).join("|") === "Conferences|Playoff", T.tabs.map(t => t.name));
   ok("each conference's table under its name", lg.conferences.every(c => md.includes("### " + c.name + "\n")));
-  ok("...its rounds under the round and its name", md.includes("### Round 7 — Capital Eight\n") && md.includes("### Round 1 — Eastern Conference\n"));
+  ok("...its rounds under the round and its name", md.includes("### Round 7 — Capital Eight\n") && md.includes("### Round 1 — Blue Water Conference\n"));
   ok("the two each conference sent through are in bold, and nobody else", (md.match(/^\| \d+ \| \*\*/gm) || []).length === 8, (md.match(/^\| \d+ \| \*\*/gm) || []).length);
   ok("the champion is the playoff's", READER.tournWinner(md) === champ, READER.tournWinner(md));
   const won = eng.archResult(md, champ), lost = eng.archResult(md, runner), sf = eng.archResult(md, semi), out = eng.archResult(md, top(0, 8));

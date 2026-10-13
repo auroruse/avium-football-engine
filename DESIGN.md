@@ -605,11 +605,13 @@ quick view, and every change is saved from the cart, as before.
 The All-Nichirin Collegiate Championship (Moukden and Kirin, 12 and 13 October 2026, over four rounds of questions) is
 Nichirin's tier 3: thirty-two college sides, one competition (`l0021`), played beside the NL each season. Its record in
 `src/data/leagues.json` carries `college: true` and its four `conferences` in bracket order, each a name and its eight
-clubs. The names (Capital Eight, Western Conference, Southern Conference, Eastern Conference) stand until the overseer
+clubs. The names (Capital Eight in the north-west, then the Five Lakes Conference, the Serica Conference and the Blue Water
+Conference, for the south-east, south-west and north-east as the map shows them; the user, 14 October 2026: "rename the
+conferences outside the capital eight entirely, more creatively") stand until the overseer
 renames them on the league's dock, where each conference lists its clubs. A season is the conference round robin, one
 match a pairing, then the top two of each into an eight-team playoff crossed so that two sides of one conference can meet
-only in the final (Capital 1 against Western 2 and Southern 1 against Eastern 2 in one half, Western 1 against Capital 2
-and Eastern 1 against Southern 2 in the other), with extra time and penalties. Rivalry week and the bowls are gone (the
+only in the final (Capital 1 against Five Lakes 2 and Serica 1 against Blue Water 2 in one half, Five Lakes 1 against Capital 2
+and Blue Water 1 against Serica 2 in the other), with extra time and penalties. Rivalry week and the bowls are gone (the
 user, 13 October 2026: "Only conference games and playoffs"). The draft follows the NL season, before the Club World Cup,
 the Club World Shield and the next NL season: one round of 44 picks, the whole pyramid worst first (NL2's last first,
 NL1's champion last). A pick trades on Trades for the coming draft only, worth the slot its club's table place gives it
