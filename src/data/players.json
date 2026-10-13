@@ -5081,5 +5081,6 @@
 {"id":"p5119","name":"Lev KHARITONOV","nat":"GIA","ovr":57,"born":"1907-04-17","pos":["CM"]},
 {"id":"p5120","name":"Maksim LUKIN","nat":"GIA","ovr":57,"born":"1914-10-21","pos":["AM"]},
 {"id":"p5121","name":"Kwame MASLOV","nat":"GIA","ovr":58,"born":"1908-02-15","pos":["ST"]},
-{"id":"p5122","name":"Taipa SAARETINEN","nat":"KFK","ovr":33,"born":"1916-05-26","pos":["GK"]}
+{"id":"p5122","name":"Taipa SAARETINEN","nat":"KFK","ovr":33,"born":"1916-05-26","pos":["GK"]},
+{"id":"p5123","name":"Hans STEINBURGER","nat":"AAD","ovr":35,"born":"1914-07-31","pos":["CM"]}
 ]
