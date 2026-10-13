@@ -24,3 +24,9 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 5	1935	2026-10-13T12:59:52.682Z	player	p1213	Orlando CORREA	RB	75	21	4400000	t0223	AC Shirasagi	t0204	Viridia Shikisen	auroruse
 5	1935	2026-10-13T12:59:52.682Z	player	p3426	Ryōsuke TSUGAWA	ST	75	24	6900000	t0223	AC Shirasagi	t0204	Viridia Shikisen	auroruse
 6	1935	2026-10-13T13:01:28.024Z	player	p1117	Alvaro SMALL	CM/AM	76	21	6500000	t0223	AC Shirasagi	t0206	Imperial Sports Society	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p3415	Adrien BEAUSOLEIL	CM	74	25	3000000	t0222	Toyama Thunderbolts	t0223	AC Shirasagi	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p3418	Eisaku INUBUSE	LB/RB	74	26	2600000	t0222	Toyama Thunderbolts	t0223	AC Shirasagi	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p3420	Shōgo TOGASHI	LW	72	30	1300000	t0222	Toyama Thunderbolts	t0223	AC Shirasagi	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p3245	Wolfram EBERHARDT	CB	77	26	5800000	t0223	AC Shirasagi	t0222	Toyama Thunderbolts	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p1635	William LEVICE	CM	81	21	26000000	t0223	AC Shirasagi	t0222	Toyama Thunderbolts	auroruse
+7	1935	2026-10-13T13:02:22.365Z	player	p1482	Pradip CHOWDHURY	ST/AM	74	24	4200000	t0223	AC Shirasagi	t0222	Toyama Thunderbolts	auroruse
