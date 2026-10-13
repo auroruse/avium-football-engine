@@ -16492,6 +16492,9 @@ export default function App() {
       .filter(x => (!club || x.d.some(r => r.from === club || r.to === club))
         && (!q || x.d.some(r => pFold(r.name).includes(q) || pFold(clubName(r.from, r.fromClub)).includes(q) || pFold(clubName(r.to, r.toClub)).includes(q))));
     const money = (v) => (v ? moneyLabel(v) : "–");
+    // The real day a deal was made, in the reader's own time (the log keeps the instant).
+    const uxDay = (iso) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return "–";
+      return uxDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`); };
     const net = (v) => <span className="ux-strong" style={{ ...mono, color: v > 0 ? "var(--ux-win)" : v < 0 ? "var(--ux-loss)" : "var(--ux-text-3)" }}>
       {v > 0 ? "+" + moneyLabel(v) : v < 0 ? "\u2212" + moneyLabel(-v) : "–"}</span>;
     const side = (k, nm) => { if (!k) return <span className="ux-dim">Free Agency</span>;
@@ -16537,7 +16540,7 @@ export default function App() {
                 <thead><tr><th>Pos</th><th>Player</th><th className="ux-c">Rtg</th><th className="ux-n">Age</th><th className="ux-n">Value</th><th>From</th><th aria-label="To" /><th>To</th></tr></thead>
                 {deals.map(x => (
                   <tbody key={x.n} className="ux-trd-deal">
-                    <tr className="ux-trd-h"><td colSpan={8}><span className="ux-trd-hd"><span style={mono}>{uxDate(x.d[0].date)}</span>
+                    <tr className="ux-trd-h"><td colSpan={8}><span className="ux-trd-hd"><span style={mono}>{uxDay(x.d[0].date)}</span>
                       <span className={"ux-trd-k ux-trd-" + x.kind.toLowerCase()}>{x.kind}</span></span></td></tr>
                     {x.d.map(r => { const pos = r.kind === "manager" ? "MGR" : String(r.pos || "").split("/")[0] || "–", v = val(r);
                       return (

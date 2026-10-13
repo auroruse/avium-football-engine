@@ -166,8 +166,8 @@ managers changing club. The registry server writes it as each save or accepted o
 made outside the app, a script on the records, is not in it. A deal is the moves one save or accept makes that share a
 club. A season runs from one World Cup to the next (the user: "After every World Cup"): a move belongs to the year of the
 latest World Cup on file when it went live, so the log opens on 1935. Three columns, as Rating Changes: **Seasons** (a row
-each, newest first, with its deals and men moved), **Deals** (the picked season's, newest first, a row a deal: its in-world
-date and kind, a Trade between nations' clubs, a Move between one nation's own, a Signing, a Release or a Manager; each
+each, newest first, with its deals and men moved), **Deals** (the picked season's, newest first, a row a deal: the real date
+it was made, as the sport runs out of step with the world's clock (the user, 13 October 2026), and its kind, a Trade between nations' clubs, a Move between one nation's own, a Signing, a Release or a Manager; each
 man in it with his position, rating and transfer value when he moved, frozen, and the clubs he left and joined; under them
 each club's incoming and outgoing value), with a search for a player or a club; and **Clubs** (each club's men in and out
 and their value in the season, highest net first; picking one filters Deals to it, picking it again clears it). A man at a

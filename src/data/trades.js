@@ -4,7 +4,7 @@
 // changing club; never a national call-up, a new man, a man retiring or the men of a club removed. The moves one save or
 // accept makes that share a club are one deal, its rows sharing a number. A season runs from one World Cup to the next
 // (the user: "After every World Cup"): a move belongs to the year of the latest World Cup on file when it went live.
-import { ageOf, icNow } from "./icclock.js";
+import { ageOf } from "./icclock.js";
 import { idOf, teamKey } from "./draft.js";
 import { posList } from "./positions.js";
 import { trendsOf, valueContext, valueInputs, valueOf } from "./value.js";
@@ -49,13 +49,15 @@ export function tradeDeals(moves) {
 
 // The log's new rows for what `rec` -> `next` moved, numbered on from `first`: each man as he stood before he went (his
 // positions, rating and age, a player's transfer value with his club's league and his rating's trend, src/data/value.js)
-// and the clubs he left and joined by key and by the name each had. `now` is the real instant; the date is the world's.
+// and the clubs he left and joined by key and by the name each had. A move is dated by the real instant it was made
+// (`now`): the sport runs out of step with the world's clock, its matches simmed whenever and taken to fall later in the
+// year in character (the user, 13 October 2026), so the world's date would say nothing.
 export function tradeRows(rec, next, { season, now = new Date(), by = "", first = 1, trends = new Map(), slotsFor }) {
   const deals = tradeDeals(tradeMoves(rec, next));
   if (!deals.length) return [];
   const ctx = valueContext(rec.teams, slotsFor, idOf), P = new Map(rec.players.map(p => [p.id, p])), M = new Map(rec.managers.map(m => [m.id, m]));
   const before = new Map(rec.teams.map(t => [teamKey(t), t])), after = new Map(next.teams.map(t => [teamKey(t), t]));
-  const date = icNow(now).toISOString().slice(0, 10), rows = [];
+  const date = now.toISOString(), rows = [];
   deals.forEach((d, i) => { for (const m of d) {
     const r = (m.kind === "player" ? P : M).get(m.id), v = m.kind === "player" ? valueOf(valueInputs(r, ctx, trends, now)) : null;
     rows.push({ deal: first + i, season, date, kind: m.kind, id: m.id, name: r.name, pos: m.kind === "player" ? posList(r.pos).join("/") : "",

@@ -415,7 +415,7 @@ console.log("the trades log (13 October 2026)");
   const a = ids(A), b = ids(B), sA = [...a], sB = [...b]; sA[3] = b[3]; sB[3] = a[3];
   const swap = plan(OV, { teams: { [teamKey(A)]: { squad: sA }, [teamKey(B)]: { squad: sB } } }), rows = log(swap);
   ok("a swap between two nations' clubs is one deal of two men", !swap.errors.length && rows.length === 2 && new Set(rows.map(r => r.deal)).size === 1
-    && rows.some(r => r.id === a[3] && r.from === teamKey(A) && r.to === teamKey(B)) && rows.every(r => r.season === 1935 && r.value > 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.date)), [swap.errors, rows]);
+    && rows.some(r => r.id === a[3] && r.from === teamKey(A) && r.to === teamKey(B)) && rows.every(r => r.season === 1935 && r.value > 0 && Math.abs(Date.parse(r.date) - Date.now()) < 60000), [swap.errors, rows]);
   const free = rec.players.find(p => !p.retired && !rec.teams.some(t => ids(t).includes(p.id))), C = rec.teams.find(t => t.file === "ALE" && t.code === "HAN");
   const c = ids(C), sC = [...c]; sC[14] = free.id;
   const sign = plan(OV, { teams: { [teamKey(C)]: { squad: sC } } }), r2 = log(sign);
