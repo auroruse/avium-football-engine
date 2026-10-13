@@ -1,5 +1,5 @@
 [
-{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"running","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:15:28.410Z","ended":null,"clock":{"n":25,"until":"2026-10-14T01:15:28.410Z"},"picks":[
+{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"paused","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:15:28.410Z","ended":null,"clock":{"n":25,"left":7128797},"picks":[
 {"n":1,"club":"t0246","player":"p5398","from":"t0330","out":null,"at":"2026-10-13T23:15:28.410Z","by":"auto","auto":true},
 {"n":2,"club":"t0245","player":"p5126","from":"t0318","out":null,"at":"2026-10-13T23:15:28.410Z","by":"auto","auto":true},
 {"n":3,"club":"t0235","player":"p5573","from":"t0338","out":null,"at":"2026-10-13T23:15:28.410Z","by":"auto","auto":true},
