@@ -18,7 +18,7 @@ navigation, and every panel answers one question.
 
 Registry · Competitions, and **Play match** as the one primary button on the right, where FM27 has Continue. Registry was
 Home until Moukden and Kirin renamed it (9 October 2026). Players, Managers, Teams and Rating Changes are pages of Registry
-(its page bar: Overview, Teams, Players, Managers, Rating Changes; Moukden and Kirin, 9 October 2026; Teams 11 October
+(its page bar: Overview, Teams, Players, Managers, Trades, Rating Changes; Moukden and Kirin, 9 October 2026; Teams 11 October
 2026, first after Overview). Custom Sides, the sides made in this browser, are gone (Moukden and Kirin, 10 October 2026).
 Registry stays lit on them, on a player's or a manager's page, and on a nation's and its clubs'
 pages. Search sits beside it, then the settings menu (the theme, the Arterra switch and the Documentation), Requests and the Cart for
@@ -158,6 +158,20 @@ in every competition and the win rate; on the block's foot a total for his clubs
 where he has run more than one, never the two added up), **Competitions** (a row a competition season he
 managed: where his side finished and its record) and **Honours** (every title his sides won under him). A free agent
 has one page: his banner over his history.
+
+**Trades** (Moukden and Kirin, 13 October 2026, over one round of questions) is every move of a man the registry made,
+season by season: trades between nations' clubs, free agent signings, releases, moves between one nation's own clubs and
+managers changing club. The registry server writes it as each save or accepted offer goes live
+(`public/avium/pstats/trades.tsv`, a row a man, the rows of one deal sharing its number; `src/data/trades.js`), so a move
+made outside the app, a script on the records, is not in it. A deal is the moves one save or accept makes that share a
+club. A season runs from one World Cup to the next (the user: "After every World Cup"): a move belongs to the year of the
+latest World Cup on file when it went live, so the log opens on 1935. Three columns, as Rating Changes: **Seasons** (a row
+each, newest first, with its deals and men moved), **Deals** (the picked season's, newest first, a row a deal: its in-world
+date and kind, a Trade between nations' clubs, a Move between one nation's own, a Signing, a Release or a Manager; each
+man in it with his position, rating and transfer value when he moved, frozen, and the clubs he left and joined; under them
+each club's incoming and outgoing value), with a search for a player or a club; and **Clubs** (each club's men in and out
+and their value in the season, highest net first; picking one filters Deals to it, picking it again clears it). A man at a
+college shows no value there but to the overseer.
 
 **Rating Changes** (Moukden and Kirin, 9 October 2026) answers who moved, in which refresh, and which sides gained.
 Three columns. **Batches**: every refresh the changelog files, newest first, a row each (the competition's crest, its

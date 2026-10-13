@@ -13,11 +13,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "rules-")), ENTRY = join(DIR, "entry.js"), OUT = join(DIR, "rules.mjs");
-writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
+writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js", "data/trades.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
 const R = await import(pathToFileURL(OUT).href);
 const { planSave, settleRequest, applyDraft, draftWith, idOf, teamKey, vacate, posFitCost, slotLabels, sposFor, OVERSEER, sheetsFromRecords } = R;
+const { tradeMoves, tradeDeals, tradeRows, dumpTrades, parseTrades, latestWorldCup } = R;
 
 let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined || cond ? "" : "   " + JSON.stringify(got).slice(0, 300)}`); };
@@ -408,6 +409,31 @@ console.log("the colleges: graduation years and conferences (13 October 2026)");
   ok("and a club only one", two.errors.some(e => /two conferences/.test(e)), two.errors);
   const other = plan(ED, { leagues: { [L.id]: { conferences: renamed } } });
   ok("another nation's editor may not touch them", other.errors.some(e => /not one of your leagues/.test(e)), other.errors); }
+
+console.log("the trades log (13 October 2026)");
+{ const sp = (f) => sposFor(String(f || "4-3-3").trim()), log = (s) => (s.apply ? tradeRows(rec, after(s.apply), { season: 1935, by: OV, first: 1, slotsFor: sp }) : []);
+  const a = ids(A), b = ids(B), sA = [...a], sB = [...b]; sA[3] = b[3]; sB[3] = a[3];
+  const swap = plan(OV, { teams: { [teamKey(A)]: { squad: sA }, [teamKey(B)]: { squad: sB } } }), rows = log(swap);
+  ok("a swap between two nations' clubs is one deal of two men", !swap.errors.length && rows.length === 2 && new Set(rows.map(r => r.deal)).size === 1
+    && rows.some(r => r.id === a[3] && r.from === teamKey(A) && r.to === teamKey(B)) && rows.every(r => r.season === 1935 && r.value > 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.date)), [swap.errors, rows]);
+  const free = rec.players.find(p => !p.retired && !rec.teams.some(t => ids(t).includes(p.id))), C = rec.teams.find(t => t.file === "ALE" && t.code === "HAN");
+  const c = ids(C), sC = [...c]; sC[14] = free.id;
+  const sign = plan(OV, { teams: { [teamKey(C)]: { squad: sC } } }), r2 = log(sign);
+  ok("a free agent signed, and the man making way released, is one deal", !sign.errors.length && r2.length === 2 && r2.some(r => r.id === free.id && !r.from && r.to === teamKey(C))
+    && r2.some(r => r.id === c[14] && r.from === teamKey(C) && !r.to) && new Set(r2.map(r => r.deal)).size === 1, [sign.errors, r2]);
+  const both = plan(OV, { teams: { [teamKey(A)]: { squad: a.map((v, i) => (i === 15 ? null : v)) }, [teamKey(C)]: { squad: c.map((v, i) => (i === 15 ? null : v)) } } });
+  ok("two releases at two clubs are two deals", new Set(log(both).map(r => r.deal)).size === 2, log(both));
+  const N = rec.teams.find(t => t.file === "AVIUM" && t.code === "ALE"), n = ids(N), cand = rec.players.find(p => p.nat === "ALE" && !n.includes(p.id) && rec.teams.some(t => t.file === "ALE" && ids(t).includes(p.id)));
+  const sN = [...n]; sN[21] = cand.id;
+  const call = plan(OV, { teams: { [teamKey(N)]: { squad: sN } } });
+  ok("a national call-up is not logged", !call.errors.length && log(call).length === 0, [call.errors, log(call)]);
+  const mk = plan(OV, { new: [{ id: "t1", what: "players", name: "Neu MANN", nat: "ALE", born: "1912-01-01", ovr: 60, pos: ["CM"], side: teamKey(C) }] });
+  ok("a new man is not logged", !mk.errors.length && log(mk).length === 0, [mk.errors, log(mk)]);
+  const mA = idOf(A.manager), mv = plan(OV, { teams: { [teamKey(A)]: { manager: null }, [teamKey(C)]: { manager: mA } } }), r3 = log(mv);
+  ok("a manager changing club is logged", !mv.errors.length && r3.some(r => r.kind === "manager" && r.id === mA && r.from === teamKey(A) && r.to === teamKey(C)), [mv.errors, r3]);
+  const back = parseTrades(dumpTrades(rows));
+  ok("the log reads back as written", JSON.stringify(back) === JSON.stringify(rows.map(r => ({ ...r, value: r.value, ovr: r.ovr, age: r.age }))), back);
+  ok("the season is the latest World Cup on file", latestWorldCup(["1932.md", "1935.tsv", "1935.md", "winners.tsv"]) === 1935 && latestWorldCup([]) === null); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

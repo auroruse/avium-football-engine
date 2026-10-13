@@ -13,6 +13,7 @@ import sheetsRec from "./data/sheets.json";
 import leaguesRec from "./data/leagues.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { leagueMaps } from "./data/leagues.js";
+import { parseTrades } from "./data/trades.js";
 import { COLLEGE_SEASON, YEARS, collegeLeagues, collegeMen, gradFor, yearOf } from "./data/colleges.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
@@ -3000,7 +3001,7 @@ const REG_PORTAL = { ...REG_HOME, sec: "home" };
 // Players and Managers are pages of Registry (its page bar), not sections of their own (the user, 9 Oct 2026). Registry
 // was Home until the user renamed it the same day; its id stays home.
 const UX_SECS = [["home", "Registry"], ["competitions", "Competitions"], ...(TOURNAMENTS_ENABLED ? [["tournaments", "Tournaments"]] : [])];
-const UX_HOME_PAGES = [["home", "Overview"], ["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["changes", "Rating Changes"]];
+const UX_HOME_PAGES = [["home", "Overview"], ["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["trades", "Trades"], ["changes", "Rating Changes"]];
 // THE ARCHIVE'S COMPETITIONS (Competitions, 9 October 2026): what kind each is, the nation a domestic one belongs to, and
 // every name one goes by, for an address read before the archive's index has arrived.
 const UX_KINDS = [["league", "Leagues"], ["cup", "Cups"], ["intl", "International"], ["retired", "Retired"]];
@@ -7375,7 +7376,7 @@ export default function App() {
     if ((tab !== "leagues" && tab !== "live" && tab !== "editor") || pstats) return;
     let dead = false;
     (async () => {
-      const seasons = [], changelog = [], hof = [], winnersRaw = [];
+      const seasons = [], changelog = [], hof = [], winnersRaw = [], trades = [];
       const mdFiles = new Set(PSTATS_FILES.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
       await Promise.all(PSTATS_FILES.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
@@ -7385,6 +7386,7 @@ export default function App() {
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
         if (/(^|\/)winners\.tsv$/i.test(f)) { winnersRaw.push([f.split("/")[0], text]); return; }
         if (/(^|\/)hof\.tsv$/i.test(f)) { hof.push(...parseHof(text)); return; }
+        if (/^trades\.tsv$/i.test(f)) { trades.push(...parseTrades(text)); return; }
         const m = f.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))\.tsv$/i);
         if (!m) return;
         const yr = m[4] ? +m[4] : pstatsYear(m[3]);
@@ -7440,7 +7442,7 @@ export default function App() {
       if (dead) return;
       seasons.sort((a, b) => a.ord - b.ord || a.comp.localeCompare(b.comp));   // chronological, as the changelog is
       if (Object.keys(mdSeed).length) setLgMd(m => ({ ...mdSeed, ...m }));
-      setPstats({ seasons, changelog, hof });
+      setPstats({ seasons, changelog, hof, trades });
     })();
     return () => { dead = true; };
   }, [tab, pstats]);
@@ -10693,6 +10695,7 @@ export default function App() {
       else if (reg.nation) segs.push("nations", reg.nation.toLowerCase());
     }
     if (tab === "leagues" && reg.sec === "teams") { segs.push("teams"); if (uxTmView === "nt") segs.push("national-teams"); }
+    if (tab === "leagues" && reg.sec === "trades") { segs.push("trades"); if (reg.trSeason) segs.push(String(reg.trSeason)); }
     if (tab === "leagues" && reg.sec === "managers") {
       segs.push("managers");
       const m = reg.mgr ? uxManagers.find(x => x.id === reg.mgr) : null;
@@ -10815,6 +10818,7 @@ export default function App() {
     }
     if (s1 === "clubs" || s1 === "national-teams") { const tm = byCode(s1 === "national-teams", s2); if (tm) teamPage(tm, s3); else setReg(REG_HOME); return; }
     if (s1 === "teams") { setReg({ ...REG_HOME, sec: "teams" }); setUxTmView(s2.toLowerCase() === "national-teams" ? "nt" : "clubs"); return; }
+    if (s1 === "trades") { setReg({ ...REG_HOME, sec: "trades", trSeason: /^\d{4}$/.test(s2) ? +s2 : null }); return; }
     if (s1 === "players") {
       const f = s2.toLowerCase();
       if (f === "rating-changelog") people("changelog", segs[3]); else if (f === "hall-of-fame") people("hof", segs[3], segs[4]); else people("players", segs[2], segs[3]);
@@ -10998,7 +11002,7 @@ export default function App() {
     setRegQ(""); setRegQOpen(false);
     if (sec === "nations") { regGo({}); return; }
     setPlayerOpen(null); setTab("leagues");
-    if (sec === "teams") { setReg({ ...REG_HOME, sec }); return; }
+    if (sec === "teams" || sec === "trades") { setReg({ ...REG_HOME, sec }); return; }
     if (sec === "competitions") { setReg({ ...REG_HOME, sec }); if (world !== "avium") setWorld("avium"); return; }
     setReg({ ...REG_HOME, sec });
     lgOpenComp(LG_ALL_PLAYERS);
@@ -11600,6 +11604,8 @@ export default function App() {
   // the side and direction filters, the sort, and how far its table is scrolled (only the rows in view are drawn).
   const [uxRcQ, setUxRcQ] = useState("");
   const [uxRcSide, setUxRcSide] = useState(null);
+  const [uxTrQ, setUxTrQ] = useState("");                         // Trades: the search, and the club picked in Clubs
+  const [uxTrClub, setUxTrClub] = useState(null);
   const [uxRcDir, setUxRcDir] = useState("");
   const [uxRcSort, setUxRcSort] = useState({ k: "d", asc: false });
   const [uxRcTop, setUxRcTop] = useState(0);
@@ -11611,7 +11617,7 @@ export default function App() {
   // A manager's page, opened from the Managers page or wherever his name is shown.
   const uxMgr = tab === "leagues" && reg.sec === "managers" && reg.mgr ? uxManagers.find(m => m.id === reg.mgr) || null : null;
   const uxScreen = tab !== "leagues" ? null : uxPlayerName ? (reg.tab === "history" ? "playerhist" : "player")
-    : uxMgr ? "manager" : reg.sec === "managers" ? "managers" : reg.sec === "teams" ? "teams"
+    : uxMgr ? "manager" : reg.sec === "managers" ? "managers" : reg.sec === "teams" ? "teams" : reg.sec === "trades" ? "trades"
     : reg.sec === "players" && lgSub === "changelog" && !playerOpen ? "changes"
     : reg.sec === "players" && lgSub !== "changelog" && !playerOpen ? "players"
     : reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team) ? "home"
@@ -14689,7 +14695,7 @@ export default function App() {
       // In work, Overview and History; out of it, his history is the whole page.
       if (uxMgr.club || uxMgr.nt) { const cur = reg.tab === "history" ? "history" : "overview";
         [["overview", "Overview"], ["history", "History"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === "history" ? "history" : null }))))); }
-    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams")))) {
+    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams" || reg.sec === "trades")))) {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
       UX_HOME_PAGES.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoSec(id))));
@@ -16444,6 +16450,125 @@ export default function App() {
                     <td className={"ux-n" + (s.up ? "" : " ux-dim")} style={mono}>{s.up}</td>
                     <td className={"ux-n" + (s.down ? "" : " ux-dim")} style={mono}>{s.down}</td>
                     <td className="ux-n">{uxRcFig(s.net)}</td>
+                  </tr>))}</tbody>
+              </table>))}
+          </div>
+        </section>
+      </div>);
+  };
+
+  // ════ TRADES (DESIGN.md, Trades; Moukden and Kirin, 13 October 2026): every move of a man the registry made, as the
+  // registry server logged it (src/data/trades.js), season by season, a season running from one World Cup to the next. A
+  // deal a block: its date and kind, each man with his rating, age and value when he moved and the clubs he left and
+  // joined, then each club's value in and out. Clubs answers who bought and who sold. ════
+  const uxPlKey = useMemo(() => new Map([...playerByName.keys()].map(k => [pFold(k), k])), [playerByName]);
+  const renderUxTrades = () => {
+    const keyT = new Map(curRecs.teams.map(x => [teamKey(x), x]));
+    const worldOfKey = (k) => (keyT.get(k)?.file === "ARTERRA" ? "arterra" : "avium");
+    const rows = (pstats?.trades || []).filter(r => worldOfKey(r.to || r.from) === world);
+    // The seasons: each with a move on file, and the one under way (the latest World Cup's), newest first.
+    const wcNow = Math.max(0, ...(pstats?.seasons || []).filter(s => s.comp === "World Cup").map(s => parseInt(s.season, 10) || 0));
+    const seasons = [...new Set([...rows.map(r => r.season), world === "avium" && wcNow ? wcNow : null].filter(Boolean))].sort((a, b) => b - a);
+    const pick = reg.trSeason && seasons.includes(reg.trSeason) ? reg.trSeason : seasons[0] || null;
+    const inS = rows.filter(r => r.season === pick);
+    const val = (r) => (r.kind === "player" ? seen(r.id, r.value) : null);
+    const clubName = (k, at) => keyT.get(k)?.name.trim() || at || "–";
+    const nationOf = (k) => keyT.get(k)?.nation || null;
+    // A deal's kind: a Trade between nations' clubs, a Move between one nation's own, a Signing, a Release, a Manager.
+    const kindOf = (d) => { if (d.every(r => r.kind === "manager")) return "Manager";
+      const both = d.filter(r => r.from && r.to);
+      if (both.length) return both.some(r => nationOf(r.from) !== nationOf(r.to)) ? "Trade" : "Move";
+      return d.some(r => r.to) ? "Signing" : "Release"; };
+    // Each club's men in and out and their value, in the season.
+    const clubs = new Map();
+    const clubAt = (k, nm) => clubs.get(k) || clubs.set(k, { k, name: clubName(k, nm), t: teamOfKey(k), inN: 0, outN: 0, inV: 0, outV: 0 }).get(k);
+    for (const r of inS) { const v = val(r) || 0;
+      if (r.to) { const c = clubAt(r.to, r.toClub); c.inN++; c.inV += v; }
+      if (r.from) { const c = clubAt(r.from, r.fromClub); c.outN++; c.outV += v; } }
+    const clubRows = [...clubs.values()].sort((a, b) => (b.inV - b.outV) - (a.inV - a.outV) || b.inN - a.inN || a.name.localeCompare(b.name));
+    const club = uxTrClub && clubs.has(uxTrClub) ? uxTrClub : null, q = pFold(uxTrQ.trim());
+    const byDeal = new Map(); for (const r of inS) (byDeal.get(r.deal) || byDeal.set(r.deal, []).get(r.deal)).push(r);
+    const deals = [...byDeal.entries()].sort((a, b) => b[0] - a[0]).map(([n, d]) => ({ n, d, kind: kindOf(d) }))
+      .filter(x => (!club || x.d.some(r => r.from === club || r.to === club))
+        && (!q || x.d.some(r => pFold(r.name).includes(q) || pFold(clubName(r.from, r.fromClub)).includes(q) || pFold(clubName(r.to, r.toClub)).includes(q))));
+    const money = (v) => (v ? moneyLabel(v) : "–");
+    const net = (v) => <span className="ux-strong" style={{ ...mono, color: v > 0 ? "var(--ux-win)" : v < 0 ? "var(--ux-loss)" : "var(--ux-text-3)" }}>
+      {v > 0 ? "+" + moneyLabel(v) : v < 0 ? "\u2212" + moneyLabel(-v) : "–"}</span>;
+    const side = (k, nm) => { if (!k) return <span className="ux-dim">Free Agency</span>;
+      const tm = teamOfKey(k), name = clubName(k, nm);
+      return (<div className="ux-tc">{tm ? <TeamCrest team={tm} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}
+        <span>{tm ? <button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(tm)}>{name}</button> : name}</span></div>); };
+    const who = (r) => { if (r.kind === "manager") return uxMgrLink(fullDisplayName(r.name));
+      const k = uxPlKey.get(pFold(r.name)), nm = fullDisplayName(r.name);
+      return k ? <button type="button" className="ux-btnreset ux-a ux-nm" onClick={() => openPlayer(k)}>{nm}</button> : <span className="ux-nm">{nm}</span>; };
+    // Under a deal's men, each club's value in and out of it (players only: a manager has no value).
+    const totals = (d) => { const ks = [...new Set(d.filter(r => r.kind === "player").flatMap(r => [r.from, r.to]).filter(Boolean))];
+      return ks.map(k => { const inV = d.filter(r => r.to === k).reduce((a, r) => a + (val(r) || 0), 0), outV = d.filter(r => r.from === k).reduce((a, r) => a + (val(r) || 0), 0);
+        const tm = teamOfKey(k), r0 = d.find(r => r.from === k || r.to === k);
+        return (<span key={k} className="ux-trd-cl">{tm ? <TeamCrest team={tm} size={14} /> : null}<b>{clubName(k, r0.from === k ? r0.fromClub : r0.toClub)}</b>
+          In <span style={mono}>{money(inV)}</span><span className="ux-trd-sep">&middot;</span>Out <span style={mono}>{money(outV)}</span></span>); }); };
+    const loading = !pstats ? <div className="ux-empty">Loading</div> : null;
+    return (
+      <div className="ux-body" style={{ gridTemplateColumns: "220px minmax(0, 1fr) 340px" }}>
+        <section className="ux-panel">
+          <div className="ux-ph"><h2 className="ux-pt">Seasons</h2></div>
+          <div className="ux-pbody">
+            {loading || (!seasons.length ? <div className="ux-empty">None</div> : seasons.map(y => {
+              const on = y === pick, rs = rows.filter(r => r.season === y), nd = new Set(rs.map(r => r.deal)).size;
+              return (
+                <button key={y} type="button" className={"ux-btnreset ux-rc-b ux-trs" + (on ? " ux-on" : "")} aria-pressed={on}
+                  onClick={() => { setReg(r => ({ ...r, trSeason: y })); setUxTrClub(null); }}>
+                  <span className="ux-rc-t"><b style={mono}>{y}</b><span>{nd} {nd === 1 ? "Deal" : "Deals"}, {rs.length} {rs.length === 1 ? "Move" : "Moves"}</span></span>
+                </button>); }))}
+          </div>
+        </section>
+        <section className="ux-panel">
+          <div className="ux-ph"><h2 className="ux-pt">{pick ? `Deals, ${pick}` : "Deals"}</h2></div>
+          <div className="ux-filters">
+            <label className="ux-search">{uxIcon("search", "ux-s")}<input value={uxTrQ} onChange={e => setUxTrQ(e.target.value)} placeholder="Search Players Or Clubs" aria-label="Search Players Or Clubs" /></label>
+            {club && <button type="button" className="ux-btnreset ux-chip ux-trd-flt" onClick={() => setUxTrClub(null)} aria-label="Show Every Club">{clubName(club)} {uxIcon("close", "ux-xs")}</button>}
+            <span className="ux-fcount"><span style={mono}>{deals.length}</span> {deals.length === 1 ? "Deal" : "Deals"}</span>
+          </div>
+          <div className="ux-pbody">
+            {loading || (!deals.length ? <div className="ux-empty">{inS.length ? "No Deals Found" : "No Trades Yet"}</div> : (
+              <table className="ux-tbl ux-trd">
+                <colgroup><col style={{ width: 44 }} /><col /><col style={{ width: 46 }} /><col style={{ width: 40 }} /><col style={{ width: 66 }} />
+                  <col style={{ width: 196 }} /><col style={{ width: 22 }} /><col style={{ width: 196 }} /></colgroup>
+                <thead><tr><th>Pos</th><th>Player</th><th className="ux-c">Rtg</th><th className="ux-n">Age</th><th className="ux-n">Value</th><th>From</th><th aria-label="To" /><th>To</th></tr></thead>
+                {deals.map(x => (
+                  <tbody key={x.n} className="ux-trd-deal">
+                    <tr className="ux-trd-h"><td colSpan={8}><span className="ux-trd-hd"><span style={mono}>{uxDate(x.d[0].date)}</span>
+                      <span className={"ux-trd-k ux-trd-" + x.kind.toLowerCase()}>{x.kind}</span></span></td></tr>
+                    {x.d.map(r => { const pos = r.kind === "manager" ? "MGR" : String(r.pos || "").split("/")[0] || "–", v = val(r);
+                      return (
+                        <tr key={r.kind + r.id}>
+                          <td><span className="ux-pos" style={{ color: r.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[pos] || "var(--ux-text-2)" }}>{pos}</span></td>
+                          <td>{who(r)}</td>
+                          <td className="ux-c">{r.ovr == null ? <span className="ux-dim">&#8211;</span> : r.kind === "manager" ? uxBadge(r.ovr) : manBadge(r.id, r.ovr)}</td>
+                          <td className={"ux-n" + (r.age == null ? " ux-dim" : "")} style={mono}>{r.age ?? "–"}</td>
+                          <td className={"ux-n" + (v == null ? " ux-dim" : "")} style={mono}>{v != null ? moneyLabel(v) : "–"}</td>
+                          <td>{side(r.from, r.fromClub)}</td>
+                          <td className="ux-c ux-dim">{uxIcon("fwd", "ux-xs")}</td>
+                          <td>{side(r.to, r.toClub)}</td>
+                        </tr>); })}
+                    {x.d.some(r => r.kind === "player") && <tr className="ux-trd-f"><td colSpan={8}>{totals(x.d)}</td></tr>}
+                  </tbody>))}
+              </table>))}
+          </div>
+        </section>
+        <section className="ux-panel">
+          <div className="ux-ph"><h2 className="ux-pt">Clubs</h2></div>
+          <div className="ux-pbody">
+            {loading || (!clubRows.length ? <div className="ux-empty">None</div> : (
+              <table className="ux-tbl">
+                <colgroup><col /><col style={{ width: 36 }} /><col style={{ width: 36 }} /><col style={{ width: 76 }} /></colgroup>
+                <thead><tr><th>Club</th><th className="ux-n" title="Men In">In</th><th className="ux-n" title="Men Out">Out</th><th className="ux-n" title="Value In Less Value Out">Net</th></tr></thead>
+                <tbody>{clubRows.map(c => (
+                  <tr key={c.k} className={"ux-link" + (c.k === club ? " ux-sel" : "")} aria-selected={c.k === club} onClick={() => setUxTrClub(c.k === club ? null : c.k)}>
+                    <td title={c.name}><div className="ux-tc">{c.t ? <TeamCrest team={c.t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}<span>{c.name}</span></div></td>
+                    <td className={"ux-n" + (c.inN ? "" : " ux-dim")} style={mono}>{c.inN}</td>
+                    <td className={"ux-n" + (c.outN ? "" : " ux-dim")} style={mono}>{c.outN}</td>
+                    <td className="ux-n">{net(c.inV - c.outV)}</td>
                   </tr>))}</tbody>
               </table>))}
           </div>
@@ -19010,6 +19135,7 @@ export default function App() {
           {uxScreen === "players" && renderUxPlayers()}
           {uxScreen === "managers" && renderUxManagers()}
           {uxScreen === "teams" && renderUxTeams()}
+          {uxScreen === "trades" && renderUxTrades()}
           {uxScreen === "manager" && uxMgr && renderUxManager(uxMgr)}
           {uxScreen === "changes" && renderUxChanges()}
           {uxScreen === "comps" && renderUxComps()}

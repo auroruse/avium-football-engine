@@ -45,6 +45,9 @@ export const DOCS = [
       "Teams lists every club, or every national side by the switch in its title, with its nation and league (a national side's conference), its rating, its eleven's attack, midfield and defence, its bench, its city, its style and formation, and its squad's value. Filter by name, nation and league, or conference; click a heading to sort. Click a side for its card on the right; double-click it, or click the card's banner, to open it.",
       "The card has the side's crest on its colours fading into its ground, its rating, style, formation and squad value, and its manager; then its strength by line, its best players and its honours.",
     ] },
+    { id: "trades", title: "Trades", body: [
+      "Trades is every move of a man the registry has made, season by season: trades between nations' clubs, free agent signings, releases, moves between one nation's own clubs and managers changing club. A season runs from one World Cup to the next. Each deal shows its date and kind, every man in it with his rating, age and value when he moved, the clubs he left and joined, and each club's value in and out. Clubs, on the right, lists who bought and who sold that season; picking one shows only its deals.",
+    ] },
     { id: "rating-changes", title: "Rating Changes", body: [
       "Rating Changes lists every ratings refresh on file. Batches, down the left, lists each refresh, newest first, with its rises and falls. Changes, in the middle, lists the picked batch a player a row, searchable and filtered by side or by rises and falls. Sides, on the right, gives each side's net change; picking a side filters Changes to it, and picking it again clears it.",
     ] },

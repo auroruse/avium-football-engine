@@ -568,6 +568,19 @@
 .ux-rc-t > b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
 .ux-rc-t > span { font-size: 11px; color: var(--ux-text-3); white-space: nowrap; overflow: hidden; -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
 .ux-rc-net { font-size: 13px; }
+/* Trades (DESIGN.md, Trades): a season a row; each deal a block of rows, its date and kind over its men, its clubs' value
+   in and out under them. */
+.ux-rc-b.ux-trs { grid-template-columns: minmax(0, 1fr); }
+.ux-trd tbody.ux-trd-deal + tbody.ux-trd-deal tr.ux-trd-h td { border-top: 1px solid var(--ux-line); }
+.ux-trd tr.ux-trd-h td { padding-top: 12px; background: transparent; }
+.ux-trd-hd { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ux-text-2); }
+.ux-trd-k { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 3px;
+  background: var(--ux-panel-3); color: var(--ux-text); }
+.ux-trd tr.ux-trd-f td { padding-bottom: 12px; font-size: 11px; color: var(--ux-text-3); background: transparent; }
+.ux-trd-cl { display: inline-flex; align-items: center; gap: 5px; margin-right: 18px; white-space: nowrap; }
+.ux-trd-cl b { color: var(--ux-text-2); font-weight: 600; margin-right: 2px; }
+.ux-trd-sep { margin: 0 2px; color: var(--ux-text-3); }
+.ux-trd-flt { margin-left: 0; gap: 4px; cursor: pointer; }
 /* Rises and falls: an arrow up or down in its colour, before the count. */
 .ux-rc-mvs { display: inline-flex; gap: 8px; margin-left: 8px; }
 .ux-rc-mv { display: inline-flex; align-items: center; gap: 3px; }
