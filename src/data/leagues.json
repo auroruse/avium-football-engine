@@ -19,6 +19,6 @@
 {"id":"l0018","name":"Liga-ye Bālande","nation":"VAR","tier":2,"cup":"Jām-e Mellī","up":1},
 {"id":"l0019","name":"Divisione Prima Viciliana","nation":"VIC","tier":1,"cup":null},
 {"id":"l0020","name":"Livländische Liga","nation":"LVO","tier":1,"cup":null,"listed":true},
-{"id":"l0021","name":"All-Nichirin Collegiate Championship","nation":"NCH","tier":3,"cup":null,"listed":true},
+{"id":"l0021","name":"All-Nichirin Collegiate Championship","nation":"NCH","tier":3,"cup":null,"listed":true,"college":true,"conferences":[{"name":"Capital Eight","clubs":["t0318","t0326","t0328","t0336","t0341","t0342","t0347","t0333"]},{"name":"Western Conference","clubs":["t0346","t0349","t0324","t0320","t0321","t0335","t0319","t0330"]},{"name":"Southern Conference","clubs":["t0325","t0334","t0329","t0331","t0338","t0337","t0340","t0345"]},{"name":"Eastern Conference","clubs":["t0327","t0344","t0343","t0323","t0322","t0332","t0339","t0348"]}]},
 {"id":"l0022","name":"Giathkik Premier League","nation":"GIA","tier":1,"cup":"Giathka Cup","listed":true}
 ]

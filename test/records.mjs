@@ -107,11 +107,13 @@ function importSheets() {
   }
   if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own text):\n  ${split.join("\n  ")}`);
   const byId = (a, b) => +a.id.slice(1) - +b.id.slice(1);
-  // The sheets carry no badges, no dates of birth and no positions: a man's come from his record, by ID (a manager's too).
+  // The sheets carry no badges, no dates of birth, no positions and no graduation years: a man's come from his record, by
+  // ID (a manager's too).
   const badges = new Map((had?.players || []).filter(r => r.badges?.length).map(r => [r.id, r.badges]));
   const born = new Map([...(had?.players || []), ...(had?.managers || [])].filter(r => r.born).map(r => [r.id, r.born]));
   const posOf = new Map((had?.players || []).filter(r => r.pos).map(r => [r.id, r.pos]));
-  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id), born: r.born ?? born.get(r.id), pos: r.pos ?? posOf.get(r.id) });
+  const gradOf = new Map((had?.players || []).filter(r => r.grad).map(r => [r.id, r.grad]));
+  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id), born: r.born ?? born.get(r.id), pos: r.pos ?? posOf.get(r.id), grad: r.grad ?? gradOf.get(r.id) });
   // A man the records hold and no sheet lists is a free agent (or retired), not a deletion: he stays, as he was. A
   // manager no side lists is out of work the same way (Josue Alferinho, 9 Oct 2026).
   for (const r of had?.players || []) if (![...players.values()].some(x => x.id === r.id)) players.set(r.name, { ...r });

@@ -7,10 +7,36 @@
 
 // HOW MANY GO UP AND DOWN (Moukden and Kirin, 11 October 2026): `up` and `down` are the places a season sends to the
 // division above and below outright; a playoff its report records settles any place besides (seasonMoves in App.tsx).
-// One league record in the file's own key order; up, down, listed and formerly only when they say something.
+// A league's CONFERENCES (the ANCC, Moukden and Kirin, 12 October 2026): its clubs split into named groups, in the order its
+// playoff crosses them, each { name, clubs: [team IDs] }. A college league (`college`, src/data/colleges.js) is the
+// overseer's to mark. One league record in the file's own key order; up, down, listed, formerly, college and conferences
+// only when they say something.
 export const leagueRecord = (l) => ({ id: l.id, name: l.name, nation: l.nation, tier: l.tier, cup: l.cup || null,
   ...(l.up ? { up: l.up } : null), ...(l.down ? { down: l.down } : null),
-  ...(l.listed ? { listed: true } : null), ...(l.formerly?.length ? { formerly: l.formerly } : null) });
+  ...(l.listed ? { listed: true } : null), ...(l.formerly?.length ? { formerly: l.formerly } : null),
+  ...(l.college ? { college: true } : null),
+  ...(l.conferences?.length ? { conferences: l.conferences.map(c => ({ name: c.name, clubs: [...(c.clubs || [])] })) } : null) });
+
+// What is wrong with a league's conferences, or null: two to eight, each a name of its own and clubs of the league
+// (`clubIds`, its clubs' team IDs), no club in two.
+export function conferencesProblem(confs, clubIds) {
+  if (confs == null) return null;
+  if (!Array.isArray(confs) || confs.length < 2 || confs.length > 8) return "a league has two to eight conferences, or none";
+  const names = new Set(), seen = new Set();
+  for (const c of confs) {
+    const n = typeof c?.name === "string" ? c.name : "";
+    if (!n || n !== n.trim() || n.length > 40 || /[\u0000-\u001f\u007f]/.test(n)) return "a conference needs a name";
+    if (names.has(n.toLowerCase())) return `two conferences are called ${n}`;
+    names.add(n.toLowerCase());
+    if (!Array.isArray(c.clubs)) return `${n} has no clubs`;
+    for (const id of c.clubs) {
+      if (!clubIds.has(id)) return `${n} names a club outside the league`;
+      if (seen.has(id)) return "a club is in two conferences";
+      seen.add(id);
+    }
+  }
+  return null;
+}
 
 // Everything the app looks a league up by, from the records: its tier, cup and nation by name, the name it carries now
 // for any name it had, the name its clubs' IDs were made with, its old names newest first, and the leagues listed early.

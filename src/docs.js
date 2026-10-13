@@ -179,6 +179,10 @@ export const DOCS = [
       { live: "metals" },
       "The engine works out his abilities from his rating and the line of the slot he stands in, when the slot is one of his own positions: pace, passing, shooting, tackling, positioning, strength, heading, reflexes and touch. The further forward the slot, the more of the rating goes into shooting and the less into tackling, so two 75-rated centre-backs are the same man until a trait sets one apart. Out of his positions he keeps his own position's abilities (see Positions). Tired legs slow everyone as a match goes on.",
     ] },
+    { id: "college-players", title: "College Players", body: [
+      "The All-Nichirin Collegiate Championship is Nichirin's third tier: thirty-two college sides in four conferences. A player at a college shows no rating, value or traits, and no rating changes, to anyone but the overseer. Everyone sees his name, positions, age, college, year and figures, his match ratings included. A college side's own rating, its lines and its squad's value still show, and the moment a man leaves a college he shows like anyone else.",
+      "A college course runs four years, First Year to Final Year. A player's year stands on his page where a value would, and beside his name on the Sheet.",
+    ] },
     { id: "positions", title: "Positions", body: [
       { live: "positions" },
       "Every player has one or two positions of his own, kept on his record, and plays both at his full rating. His page lights them, with the sides that play him there, and lists show them as CM or CM/DM.",
@@ -354,6 +358,7 @@ export const DOCS = [
       "A league's name, on its strip, opens it on the dock: its name, tier and cup are yours to change without a request. Two leagues can share a tier, for regional divisions. The overseer also sees how many places go up and down, and moves a club into another league by dragging its row number onto that league's strip.",
       "The overseer removes a club from its row number's menu: Remove Club, then Confirm Remove. When the cart is saved the club leaves the records, its men and manager become free agents, and its seasons stay in the archive. A club named in a waiting offer or request, or holding a man who is, can't be removed.",
       "A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it.",
+      "A league split into conferences, as the collegiate championship is, lists them on its dock with their clubs, and its editor renames them there.",
     ] },
     { id: "trades", title: "Trades", body: [
       "Trades is where men change clubs: signings, releases, moves between your own clubs and swaps with other nations' clubs, managers as well as players, between as many clubs as you like. Down the left are your offers: Your Move, the ones waiting on you; Waiting, yours and the ones you have accepted that still wait on others; and Declined. New Deal starts another.",

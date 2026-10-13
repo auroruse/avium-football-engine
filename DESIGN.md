@@ -565,6 +565,41 @@ overseer, the new records waiting. A new record opens in the sheet where it stan
 overseer; Approve lets it in as edited, Reject sends it back with a note. The top bar's Cart and Requests stay as the
 quick view, and every change is saved from the cart, as before.
 
+### The ANCC
+
+The All-Nichirin Collegiate Championship (Moukden and Kirin, 12 and 13 October 2026, over four rounds of questions) is
+Nichirin's tier 3: thirty-two college sides, one competition (`l0021`), played beside the NL each season. Its record in
+`src/data/leagues.json` carries `college: true` and its four `conferences` in bracket order, each a name and its eight
+clubs. The names (Capital Eight, Western Conference, Southern Conference, Eastern Conference) stand until the overseer
+renames them on the league's dock, where each conference lists its clubs. A season is the conference round robin, one
+match a pairing, then the top two of each into an eight-team playoff crossed so that two sides of one conference can meet
+only in the final (Capital 1 against Western 2 and Southern 1 against Eastern 2 in one half, Western 1 against Capital 2
+and Eastern 1 against Southern 2 in the other), with extra time and penalties. Rivalry week and the bowls are gone (the
+user, 13 October 2026: "Only conference games and playoffs"). The draft follows the NL season, before the Club World Cup,
+the Club World Shield and the next NL season: one round of 44 picks, the whole pyramid worst first (NL2's last first,
+NL1's champion last). A pick trades on Trades for the coming draft only, worth the slot its club's table place gives it
+now and settled when the tables are final. The season (stage 2) and the draft (stage 3) come after this.
+
+**Hidden men.** A player at a college shows no rating, value, traits or rating change to anyone but the overseer, wherever
+he stands in the app: squad lists and pitches, his page and banner, Players and its card, search, the Sheet's chips and
+dock, Trades and its totals, Play Match, Live Match, tournaments and Rating Changes. Everyone sees his name, positions,
+age, college, year and figures, his match ratings included. The overseer sees the ratings ringed in a dashed line
+("Hidden from everyone but you"), except on Live Match and Full Time, which are streamed and copied, where nobody does.
+A college side's own
+ratings (OVR, XI, Bench, the lines and the squad's value) show to all (the user, 12 October 2026: "Shown"). A list sorted
+by rating or value puts a hidden man last, as a man with none. The records still carry the ratings, so anyone can play a
+college side (the same day: "Hidden In The App"), and the moment a man leaves a college he shows like anyone else.
+
+**Years.** A college player's record carries `grad`, the year his course ends, which is the draft he enters. His year
+reads off it against the college season (1935/36 to start, feeding the 1936 draft): Final Year when the two meet, then
+Third, Second and First. A man made at a college takes it from his age, 21 or more Final Year, 20 Third, 19 Second, 18 or
+less First, and the overseer changes it on his Record. On the Sheet his chip carries his year (Y1 to Y4) where another
+nation's code would stand. New men at a college are aged 18 to 21, typed or pasted into its places, from Many and in Roll
+Ages. The overseer makes all of them on the Sheet (the user, 13 October 2026), and a rating moves only at his refreshes,
+as everyone's does ("Your Refresh Only").
+
+**Kits** come from each college's badge: its main colour at home, its next away.
+
 ### Documentation
 
 Written for the ACU's editors and readers (Moukden and Kirin, 10 October 2026): every screen and how the engine plays a

@@ -17,8 +17,9 @@ import { STYLE_LBL } from "./styles.js";
 import { POS_ROLE, fitsPlace, posList } from "./positions.js";
 import { FORMATIONS } from "../engine/formations.ts";
 import { birthDateOk } from "./icclock.js";
-import { leagueNameFree, leagueRecord } from "./leagues.js";
+import { conferencesProblem, leagueNameFree, leagueRecord } from "./leagues.js";
 import { badgeOrder, traitsProblem } from "./badges.js";
+import { gradOk } from "./colleges.js";
 
 export const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const lc = (s) => String(s || "").toLowerCase();
@@ -113,6 +114,7 @@ function valueProblems(rec, next, changes) {
       if (c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
       if (c.field === "nat" && !nationCode(c.to)) bad("not a nationality");
       if (c.field === "born" && c.to != null && !birthDateOk(c.to)) bad("a date of birth is a real date, for a man at least 14");
+      if (c.field === "grad" && c.to != null && !gradOk(c.to)) bad("a graduation year is a year");
       if (c.field === "style" && c.to != null && !STYLE_NAMES.has(c.to)) bad("not a style");
       if (c.kind === "players" && c.field === "pos" && !posOk(c.to)) bad("a player has one or two positions");
     }
@@ -120,6 +122,8 @@ function valueProblems(rec, next, changes) {
       if (c.field === "name") { if (!text(c.to, 50)) bad("not a usable name"); else if (!leagueNameFree(next.leagues, c.to, c.id)) bad(`a league is already called ${c.to}`); }
       if (c.field === "tier" && !tierOk(c.to)) bad("a tier is 1 to 5, or none");
       if (c.field === "cup" && c.to != null && !cupOk(c.to, next.leagues)) bad("not a usable cup");
+      if (c.field === "conferences") { const l = next.leagues.find(x => x.id === c.id);
+        const why = conferencesProblem(c.to, new Set(next.teams.filter(t => !isNational(t) && t.group === l?.name).map(teamKey))); if (why) bad(why); }
       continue;
     }
     if (c.kind !== "teams") continue;
@@ -218,6 +222,7 @@ function newProblems(rec, n, scope, over, h) {
     if (!nationCode(n.nat)) bad("not a nationality");
     else if (!mine(n.nat)) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
     if (!(n.born && birthDateOk(n.born))) bad("a date of birth is a real date, for a man at least 14");
+    if (n.grad != null && !gradOk(n.grad)) bad("a graduation year is a year");
     // An editor may leave the rating for the overseer, who sets it to let the man in.
     if (over ? !rating(n.ovr) : n.ovr != null && !rating(n.ovr)) bad("a rating is a whole number from 25 to 99");
   }
@@ -268,6 +273,7 @@ function newManProblems(rec, m, kind, scope, over, bad) {
   if (!nationCode(m.nat)) bad(`${w}: not a nationality`);
   else if (!over && !scope.nations.includes(m.nat)) { const why = kind === "players" ? foreignProblem(rec, m.nat, m.ovr) : "not a nationality of yours"; if (why) bad(`${w}: ${why}`); }
   if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
+  if (kind === "players" && m.grad != null && !gradOk(m.grad)) bad(`${w}: a graduation year is a year`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
   if (kind === "players" && !posOk(m.pos)) bad(`${w}: a player has one or two positions`);
   // An editor's new player may carry traits his rating can afford (badges.js traitsProblem); the overseer's anything.
@@ -361,7 +367,7 @@ function createDraft(rec, d, n, h) {
   let out = { v: 1, players: {}, ...(d || {}) };
   if (n.what === "players") {
     const id = nextId(next.players, "p"), side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null;
-    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, pos: posList(n.pos), ...(n.badges?.length ? { badges: badgeOrder(n.badges) } : null) });
+    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, pos: posList(n.pos), ...(n.badges?.length ? { badges: badgeOrder(n.badges) } : null), ...(gradOk(n.grad) ? { grad: n.grad } : null) });
     out = { ...out, add };
     if (side) { const sq = squadIds(side), lab = h.labels(side), at = Number.isInteger(n.at) && n.at >= 0 && n.at < sq.length && !sq[n.at] ? n.at : -1,
         i = at >= 0 ? at : placeFor(sq, lab, h.fit, posList(n.pos));
@@ -383,7 +389,7 @@ function createDraft(rec, d, n, h) {
     // Each man on file with his positions; joining a side, into the place that fits him, keepers first.
     const side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null, ids = [];
     for (const m of n.men) { const id = nextId([...next.players, ...add.players], "p"); ids.push(id);
-      add.players.push({ id, name: m.name, nat: m.nat, ovr: m.ovr, born: m.born, pos: posList(m.pos), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null) }); }
+      add.players.push({ id, name: m.name, nat: m.nat, ovr: m.ovr, born: m.born, pos: posList(m.pos), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null), ...(gradOk(m.grad) ? { grad: m.grad } : null) }); }
     out = { ...out, add };
     if (side) { const { sq, at } = placesForMen(side, n.men, h);
       if (at.size < n.men.length) return { errors: [`${side.name.trim()} has room for ${at.size} of the ${n.men.length}`] };
@@ -400,7 +406,7 @@ function createDraft(rec, d, n, h) {
       const squad = padPlaces(c.squad).map(v => {
         if (!isNew(v)) return v || null;
         const id = nextId(everyone(), "p");
-        add.players.push({ id, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) });
+        add.players.push({ id, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null), ...(gradOk(v.grad) ? { grad: v.grad } : null) });
         return id;
       });
       let manager = null, style = "Balanced";
@@ -436,7 +442,7 @@ function createDraft(rec, d, n, h) {
   const style = mgrSide?.style || styleName(mgrRec?.style) || "Balanced";
   // Its new men first, each a record of his own in his place.
   const squad = padPlaces(n.squad).map(v => { if (!isNew(v)) return v || null; const pid = nextId([...next.players, ...add.players], "p");
-    add.players.push({ id: pid, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) }); return pid; });
+    add.players.push({ id: pid, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null), ...(gradOk(v.grad) ? { grad: v.grad } : null) }); return pid; });
   const ovrs = squad.filter(Boolean).map(pid => [...next.players, ...add.players].find(p => p.id === pid)?.ovr || 0);
   const team = { id, file, nation: n.nation, at: "", code: n.code, name: n.name, ovr: (ovrs.reduce((a, b) => a + b, 0) / Math.max(1, ovrs.length)).toFixed(1),
                  style, formation: n.formation, timeWasting: TIME_WASTING.includes(n.timeWasting) ? n.timeWasting : "Never", gkPassing: "Short", dlBehavior: "No Instruction",

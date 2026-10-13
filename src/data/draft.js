@@ -10,20 +10,22 @@
 // add records outright (add: { players: [...], managers: [...], teams: [...], leagues: [...] }), the overseer's new ones.
 // A league (src/data/leagues.js) is patched by its ID too, and a new name is carried onto every one of its clubs.
 import { badgeOrder } from "./badges.js";
+import { gradOk } from "./colleges.js";
 import { leagueRecord } from "./leagues.js";
 import { posList } from "./positions.js";
 
 export const teamKey = (t) => t.id || t.file + "|" + t.code;
 const KINDS = {
   // pos is kept only for a man on no team (the position he last played, for whoever signs him); retired takes a man
-  // out of play for good while his record stays. born is his date of birth, "YYYY-MM-DD" (src/data/icclock.js ages it).
-  players: { fields: ["name", "ovr", "nat", "born", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
+  // out of play for good while his record stays. born is his date of birth, "YYYY-MM-DD" (src/data/icclock.js ages it);
+  // grad the year a college player's course ends (src/data/colleges.js).
+  players: { fields: ["name", "ovr", "nat", "born", "grad", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
   managers: { fields: ["name", "nat", "born", "style", "ovr"], key: (r) => r.id, label: (r) => r.name },
   // timeWasting is the one tactic a side keeps of its own; group and file move a club into another league, and removed
   // takes a club out of the records (both the overseer's; its men and manager go free, its seasons stay in the archive).
   teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting", "group", "file", "removed"], key: teamKey,
            label: (t) => t.name.trim() },
-  leagues: { fields: ["name", "tier", "cup"], key: (l) => l.id, label: (l) => l.name },
+  leagues: { fields: ["name", "tier", "cup", "conferences"], key: (l) => l.id, label: (l) => l.name },
 };
 export const PLAYER_FIELDS = KINDS.players.fields;
 // A cell kept as the sheet wrote it ({ id, tag } or { id, raw }) is still that man.
@@ -31,15 +33,17 @@ export const idOf = (v) => v && typeof v === "object" && "id" in v ? v.id : v;
 // A field as compared: badges in table order, a squad or a manager as the people it names, positions as a list.
 const norm = (f, v) => f === "badges" ? badgeOrder(v) : f === "squad" ? (v || []).map(s => idOf(s) ?? null)
   : f === "manager" ? idOf(v) ?? null : f === "retired" || f === "removed" ? !!v : f === "pos" ? (Array.isArray(v) ? (v.length ? v : null) : posList(v).length ? posList(v) : null)
-  : f === "born" || f === "cup" ? v || null : v;
+  : f === "born" || f === "cup" || f === "grad" ? v || null : f === "conferences" ? (v?.length ? v : null) : v;
 // A squad kept at sixteen in a cart from before clubs had twenty-two places is the same squad with six open ones.
 const padTo = (x, n) => { const out = [...x]; while (out.length < n) out.push(null); return out; };
 const same = (f, a, b) => { if (f === "squad") { const x = norm(f, a), y = norm(f, b), n = Math.max(x.length, y.length);
   return JSON.stringify(padTo(x, n)) === JSON.stringify(padTo(y, n)); }
   return JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null); };
 
-// One player (or manager) record in the records' own key order; born, pos, badges and retired only when they say something.
+// One player (or manager) record in the records' own key order; born, grad, pos, badges and retired only when they say
+// something.
 export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null),
+  ...(gradOk(r.grad) ? { grad: r.grad } : null),
   ...(posList(r.pos).length ? { pos: posList(r.pos) } : null),
   // A manager out of work keeps the style he would bring to a side (a manager in work plays his side's).
   ...(r.style ? { style: r.style } : null),

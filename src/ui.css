@@ -1548,6 +1548,8 @@ th .ux-crt { margin-left: .4em; }
 .ux-warn-i { display: block; flex: none; width: 13px; height: 13px; }
 .ux-warn-i path:first-child { fill: var(--ux-loss); }
 .ux-warn-i .ux-warn-x { fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; }
+/* A rating only the overseer sees, a college man's (DESIGN.md, The ANCC): a dashed ring just off the badge. */
+.ux-hid { outline: 1.5px dashed var(--ux-text-2); outline-offset: 1.5px; }
 .ux-oopm { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; vertical-align: middle; color: var(--ux-loss);
   font: 700 10px/1 'JetBrains Mono', 'Fira Code', monospace; white-space: nowrap; }
 .ux-oopm.ux-oopm-xs { margin-left: 4px; gap: 1px; font-size: 8px; }
@@ -1912,6 +1914,12 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-rtg.ux-sh-blank { background: var(--ux-line-2); color: var(--ux-text-2); }
 .ux-sh-cn { flex: 1 1 auto; min-width: 0; font-size: 12px; }
 .ux-sh-nat { flex: none; font-size: 10px; color: var(--ux-text-3); }
+/* A league's conferences on the dock (DESIGN.md, The ANCC): each name, then its clubs' crests and codes. */
+.ux-sh-conf + .ux-sh-conf { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ux-line); }
+.ux-sh-confc { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 2px 0 0; }
+.ux-sh-confk { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ux-text-2); }
+/* A college man's year where another nation's code would stand (DESIGN.md, The ANCC). */
+.ux-sh-yr { color: var(--ux-text-2); }
 .ux-sh-cost { flex: none; display: inline-flex; align-items: center; gap: 1px; font-size: 10px; font-weight: 700; color: var(--ux-loss); }
 .ux-sh-st { flex: none; font-size: 10px; font-weight: 600; }
 .ux-sh-lk { flex: none; display: grid; color: var(--ux-text-3); }

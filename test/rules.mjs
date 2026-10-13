@@ -384,5 +384,30 @@ console.log("codes of two to four letters (12 October 2026)");
   ok("a four-letter code is taken", !four.errors.length && after(four.apply).teams.find(t => t.id === A.id).code === "ARMA", four.errors);
   ok("a five-letter one is not", five.errors.some(e => /code/.test(e)), five.errors); }
 
+console.log("the colleges: graduation years and conferences (13 October 2026)");
+{ const L = rec.leagues.find(l => l.college), C = rec.teams.find(t => t.group === L.name), K = teamKey(C);
+  const s = plan(OV, { new: [{ id: "c1", what: "players", name: "Taro GAKUSEI", nat: "NCH", born: "1914-05-05", ovr: 60, pos: ["CM"], side: K, grad: 1938 }] });
+  const n = s.apply && after(s.apply), p = n?.players.find(x => x.name === "Taro GAKUSEI");
+  ok("the overseer's new man at a college keeps his graduation year", !s.errors.length && p?.grad === 1938 && ids(n.teams.find(t => t.id === C.id)).includes(p?.id), s.errors);
+  const bad = plan(OV, { new: [{ id: "c2", what: "players", name: "Jiro GAKUSEI", nat: "NCH", born: "1914-05-05", ovr: 60, pos: ["CM"], side: K, grad: 1938.5 }] });
+  ok("a graduation year is a whole year", bad.errors.some(e => /graduation year/.test(e)), bad.errors);
+  const any = rec.players.find(x => !x.retired);
+  const set = plan(OV, { players: { [any.id]: { grad: 1937 } } });
+  ok("the overseer sets a man's graduation year", !set.errors.length && after(set.apply).players.find(x => x.id === any.id).grad === 1937, set.errors);
+  const ed = plan(ED, { players: { [ids(A)[0]]: { grad: 1937 } } });
+  ok("an editor may not", ed.errors.some(e => /overseer's to change/.test(e)), ed.errors);
+  const renamed = L.conferences.map((c, i) => (i === 0 ? { ...c, name: "Capital League" } : c));
+  const rn = plan(NCH_ED, { leagues: { [L.id]: { conferences: renamed } } }), nl = rn.apply && after(rn.apply).leagues.find(l => l.id === L.id);
+  ok("its nation's editor renames a conference, and the league stays a college league", !rn.errors.length && nl?.conferences[0].name === "Capital League"
+    && nl.college === true && nl.conferences[0].clubs.join() === L.conferences[0].clubs.join(), rn.errors);
+  const twice = plan(NCH_ED, { leagues: { [L.id]: { conferences: L.conferences.map((c, i) => (i === 1 ? { ...c, name: L.conferences[0].name } : c)) } } });
+  ok("two conferences never share a name", twice.errors.some(e => /two conferences/.test(e)), twice.errors);
+  const out = plan(NCH_ED, { leagues: { [L.id]: { conferences: L.conferences.map((c, i) => (i === 0 ? { ...c, clubs: [...c.clubs, teamKey(B)] } : c)) } } });
+  ok("a conference holds only the league's own clubs", out.errors.some(e => /outside the league/.test(e)), out.errors);
+  const two = plan(NCH_ED, { leagues: { [L.id]: { conferences: L.conferences.map((c, i) => (i === 1 ? { ...c, clubs: [...c.clubs, L.conferences[0].clubs[0]] } : c)) } } });
+  ok("and a club only one", two.errors.some(e => /two conferences/.test(e)), two.errors);
+  const other = plan(ED, { leagues: { [L.id]: { conferences: renamed } } });
+  ok("another nation's editor may not touch them", other.errors.some(e => /not one of your leagues/.test(e)), other.errors); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

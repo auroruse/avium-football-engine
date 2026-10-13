@@ -13,6 +13,7 @@ import sheetsRec from "./data/sheets.json";
 import leaguesRec from "./data/leagues.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { leagueMaps } from "./data/leagues.js";
+import { COLLEGE_SEASON, YEARS, collegeLeagues, collegeMen, gradFor, yearOf } from "./data/colleges.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
@@ -2330,6 +2331,16 @@ const ratingColor = (r) => r >= 9 ? "var(--rate-9)" : r >= 8 ? "var(--rate-8)" :
 // of a point apart sort correctly while both still read as 84. Every display of a rating goes
 // through here so none of them leak "84.5" into the UI.
 const showOvr = (v) => (v == null || v === "" || !isFinite(Number(v))) ? "–" : String(Math.round(Number(v)));
+// MEN WHOSE RATINGS ARE HIDDEN (the ANCC, Moukden and Kirin, 12 and 13 October 2026; DESIGN.md, The ANCC): a player at a
+// college shows no rating, value, traits or rating change to anyone but the overseer, who sees his rating ringed. The App
+// sets who they are and who is looking on every render (src/data/colleges.js collegeMen). Full Time, which Copy Image
+// takes, hides them from everyone (hidMan); everywhere else asks veiled, and a ringed badge marks what only he sees.
+const HIDDEN = { men: new Set(), see: false };
+const hidMan = (id) => !!id && HIDDEN.men.has(id);
+const veiled = (id) => hidMan(id) && !HIDDEN.see;
+const ringed = (id) => hidMan(id) && HIDDEN.see;
+const seen = (id, v) => (veiled(id) ? null : v);
+const HID_TIP = "Hidden From Everyone But You";
 // One scale for every rating in the app, and it IS the match-rating scale: a 7.4 performance and a
 // 74 squad are the same green. Derived from ratingColor by the factor between the two axes rather
 // than copied, so editing one can never leave the other behind. Two separate scales meant an 86 was
@@ -2390,8 +2401,11 @@ const OVR_SIZE = {
   sm: { minW: 21, pad: "2px 4px", r: 4, fs: 10,  lh: 1.3  },
   xs: { minW: 19, pad: "0 3px",   r: 3, fs: 8.5, lh: 1.45 },
 };
+// No rating (a blank one, or a man hidden from this person) is a grey blank of the same size, never the lowest metal.
 const ovrBlock = (v, size) => {
   const m = ovrMetal(v), z = OVR_SIZE[size === true ? "sm" : (size || "lg")];
+  if (v == null || v === "" || !isFinite(Number(v))) return { display: "inline-block", minWidth: z.minW, padding: z.pad, borderRadius: z.r,
+    background: "var(--ux-line-2)", color: "var(--ux-text-2)", fontWeight: 700, fontSize: z.fs, lineHeight: z.lh, textAlign: "center" };
   return { display: "inline-block", minWidth: z.minW, padding: z.pad,
            borderRadius: z.r, background: ovrSheen(m), color: OVR_INK,
            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)",
@@ -8658,6 +8672,10 @@ export default function App() {
   // TRANSFERS. Where each man is now (the records with the cart over them), the position he plays (for placing a
   // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
   const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
+  // Who is hidden, and whether this person sees them (DESIGN.md, The ANCC): the men at a college, from all but the overseer.
+  const hiddenMen = useMemo(() => collegeMen(curRecs), [curRecs]);
+  HIDDEN.men = hiddenMen; HIDDEN.see = overseer;
+  const collegeNames = useMemo(() => collegeLeagues(curRecs.leagues), [curRecs]);
   const whereIs = useMemo(() => {
     const m = new Map();
     for (const t of curRecs.teams) {
@@ -8704,11 +8722,20 @@ export default function App() {
     headers: { Authorization: `Bearer ${session?.token}`, "Content-Type": "application/json" } });
   // SAVE: the whole cart to the server, which puts live what this person may change and turns the rest into requests.
   // It refuses the lot on any problem, so a save that comes back is the whole cart, and the cart empties.
+  // A college's new men go in with the year their course ends (DESIGN.md, The ANCC): the year picked on his form, else
+  // the one his age gives (src/data/colleges.js gradFor).
+  const withGrads = (cart) => {
+    const coll = (k) => !!k && collegeNames.has(curRecs.teams.find(t => teamKey(t) === k)?.group);
+    const g = (m) => (m && typeof m === "object" && m.grad == null ? { ...m, grad: gradFor(m.born ? ageOf(m.born) : null) } : m);
+    if (!cart.new?.length) return cart;
+    return { ...cart, new: cart.new.map(n => (n.what === "players" && coll(n.side) ? g(n) : n.what === "batch" && coll(n.side) ? { ...n, men: (n.men || []).map(g) }
+      : n.what === "teams" && collegeNames.has(n.group) ? { ...n, squad: (n.squad || []).map(v => (v && typeof v === "object" ? g(v) : v)) } : n)) };
+  };
   const saveCart = async () => {
     if (saveState?.busy || !session || !draftSize(draft) || preview?.errors.length) return;
     setSaveState({ busy: true });
     try {
-      const res = await authed("/save", { cart: draft }), data = await res.json().catch(() => ({}));
+      const res = await authed("/save", { cart: withGrads(draft) }), data = await res.json().catch(() => ({}));
       if (res.status === 401) { signOut(); setSaveState({ err: "Your sign-in ran out. Sign in again: the cart is kept." }); return; }
       if (res.status === 422) { setSaveState({ errors: data.errors || [] }); loadRequests(); return; }
       if (!res.ok) throw new Error(data.error || `The registry answered ${res.status}`);
@@ -10401,6 +10428,11 @@ export default function App() {
   // The changelog's batches, newest first: a competition season's refresh, each change resolved to the side he moved
   // with. A code two sides share goes to the one in that competition, else the one of its kind (a club in a club
   // competition), else Avium's, since the archive is Avium's; a side the sheets no longer carry stays its code.
+  // Each man's record ID by his name folded (pFold) as the archive is matched (his squad entries', a free agent's own).
+  const ridByName = useMemo(() => { const m = new Map();
+    for (const t of teams) for (const e of t.squad || []) { const k = pFold(e?.fullName || e?.name); if (e?.rid && !m.has(k)) m.set(k, e.rid); }
+    for (const p of playerIndex) { const k = pFold(p.fullName || p.name); if (p.rid && !m.has(k)) m.set(k, p.rid); }
+    return m; }, [teams, playerIndex]);
   const uxRcBatches = useMemo(() => {
     const byCode = new Map(), out = [], by = new Map();
     for (const t of teams) if (t.code) (byCode.get(t.code) || byCode.set(t.code, []).get(t.code)).push(t);
@@ -10413,6 +10445,7 @@ export default function App() {
         || cs.find(t => worldOf(t) === "avium") || cs[0];
     };
     (pstats?.changelog || []).forEach((c, i) => {
+      if (veiled(ridByName.get(pFold(c.player)))) return;     // a man hidden at a college (DESIGN.md, The ANCC)
       const key = c.season + "\u0000" + c.comp;
       let b = by.get(key);
       if (!b) { b = { key, season: c.season, comp: c.comp, rows: [], up: 0, down: 0, net: 0 }; by.set(key, b); out.push(b); }
@@ -10422,7 +10455,7 @@ export default function App() {
       b.net += d;
     });
     return out.reverse();   // the file is oldest first
-  }, [pstats, teams]);
+  }, [pstats, teams, ridByName, hiddenMen, overseer]);
   // ── Players tab ──────────────────────────────────────────────────────────
   // Nations rail, built the same shape as the league rail: an entry per nation with its player
   // count and average OVR. Sorted by squad size rather than alphabetically — the search box covers
@@ -11726,10 +11759,11 @@ export default function App() {
     for (const t of teams) for (const e of t.squad || []) if (e?.rid && !rid.has(e.fullName || e.name)) rid.set(e.fullName || e.name, e.rid);
     for (const p of playerIndex) {
       const nm = p.fullName || p.name, id = p.rid || rid.get(nm) || null, rec = id ? recNow(id) : null;
-      out.set(nm, { rid: id, age: rec?.born ? ageOf(rec.born) : null, value: rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null, badges: rec?.badges || [] });
+      out.set(nm, { rid: id, age: rec?.born ? ageOf(rec.born) : null, value: rec && pstats && !veiled(id) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null,
+        badges: seen(id, rec?.badges) || [], ovr: seen(id, p.ovr) });
     }
     return out;
-  }, [uxScreen, teams, playerIndex, recById, draft, pstats, uxValueCtx, uxTrends]);
+  }, [uxScreen, teams, playerIndex, recById, draft, pstats, uxValueCtx, uxTrends, hiddenMen, overseer]);
   // The Season view: a year's figures for every man who played that year, every competition added up the way Leaders adds
   // them, with the club he played them for. The year picked, else Leaders' own.
   const uxPsY = uxPsYear ?? uxYear;
@@ -11806,14 +11840,15 @@ export default function App() {
     const ok = (r) => (view === "season" ? (r.se?.rg || 0) >= UX_RTG_MIN_GP : (r.c?.rg || 0) >= careerRtg.minGp) ? 1 : 0;
     const val = (r) => k === "name" ? r.disp : k === "pos" ? String(r.p.pos || "").split("/")[0] : k === "age" ? r.f?.age
       : k === "nat" ? r.natT?.name || r.p.nationality || null : k === "club" ? (view === "season" ? r.se?.club : r.clubT)?.name || null
-      : k === "ovr" ? r.p.ovr : k === "value" ? r.f?.value : k === "yrs" ? r.yrs : k === "avg" ? fig(r)?.RTG ?? null
+      : k === "ovr" ? (r.f ? r.f.ovr : r.p.ovr) : k === "value" ? r.f?.value : k === "yrs" ? r.yrs : k === "avg" ? fig(r)?.RTG ?? null
       : k === "gp" ? fig(r)?.gp : fig(r)?.[k];
     out.sort((a, b) => {
       if (k === "avg") { const d = ok(b) - ok(a); if (d) return d; }
       const va = val(a), vb = val(b), na = va == null || va === "", nb = vb == null || vb === "";
-      if (na || nb) return na === nb ? (b.p.ovr || 0) - (a.p.ovr || 0) : na ? 1 : -1;
+      const ro = (r) => (r.f ? r.f.ovr : r.p.ovr) || 0;
+      if (na || nb) return na === nb ? ro(b) - ro(a) : na ? 1 : -1;
       const d = typeof va === "string" ? va.localeCompare(vb) : va - vb;
-      return d ? d * dir : (b.p.ovr || 0) - (a.p.ovr || 0) || a.disp.localeCompare(b.disp);
+      return d ? d * dir : ro(b) - ro(a) || a.disp.localeCompare(b.disp);
     });
     return out;
   }, [uxScreen, pstats, playerIndex, playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsTrait, uxPsView, uxPsSort,
@@ -13091,7 +13126,9 @@ export default function App() {
   const trLocked = (kind, id) => requests.some(r => !r.declined && r.id !== trOpen && (r.locks || []).includes((kind === "manager" ? "m:" : "p:") + id));
   const trManName = (kind, id) => fullDisplayName((kind === "manager" ? mgrNow(id) : recNow(id))?.name || id);
   // A player's transfer value where he stands now (src/data/value.js; the user, 11 October 2026); managers have none.
-  const trValueOf = (kind, id) => { if (kind === "manager" || !pstats) return null; const rec = recNow(id);
+  const trValueOf = (kind, id) => (veiled(id) ? null : trValueAll(kind, id));
+  // Every man's, hidden or not, for what a whole side is worth (a college side's own figures show to all).
+  const trValueAll = (kind, id) => { if (kind === "manager" || !pstats) return null; const rec = recNow(id);
     return rec ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null; };
   const trValue = (kind, id) => { const v = trValueOf(kind, id);
     return <span className="ux-tr-val" style={mono}>{kind === "manager" ? "" : v != null ? moneyLabel(v) : "–"}</span>; };
@@ -13132,7 +13169,7 @@ export default function App() {
             <span className="ux-tr-nm"><SlideName text={fullDisplayName(r?.name || id)} /></span>
             {m && <span className={"ux-tr-tag" + st}>{tagOf()}</span>}
             {trValue(kind, id)}
-            {r && uxBadge(r.ovr)}
+            {r && (kind === "manager" ? uxBadge(r.ovr) : manBadge(id, r.ovr))}
           </button>
           {edit && !lk && at && dests.length === 1 && ((ask && !m) || (m && !m.to)) && <button type="button" className={"ux-btnreset ux-btn ux-tr-rel" + (m && !m.to ? " ux-on" : "")}
             onClick={() => put(m && !m.to ? undefined : null)}>Release</button>}
@@ -13235,7 +13272,7 @@ export default function App() {
           <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[pos] }}>{pos}</b>
           <span className="ux-tr-ln"><b><SlideName text={fullDisplayName(p?.name || m.id)} /></b><span>{where}</span></span>
           {trValue(m.kind, m.id)}
-          {p && uxBadge(p.ovr)}
+          {p && (m.kind === "manager" ? uxBadge(p.ovr) : manBadge(m.id, p.ovr))}
         </div>);
     };
     // The value of the men a club gets and of those it gives, each man at his value where he stands now.
@@ -13257,7 +13294,7 @@ export default function App() {
               <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[posOfId(m.id)] }}>{m.kind === "manager" ? "MGR" : posOfId(m.id)}</b>
               <span className="ux-tr-ln"><b><SlideName text={trManName(m.kind, m.id)} /></b><span>{m.to ? <>To <SlideName text={trName(m.to)} /></> : "Released"}</span></span>
               {trValue(m.kind, m.id)}
-              {uxBadge((m.kind === "manager" ? mgrNow(m.id) : recNow(m.id))?.ovr)}
+              {m.kind === "manager" ? uxBadge(mgrNow(m.id)?.ovr) : manBadge(m.id, recNow(m.id)?.ovr)}
             </div>)) : <div className="ux-empty-sm">Nobody</div>}
           {(s?.up || []).map(u => <div key={"u" + u.id} className="ux-tr-up">{fullDisplayName(recNow(u.id)?.name || "")} Moves Up To <b style={mono}>{edLab(edTeamRec(k))[u.i]}</b></div>)}
         </div>);
@@ -13469,7 +13506,7 @@ export default function App() {
   const shMean = (ids) => { const v = ids.map(id => (id && typeof id === "object" ? id.ovr : recNow(id)?.ovr)).filter(x => Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const shNums = (t) => { const sq = t._raw ? t._raw.map(v => v ?? null) : edSq(t);
     return { ovr: shMean(sq.filter(Boolean)), xi: shMean(sq.slice(0, 11).filter(Boolean)), bench: shMean(sq.slice(11).filter(Boolean)),
-             value: pstats ? sq.filter(Boolean).reduce((a, id) => a + (trValueOf("player", id) || 0), 0) : null }; };
+             value: pstats ? sq.filter(Boolean).reduce((a, id) => a + (trValueAll("player", id) || 0), 0) : null }; };
   // The new records in the cart, by where they stand: a new man in a side's place, a new club in a league's band, a new
   // league after the tab's bands.
   const shNew = draft.new || [];
@@ -13524,12 +13561,12 @@ export default function App() {
     if (c === "home" || c === "away") return String(t[c] || "").toUpperCase(); if (c === "city") return shCity(t);
     if (c === "ground") return stripVenue(t.stadium || ""); if (c === "cap") return venueCap(t.stadium) || "";
     if (c.startsWith("p")) { const i = +c.slice(1), id = edSq(t)[i], r = id ? recNow(id) : null, lab = edLab(t)[i];
-      return r ? `${lab} · (${showOvr(r.ovr)}) ${r.name}${r.nat !== (isNational(t) ? t.code : t.nation) ? " [" + r.nat + "]" : ""}` : `${lab} · Open`; }
+      return r ? `${lab} · (${showOvr(seen(id, r.ovr))}) ${r.name}${r.nat !== (isNational(t) ? t.code : t.nation) ? " [" + r.nat + "]" : ""}` : `${lab} · Open`; }
     return "";
   };
   const shSortVal = (t, c) => { const nums = ["ovr", "xi", "bench", "value"].includes(c) ? shNums(t) : null;
     if (nums) return nums[c] ?? -1; if (c === "cap") return +String(venueCap(t.stadium) || "0").replace(/,/g, "");
-    if (c === "mgr") return mgrNow(idOf(t.manager))?.ovr ?? -1; if (c.startsWith("p")) return recNow(edSq(t)[+c.slice(1)])?.ovr ?? -1; return shText(t, c).toLowerCase(); };
+    if (c === "mgr") return mgrNow(idOf(t.manager))?.ovr ?? -1; if (c.startsWith("p")) { const id = edSq(t)[+c.slice(1)]; return seen(id, recNow(id)?.ovr) ?? -1; } return shText(t, c).toLowerCase(); };
   // MOVES. Inside one's own sheet a man is dragged onto a place: onto a taken one the two change places, onto an empty one
   // he moves there. A club's man onto his national side is called up and stays at his club; a national side's men move
   // only within it. From the Free Agents panel he is signed, the man in the place going to free agency; onto the panel he
@@ -13613,8 +13650,9 @@ export default function App() {
     // His nation: the tag he came with, else the side's; a tag naming no nation is said so, and the side's taken.
     const natOf = (p, own) => { if (!p.nat || p.nat === own) return own; if (natTeamByCode.get(p.nat)) return p.nat; unknown.add(p.nat); return own; };
     const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : ""].filter(Boolean).join(" · "));
+    const span = shCollege(k) ? 4 : 15;          // a college's men are 18 to 21 (DESIGN.md, The ANCC), anyone else's 18 to 32
     const man = (p, own, lab) => { const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
-      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr }; };
+      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(18 + Math.floor(Math.random() * span)), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr }; };
     if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = padSq(x.c.squad), nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length, true);
       let at = i, n = 0, last = -1;
       for (const p of men) { if (!p) { at++; continue; } while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
@@ -13666,7 +13704,7 @@ export default function App() {
     const nat = shSideNat(side), own = overseer || (scope.nations || []).includes(nat) ? nat : (scope.nations || [])[0] || nat;
     const T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
     const f = kind === "players"
-      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * 15)), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, fresh: true }
+      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * (shCollege(side) ? 4 : 15))), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, fresh: true }
       : { kind, name: "", nat: own, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T?.style) || "balanced", ovr: "", side, fresh: true };
     setEdForms(m => ({ ...m, [kind]: f })); setEdFormOff(o => ({ ...o, [kind]: false }));
     setShFormEdit(null); setShFormOpen(kind); setShDock("rec"); setShMsg("");
@@ -13674,12 +13712,12 @@ export default function App() {
   const shOpenEdit = (kind, src, obj) => {
     const o = obj || (src.cart ? shNewItem(src.cart) : src.clubMgr ? shClubOf(src.clubMgr)?.c.manager : shClubOf(src.club)?.c.squad?.[src.i]); if (!o) return;
     const ps = posList(o.pos);
-    setShFormEdit({ kind, src, f: { kind, name: o.name || "", nat: o.nat || "", born: o.born || "", bornSet: !!o.bornSet, pos: ps[0] || "", pos2: ps[1] || "", ovr: o.ovr ?? "", badges: o.badges || [],
+    setShFormEdit({ kind, src, f: { kind, name: o.name || "", nat: o.nat || "", born: o.born || "", bornSet: !!o.bornSet, pos: ps[0] || "", pos2: ps[1] || "", ovr: o.ovr ?? "", badges: o.badges || [], grad: o.grad ?? null,
       style: o.style || "balanced", side: src.cart ? o.side || null : src.clubMgr || src.club, at: src.cart ? o.at ?? null : src.i ?? null } });
     shDropPristine(); setShFormOpen(null); setShDock("rec"); };
   const shFormObj = (kind, f) => (kind === "players"
     ? { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, pos: posList([f.pos, f.pos2].filter(Boolean)), ovr: shNum(f.ovr), badges: f.badges?.length ? badgeOrder(f.badges) : [],
-        ...(f.bornSet ? { bornSet: true } : null) }
+        ...(f.bornSet ? { bornSet: true } : null), ...(f.grad != null ? { grad: f.grad } : null) }
     : { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, style: f.style || "balanced", ovr: shNum(f.ovr) });
   // Ready to go in: a name, nationality and date of birth; a position, or a style; a rating the person may leave blank
   // (the overseer's own go live, so his are rated, but a new club's men can wait for Roll Ratings); another nation's man
@@ -13717,7 +13755,7 @@ export default function App() {
     setShFormEdit(null); };
   // Many: the list form, full width (src/App.tsx renderEdBatch), carrying this form's nationality and side.
   const shToMany = () => { const f = edForms.players || {};
-    setEdForms(m => ({ ...m, players: { kind: "players", mode: "many", nat: f.nat || (scope.nations || [])[0] || "", amin: 18, amax: 32, text: "", list: [],
+    setEdForms(m => ({ ...m, players: { kind: "players", mode: "many", nat: f.nat || (scope.nations || [])[0] || "", amin: 18, amax: shCollege(f.side) ? 21 : 32, text: "", list: [],
       side: f.side && !f.side.startsWith("new:") ? f.side : null } }));
     setShFormOpen(null); setEdFormOff(o => ({ ...o, players: false })); setEdSec("players"); };
   // A new club in the cart, on its own or one of a new league's founding clubs; its row's key is "new:" and its ID. The row
@@ -13726,6 +13764,8 @@ export default function App() {
     for (const n of draft.new || []) { if (n.what === "teams") out.set(n.id, { c: n, lg: null }); if (n.what === "leagues") for (const c of n.clubs || []) out.set(c.id, { c, lg: n.id }); }
     return out; }, [draft]);
   const shClubOf = (k) => (k && k.startsWith("new:") ? shNewClubs.get(k.slice(4)) || null : null);
+  // Whether a side is a college (DESIGN.md, The ANCC): a club on file, or a new one in the cart, of a college league.
+  const shCollege = (k) => { if (!k) return false; const g = k.startsWith("new:") ? shClubOf(k)?.c.group : edTeamRec(k)?.group; return !!g && collegeNames.has(g); };
   const shPseudo = (c) => ({ ...c, file: "", timeWasting: c.timeWasting || "Never", _raw: padSq(c.squad), squad: padSq(c.squad).map(v => (typeof v === "string" ? v : null)) });
   const shRowOf = (k) => { const x = shClubOf(k); return x ? shPseudo(x.c) : edTeamRec(k); };
   const shSetClub = (k, patch) => { const id = k.slice(4);
@@ -13864,16 +13904,19 @@ export default function App() {
   // and in a place he plays out of position the rating he plays it at, ringed, with what it costs him.
   const shChip = (id, k, i, place, natCode, mine) => {
     const r = recNow(id); if (!r) return <span className="ux-sh-chip ux-sh-gone">{id}</span>;
-    const own = ownOfId(id), oop = i < 11 && place && uxOop(own, place), at = oop && uxHasOvr(r.ovr) ? ovrAt(r.ovr, own, place) : r.ovr;
-    const lock = edLockedMen.has("p:" + id), drag = mine && !lock;
+    const ovr = seen(id, r.ovr), own = ownOfId(id), oop = i < 11 && place && uxOop(own, place), at = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
+    const lock = edLockedMen.has("p:" + id), drag = mine && !lock, yr = hidMan(id) ? yearOf(r.grad) : null;
     return (
-      <span className={"ux-sh-chip" + (lock ? " ux-sh-locked" : "")} draggable={drag} title={`${r.name} (${posText(own) || place})`}
+      <span className={"ux-sh-chip" + (lock ? " ux-sh-locked" : "")} draggable={drag} title={`${r.name} (${posText(own) || place})${yr ? ", " + YEARS[yr - 1] : ""}`}
         onDragStart={drag ? (e) => shDragStart(e, { kind: "p", id, from: { k, i } }) : undefined} onDragEnd={shDragEnd}
         onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "p" + i }); setShRec({ kind: "p", id, k }); setShDock("rec"); }}>
-        <span className={"ux-sh-rtg" + (oop ? " ux-oop" : "")} style={{ background: ovrSheen(ovrMetal(at)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono }}>{showOvr(at)}</span>
+        {uxHasOvr(at) ? <span className={"ux-sh-rtg" + (oop ? " ux-oop" : "") + (ringed(id) ? " ux-hid" : "")} title={ringed(id) ? HID_TIP : undefined}
+          style={{ background: ovrSheen(ovrMetal(at)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono }}>{showOvr(at)}</span>
+          : <span className={"ux-sh-rtg ux-sh-blank" + (oop ? " ux-oop" : "")} style={mono}>–</span>}
         <span className="ux-sh-cn"><SlideName text={r.name} /></span>
         {r.nat !== natCode && <span className="ux-sh-nat" style={mono}>{r.nat}</span>}
-        {oop && <span className="ux-sh-cost" style={mono}><UxArrow />{Math.round(+r.ovr) - Math.round(at)}</span>}
+        {yr && <span className="ux-sh-nat ux-sh-yr" style={mono}>{"Y" + yr}</span>}
+        {oop && <span className="ux-sh-cost" style={mono}><UxArrow />{uxHasOvr(ovr) ? Math.round(+ovr) - Math.round(at) : posDrop(own, place)}</span>}
         {lock && <span className="ux-sh-lk">{uxIcon("lock", "ux-xs")}</span>}
       </span>);
   };
@@ -13895,6 +13938,7 @@ export default function App() {
       onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "p" + i }); if (!n.batch) shOpenEdit("players", n.what ? { cart: n.id } : { club: k, i }, n); }}>
       <span className="ux-sh-rtg ux-sh-blank" style={mono}>{+n.ovr > 0 ? showOvr(+n.ovr) : "–"}</span>
       <span className="ux-sh-cn"><SlideName text={n.name || "New Player"} /></span>
+      {shCollege(k) && <span className="ux-sh-nat ux-sh-yr" style={mono}>{"Y" + (yearOf(n.grad ?? gradFor(n.born ? ageOf(n.born) : null)) || 1)}</span>}
       <span className="ux-sh-tag">New</span>
     </span>);
   const shNewMgrChip = (n, k, inClub = false) => (
@@ -14083,7 +14127,7 @@ export default function App() {
             <div key={p.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "p", id: p.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
               onClick={() => { setShRec({ kind: "p", id: p.id }); setShDock("rec"); }}>
               <PlayerShot name={p.name} size={24} /><span className="ux-sh-fn"><SlideName text={p.name} /></span>
-              <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b><span style={mono} className="ux-dim">{p.nat}</span>{uxBadge(p.ovr)}</div>))}
+              <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b><span style={mono} className="ux-dim">{p.nat}</span>{manBadge(p.id, p.ovr)}</div>))}
           {mg && shFree.mgrs.slice(0, 200).map(m => (
             <div key={m.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "m", id: m.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
               onClick={() => { setShRec({ kind: "m", id: m.id }); setShDock("rec"); }}>
@@ -14103,7 +14147,7 @@ export default function App() {
                 onClick={() => { setShRec({ kind: "p", id: p.id }); setShDock("rec"); }}>
                 <PlayerShot name={p.name} size={24} /><span className="ux-sh-fn"><SlideName text={p.name} /></span>
                 {cat ? <TeamCrest team={cat} size={16} /> : <span className="ux-dim" style={{ fontSize: 11 }}>Free</span>}
-                <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b>{uxBadge(p.ovr)}</div>); })}
+                <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b>{manBadge(p.id, p.ovr)}</div>); })}
         </div>); })();
     return (
       <aside className={"ux-panel ux-sh-dock" + (shOver === "dock" ? " ux-sh-over" : "")} {...dropZone}>
@@ -14125,7 +14169,7 @@ export default function App() {
     const men = slots.map((_, i) => { const id = sq[i], r = id && recNow(id); if (!r) return null;
       const own = ownOfId(id), place = lab[i], { first, last } = splitSurname(r.name, r.name), lock = edLockedMen.has("p:" + id);
       return { first, last, label: r.name, shot: r.name, code: place, clr: POS_CLR[place] || "var(--chrome-border)", oop: uxOop(own, place),
-        rtg: uxPitchRtg(r.ovr, own, place), warn: uxPlWarn(r.ovr, own, place), traits: null,
+        rtg: uxPitchRtg(seen(id, r.ovr), own, place, ringed(id)), warn: uxPlWarn(seen(id, r.ovr), own, place), traits: null,
         onClick: () => { setShRec({ kind: "p", id, k }); setShDock("rec"); }, cls: "ux-sh-ppl" + (shOver === k + "|p" + i ? " ux-sh-pover" : ""),
         tok: { draggable: mine && !lock, onDragStart: mine && !lock ? (e) => shDragStart(e, { kind: "p", id, from: { k, i } }) : undefined, onDragEnd: shDragEnd },
         wrap: drop(i) }; });
@@ -14249,6 +14293,9 @@ export default function App() {
                 {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>)
               : <>{row("Position", posSel("Position", f.pos, (v) => upd({ pos: v, ...(f.pos2 === v ? { pos2: "" } : null) }), "Choose"))}
                   {row("Second Position", posSel("Second Position", f.pos2, (v) => upd({ pos2: v }), "None", f.pos))}</>}
+            {/* At a college, the year he is in (DESIGN.md, The ANCC): his age's until one is picked. */}
+            {!isMg && shCollege(f.side) && row("Year", <select className="ux-sh-fi ux-sh-flat" aria-label="Year" value={yearOf(f.grad ?? gradFor(age)) || 1}
+              onChange={e => upd({ grad: COLLEGE_SEASON + 4 - +e.target.value })}>{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</select>)}
             {!isMg && mode === "new" && f.at == null && row("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" cls="ux-sh-spk"
               onPick={it => upd({ side: it.k || null, at: null })} />)}
             {row("Rating", <input className={"ux-sh-fi ux-sh-flat ux-sh-fnum" + (overCap ? " ux-need" : "")} style={mono} inputMode="numeric" aria-label="Rating"
@@ -14292,6 +14339,20 @@ export default function App() {
               {overseer && shFact("down", "Relegated", <span style={mono}>{lg.down ?? "–"}</span>, null)}
             </dl>
           </section>
+          {/* Its conferences in the order its playoff crosses them (DESIGN.md, The ANCC), each renamed here, with its clubs. */}
+          {(lg.conferences || []).length > 0 && (
+            <section className="ux-sh-sec">
+              <div className="ux-sh-sech"><span>Conferences</span></div>
+              {lg.conferences.map((c, i) => (
+                <div key={i} className="ux-sh-conf">
+                  <dl className="ux-sh-facts">{shFact("conf" + i, "Name", c.name, mineLg && shBox(c.name, (v) => { const x = v.trim();
+                    if (!x || x === c.name) return;
+                    if (lg.conferences.some((y, j) => j !== i && y.name.toLowerCase() === x.toLowerCase())) return shSay("Another Conference Is Called That");
+                    put({ conferences: lg.conferences.map((y, j) => (j === i ? { ...y, name: x } : y)) }); }))}</dl>
+                  <div className="ux-sh-confc">{c.clubs.map(id => { const T = edTeamRec(id), cat = teamOfKey(id); if (!T || T.group !== lg.name) return null;
+                    return <span key={id} className="ux-sh-confk" title={T.name.trim()}>{cat ? <TeamCrest team={cat} size={16} /> : <span className="ux-crest-gap" />}<b style={mono}>{T.code}</b></span>; })}</div>
+                </div>))}
+            </section>)}
         </div>); }
     const isM = shRec.kind === "m", r = isM ? mgrNow(shRec.id) : recNow(shRec.id); if (!r) return <div className="ux-empty">Gone</div>;
     const sides = isM ? edSidesOfMgr(r.id) : [whereIs.get(r.id)?.club?.key, whereIs.get(r.id)?.nt?.key].filter(Boolean).map(edTeamRec).filter(Boolean);
@@ -14304,7 +14365,7 @@ export default function App() {
       <div className="ux-sh-rec" key={shRec.kind + r.id}>
         <div className="ux-sh-rh"><span className="ux-sh-rface"><PlayerShot name={r.name} size={44} /></span>
           <div><b>{r.name}</b><span>{edDots(isM ? uxStyleName(edStyleOfMgr(r.id)) : posText(own) || posOfId(r.id), r.nat, age != null ? `${age}` : null)}</span></div>
-          {uxBadge(r.ovr, true)}</div>
+          {isM ? uxBadge(r.ovr, true) : manBadge(r.id, r.ovr, true)}</div>
         <section className="ux-sh-sec">
           <div className="ux-sh-sech"><span>Details</span>{!O && <span className="ux-sh-lockh">{uxIcon("lock", "ux-xs")}The Overseer's</span>}</div>
           <dl className="ux-sh-facts">
@@ -14313,11 +14374,15 @@ export default function App() {
               O && <UxSidePick label="Nationality" value={r.nat} groups={edNatChoices(true)} placeholder="Search Nations" cls="ux-sh-spk" startOpen onClose={() => setTimeout(() => setShRecEd(null), 0)} onPick={it => { put({ nat: it.k }); setShRecEd(null); }} />)}
             {shFact("born", "Born", r.born ? <>{uxDate(r.born)}<span className="ux-dim">{age}</span></> : "–",
               O && shBox(r.born, (v) => v && v !== r.born && put({ born: v }), { type: "date" }))}
-            {shFact("ovr", "Rating", <span style={mono}>{showOvr(r.ovr)}</span>,
+            {shFact("ovr", "Rating", <span style={mono}>{showOvr(isM ? r.ovr : seen(r.id, r.ovr))}</span>,
               O && shBox(r.ovr, (v) => { const x = Math.round(+v); if (x >= 25 && x <= 99 && x !== r.ovr) put({ ovr: x }); }, { style: mono, className: "ux-sh-fi ux-sh-fnum" }))}
             {isM ? shFact("style", "Style", uxStyleName(edStyleOfMgr(r.id)), null)
               : shFact("pos", "Positions", <>{shPosChips(own)}{asked && <span className="ux-sh-asked ux-sh-askin">Requested</span>}</>, posOk && shPosEdit(own, (p) => put({ pos: p })))}
             {!isM && shFact("value", "Value", <span style={mono}>{value != null ? moneyLabel(value) : "–"}</span>, null)}
+            {/* A college man's year (DESIGN.md, The ANCC), stored as the year his course ends. */}
+            {!isM && hidMan(r.id) && shFact("grad", "Year", yearOf(r.grad) ? YEARS[yearOf(r.grad) - 1] : "–",
+              O && <select className="ux-sh-fi ux-sh-fsel" autoFocus value={yearOf(r.grad) || ""} onChange={(e) => { put({ grad: COLLEGE_SEASON + 4 - +e.target.value }); setShRecEd(null); }}
+                onBlur={() => setShRecEd(null)} aria-label="Year">{!yearOf(r.grad) && <option value="">None</option>}{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</select>)}
           </dl>
         </section>
         <section className="ux-sh-sec">
@@ -14328,7 +14393,7 @@ export default function App() {
                 <span className="ux-sh-sn"><SlideName text={t.name.trim()} /></span><span className="ux-dim">{isNational(t) ? "National Side" : "Club"}</span></div>); })
             : <div className="ux-sh-side"><span className="ux-dim">Free Agent</span></div>}
         </section>
-        {!isM && shTraits(r.badges || [], r.ovr, O ? (ids) => put({ badges: ids }) : null)}
+        {!isM && !veiled(r.id) && shTraits(r.badges || [], r.ovr, O ? (ids) => put({ badges: ids }) : null)}
         {(() => { const k = shRec.k, T = !isM && k && !k.startsWith("new:") ? edTeamRec(k) : null, sq = T ? edSq(T) : [], at = T ? sq.indexOf(r.id) : -1;
           const canSub = T && at >= 0 && shCan(k) && !edLockedMen.has("p:" + r.id), lab = T ? edLab(T) : [];
           const cands = canSub ? sq.map((v, j) => [v, j]).filter(([v, j]) => v && j !== at && (at < 11 ? j >= 11 : j < 11) && !edLockedMen.has("p:" + v)) : [];
@@ -14417,7 +14482,7 @@ export default function App() {
         {panel || <>
           {rolls && <>
             <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "ovr", target: m.target || "" }))}>{uxIcon("dice", "ux-s")}Roll Ratings</button>
-            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "age", lo: m.lo ?? "18", hi: m.hi ?? "32" }))}>{uxIcon("dice", "ux-s")}Roll Ages</button></>}
+            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "age", lo: m.lo ?? "18", hi: m.hi ?? (shCollege(k) ? "21" : "32") }))}>{uxIcon("dice", "ux-s")}Roll Ages</button></>}
           {fresh && <button type="button" role="menuitem" className="ux-btnreset ux-menu-item ux-sh-mdanger" onClick={() => { shDropClub(k); close(); }}>{uxIcon("trash", "ux-s")}Remove</button>}
           {!fresh && overseer && !isNational(T) && <button type="button" role="menuitem" className={"ux-btnreset ux-menu-item ux-sh-mdanger" + (mm.arm ? " ux-on" : "")}
               onClick={() => { if (mm.arm) { shRemoveClub(k); close(); } else setShRowMenu(m => ({ ...m, arm: true })); }}>{uxIcon("trash", "ux-s")}{mm.arm ? "Confirm Remove" : "Remove Club"}</button>}</>}
@@ -14869,7 +14934,10 @@ export default function App() {
         <div className="ux-chart-x" style={mono}><span>{items[0].label}</span><span>{items[items.length - 1].label}</span></div>
       </div>);
   };
-  const uxBadge = (v, big) => <span style={{ ...ovrBlock(v), ...(big ? { minWidth: 40, padding: "5px 8px", fontSize: 15, lineHeight: "18px" } : {}), ...mono }}>{showOvr(v)}</span>;
+  const uxBadge = (v, big, ring) => <span className={ring ? "ux-hid" : undefined} title={ring ? HID_TIP : undefined}
+    style={{ ...ovrBlock(v), ...(big ? { minWidth: 40, padding: "5px 8px", fontSize: 15, lineHeight: "18px" } : {}), ...mono }}>{showOvr(v)}</span>;
+  // A man's rating badge by his record's ID: blank where he is hidden from this person, ringed where only the overseer sees it.
+  const manBadge = (id, v, big) => uxBadge(seen(id, v), big, ringed(id));
   // OUT OF POSITION (user, 11 October 2026) only where the place costs him rating (posDrop, src/data/positions.js): a move
   // the engine plays for free, a left-back at right-back or a centre-mid holding, is no fault and gets no alert. Out of
   // position he carries the alert, a red triangle and what the place costs him (a row of the card, uxOopRow), each opening
@@ -14887,19 +14955,19 @@ export default function App() {
   // A MAN'S RATING ON A PITCH (src/data/positions.js, Moukden and Kirin, 11 October 2026): in one of his own positions his
   // rating; out of them the rating he plays the place at, ringed, with what the place costs him in a block of its own width
   // over it, and the triangle centred over his place's label (uxPlWarn, inside it).
-  const uxPitchRtg = (ovr, own, place) => { const oop = uxOop(own, place), v = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
+  const uxPitchRtg = (ovr, own, place, ring) => { const oop = uxOop(own, place), v = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
     const r = oop ? uxOopRow(ovr, own, place) : null;
-    return (<span className={"ux-pl-rtg" + (oop ? " ux-oop" : "")} data-oop={r ? uxOopTag(own, [r]) : undefined}
-      style={{ background: ovrSheen(ovrMetal(v)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
+    return (<span className={"ux-pl-rtg" + (oop ? " ux-oop" : "") + (ring ? " ux-hid" : "")} data-oop={r ? uxOopTag(own, [r]) : undefined} title={ring ? HID_TIP : undefined}
+      style={{ ...(uxHasOvr(v) ? { background: ovrSheen(ovrMetal(v)), color: OVR_INK, textShadow: OVR_TSHADOW } : { background: "var(--ux-line-2)", color: "var(--ux-text-2)" }), ...mono,
         boxShadow: (oop ? "0 0 0 2px var(--ux-loss), " : "") + "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>
       {showOvr(v)}{r && r.d != null && <span className="ux-pl-drop"><UxArrow />{r.d}</span>}</span>); };
   const uxPlWarn = (ovr, own, place) => (uxOop(own, place)
     ? <span className="ux-pl-warn" data-oop={uxOopTag(own, [uxOopRow(ovr, own, place)])} role="img" aria-label="Out Of Position" title="">{UX_WARN}</span> : null);
   // A man on a pitch (UxLineup) off his squad entry; `code` stands in for his place where the pitch shows something else
   // there (a manager's Tactics: the role he deals him, its name on hover).
-  const uxMan = (p, skill, code, codeTitle) => { const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = p.ovr ?? skill;
+  const uxMan = (p, skill, code, codeTitle) => { const nm = p.fullName || p.name, { first, last } = splitSurname(nm, p.name), pos = p.spos || p.pos, ovr = seen(p.rid, p.ovr ?? skill);
     return { first, last, label: nm, shot: nm, code: code || pos, codeTitle, clr: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)", oop: uxOop(p.own, pos),
-             rtg: uxPitchRtg(ovr, p.own, pos), warn: uxPlWarn(ovr, p.own, pos), traits: p.badges, onClick: () => playerByName.has(nm) && openPlayer(nm) }; };
+             rtg: uxPitchRtg(ovr, p.own, pos, ringed(p.rid)), warn: uxPlWarn(ovr, p.own, pos), traits: seen(p.rid, p.badges), onClick: () => playerByName.has(nm) && openPlayer(nm) }; };
 
   // The map's pins, one kind at a time.
   const uxAtlasPins = useMemo(() => atlasPins.filter(p => p.kind === uxAtlasKind), [atlasPins, uxAtlasKind]);
@@ -15026,21 +15094,21 @@ export default function App() {
       const oc = isNT ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
       const side = isNT ? (oc ? teamByName.get(oc.name) : null) : pe?.natCode ? natTeamByCode.get(pe.natCode) : null;
       const rec = p.rid ? recNow(p.rid) : null, own = posList(rec?.pos ?? p.own), age = rec?.born ? ageOf(rec.born) : null;
-      const value = rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null;
-      const traits = badgeOrder(rec?.badges || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
+      const value = rec && pstats && !veiled(p.rid) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null;
+      const traits = badgeOrder(seen(p.rid, rec?.badges) || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
       const oop = !p.bench && uxOop(p.own, pos), other = own.find(q => q !== pos);
       return (
         <tr key={i} className="ux-link" onClick={() => pe && openPlayer(nm)}>
           {/* Where he plays (user, 11 October 2026): the eleven's place, a bench man his own first position; out of position
               (uxOop) in red, with the alert after it, else his other position quiet after it. */}
           <td><span className="ux-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
-            {oop ? uxOopMark(p.ovr ?? t.skill, p.own, pos) : other && <span className="ux-pos2" style={mono}>{other}</span>}</td>
+            {oop ? uxOopMark(seen(p.rid, p.ovr ?? t.skill), p.own, pos) : other && <span className="ux-pos2" style={mono}>{other}</span>}</td>
           <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span>
             <span className="ux-strong ux-sqnm"><SlideName text={nm} /></span></div></td>
           <td><div className="ux-sqtr">{traits.map(id => <BadgeIcon key={id} id={id} size={14} />)}</div></td>
           <td title={isNT ? oc?.name : pe?.nationality}><div className="ux-tc">{side && <TeamCrest team={side} size={16} />}</div></td>
           <td className={"ux-n" + (age != null ? "" : " ux-dim")} style={mono}>{age ?? "–"}</td>
-          <td className="ux-c">{uxBadge(p.ovr ?? t.skill)}</td>
+          <td className="ux-c">{manBadge(p.rid, p.ovr ?? t.skill)}</td>
           <td className={"ux-n" + (value != null ? "" : " ux-dim")} style={mono}>{value != null ? moneyLabel(value) : "–"}</td>
           <td className={"ux-n" + (x ? "" : " ux-dim")} style={mono}>{x ? x.gp : "–"}</td>
           <td className={"ux-n" + (x?.G != null ? "" : " ux-dim")} style={mono}>{x?.G ?? "–"}</td>
@@ -15196,7 +15264,7 @@ export default function App() {
                       <span className="ux-bn-c">
                         <button type="button" className="ux-btnreset ux-bn-tok" aria-label={nm} title={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}>
                           <PlayerShot name={nm} size="100%" /></button>
-                        {uxPitchRtg(p.ovr ?? t.skill, [pos], pos)}
+                        {uxPitchRtg(seen(p.rid, p.ovr ?? t.skill), [pos], pos, ringed(p.rid))}
                         <span className="ux-pl-pos" style={mono}>{pos}</span>
                       </span></div>); })}</div>
               </div>
@@ -15647,8 +15715,10 @@ export default function App() {
     // Behind everything, his surname huge in the kit's second colour (the ink where the kit has none).
     const word = splitSurname(disp, p?.name).last.toUpperCase();
     const wordClr = kit?.secondaryColor && String(kit.secondaryColor).toLowerCase() !== String(kit.primaryColor || "").toLowerCase() ? kit.secondaryColor : ink;
-    const ovr = p?.ovr ?? hofRow?.ovr ?? rec?.ovr ?? null, born = rec?.born || null, age = born ? ageOf(born) : null;
-    const value = rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null, retired = !p && !!hofRow;
+    const ovr = seen(rid, p?.ovr ?? hofRow?.ovr ?? rec?.ovr ?? null), born = rec?.born || null, age = born ? ageOf(born) : null;
+    const value = rec && pstats && !veiled(rid) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null, retired = !p && !!hofRow;
+    // A man at a college (DESIGN.md, The ANCC) shows his year where another man's value stands.
+    const course = hidMan(rid) ? yearOf(rec?.grad) : null;
     // Positions: each spot he plays on a club sheet or in his country's eleven, with the side that plays him there; a
     // national bench slot only when nothing else says where he plays, as the player index reads it.
     const spots = new Map(), benched = [], sheets = [];
@@ -15668,7 +15738,7 @@ export default function App() {
     // His roles: what each side he starts for deals him, as a match deals them (rolesOf: the side's style, its shape and
     // his slot); a man on the bench has none until he comes on. His country first, as the banner's crests run.
     const roles = uxRoleRows(sheets), oops = uxOopSides(sheets, ownPos, ovr);
-    const traits = badgeOrder(rec?.badges || []).map(id => BADGE_BY_ID[id]).filter(Boolean);
+    const traits = badgeOrder(seen(rid, rec?.badges) || []).map(id => BADGE_BY_ID[id]).filter(Boolean);
     // The season picked, his newest by default.
     const years = [...new Set(rows.map(x => x.y))].sort((a, b) => b - a);
     const year = uxPlSel.who === name && years.includes(uxPlSel.y) ? uxPlSel.y : years[0] ?? null;
@@ -15732,11 +15802,13 @@ export default function App() {
                     <TeamCrest team={t} size={96} /></button>))}
               </div>)}
             <dl className="ux-plb-facts">
-              <div><dt>OVR</dt><dd>{ovr != null ? <span className="ux-plb-ovr" style={{ background: ovrSheen(ovrMetal(ovr)) }}>{showOvr(ovr)}</span> : "–"}</dd></div>
+              <div><dt>OVR</dt><dd>{ovr != null ? <span className={"ux-plb-ovr" + (ringed(rid) ? " ux-hid" : "")} title={ringed(rid) ? HID_TIP : undefined}
+                style={{ background: ovrSheen(ovrMetal(ovr)) }}>{showOvr(ovr)}</span> : "–"}</dd></div>
               <div><dt>{shown.length > 1 ? "Positions" : "Position"}</dt>
                 <dd>{shown.length ? shown.map(x => <span key={x} style={{ color: POS_CLR[x] || "inherit" }}>{x}</span>) : "–"}</dd></div>
               <div><dt>Age</dt><dd>{age ?? "–"}{born && <small style={mono}>{uxDate(born)}</small>}</dd></div>
-              <div><dt>Value</dt><dd>{retired ? "Retired" : value != null ? moneyLabel(value) : "–"}</dd></div>
+              {hidMan(rid) ? <div><dt>Year</dt><dd>{course ? YEARS[course - 1] : "–"}</dd></div>
+                : <div><dt>Value</dt><dd>{retired ? "Retired" : value != null ? moneyLabel(value) : "–"}</dd></div>}
             </dl>
           </div>
         </section>
@@ -15859,7 +15931,7 @@ export default function App() {
     // His own positions, and the alert when a side plays him out of position (uxOopMarkAll).
     const oopIdx = uxOopIdx();
     const poss = (r) => { const p = r.p, ps = String(p.pos || "").split("/").filter(x => x && x !== "?");
-      const oo = p.hof ? [] : uxOopSides(r.f?.rid ? oopIdx.get(r.f.rid) : oopIdx.get(r.nm), ps, p.ovr);
+      const oo = p.hof ? [] : uxOopSides(r.f?.rid ? oopIdx.get(r.f.rid) : oopIdx.get(r.nm), ps, seen(r.f?.rid, p.ovr));
       return <td><span className="ux-poss" style={mono}>{ps.map(x => <b key={x} style={{ color: POS_CLR[x] || "var(--ux-text-2)" }}>{x}</b>)}{uxOopMarkAll(oo, ps)}</span></td>; };
     const side = (t, none) => <td title={t?.name}><div className="ux-tc">{t && <TeamCrest team={t} size={16} />}<span className={t ? undefined : "ux-dim"}>{t ? t.name : none}</span></div></td>;
     const COLS = {
@@ -15886,7 +15958,7 @@ export default function App() {
             {uxNum(r.f?.age, "ux-c")}
             <td title={r.natT?.name || r.p.nationality}><div className="ux-tc">{r.natT && <TeamCrest team={r.natT} size={16} />}<b className="ux-code" style={mono}>{r.p.natCode || "–"}</b></div></td>
             {side(r.clubT, r.p.hof ? "Retired" : "Free Agent")}
-            <td className="ux-c">{r.p.ovr != null ? uxBadge(r.p.ovr) : <span className="ux-dim">&#8211;</span>}</td>
+            <td className="ux-c">{seen(r.f?.rid, r.p.ovr) != null ? manBadge(r.f?.rid, r.p.ovr) : <span className="ux-dim">&#8211;</span>}</td>
             <td className="ux-n" style={mono}>{r.p.hof ? <span className="ux-dim">Retired</span> : r.f?.value != null ? moneyLabel(r.f.value) : <span className="ux-dim">&#8211;</span>}</td>
             {uxAvgTd(r.c?.RTG ?? null, (r.c?.rg || 0) >= careerRtg.minGp)}
           </>) : (<>
@@ -15952,7 +16024,7 @@ export default function App() {
     const kit = clubT || natT, c1 = kit?.primaryColor || "var(--ux-panel-3)", c2 = kit?.secondaryColor || c1;
     const ink = kit?.primaryColor && (lumOf(kit.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
     const { first, last } = splitSurname(disp, p.name), pos = String(p.pos || "").split("/").filter(x => x && x !== "?");
-    const sheets = hof ? [] : uxSheetsOf(nm, r.f?.rid || null), roles = uxRoleRows(sheets), oops = uxOopSides(sheets, pos, p.ovr);
+    const sheets = hof ? [] : uxSheetsOf(nm, r.f?.rid || null), roles = uxRoleRows(sheets), oops = uxOopSides(sheets, pos, seen(r.f?.rid, p.ovr));
     // His season: the year the Season view is on, else the newest he has figures in, every competition added up.
     const own = uxBoardIdx.get(r.key) || [], per = new Map();
     const ny = uxPsView === "season" && uxPsY != null ? uxPsY : own.reduce((y, [s]) => Math.max(y, uxYearOf(s)), -Infinity);
@@ -15961,7 +16033,7 @@ export default function App() {
     for (const x of per.values()) { yr.gp += x.gp; yr.G += x.G || 0; yr.A += x.A || 0; if (x.RTG != null) { yr.rs += x.RTG * x.gp; yr.rg += x.gp; } }
     const rtg = (rs, rg, gate) => (rg ? [(rs / rg).toFixed(2).replace(/0$/, ""), rg >= gate ? ratingColor(rs / rg) : "var(--ux-text-3)"] : [null, null]);
     const [yv, yc] = rtg(yr.rs, yr.rg, UX_RTG_MIN_GP), c = r.c, [cv, cc] = c ? rtg(c.rs, c.rg, careerRtg.minGp) : [null, null];
-    const traits = badgeOrder((r.f?.rid ? recNow(r.f.rid) : null)?.badges || []).filter(id => BADGE_BY_ID[id]);
+    const traits = badgeOrder(seen(r.f?.rid, (r.f?.rid ? recNow(r.f.rid) : null)?.badges) || []).filter(id => BADGE_BY_ID[id]);
     return (
       <div className="ux-col ux-psc">
         <section className="ux-panel ux-plc" aria-label={disp}>
@@ -15975,7 +16047,7 @@ export default function App() {
             </div>
           </div>
           <dl className="ux-plc-facts">
-            <div><dt>OVR</dt><dd>{p.ovr != null ? uxBadge(p.ovr) : "–"}</dd></div>
+            <div><dt>OVR</dt><dd>{seen(r.f?.rid, p.ovr) != null ? manBadge(r.f?.rid, p.ovr) : "–"}</dd></div>
             <div><dt>{pos.length > 1 ? "Positions" : "Position"}</dt><dd style={mono}>{pos.length ? pos.map(x => <span key={x} style={{ color: POS_CLR[x] || "inherit" }}>{x}</span>) : "–"}</dd></div>
             <div><dt>Age</dt><dd style={mono}>{r.f?.age ?? "–"}</dd></div>
             <div><dt>Value</dt><dd style={mono}>{hof ? "Retired" : r.f?.value != null ? moneyLabel(r.f.value) : "–"}</dd></div>
@@ -16195,7 +16267,8 @@ export default function App() {
     const mgr = t.manager ? uxMgrBy.get(pFold(t.manager)) || null : null;
     const mOvr = t.mgmt ?? mgr?.ovr ?? null, mAge = mgr?.born ? ageOf(mgr.born) : null;
     const go = () => openTeam(t);
-    const best = (t.squad || []).filter(p => p && (p.fullName || p.name)).slice().sort((a, b) => (b.ovr ?? 0) - (a.ovr ?? 0)).slice(0, 4);
+    // A college's men are hidden from all but the overseer (DESIGN.md, The ANCC), so a college has no best players to show them.
+    const best = (t.squad || []).filter(p => p && (p.fullName || p.name) && !veiled(p.rid)).slice().sort((a, b) => (b.ovr ?? 0) - (a.ovr ?? 0)).slice(0, 4);
     const roles = best.length ? rolesOf(t) : {};
     const record = pstats ? regRecord(t) : { titles: [] };
     const titles = (nt ? record.titles.filter(([c]) => UX_HONOURS.includes(c)) : record.titles).slice(0, 6);
@@ -16245,7 +16318,7 @@ export default function App() {
               <button key={i} type="button" className="ux-btnreset ux-role" onClick={() => playerByName.has(nm) && openPlayer(nm)}>
                 <PlayerShot name={nm} size={28} />
                 <span className="ux-role-t"><b>{fullDisplayName(nm)}</b><span><b style={{ ...mono, color: POS_CLR[pos] || "inherit" }}>{pos}</b> {role ? role[0] : "Substitute"}</span></span>
-                {p.ovr != null ? uxBadge(p.ovr) : null}
+                {p.ovr != null ? manBadge(p.rid, p.ovr) : null}
               </button>); })}</div>))}
         {titles.length > 0 && uxPanel("Honours", null, (
           <div className="ux-pbody ux-fit"><table className="ux-tbl">
@@ -18534,13 +18607,13 @@ export default function App() {
         <div className="ux-pbody"><div className="ux-mbench" aria-label="Bench">
           {(sh[side].places || bench).map((p, i) => { if (p.vacant) return (
               <div key={i} className="ux-mb-row ux-vac"><span className="ux-pos" style={mono}>{p.lab}</span><span className="ux-mb-n">Vacant</span><span /></div>);
-            const nm = p.fullName || p.name, pos = benchSpos(p, playerByName.get(nm)) || p.pos, ovr = p.ovr ?? t.skill;
+            const nm = p.fullName || p.name, pos = benchSpos(p, playerByName.get(nm)) || p.pos, ovr = seen(p.rid, p.ovr ?? t.skill);
             return (
               <div key={i} className="ux-mb-row">
                 <span className="ux-pos" style={{ ...mono, color: POS_CLR[pos] || "var(--ux-text-2)" }}>{pos}</span>
                 {playerByName.has(nm) ? <button type="button" className="ux-btnreset ux-a ux-mb-n" title={nm} onClick={() => openPlayer(nm)}><SlideName text={benchName(p)} /></button>
                   : <span className="ux-mb-n" title={nm}><SlideName text={benchName(p)} /></span>}
-                <span style={{ ...ovrBlock(ovr, true), ...mono }}>{showOvr(ovr)}</span>
+                <span className={ringed(p.rid) ? "ux-hid" : undefined} title={ringed(p.rid) ? HID_TIP : undefined} style={{ ...ovrBlock(ovr, true), ...mono }}>{showOvr(ovr)}</span>
               </div>); })}
         </div></div>) : (
         <UxLineup slots={slots} men={xi.map(p => uxMan(p, t.skill))} />), true, side + "-xi");
@@ -18816,7 +18889,7 @@ export default function App() {
                     return (
                       <tr key={i} className={playerByName.has(nm) ? "ux-link" : undefined} onClick={() => playerByName.has(nm) && openPlayer(nm)}>
                         <td><span className="ux-pos" style={{ color: uxOop(p.own, pos) ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
-                          {uxOopMark(p.ovr ?? side.skill, p.own, pos)}</td>
+                          {uxOopMark(seen(p.rid, p.ovr ?? side.skill), p.own, pos)}</td>
                         <td>{role ? <>{role[0]} <span className="ux-dim" style={mono}>{role[1]}</span></> : <span className="ux-dim">&#8211;</span>}</td>
                         <td className="ux-strong"><SlideName text={splitSurname(nm, p.name).last} /></td>
                       </tr>); })}</tbody>
@@ -18867,7 +18940,8 @@ export default function App() {
     const lines = d.rows.map(x => ({ ...x, ch: null }));
     // Each rating change goes on the row of the competition season it came from; one with no such row (a general
     // rebalance, the international one) is a row of its own, where it fell among them (uxBatchWhen).
-    for (const c of (pstats?.changelog || []).filter(z => pFold(z.player) === d.key)) {
+    // A man hidden at a college shows no rating changes (DESIGN.md, The ANCC).
+    for (const c of (pstats?.changelog || []).filter(z => pFold(z.player) === d.key && !veiled(d.rid))) {
       const fy = +c.season, hit = lines.find(x => x.s && Math.floor(x.s.ord / 10) === fy && (x.s.comp === c.comp || (isQ(c.comp) && isQ(x.s.comp))));
       if (hit) { hit.ch = { old: hit.ch ? hit.ch.old : c.old, neu: c.neu }; continue; }
       const side = intlish(c.comp) ? natTeamByCode.get(c.team) || uxClubOf.get(c.team) : uxClubOf.get(c.team) || natTeamByCode.get(c.team);
@@ -20380,7 +20454,7 @@ export default function App() {
                     <span
                           style={{ ...cellBase, padding: 0, textAlign: "center",
                                    fontStyle: q.inGoal ? "italic" : "normal" }}>
-                      <OvrBadge v={q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)}
+                      <OvrBadge v={hidMan(q.rid ?? ridByName.get(pFold(q.fullName || q.name))) ? null : q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)}
                                 xs={z.badge === "xs"} sm={z.badge === "sm"} /></span>
                     <span style={{ ...cellBase, display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
                       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(q.fullName || q.name, q.name)}</span>
@@ -21048,6 +21122,8 @@ export default function App() {
                             // first position, and the place he would take once a man is picked to come off. A man in goal
                             // plays at half his rating (ovrAt), so his coaching is read against that, not against his own.
                             const base = p.ovr0 ?? p.ovr ?? 70, place = kind === "off" ? (p.inGoal ? "GK" : p.spos || p.pos) : sel >= 0 ? on[sel]?.spos : null;
+                            // A college man's rating is hidden on the match screens from everyone (DESIGN.md, The ANCC).
+                            const hid = hidMan(p.rid ?? ridByName.get(pFold(p.fullName || p.name)));
                             const lab = kind === "off" ? place : p.own?.[0] || p.pos, oop = !!place && uxOop(p.own, place);
                             const dCoach = (p.ovr ?? 0) - (p.inGoal ? ovrAt(base, p.own, "GK") : p.ovr0 ?? p.ovr ?? 0);
                             const dFat = -(1 - (ME_CFG.fatExLo ?? 0.72)) * (1 - st2 / 100) * 25;
@@ -21062,7 +21138,7 @@ export default function App() {
                                       className={"ux-btnreset ux-sub-row" + (kind === "off" && sel === i ? " ux-on" : "")}>
                                 <span className="ux-sub-face"><PlayerShot name={p.fullName || p.name} size="100%" /></span>
                                 <span className="ux-sub-pos"><span className="ux-pos" style={{ color: kind === "off" && oop ? "var(--ux-loss)" : POS_CLR[lab] || "var(--ux-text-3)" }}>{lab}</span>
-                                  {oop && uxOopMark(base, p.own, place)}</span>
+                                  {oop && uxOopMark(hid ? null : base, p.own, place)}</span>
                                 <SlideName text={boldSurname(p.fullName || p.name, p.name)} />
                                 {/* The manager's personal orders, when this man is carrying some. */}
                                 <span className="ux-sub-ci">{ci && <span data-tip={"Individual orders\n" + Object.entries(ci).map(([k2, v2]) => (STRAT_LABELS[k2]?.name || k2) + " " + (v2 > 0 ? "+" : "") + (Math.round(v2 * 10) / 10)).join("\n")}>
@@ -21075,8 +21151,8 @@ export default function App() {
                                 <span className="ux-sub-st"><i style={{ width: `${st2}%`, background: stClr }} /></span>
                                 <span className="ux-sub-pc" style={st2 > 35 ? undefined : { color: "var(--ui-danger)" }}>{Math.round(st2)}%</span>
                                 {/* A substitute, once a man is picked to come off, at the rating he would play that place at. */}
-                                {(() => { const v = place && p.own?.length ? ovrAt(base, p.own, place) : base;
-                                  return <span title={v !== base ? `Plays ${place} As ${showOvr(v)}` : undefined}><OvrBadge v={v} sm /></span>; })()}
+                                {(() => { const v = hid ? null : place && p.own?.length ? ovrAt(base, p.own, place) : base;
+                                  return <span title={v != null && v !== base ? `Plays ${place} As ${showOvr(v)}` : undefined}><OvrBadge v={v} sm /></span>; })()}
                               </button>); };
                           return (
                             <section key={side} className="ux-panel ux-sub-col">
