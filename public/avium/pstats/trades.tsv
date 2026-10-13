@@ -35,3 +35,13 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 9	1935	2026-10-13T13:28:39.198Z	player	p0111	Remme THORSEN	CM	72	29	1500000	t0007	Sparta Amberdam	t0004	Fortuna Hammersburg 01	auroruse
 10	1935	2026-10-13T13:29:14.901Z	player	p0055	Gonzalo VALBUENA	CM	92	27	150000000	t0004	Fortuna Hammersburg 01	t0005	FC Eisenfeld 02	auroruse
 10	1935	2026-10-13T13:29:14.901Z	player	p0078	Dirk THÄLMANN	CM	70	24	1200000	t0005	FC Eisenfeld 02	t0004	Fortuna Hammersburg 01	auroruse
+11	1935	2026-10-13T14:01:26.841Z	player	p2243	Andres RAIVO	GK	39	27	5600	t0186	Frederikka Islands Wildflowers	t0187	Shompolahti PS	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2248	Nūmho LARANYAL	CM/DM	46	32	11000	t0186	Frederikka Islands Wildflowers	t0187	Shompolahti PS	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2261	Kanaka PĀHOA	CM	38	27	9100	t0186	Frederikka Islands Wildflowers	t0187	Shompolahti PS	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2263	Olavi MARVINEN	ST	40	28	13000	t0186	Frederikka Islands Wildflowers	t0187	Shompolahti PS	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2254	Jeriel HOSEA	GK	37	23	4800	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2249	Risto ĀTLAKÖNEINEN	CM	43	24	17000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p2251	Paavo SUURSAAREN	ST/AM	40	23	17000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p3117	Engze RANŽE	GK	36	26	4100	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p3119	Teppo NURMIJÄRVEN	AM	37	29	7000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
+11	1935	2026-10-13T14:01:26.841Z	player	p3120	Aivo KRISTIANMAAN	CM	35	18	6000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
