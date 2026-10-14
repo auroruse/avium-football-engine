@@ -3838,7 +3838,7 @@ function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs, stages }) {
     const two = koLegs === 2;
     const stage = (label, matches) => {
       if (!matches?.some(m => m?.result)) return;
-      L.push(`### ${label}`, "", seasonKoRows(matches, two), "");
+      L.push(`### ${label}`, "", seasonKoRows(matches, two && matches.some(m => m?.result?.twoLeg)), "");
     };
     const de = !!(ko.losers?.length || ko.grandFinal);
     L.push(de ? "## Upper Bracket" : `## ${stages?.[1] || "Knockouts"}`, "");
@@ -5635,6 +5635,10 @@ const T_PRESETS = {
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   // Legacy WC on the pick'em's fixed bracket. Rounds to Draw is cleared because it survives a format
   // change, and one drawn quarter-final would break the bracket every entry was picked on.
+  // THE 1935 CLUB WORLD CUP (Moukden and Kirin, 14 October 2026): eight groups of four home and away, the first-listed side at
+  // home ("HA in groups is meant to be first listed"), two-legged ties to the semi-finals and the final one match at a neutral
+  // ground ("Finals should only be 1 leg at a neutral venue").
+  cwc1935: { label: "1935 Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koFinalOneLeg: true, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   wc1935: { label: "1935 World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -8017,6 +8021,11 @@ export default function App() {
   const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koDrawRounds: [], koDrawRules: { ...KO_DRAW_RULES }, injuries: true, suspensions: true, testMode: false, staminaCarry: true, drawRules: { ...DRAW_RULES }, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
+  // A ONE-LEG FINAL (Moukden and Kirin, 14 October 2026: "Finals should only be 1 leg at a neutral venue"): with two-legged
+  // ties and One-Leg Final on, a single elimination's last round is one match, with no side at home unless one is set by hand.
+  // `ref` is a knockout fixture as the bracket names it ({ ri, mi, bracket, tp }).
+  const tOneLegFinal = (ref) => !!tConfig.koFinalOneLeg && tConfig.koLegs === 2 && tConfig.koFormat !== "double_elim" && !!ref && !ref.tp
+    && (!ref.bracket || ref.bracket === "wb") && (tKO?.rounds?.length || 0) > 0 && ref.ri === tKO.rounds.length - 1;
   const [tManual, setTManual] = useState(null); // manual allocation state
   const [tKOManual, setTKOManual] = useState(null);
   const [tByeManual, setTByeManual] = useState(null);
@@ -8149,7 +8158,7 @@ export default function App() {
       if (!m) return;
       homeTeamObj = m.home;
       awayTeamObj = m.away;
-      const isTwoLeg = tConfig.koLegs === 2;
+      const isTwoLeg = tConfig.koLegs === 2 && !tOneLegFinal(target);
       if (!isTwoLeg) {
         const res = { ftHome: hg, ftAway: ag };
         if (penData) { res.pen = { home: penData.homeScore, away: penData.awayScore }; }
@@ -8266,7 +8275,7 @@ export default function App() {
       const k = fixtureKey(target);
       if (!k) return;
       keys.push(k);
-      if (target.type === "ko" && tConfig.koLegs === 2 && !target.tp && target.bracket !== "gf" && target.bracket !== "reset") keys.push(k + "_L2");
+      if (target.type === "ko" && tConfig.koLegs === 2 && !target.tp && target.bracket !== "gf" && target.bracket !== "reset" && !tOneLegFinal(target)) keys.push(k + "_L2");
     };
     tGroups.forEach((g, gi) => (g.schedule || []).forEach((rd, ri) => rd.forEach((_, mi) => add({ type: "group", gi, ri, mi }))));
     if (tKO) {
@@ -8277,7 +8286,7 @@ export default function App() {
       if (tKO.reset) add({ type: "ko", bracket: "reset" });
     }
     return keys;
-  }, [tGroups, tKO, tConfig.koLegs]);
+  }, [tGroups, tKO, tConfig.koLegs, tConfig.koFinalOneLeg, tConfig.koFormat]);
   // Grounds are DEALT, not hashed. hashStr(key) % pool.length was never random — it is a function of
   // the fixture numbering, so it produced the same board every time and an uneven one: over a
   // 48-match group stage with twelve grounds it gave six matches to four of them and NONE AT ALL to
@@ -8320,7 +8329,7 @@ export default function App() {
     const ai = teams.findIndex(t => t.name === awayTeam.name);
     if (hi === -1 || ai === -1) return null;
 
-    const isL2 = target.type === "ko" && target.leg === 2 && tConfig.koLegs === 2;
+    const isL2 = target.type === "ko" && target.leg === 2 && tConfig.koLegs === 2 && !tOneLegFinal(target);
     const venueKey = fixtureKey(target);
     const overrideKey = venueKey + (isL2 ? "_L2" : "");
     let homeAdv = null, hostModeActive = false;
@@ -8328,7 +8337,7 @@ export default function App() {
       homeAdv = tGetHA(venueKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
       hostModeActive = tConfig.homeAdvGroup === "host";
     } else {
-      if (tConfig.koLegs === 2) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
+      if (tConfig.koLegs === 2 && !tOneLegFinal(target)) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
       else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
@@ -8407,7 +8416,7 @@ export default function App() {
     } else {
       liveIsKO = true;
       const bk = target.bracket || (target.tp ? "tp" : "wb");
-      liveIsFinal = bk === "gf" || bk === "reset";
+      liveIsFinal = bk === "gf" || bk === "reset" || tOneLegFinal(target);
       liveIsTP = bk === "tp";
       const isTwoLeg = tConfig.koLegs === 2 && !liveIsFinal && !liveIsTP;
       let leg = null, leg1Home = null, leg1Away = null;
@@ -10182,7 +10191,8 @@ export default function App() {
     // double-elim bracket, "tp" = third place, anything else = a regular round in the wb/lb
     // ladder) — cheaper than re-deriving bracket/round position from ko's own structure, and
     // every regular round already defaults to high-stakes below regardless of which one it is.
-    const isFinal = haKey === "gf" || haKey === "reset";
+    const oneLeg = /^ko_\d+_\d+$/.test(haKey) && tOneLegFinal({ ri: +haKey.split("_")[1] });
+    const isFinal = haKey === "gf" || haKey === "reset" || oneLeg;
     const isThirdPlace = haKey === "tp";
     const isTwoLeg = tConfig.koLegs === 2 && !isFinal && !isThirdPlace;
     let leg = null, leg1Home = null, leg1Away = null;
@@ -10196,7 +10206,7 @@ export default function App() {
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
     const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
-    if (tConfig.koLegs === 1) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
+    if (tConfig.koLegs === 1 || oneLeg) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
@@ -10330,7 +10340,7 @@ export default function App() {
   };
   const koStartEdit = (ref) => {
     const bracket = koRefBracket(ref);
-    const twoLeg = tConfig.koLegs === 2 && bracket !== "gf" && bracket !== "reset";
+    const twoLeg = tConfig.koLegs === 2 && bracket !== "gf" && bracket !== "reset" && !tOneLegFinal(ref);
     const base = { h: "", a: "", ...(twoLeg ? { twoLeg: true, step: "l1" } : {}) };
     if (bracket === "tp") return setTKoEdit({ ri: -2, mi: -1, tp: true, ...base });
     if (bracket === "gf" || bracket === "reset") return setTKoEdit({ ri: 0, mi: 0, bracket, ...base });
@@ -18228,6 +18238,7 @@ export default function App() {
             {tConfig.koFormat !== "double_elim" && koN >= 4 && uxTog("Third-Place Match", tConfig.thirdPlace, v => setTConfig(c => ({ ...c, thirdPlace: v })))}
             {uxTog("Two Legs", tConfig.koLegs === 2, v => setTConfig(c => ({ ...c, koLegs: v ? 2 : 1 })))}
             {tConfig.koLegs === 2 && uxTog("Away Goals", tConfig.koAwayGoals, v => setTConfig(c => ({ ...c, koAwayGoals: v })))}
+            {tConfig.koLegs === 2 && tConfig.koFormat !== "double_elim" && uxTog("One-Leg Final", !!tConfig.koFinalOneLeg, v => setTConfig(c => ({ ...c, koFinalOneLeg: v })))}
             {tConfig.koFormat === "double_elim" && uxTog("Reset Match", tConfig.koReset !== false, v => setTConfig(c => ({ ...c, koReset: v })))}</>)}
           {tNumByes > 0 && uxFRow(tNumByes === 1 ? "1 Bye" : tNumByes + " Byes", uxSegIn("Byes", tConfig.koByeMode, [["auto", "By Ranking"], ["manual", "By Hand"]], v => setTConfig(c => ({ ...c, koByeMode: v }))))}
           {uxFRow("Allocation", uxSegIn("Knockout Allocation", tConfig.koAllocMode, [["seed", "Seed"], ["random", "Random"], ["manual", "By Hand"], ["draw", "Draw"],
@@ -18296,7 +18307,7 @@ export default function App() {
     const de = tConfig.koFormat === "double_elim", kl = tConfig.koLegs === 2 ? 2 : 1;
     // Every side but the champion goes out once in a knockout; twice, but for the champion's one defeat at most, in a double
     // elimination, whose grand final is one match whatever the legs.
-    const km = koN < 2 ? 0 : de ? (2 * koN - 3) * kl + 1 : (koN - 1 + (tConfig.thirdPlace && koN >= 4 ? 1 : 0)) * kl;
+    const km = koN < 2 ? 0 : de ? (2 * koN - 3) * kl + 1 : (koN - 1 + (tConfig.thirdPlace && koN >= 4 ? 1 : 0)) * kl - (kl === 2 && tConfig.koFinalOneLeg ? 1 : 0);
     const round = (k) => k <= 2 ? "Final" : k === 4 ? "Semi-Finals" : k === 8 ? "Quarter-Finals" : "Round Of " + k;
     const probs = [];
     if (tournamentTeamIds.length < 2) probs.push("Pick At Least 2 Sides");
@@ -18510,7 +18521,7 @@ export default function App() {
     if (!m.home && !m.away && !r) return null;
     const haKey = fixtureKey({ type: "ko", ...ref }), haVal = tHomeAdvOverrides[haKey] || null, editing = koIsEditingRef(ref);
     const w = r && !r.partial ? koWinner(m) : null, whole = ref.bracket === "lb" || ref.bracket === "gf" || ref.bracket === "reset";
-    const twoLeg = tConfig.koLegs === 2 && ref.bracket !== "gf" && ref.bracket !== "reset", arm = tDelArm === key;
+    const twoLeg = tConfig.koLegs === 2 && ref.bracket !== "gf" && ref.bracket !== "reset" && !tOneLegFinal(ref), arm = tDelArm === key;
     const step = editing ? { l1: "Leg 1", l2: "Leg 2", et: "Extra Time", pen: "Penalties" }[tKoEdit.step] : null;
     return (
       <tr key={key}>
@@ -18703,7 +18714,7 @@ export default function App() {
               {tGroups.length > 1 && fact("Allocation", alloc[c.allocMode] || c.allocMode)}</>}
             {tHasKO && <>
               {fact("Knockout", [c.koFormat === "double_elim" ? "Double Elimination" : "Single Elimination", c.koLegs === 2 ? "Two Legs" : null,
-                c.koLegs === 2 && c.koAwayGoals ? "Away Goals" : null, c.thirdPlace && c.koFormat !== "double_elim" ? "Third-Place Match" : null,
+                c.koLegs === 2 && c.koAwayGoals ? "Away Goals" : null, c.koLegs === 2 && c.koFinalOneLeg && c.koFormat !== "double_elim" ? "One-Leg Final" : null, c.thirdPlace && c.koFormat !== "double_elim" ? "Third-Place Match" : null,
                 c.koFormat === "double_elim" && c.koReset !== false ? "Reset Match" : null].filter(Boolean).join(", "))}
               {fact("Knockout Allocation", alloc[c.koAllocMode] || c.koAllocMode)}</>}
             {tHasGroups && qz.length > 0 && fact("Qualification Zones", (
@@ -19196,7 +19207,7 @@ export default function App() {
       const clearVenue = () => setTVenueOverrides(pv => { const nm = { ...pv }; delete nm[vc.overrideKey]; return nm; });
       const chosen = tVenueOverrides[vc.overrideKey] || "";
       const tg = tPendingPlayLive;
-      const twoLeg = tg?.type === "ko" && tConfig.koLegs === 2 && !tg.tp && tg.bracket !== "gf" && tg.bracket !== "reset";
+      const twoLeg = tg?.type === "ko" && tConfig.koLegs === 2 && !tg.tp && tg.bracket !== "gf" && tg.bracket !== "reset" && !tOneLegFinal(tg);
       const anyGround = (skip) => (
         <UxSidePick label="Neutral Ground" value={chosen} groups={groundGroups(skip)} placeholder="Search Grounds" cls="ux-sp-ground" slide
           onPick={it => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: it.k })); setHA(null); }} />);
