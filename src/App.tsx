@@ -16678,12 +16678,14 @@ export default function App() {
             <div className="ux-st-rank" aria-hidden="true"><small>#</small>{r.rank}</div>
             <div className="ux-st-foot">
               <div className="ux-st-id">
-                <div className="ux-st-nat">
-                  {r.natT ? <button type="button" className="ux-btnreset ux-a ux-st-natb" onClick={(e) => { e.stopPropagation(); openNation(r.natT.code); }}>
-                    <TeamCrest team={r.natT} size={22} />{r.natT.name}</button> : r.natCode && <span>{r.natCode}</span>}
-                  {r.city && <><span className="ux-st-dot" /><CityLink name={r.city} style={{ borderBottom: "none" }} /></>}</div>
+                {/* Where it is and how many it holds, over the name in the same heavy condensed letters (Moukden and Kirin,
+                    14 October 2026: "Just put City, Location · Capacity in the thick condensed font above stadium name"). */}
+                <div className="ux-st-loc" onClick={(e) => e.stopPropagation()}>
+                  {r.natT && <TeamCrest team={r.natT} size={26} />}
+                  <span>{r.city && <CityLink name={r.city} style={{ borderBottom: "none" }} />}{r.city && r.natCode && ", "}
+                    {r.natT ? <button type="button" className="ux-btnreset ux-a" onClick={() => openNation(r.natT.code)}>{r.natT.name}</button> : r.natCode}</span>
+                  {r.cap && <>{(r.city || r.natCode) && <span className="ux-st-sep" aria-hidden="true" />}<span>{r.cap}</span></>}</div>
                 <FitLine className="ux-st-name">{r.name}</FitLine>
-                <div className="ux-st-fact"><span>Capacity</span><b style={mono}>{r.cap || "–"}</b></div>
               </div>
               {ten.length > 0 && <div className="ux-st-ten">{ten.map(([t, l]) => (
                 <button key={t.id} type="button" className="ux-btnreset ux-st-tn" style={{ "--st-c": t.primaryColor || "var(--ux-line-2)" }}

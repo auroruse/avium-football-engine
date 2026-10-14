@@ -112,6 +112,24 @@ const html = `<!doctype html>
 .st-lb figcaption { display: flex; align-items: baseline; gap: 12px; }
 .st-lb b { font: 700 22px/1 var(--f-title); letter-spacing: .03em; text-transform: uppercase; }
 .st-lb span { font-size: 12px; color: var(--text-3); }
+.st-id { right: auto !important; max-width: 58%; left: 36px !important; bottom: 24px !important; gap: 14px !important; }
+.st-nat, .st-fact span, .st-fact b { color: #fff !important; text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, .95), 0 1px 3px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .7), 0 3px 24px rgba(0, 0, 0, .6) !important; }
+.st-name { text-shadow: 0 0 1px #000, 0 0 3px rgba(0, 0, 0, .95), 0 2px 6px rgba(0, 0, 0, .85), 0 0 18px rgba(0, 0, 0, .6), 0 6px 40px rgba(0, 0, 0, .55) !important; }
+.st-facts .st-fact { flex-direction: row !important; align-items: baseline; gap: 12px !important; }
+.st-fact span { font-size: 11px !important; font-weight: 600; }
+.st-fact b { font-size: 26px !important; }
+.st-rank { color: rgba(255, 255, 255, .06) !important; -webkit-text-stroke: 1.5px rgba(255, 255, 255, .7) !important; filter: drop-shadow(0 0 1px rgba(0, 0, 0, .8)) drop-shadow(0 2px 12px rgba(0, 0, 0, .5)); }
+.st-tn { backdrop-filter: blur(14px) saturate(1.2) !important; padding: 10px 16px 10px 10px !important; }
+.st-ten { right: 24px !important; bottom: 24px !important; }
+.st-row { display: flex; gap: 10px; }
+.st-tn { min-height: 54px; } .st-tn.nc { --c: rgba(255,255,255,.28); } .st-tn.nc > span { padding-left: 6px; }
+.st-tn b.mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0; }
+.st-id { gap: 8px !important; }
+.st-loc { font: 700 clamp(17px, 1.6vw, 24px)/1 var(--f-title); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, .95), 0 1px 3px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .7), 0 3px 24px rgba(0, 0, 0, .6); }
+.st-loc { display: flex; align-items: center; }
+.st-loc img { width: 26px; height: 26px; object-fit: contain; margin-right: 12px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9)) drop-shadow(0 2px 10px rgba(0, 0, 0, .5)); }
+.st-sep { width: 5px; height: 1.05em; margin: 0 .6em; background: var(--accent); transform: skewX(-18deg); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 1px 6px rgba(0, 0, 0, .6); }
 </style></head>
 <body><div class="app">
 <header class="topbar">
@@ -156,9 +174,8 @@ function hero() {
   h.innerHTML = '<div class="st-glow" style="background-image:' + (r.photo ? 'url(' + r.photo + ')' : 'linear-gradient(135deg,' + r.tint + ',' + r.tint2 + ')') + '"></div>'
     + '<div class="st-card' + (r.photo ? ' st-ph' : ' st-kit') + '"' + (r.photo ? ' style="background-image:url(' + r.photo + ')"' : '') + '>'
     + '<div class="st-rank"><small>#</small>' + r.rank + '</div>'
-    + '<div class="st-id"><div class="st-nat">' + (r.nation.crest ? '<img src="' + r.nation.crest + '" alt="">' : '') + esc(r.nation.name) + '<span class="dot"></span>' + esc(r.city) + '</div>'
-    + '<div class="st-name"><span>' + esc(r.name) + '</span></div>'
-    + '<div class="st-facts"><div class="st-fact"><span>Capacity</span><b>' + (r.cap || "–") + '</b></div></div></div>'
+    + '<div class="st-id"><div class="st-loc">' + (r.nation.crest ? '<img src="' + r.nation.crest + '" alt="">' : '') + '<span>' + esc(r.city) + ', ' + esc(r.nation.name) + '</span>' + (r.cap ? '<span class="st-sep"></span><span>' + r.cap + '</span>' : '') + '</div>'
+    + '<div class="st-name"><span>' + esc(r.name) + '</span></div></div>'
     + '<div class="st-ten">' + ten.map(([t, l]) => '<div class="st-tn" style="--c:' + t.home + '">' + img(t) + '<span><i>' + l + '</i><b>' + esc(t.name) + '</b></span></div>').join("") + '</div>'
     + '</div>';
   const nm = h.querySelector(".st-name"), ln = nm.firstChild, k = nm.clientWidth / ln.offsetWidth;
