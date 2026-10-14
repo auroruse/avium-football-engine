@@ -46,3 +46,6 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 11	1935	2026-10-13T14:01:26.841Z	player	p3119	Teppo NURMIJÄRVEN	AM	37	29	7000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
 11	1935	2026-10-13T14:01:26.841Z	player	p3120	Aivo KRISTIANMAAN	CM	35	18	6000	t0187	Shompolahti PS	t0186	Frederikka Islands Wildflowers	zezelandnationstates-hash
 12	1935	2026-10-13T14:06:23.001Z	player	p2286	Aluk ENAM	ST	36	24	12000			t0187	Shompolahti PS	zezelandnationstates-hash
+13	1935	2026-10-14T13:36:18.788Z	player	p2559	Tippo SOORANPUUNEN	CB	73	27	2200000	t0148	RöPS	t0165	Toksavaara Lõvid	zezelandnationstates-hash
+13	1935	2026-10-14T13:36:18.788Z	player	p5610	Toshiaki KIDOKORO	GK	74	21	2500000	t0148	RöPS	t0165	Toksavaara Lõvid	zezelandnationstates-hash
+13	1935	2026-10-14T13:36:18.788Z	player	p2796	Urmas KAUPPILA	ST	76	22	5700000	t0165	Toksavaara Lõvid	t0148	RöPS	zezelandnationstates-hash
