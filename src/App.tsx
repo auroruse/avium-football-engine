@@ -3030,7 +3030,7 @@ const REG_PORTAL = { ...REG_HOME, sec: "home" };
 // Players and Managers are pages of Registry (its page bar), not sections of their own (the user, 9 Oct 2026). Registry
 // was Home until the user renamed it the same day; its id stays home.
 const UX_SECS = [["home", "Registry"], ["competitions", "Competitions"], ...(TOURNAMENTS_ENABLED ? [["tournaments", "Tournaments"]] : [])];
-const UX_HOME_PAGES = [["home", "Overview"], ["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["trades", "Trades"], ["changes", "Rating Changes"]];
+const UX_HOME_PAGES = [["home", "Overview"], ["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["stadiums", "Stadiums"], ["trades", "Trades"], ["changes", "Rating Changes"]];
 // THE ARCHIVE'S COMPETITIONS (Competitions, 9 October 2026): what kind each is, the nation a domestic one belongs to, and
 // every name one goes by, for an address read before the archive's index has arrived.
 const UX_KINDS = [["league", "Leagues"], ["cup", "Cups"], ["intl", "International"], ["retired", "Retired"]];
@@ -3080,6 +3080,7 @@ const UX_ICON = {
   expand: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />, shrink: <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />,
   back: <path d="M15 18l-6-6 6-6" />, fwd: <path d="M9 18l6-6-6-6" />, caret: <path d="M6 9l6 6 6-6" />,
   search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>,
+  image: <><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="1.5" /><path d="M21 16l-5-5-11 8" /></>,
   up: <path d="M12 19V5M5 12l7-7 7 7" />, down: <path d="M12 5v14M19 12l-7 7-7-7" />,
   inbox: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></>,
   cart: <><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></>,
@@ -10776,6 +10777,12 @@ export default function App() {
   const [uxTmSort, setUxTmSort] = useState({ k: "ovr", asc: false });
   const [uxTmPick, setUxTmPick] = useState(null);
   const uxTmBox = useRef(null), uxTmTop = useRef(0);
+  // THE STADIUMS PAGE (Moukden and Kirin, 14 October 2026): the search, the nation, the sort and the ground on the card.
+  const [uxStQ, setUxStQ] = useState("");
+  const [uxStNat, setUxStNat] = useState("");
+  const [uxStSort, setUxStSort] = useState({ k: "cap", asc: false });
+  const [uxStPick, setUxStPick] = useState(null);
+  const uxStBox = useRef(null);
   const routeHash = useMemo(() => {
     const segs = [TAB_SLUG[tab] || "registry"];
     // The Registry: a nation, a club or a national side (by code, and the tab when it is not the first), or a section
@@ -10788,6 +10795,7 @@ export default function App() {
     }
     if (tab === "leagues" && reg.sec === "teams") { segs.push("teams"); if (uxTmView === "nt") segs.push("national-teams"); }
     if (tab === "leagues" && reg.sec === "trades") { segs.push("trades"); if (reg.trSeason) segs.push(String(reg.trSeason)); }
+    if (tab === "leagues" && reg.sec === "stadiums") segs.push("stadiums");
     if (tab === "leagues" && reg.sec === "managers") {
       segs.push("managers");
       const m = reg.mgr ? uxManagers.find(x => x.id === reg.mgr) : null;
@@ -10913,6 +10921,7 @@ export default function App() {
     if (s1 === "clubs" || s1 === "national-teams") { const tm = byCode(s1 === "national-teams", s2); if (tm) teamPage(tm, s3); else setReg(REG_HOME); return; }
     if (s1 === "teams") { setReg({ ...REG_HOME, sec: "teams" }); setUxTmView(s2.toLowerCase() === "national-teams" ? "nt" : "clubs"); return; }
     if (s1 === "trades") { setReg({ ...REG_HOME, sec: "trades", trSeason: /^\d{4}$/.test(s2) ? +s2 : null }); return; }
+    if (s1 === "stadiums") { setReg({ ...REG_HOME, sec: "stadiums" }); return; }
     if (s1 === "players") {
       const f = s2.toLowerCase();
       if (f === "rating-changelog") people("changelog", segs[3]); else if (f === "hall-of-fame") people("hof", segs[3], segs[4]); else people("players", segs[2], segs[3]);
@@ -11096,7 +11105,7 @@ export default function App() {
     setRegQ(""); setRegQOpen(false);
     if (sec === "nations") { regGo({}); return; }
     setPlayerOpen(null); setTab("leagues");
-    if (sec === "teams" || sec === "trades") { setReg({ ...REG_HOME, sec }); return; }
+    if (sec === "teams" || sec === "trades" || sec === "stadiums") { setReg({ ...REG_HOME, sec }); return; }
     if (sec === "competitions") { setReg({ ...REG_HOME, sec }); if (world !== "avium") setWorld("avium"); return; }
     setReg({ ...REG_HOME, sec });
     lgOpenComp(LG_ALL_PLAYERS);
@@ -11715,7 +11724,7 @@ export default function App() {
   // A manager's page, opened from the Managers page or wherever his name is shown.
   const uxMgr = tab === "leagues" && reg.sec === "managers" && reg.mgr ? uxManagers.find(m => m.id === reg.mgr) || null : null;
   const uxScreen = tab !== "leagues" ? null : uxPlayerName ? (reg.tab === "history" ? "playerhist" : "player")
-    : uxMgr ? "manager" : reg.sec === "managers" ? "managers" : reg.sec === "teams" ? "teams" : reg.sec === "trades" ? "trades"
+    : uxMgr ? "manager" : reg.sec === "managers" ? "managers" : reg.sec === "teams" ? "teams" : reg.sec === "trades" ? "trades" : reg.sec === "stadiums" ? "stadiums"
     : reg.sec === "players" && lgSub === "changelog" && !playerOpen ? "changes"
     : reg.sec === "players" && lgSub !== "changelog" && !playerOpen ? "players"
     : reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team) ? "home"
@@ -11922,6 +11931,31 @@ export default function App() {
       .sort((a, b) => uxWhen(b.s) - uxWhen(a.s) || b.t - a.t || b.cup - a.cup).slice(0, 5).reverse(); };
   // THE TEAMS PAGE'S ROWS, worked out when it is open: every side in this world with its strength by line (uxLinesOf, its
   // listed eleven and bench), its squad's value (each man's own, as the Players page has it), its nation or conference.
+  // Every ground in the world shown: each side's on its sheet, and the stadium list's for grounds no side plays at. Its
+  // capacity the largest any sheet gives it; its nation and city its first club's, else its national side's. Ranked by
+  // capacity, the grounds with none after the rest by name.
+  const uxStRows = useMemo(() => {
+    if (uxScreen !== "stadiums") return [];
+    const by = new Map();
+    for (const t of teams) {
+      const n = stripVenue(t.stadium || ""); if (!n || !sideShown(t) || worldOf(t) !== world) continue;
+      if (!by.has(n)) by.set(n, { name: n, capN: null, clubs: [], nts: [] });
+      const g = by.get(n), c = venueCap(t.stadium) || t.stadiumCap, v = c ? +String(c).replace(/,/g, "") : null;
+      if (v && (g.capN == null || v > g.capN)) g.capN = v;
+      (isIntlLeague(t.league) ? g.nts : g.clubs).push(t);
+    }
+    if (world === "avium") for (const r of STADIUM_ROWS) if (!by.has(r.stadium)) by.set(r.stadium, { name: r.stadium, capN: null, clubs: [], nts: [], meta: r });
+    const rows = [...by.values()].map(g => {
+      const host = g.clubs[0] || g.nts[0] || null, meta = g.meta || STADIUM_META.get(g.name.normalize("NFC"));
+      const natCode = (host && nationCodeOf(host)) || meta?.nation || null;
+      const city = g.clubs[0]?.city || g.nts[0]?.city || meta?.city || "";
+      return { ...g, natCode, natT: natCode ? natTeamByCode.get(natCode) || null : null, city, host,
+        cap: g.capN ? g.capN.toLocaleString("en-US") : null, photo: STADIUM_IMAGES.includes(g.name),
+        key: pFold([g.name, city, ...g.clubs.map(t => t.name), ...g.nts.map(t => t.name)].join(" ")) };
+    }).sort((a, b) => (b.capN ?? -1) - (a.capN ?? -1) || a.name.localeCompare(b.name));
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    return rows;
+  }, [uxScreen, teams, world, arterraOn, natTeamByCode]);
   const uxTmRows = useMemo(() => {
     if (uxScreen !== "teams") return [];
     return teams.filter(t => sideShown(t) && worldOf(t) === world).map(t => {
@@ -12014,7 +12048,7 @@ export default function App() {
   // ── The top bar ──
   // A nation's pages and its clubs', the players and the managers are all reached from Home, so Home stays lit on them.
   const uxSecOn = (id) => id === "editor" ? tab === "editor" : id === "tournaments" ? tab === "tournament"
-    : tab === "leagues" && (reg.sec === id || (id === "home" && ["nations", "players", "managers", "teams"].includes(reg.sec)));
+    : tab === "leagues" && (reg.sec === id || (id === "home" && ["nations", "players", "managers", "teams", "stadiums"].includes(reg.sec)));
   const uxGoSec = (id) => {
     setUxMenu(null); setAcctOpen(false);
     if (id === "editor") { setTab("editor"); return; }
@@ -15102,7 +15136,7 @@ export default function App() {
       // In work, Overview and History; out of it, his history is the whole page.
       if (uxMgr.club || uxMgr.nt) { const cur = reg.tab === "history" ? "history" : "overview";
         [["overview", "Overview"], ["history", "History"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === "history" ? "history" : null }))))); }
-    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams" || reg.sec === "trades")))) {
+    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams" || reg.sec === "trades" || reg.sec === "stadiums")))) {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
       UX_HOME_PAGES.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoSec(id))));
@@ -16608,6 +16642,93 @@ export default function App() {
   // 11 October 2026: "#, Club, Nation, League, OVR, ATT, MID, DEF, BENCH, City ... as well as anything else relevant";
   // clubs and national sides switched between, under a tab called Teams) ════
   const UX_TM_STRENGTH = ["ATT", "MID", "DEF", "BENCH"];
+  // THE STADIUMS PAGE (Moukden and Kirin, 14 October 2026: "Top is the stadium image. Bottom is a list", "Make sure the
+  // card has aura", "Aura just means make it look good. Grandiose"): the ground picked across the top on its own
+  // photograph, blurred behind the card as its light, its rank, nation, city, name (on one line, compressed rather than
+  // wrapped) and capacity on it and its sides at its foot; the photograph opens the whole of itself. No photograph keeps
+  // its first side's kit colours, as the club page does. Under it the list "the same format as the players/managers
+  // table", with the image as its own column.
+  const renderUxStadiums = () => {
+    const q = pFold(uxStQ);
+    const nats = [...new Set(uxStRows.map(r => r.natCode).filter(Boolean))].map(c => [c, natTeamByCode.get(c)?.name || c]).sort((a, b) => a[1].localeCompare(b[1]));
+    const rows = uxStRows.filter(r => (!uxStNat || r.natCode === uxStNat) && (!q || r.key.includes(q)));
+    const { k, asc } = uxStSort, dir = asc ? 1 : -1;
+    const val = (r) => k === "name" ? r.name : k === "img" ? (r.photo ? 1 : 0) : k === "nat" ? r.natT?.name || r.natCode : k === "city" ? r.city || null
+      : k === "cap" ? r.capN : k === "club" ? r.clubs[0]?.name || null : r.nts[0]?.name || null;
+    rows.sort((a, b) => { const va = val(a), vb = val(b), na = va == null, nb = vb == null;
+      if (na || nb) return na === nb ? a.rank - b.rank : na ? 1 : -1;
+      const d = typeof va === "string" ? va.localeCompare(vb) : va - vb; return d ? d * dir : a.rank - b.rank; });
+    const pick = rows.find(r => r.name === uxStPick) || rows.find(r => r.photo) || rows[0] || null;
+    const S = (key, label, cls, text, title) => uxSortTh(uxStSort, setUxStSort, key, label, cls, text, title);
+    const COLS = [40, 250, 56, 64, 150, 84, null, 170];
+    const dash = <span className="ux-dim">&#8211;</span>;
+    const open = (r) => { if (r.photo) setUxPhoto({ name: r.name, cap: r.cap }); };
+    const side = (t) => (
+      <button key={t.id} type="button" className="ux-btnreset ux-a ux-seat" title={t.name} onClick={(e) => { e.stopPropagation(); openTeam(t); }}>
+        <TeamCrest team={t} size={16} /><SlideName text={t.name} /></button>);
+    const hero = (r) => {
+      const tint = r.host?.primaryColor || "var(--ux-panel-3)", tint2 = r.host?.secondaryColor || tint;
+      const ten = [...r.clubs.map(t => [t, "Club"]), ...r.nts.map(t => [t, "National Team"])];
+      return (
+        <section className="ux-st-hero" style={{ "--st-tint": tint }}>
+          <div className="ux-st-glow" aria-hidden="true" style={{ backgroundImage: r.photo ? stadiumBg(r.name) : `linear-gradient(135deg, ${tint}, ${tint2})` }} />
+          <div className={"ux-st-card" + (r.photo ? " ux-st-ph" : "")} role={r.photo ? "button" : undefined} tabIndex={r.photo ? 0 : undefined}
+            aria-label={r.photo ? r.name : undefined} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === "Enter") open(r); }}
+            style={{ backgroundImage: r.photo ? stadiumBg(r.name) : `linear-gradient(135deg, ${tint} 0 50%, ${tint2} 50% 100%)` }}>
+            <div className="ux-st-rank" aria-hidden="true"><small>#</small>{r.rank}</div>
+            <div className="ux-st-foot">
+              <div className="ux-st-id">
+                <div className="ux-st-nat">
+                  {r.natT ? <button type="button" className="ux-btnreset ux-a ux-st-natb" onClick={(e) => { e.stopPropagation(); openNation(r.natT.code); }}>
+                    <TeamCrest team={r.natT} size={22} />{r.natT.name}</button> : r.natCode && <span>{r.natCode}</span>}
+                  {r.city && <><span className="ux-st-dot" /><CityLink name={r.city} style={{ borderBottom: "none" }} /></>}</div>
+                <FitLine className="ux-st-name">{r.name}</FitLine>
+                <div className="ux-st-fact"><span>Capacity</span><b style={mono}>{r.cap || "–"}</b></div>
+              </div>
+              {ten.length > 0 && <div className="ux-st-ten">{ten.map(([t, l]) => (
+                <button key={t.id} type="button" className="ux-btnreset ux-st-tn" style={{ "--st-c": t.primaryColor || "var(--ux-line-2)" }}
+                  onClick={(e) => { e.stopPropagation(); openTeam(t); }}>
+                  <TeamCrest team={t} size={34} /><span><i>{l}</i><b>{t.name}</b></span></button>))}</div>}
+            </div>
+          </div>
+        </section>);
+    };
+    return (
+      <div className="ux-body" style={{ gridTemplateRows: "minmax(240px, 44vh) minmax(0, 1fr)" }}>
+        {pick ? hero(pick) : <div />}
+        <section className="ux-panel">
+          <div className="ux-ph"><h2 className="ux-pt">Stadiums</h2></div>
+          <div className="ux-filters">
+            <label className="ux-search">{uxIcon("search", "ux-s")}<input value={uxStQ} onChange={e => setUxStQ(e.target.value)} placeholder="Search Stadiums" aria-label="Search Stadiums" /></label>
+            {uxPickG("Nation", uxStNat, [[null, [["", "All Nations"], ...nats]]], setUxStNat)}
+            <span className="ux-fcount"><span style={mono}>{rows.length}</span> {rows.length === 1 ? "Stadium" : "Stadiums"}</span>
+          </div>
+          <div className="ux-pbody ux-ps" ref={uxStBox} tabIndex={0} aria-label="Stadiums"
+            onKeyDown={(e) => uxRowKeys(e, rows, pick, r => setUxStPick(r.name), open, uxStBox.current)}>
+            <table className="ux-tbl ux-st-tbl" style={{ minWidth: COLS.reduce((a, w) => a + (w || 0), 0) + 200 }}>
+              <colgroup>{COLS.map((w, i) => <col key={i} style={w ? { width: w } : undefined} />)}</colgroup>
+              <thead><tr><th>#</th>{S("name", "Stadium", null, true)}{S("img", "Image", "ux-c")}{S("nat", "Nation", null, true)}{S("city", "City", null, true)}
+                {S("cap", "Capacity", "ux-n")}{S("club", "Club", "ux-sep", true)}{S("nt", "National Team", null, true)}</tr></thead>
+              <tbody>{rows.map((r, i) => (
+                <tr key={r.name} className={"ux-link" + (r === pick ? " ux-sel" : "")} onClick={() => setUxStPick(r.name)} onDoubleClick={() => open(r)}>
+                  <td className="ux-dim" style={mono}>{i + 1}</td>
+                  <td title={r.name}><span className="ux-nm"><SlideName text={r.name} /></span></td>
+                  <td className="ux-c">{r.photo && <span className="ux-st-has" title="Image">{uxIcon("image", "ux-s")}</span>}</td>
+                  <td title={r.natT?.name || r.natCode || undefined}>{r.natT
+                    ? <button type="button" className="ux-btnreset ux-a ux-tc" onClick={(e) => { e.stopPropagation(); openNation(r.natT.code); }}>
+                        <TeamCrest team={r.natT} size={16} /><b className="ux-code" style={mono}>{r.natCode}</b></button>
+                    : r.natCode ? <b className="ux-code" style={mono}>{r.natCode}</b> : dash}</td>
+                  <td title={r.city || undefined}>{r.city ? <CityLink name={r.city} /> : dash}</td>
+                  <td className="ux-n" style={mono}>{r.cap || dash}</td>
+                  <td className="ux-sep">{r.clubs.length ? <div className="ux-st-many">{r.clubs.map(side)}</div> : dash}</td>
+                  <td>{r.nts.length ? <div className="ux-st-many">{r.nts.map(side)}</div> : dash}</td>
+                </tr>))}
+                {!rows.length && <tr><td colSpan={COLS.length} className="ux-dim">No Stadiums Found</td></tr>}</tbody>
+            </table>
+          </div>
+        </section>
+      </div>);
+  };
   const renderUxTeams = () => {
     const nt = uxTmView === "nt", q = pFold(uxTmQ);
     const base = uxTmRows.filter(r => r.nt === nt);
@@ -19549,6 +19670,7 @@ export default function App() {
           {uxScreen === "managers" && renderUxManagers()}
           {uxScreen === "teams" && renderUxTeams()}
           {uxScreen === "trades" && renderUxTrades()}
+          {uxScreen === "stadiums" && renderUxStadiums()}
           {uxScreen === "manager" && uxMgr && renderUxManager(uxMgr)}
           {uxScreen === "changes" && renderUxChanges()}
           {uxScreen === "comps" && renderUxComps()}
@@ -22049,7 +22171,7 @@ export default function App() {
       </div>
           </div>
         </main>
-        {uxPhoto && uxScreen === "club" && (uxPhoto.crest ? (
+        {uxPhoto && (uxScreen === "club" || uxScreen === "stadiums") && (uxPhoto.crest ? (
           <UxLightbox name={uxPhoto.crest.name} sub={uxPhoto.crest.code || null} onClose={() => setUxPhoto(null)}>
             <TeamCrest team={uxPhoto.crest} size="min(60vh, 500px)" /></UxLightbox>)
           : <UxLightbox name={uxPhoto.name} sub={uxPhoto.cap ? `Capacity ${uxPhoto.cap}` : null} onClose={() => setUxPhoto(null)} />)}
