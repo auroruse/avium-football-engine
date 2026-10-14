@@ -5786,5 +5786,6 @@
 {"id":"p5824","name":"Shigeru KATAYAMA","nat":"NCH","ovr":66,"born":"1915-07-08","grad":1937,"pos":["CM"]},
 {"id":"p5825","name":"Keisuke MIZUCHI","nat":"NCH","ovr":72,"born":"1916-08-29","grad":1938,"pos":["AM"]},
 {"id":"p5826","name":"Shinnosuke SHIINA","nat":"NCH","ovr":70,"born":"1916-07-04","grad":1938,"pos":["ST"]},
-{"id":"p5827","name":"Jori SOMMERKOSKI","nat":"KAR","ovr":68,"born":"1914-11-27","grad":1936,"pos":["RW","ST"]}
+{"id":"p5827","name":"Jori SOMMERKOSKI","nat":"KAR","ovr":68,"born":"1914-11-27","grad":1936,"pos":["RW","ST"]},
+{"id":"p5828","name":"Charlie KIRIN","nat":"NCH","ovr":67,"born":"1918-11-30","pos":["CM","AM"]}
 ]
