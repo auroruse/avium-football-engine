@@ -5637,8 +5637,10 @@ const T_PRESETS = {
   // change, and one drawn quarter-final would break the bracket every entry was picked on.
   // THE 1935 CLUB WORLD CUP (Moukden and Kirin, 14 October 2026): eight groups of four home and away, the first-listed side at
   // home ("HA in groups is meant to be first listed"), two-legged ties to the semi-finals and the final one match at a neutral
-  // ground ("Finals should only be 1 leg at a neutral venue").
-  cwc1935: { label: "1935 Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koFinalOneLeg: true, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  // ground ("Finals should only be 1 leg at a neutral venue"). The Round of 16 is drawn, group winners against runners-up, never
+  // a side from its own group or its own nation ("Why didn't you have a Ro16 draw?"), and the group pots are by nation ("pots are
+  // by nation not by rating").
+  cwc1935: { label: "1935 Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koFinalOneLeg: true, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "draw", koDrawRounds: [], koDrawRules: { sameGroup: true, sameConf: false, sameNation: true, seedSplit: true }, drawRules: { maxPerNation: 0, maxPerConf: 0, pins: {}, potMode: "nation", pots: {} }, koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   wc1935: { label: "1935 World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -9305,8 +9307,14 @@ export default function App() {
         if (!payload || typeof payload !== "object" || (!payload.tGroups && !payload.tKO && !payload.tournamentTeamIds)) throw new Error("not an Avium tournament save");
         const id = newSlotId();
         if (!writeSlot(id, payload)) throw new Error("browser storage is full");
-        const meta = { id, name: uniqueSlotName(tSlots, (j?.name || "Imported").trim().slice(0, 48) || "Imported"), ts: payload.ts || Date.now(), ...slotSummary(payload) };
-        commitSlots([...tSlots, meta], tActiveSlot);
+        // The save imported is the one opened, as a switch would (Moukden and Kirin, 14 October 2026: "Your import just puts me
+        // back into the same knockout?"): the one open is kept first, then the new one shown.
+        const after = flushActiveSlot();
+        const meta = { id, name: uniqueSlotName(after, (j?.name || "Imported").trim().slice(0, 48) || "Imported"), ts: payload.ts || Date.now(), ...slotSummary(payload) };
+        applySlotPayload(payload);
+        setTActiveSlot(id);
+        commitSlots([...after, meta], id);
+        setSlotMsg("");
       } catch (e) { setSlotMsg("Import failed: " + (e?.message || "unreadable file")); }
     };
     rd.onerror = () => setSlotMsg("Import failed: could not read that file.");
