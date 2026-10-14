@@ -67,7 +67,7 @@ column, and count only toward who managed it).
 
 **Positions** (Moukden and Kirin, 11 October 2026, over three rounds of questions). Every player has one or two positions of
 his own on his record (`pos`, `src/data/positions.js`) and plays both at his full rating. Anywhere else he keeps his own
-position's skills, the nearer of his two, and is never better than the slot's own player at anything
+position's skills, whichever of his two costs him less there (the nearer of them until 14 October 2026), and is never better than the slot's own player at anything
 (`src/engine/attributes.ts` meAttrs); the keeper's slot is apart, an outfielder in goal at half his rating as before.
 The app shows a man out of position at about the rating he plays the place at (`ovrAt`, from `POS_DROP`, which
 `test/posdrop.mjs` writes from what each skill is worth in each kind of slot, measured by `test/specs/positions.mjs` and
@@ -88,7 +88,11 @@ positions fit wherever men come or go, and a man left in another group's place i
 he plays it at, the least any of its positions costs him ("if a player DEF for example is placed in MID there should be an
 alert and OVR decrease"). Substitutions, injury and ban cover, rotation,
 formation changes and the manager's shape change all place men by their own positions; a substitute takes the slot of
-the man he replaces. Positions are the overseer's: an editor asks for a change by request (`kind: "pos"`). The first
+the man he replaces. A manager's change for tired legs is only ever a man who plays that place at no cost, the score
+choosing only between those (the most attacking chasing, the most defensive holding a lead), and with nobody who can
+the tired man stays on; only an injury is covered out of position (Moukden and Kirin, 14 October 2026, after "Why do
+coaches sub people in out of position so much?"). Sim All allows the same five changes as Live Match for a bench
+eleven places wide, however many it names. Positions are the overseer's: an editor asks for a change by request (`kind: "pos"`). The first
 positions were set from where everyone played on 11 October 2026: club slot, then national slot (both where they
 differ), past sheets for a second, and the club substitutes nobody had placed drawn inside their bench group to cover
 their side's eleven.

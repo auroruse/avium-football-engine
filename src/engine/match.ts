@@ -4,7 +4,7 @@ import { meAerial, meAttrs, meBadgeFx, meDefLow, meDuel, meFinish, meGkDiveV, me
 import { mePlanOf, meStrategyOf, ME_STYLE_DEF, ME_STYLE_NAME } from "./tactics";
 import { meChaseStyle, meSetStyle, meShapeFor, meTenMenStyle } from "./manager";
 import { ME_DEF_FORM, formAtkW, pitchSlots, sposFor } from "./formations";
-import { POS_GROUP, ovrAt, posDrop } from "../data/positions.js";
+import { POS_ROLE, ovrAt, ownFor, posDrop } from "../data/positions.js";
 import { meHungarian } from "./assignment";
 import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
@@ -1411,8 +1411,9 @@ export const meBenchWorth = (b, need, place) => (b.own?.length && place
 // Whether a bench man is a keeper: by his own positions where he has them (a keeper may sit in another group's bench
 // place), else by the place he sits in.
 export const meIsKeeper = (b) => (b?.own?.length ? b.own.includes("GK") : b?.pos === "GK");
-// ...and what kind of man he is, for a manager chasing a match or seeing one out: his own first position's line.
-const meBenchKind = (b) => (b.own?.length ? POS_GROUP[b.own[0]] : b.pos);
+// Whether he plays the place at no cost: by his own positions where he has them (posDrop 0, which is when the app shows
+// no out-of-position alert), else by the line of the bench place he sits in.
+export const meBenchFits = (b, need, place) => (b.own?.length && place ? posDrop(b.own, place) === 0 : b.pos === need);
 
 // WHO COMES OFF, AND WHEN. A man who cannot continue is replaced whatever the clock says; after
 // that it is the tired legs, and only once there is enough of a match left for it to be worth a
@@ -1460,6 +1461,15 @@ export function meAutoSubs(s, side, out) {
 // break not counted, each taking its share of the changes left, and a manager gives one window time to tell before he
 // opens the next (subWinGap). Chasing late he sends on the most attacking man who can play the position, protecting a
 // lead the most defensive. The answers were the user's: stamina only, managers read the game better, three windows.
+// ...WHO CAN PLAY THE POSITION, AND ONLY HIM (user, 14 October 2026: "Why do coaches sub people in out of position so
+// much?"). The game outbid the position: chasing, a forward on the bench was worth up to six points more and a defender
+// four less, more than playing out of position costs, and the man coming on takes the place of the man going off, so
+// "fresh legs further forward" put a striker at centre-back. A change for tired legs is now a man who plays the place at
+// no cost, the best of them at it with his own position first, and the game only chooses between those: chasing, the
+// more attacking, seeing it out, the more defensive, as far as his manager reads it. Nobody who can play it, and the
+// tired man stays on. A man who cannot continue is still replaced whatever the bench holds, by the nearest fit. And the
+// game now decides whose legs are freshened first the other way round, up front when chasing and at the back when
+// seeing it out: giving up a defender first only ever made sense while a forward could come on in his place.
 export function meCoachSubs(s, side, out) {
   const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
   s.subs = s.subs || { home: 0, away: 0 };
@@ -1470,18 +1480,20 @@ export function meCoachSubs(s, side, out) {
   const late = et || min >= CFG.subLateMin;
   const want = late && lead < 0 ? 1 : late && lead > 0 ? -1 : 0;     // chase, protect, or neither
   const line = late ? CFG.subStamina + (g - 0.5) * CFG.subReadPts : CFG.subEarly;
-  // The best man on the bench for the place, and the kind the game wants as much as the coach can read it.
-  const benchFor = (out0) => {
-    let bi = -1, bv = -Infinity;
+  // The best man on the bench who plays the place at no cost, and of those the kind the game wants as much as the coach
+  // can read it: three points a line up the pitch chasing, down it seeing it out (his line from the position he plays
+  // the place from). Only a forced change takes a man who does not fit, and then the best at the place.
+  const benchFor = (out0, forced) => {
+    let bi = -1, bv = -Infinity, bf = false;
     for (let j = 0; j < bench.length; j++) {
       const b = bench[j]; if (!b) continue;
       if (out0.pos === "GK" && !meIsKeeper(b)) continue;
       if (out0.pos !== "GK" && meIsKeeper(b)) continue;
+      const fit = out0.pos === "GK" || meBenchFits(b, out0.pos, out0.spos);
+      if (!fit && !forced) continue;
       let v = meBenchWorth(b, out0.pos, out0.spos);
-      const kind = meBenchKind(b);
-      if (want > 0) v += ((kind === "FWD" ? 6 : kind === "MID" ? 2 : -4)) * g;
-      if (want < 0) v += ((kind === "DEF" ? 6 : kind === "MID" ? 3 : -5)) * g;
-      if (v > bv) { bv = v; bi = j; }
+      if (want && b.own?.length && out0.spos) v += want * 3 * g * (POS_ROLE[ownFor(b.own, out0.spos)]?.[0] ?? 3);
+      if ((fit && !bf) || (fit === bf && v > bv)) { bv = v; bi = j; bf = fit; }
     }
     return bi;
   };
@@ -1489,7 +1501,7 @@ export function meCoachSubs(s, side, out) {
   for (let i = 0; i < s.players[side].length && s.subs[side] < cap; i++) {
     const q = s.players[side][i];
     if (!q || !(q.off && q.inj)) continue;
-    const bi = benchFor(q);
+    const bi = benchFor(q, true);
     if (bi >= 0) meSub(s, side, i, bi, out);
   }
   if (s.subs[side] >= cap) return;
@@ -1499,14 +1511,14 @@ export function meCoachSubs(s, side, out) {
   if (!et && min >= 45) W.ht = true;
   const windows = CFG.subWindows + (et ? 1 : 0);
   if (!brk && (W.used >= windows || mp.tick - W.at < CFG.subWinGap * ME_MATCH_TICKS / 90)) return;
-  // How tired each man is to his manager: a knock and a booking count against him, and the game he is in decides who
-  // is given up first -- chasing, a defensive man; protecting, an attacking one.
+  // How tired each man is to his manager: a knock and a booking count against him, and the game he is in decides whose
+  // legs he freshens first -- chasing, the men up front; protecting, the men who hold the back.
+  const first = (q) => (want > 0 ? q.pos === "FWD" : want < 0 && q.pos !== "GK" && (q._role2?.rest ?? 0) >= 0.7);
   const tired = [];
   for (const q of s.players[side]) {
     if (!q || q.off) continue;
     let t = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0) - ((q.yc || 0) ? CFG.subBooked : 0);
-    if (want > 0 && (q._role2?.rest ?? 0) >= 0.7 && q.pos !== "GK") t -= 8 * g;
-    if (want < 0 && q.pos === "FWD") t -= 8 * g;
+    if (first(q)) t -= 8 * g;
     if (t < line) tired.push([t, q]);
   }
   if (!tired.length) return;
@@ -1516,12 +1528,13 @@ export function meCoachSubs(s, side, out) {
   let made = 0;
   for (const [, q] of tired) {
     if (made >= share || s.subs[side] >= cap) break;
-    const i = s.players[side].indexOf(q), bi = benchFor(q);
+    const i = s.players[side].indexOf(q), bi = benchFor(q, false);
     if (i < 0 || bi < 0 || !meSub(s, side, i, bi, out)) continue;
     made++;
     if (out?.mgrLog) {
       const L = out.mgrLog[side] = out.mgrLog[side] || [];
-      if (L.length < 40) L.push({ min: out.min ?? 0, k: "sub", t: want > 0 ? "Chasing it: fresh legs further forward" : want < 0 ? "Seeing it out: fresh legs at the back" : "Fresh legs" });
+      if (L.length < 40) L.push({ min: out.min ?? 0, k: "sub", t: !first(q) ? "Fresh legs"
+        : want > 0 ? "Chasing it: fresh legs further forward" : "Seeing it out: fresh legs at the back" });
     }
   }
   if (made && !brk) { W.used++; W.at = mp.tick; }

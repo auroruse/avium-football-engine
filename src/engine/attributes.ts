@@ -1,6 +1,7 @@
 // Player attributes, derived from one absolute OVR.
 import { CFG, DEFAULT_OVR, ME_BADGES } from "./config";
 import { FORMATIONS, formAtkW, sposFor } from "./formations";
+import { ownFor } from "../data/positions.js";
 
 // A player's badges (config.ts ME_BADGES) merged into one set of effects, kept on him. A man with none gets the same
 // empty set, so every read of it adds nothing and multiplies by one.
@@ -93,18 +94,16 @@ export const ME_OWN = (() => {
   }
   return out;
 })();
-// The grid the squad tools judge distance on (src/data/positions.js POS_ROLE), for the nearer of his two.
-const OWN_XY = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
-const ownCost = (a, b) => { const A = OWN_XY[a], B = OWN_XY[b]; return A && B ? Math.abs(A[0] - B[0]) + 1.2 * Math.abs(A[1] - B[1]) : 99; };
 // The position he plays this slot from when it is not one of his: null in position, with no positions known, or in
 // goal (whoever is in goal has the keeper's skills).
 export function meOwnFor(p) {
   const own = p?.own, sp = p?.spos;
   if (!own || !own.length || !sp || own.includes(sp) || sp === "GK" || p.pos === "GK" || p.inGoal || !ME_OWN[sp]) return null;
-  // The nearer of his two; a keeper played outfield, with no outfield position, keeps a keeper's skills.
+  // Whichever of his two costs him less there, as the app shows it (src/data/positions.js ownFor); a keeper played
+  // outfield, with no outfield position, keeps a keeper's skills.
   const known = own.filter(x => ME_OWN[x]), out = known.filter(x => x !== "GK").length ? known.filter(x => x !== "GK") : known;
   if (!out.length) return null;
-  return out.reduce((b, x) => (ownCost(x, sp) < ownCost(b, sp) ? x : b), out[0]);
+  return ownFor(out, sp);
 }
 
 function attrsWith(p, t, aw) {

@@ -1,0 +1,256 @@
+#	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
+1	Jens Geirsson	FWD	HAV	29	29	2610	17		1	Ambrose Pickett	MID	VAT	30	22	1962	8		1	Victor Tvedt	MID	HAV	25	25	1275	7.5		1	Gillis Storm	MID	EYB	30	30	2466	52		1	Iisakki Saarikoski	DEF	HAV	30	30	2531	160		1	Mogens Overgaard	GK	TGV	26	26	2340	108
+2	Gunnar Gårdman	FWD	KJB	30	29	1972	16		2	Dale Landry	MID	OTR	30	24	2159	8		2	Rikard Kovén	FWD	KJB	27	23	1734	7.4		2	Lennart Sommar	MID	MLM	30	18	2171	50		2	Philip McDonald	DEF	OTR	30	28	2577	155		2	Göran Mattsson	GK	GFB	27	27	2430	98
+3	Evert Lindblad	FWD	TGV	30	24	2026	15		3	Kåre Ingebretsen	FWD	RGD	29	28	2074	7		3	Jens Geirsson	FWD	HAV	29	29	2610	7.4		3	Lars Collin	FWD	GFB	30	26	2323	50		3	Karl Schmidt	FWD	MLM	30	30	2042	148		3	Arno Coster	GK	GUR	27	27	2430	94
+4	Leif Aasheim	FWD	RGD	29	29	2167	13		4	Algot Taube	FWD	TGV	30	28	2298	6		4	Karl Schmidt	FWD	MLM	30	30	2042	7.4		4	Dale Landry	MID	OTR	30	24	2159	49		4	Vilhelm Smed	MID	SDM	30	29	2242	142		4	Nils Nyquist	GK	HAV	27	27	2430	91
+5	Karl Schmidt	FWD	MLM	30	30	2042	13		5	Ludvig Johansson	DEF	HAV	30	28	2380	6		5	Lennart Kampe	MID	JYL	30	26	2233	7.4		5	Lennart Kampe	MID	JYL	30	26	2233	48		5	Ragnar Sparre	DEF	GFB	30	29	2637	137		5	Rikard Vinter	GK	JYL	27	27	2430	90
+6	Johan Ung	FWD	VAT	28	27	2412	12		6	Gillis Storm	MID	EYB	30	30	2466	6		6	Gunnar Gårdman	FWD	KJB	30	29	1972	7.4		6	Ambrose Pickett	MID	VAT	30	22	1962	47		6	Mauritz Forsman	DEF	EYB	30	28	2361	134		6	Allan Sjöberg	GK	EYB	27	27	2230	85
+7	Jon Kärrman	FWD	OHM	30	20	1787	12		7	Rolf Svegårdh	MID	VAT	30	27	2526	6		7	Johan Ung	FWD	VAT	28	27	2412	7.3		7	Valdemar Hård	FWD	AVK	30	22	1827	45		7	Sven-Olof Lundin	DEF	RGD	29	29	2534	133		7	Rhett Vance	GK	MLM	30	30	2693	85
+8	Mitch Dales	FWD	GUR	27	25	2253	11		8	Victor Tvedt	MID	HAV	25	25	1275	5		8	Vilhelm Smed	MID	SDM	30	29	2242	7.3		8	Lennart Jansson	MID	OHM	30	29	2489	41		8	Daniel Lindén	MID	MLM	30	29	2035	129		8	Jakob Månsson	GK	OHM	29	29	2606	83
+9	Frans Bindesbøll	FWD	JYL	29	27	2001	11		9	Sture Mossgren	DEF	KJB	25	24	2058	5		9	Ambrose Pickett	MID	VAT	30	22	1962	7.3		9	Harald Nilsson	FWD	EYB	30	30	2041	41		9	Torsten Nyman	DEF	KFJ	30	30	2647	125		9	Malte Fellman	GK	AVK	29	29	2610	82
+10	Markus Klerck	FWD	KFJ	30	30	2249	11		10	Rikard Kovén	FWD	KJB	27	23	1734	5		10	Evert Lindblad	FWD	TGV	30	24	2026	7.2		10	Gunnar Gårdman	FWD	KJB	30	29	1972	41		10	Folke Söderberg	DEF	RGD	30	30	2624	124		10	Rikard Storgård	GK	OTR	26	26	2340	76
+11	Rikard Kovén	FWD	KJB	27	23	1734	10		11	Frans Bindesbøll	FWD	JYL	29	27	2001	5		11	Lennart Sommar	MID	MLM	30	18	2171	7.2		11	Frans Bindesbøll	FWD	JYL	29	27	2001	40		11	Ragnvald Spjut	DEF	JYL	30	29	2549	123		11	Valter Stubbe	GK	VAT	28	28	2520	74
+12	Jørgen Lykke	FWD	JYL	30	30	2364	10		12	Harald Nilsson	FWD	EYB	30	30	2041	5		12	Daniel Lindén	MID	MLM	30	29	2035	7.2		12	Rolf Svegårdh	MID	VAT	30	27	2526	39		12	Sten Hvit	DEF	OTR	28	25	2324	121		12	Rikard Läck	GK	SDM	29	29	2610	74
+13	Valdemar Hård	FWD	AVK	30	22	1827	10		13	Lennart Kampe	MID	JYL	30	26	2233	5		13	Dale Landry	MID	OTR	30	24	2159	7.2		13	Erik Sundqvist	MID	VAT	28	26	2000	38		13	Bengt Bokvist	DEF	KJB	30	30	2637	120		13	Harry Crawford	GK	RGD	26	26	2337	71
+14	Algot Taube	FWD	TGV	30	28	2298	9		14	Valdemar Hård	FWD	AVK	30	22	1827	5		14	Jesper Olsen	MID	KFJ	30	30	2323	7.2		14	Frans Kjellman	MID	KJB	30	20	1949	38		14	Haraldur Ólafsson	DEF	MLM	29	29	2475	116		14	Bernhard Berggren	GK	KFJ	23	23	2070	69
+15	Harald Nilsson	FWD	EYB	30	30	2041	9		15	Tomas Palmgren	MID	GUR	30	26	2462	5		15	Alfred Varde	FWD	OTR	25	24	1779	7.1		15	Tomas Stadling	MID	VAT	29	27	1926	37		15	Yngve Hellström	DEF	EYB	30	28	2269	116		15	Fredrik Rasmusson	GK	SDG	23	23	2064	64
+16	Torvald Skogsberg	FWD	OTR	30	30	2297	9		16	Uwe Schneider	FWD	HAV	29	27	1900	4		16	Vilhelm Andersson	DEF	VAT	26	26	2154	7.1		16	Johan Ung	FWD	VAT	28	27	2412	36		16	Jens Geirsson	FWD	HAV	29	29	2610	115		16	Ragnar Gilbertsson	GK	KJB	27	27	2430	63
+17	Alfred Varde	FWD	OTR	25	24	1779	8		17	Lennart Jansson	MID	OHM	30	29	2489	4		17	Göran Mattsson	GK	GFB	27	27	2430	7.1		17	Sigvard Krut	MID	TGV	30	25	2132	36		17	Artur Morgensson	DEF	MLM	30	29	2662	113		17	Mattias Rydkvist	GK	KFJ	7	7	630	31
+18	Uno Svensson	FWD	EYB	29	21	1598	8		18	Evert Lindblad	FWD	TGV	30	24	2026	4		18	Erik Sundqvist	MID	VAT	28	26	2000	7.1		18	Allan Plåt	MID	GFB	28	24	1963	35		18	Andreas Jonsson	DEF	OHM	30	28	2481	112		18	Henrik Banner	GK	SDG	8	7	636	31
+19	Lars Collin	FWD	GFB	30	26	2323	8		19	Torleif Moen	MID	TGV	30	24	2042	4		19	Mårten Skjöld	DEF	SDM	29	29	2456	7.1		19	Oseas Mattsson	FWD	MLM	30	30	1764	35		19	Tomás Uzcátegui	DEF	HAV	30	30	2258	111		19	Erland Falk	GK	EYB	11	3	432	20
+20	Tore Alin	FWD	GFB	30	26	2318	8		20	Artur Morgensson	DEF	MLM	30	29	2662	4		20	Sven-Olof Lundin	DEF	RGD	29	29	2534	7.1		20	Vilhelm Smed	MID	SDM	30	29	2242	35		20	Knut Eisenberg	DEF	VAT	29	27	2031	110		20	Nils Östlund	GK	HAV	3	3	270	13
+21	Lennart Kampe	MID	JYL	30	26	2233	8		21	Lennart Sommar	MID	MLM	30	18	2171	4		21	Leif Aasheim	FWD	RGD	29	29	2167	7.1		21	Albin Lundqvist	MID	GUR	30	30	2210	35		21	Lennart Sommar	MID	MLM	30	18	2171	110		21	Klas Frisk	GK	TGV	4	4	360	12
+22	Mårten Skjöld	DEF	SDM	29	29	2456	7		22	Leo Strauss	FWD	MLM	30	30	1660	4		22	Albin Lundqvist	MID	GUR	30	30	2210	7.1		22	Jonas Staffansson	MID	GUR	30	28	1892	34		22	Lennart Kampe	MID	JYL	30	26	2233	110		22	Artur Harms	GK	GFB	3	3	270	10
+23	Lennart Sommar	MID	MLM	30	18	2171	7		23	Lars Collin	FWD	GFB	30	26	2323	4		23	Allan Sjöberg	GK	EYB	27	27	2230	7.0		23	Victor Tvedt	MID	HAV	25	25	1275	33		23	Wilhelm Wilhelmson	DEF	MLM	29	15	1927	109		23	Kolbjørn Birkeland	GK	RGD	4	4	360	10
+24	Ludvig Brantman	FWD	SDM	30	30	1950	7		24	Trygve Ødegaard	MID	SDG	30	23	2073	4		24	Rikard Vinter	GK	JYL	27	27	2430	7.0		24	Jens Geirsson	FWD	HAV	29	29	2610	33		24	Sture Mossgren	DEF	KJB	25	24	2058	108		24	Mikael Toft	GK	OTR	4	4	360	8
+25	Jonas Staffansson	MID	GUR	30	28	1892	7		25	Markus Lejd	MID	KJB	30	23	1989	4		25	Arno Coster	GK	GUR	27	27	2430	7.0		25	Eetu Lehtinen	MID	HAV	29	29	1553	33		25	Frans Persson	DEF	AVK	29	28	2444	107		25	David Järnhammare	GK	OHM	2	1	94	6
+26	Eskil Jern	FWD	EYB	28	9	1398	6		26	Alfred Varde	FWD	OTR	25	24	1779	3		26	Allan Plåt	MID	GFB	28	24	1963	7.0		26	Evert Lindblad	FWD	TGV	30	24	2026	33		26	Rune Engdahl	DEF	TGV	30	29	2467	107		26	Dan Rasmussen	GK	JYL	3	3	270	6
+27	Göran Holmqvist	FWD	SDG	28	28	2054	6		27	Sven Emilsson	MID	HAV	27	18	1697	3		27	Wilhelm Wilhelmson	DEF	MLM	29	15	1927	7.0		27	Kåre Ingebretsen	FWD	RGD	29	28	2074	32		27	Harald Olofsson	DEF	TGV	30	28	2536	106		27	Johan Tegelberg	GK	AVK	1	1	90	5
+28	Eetu Lehtinen	MID	HAV	29	29	1553	6		28	Eskil Jern	FWD	EYB	28	9	1398	3		28	Stig Holmberg	MID	RGD	29	29	2244	7.0		28	Dyre Mollberg	DEF	JYL	30	30	2449	32		28	Johan Bastlund	DEF	SDM	30	30	2653	106		28	Kiromasa Kuroki	GK	VAT	2	2	180	5
+29	Bertil Nyström	MID	RGD	29	25	1976	6		29	Stig Holmberg	MID	RGD	29	29	2244	3		29	Frans Bindesbøll	FWD	JYL	29	27	2001	7.0		29	Algot Taube	FWD	TGV	30	28	2298	31		29	Sigfrid Filipsson	DEF	SDM	30	30	2653	106		29	Jesper Roos	GK	KJB	3	3	270	5
+30	Leo Strauss	FWD	MLM	30	30	1660	6		30	Knut Eisenberg	DEF	VAT	29	27	2031	3		30	Knut Eisenberg	DEF	VAT	29	27	2031	7.0		30	Mårten Skjöld	DEF	SDM	29	29	2456	30		30	Johan Stille	DEF	OTR	30	30	2540	106		30	David Asplund	GK	GUR	3	3	270	4
+31	Frans Kjellman	MID	KJB	30	20	1949	6		31	Vilgot Lindqvist	DEF	OHM	30	28	2505	3		31	Emil Hansen	DEF	AVK	29	29	2371	7.0		31	Jon Kärrman	FWD	OHM	30	20	1787	30		31	Vilhelm Andersson	DEF	VAT	26	26	2154	105		31	Yngve Hellström	DEF	EYB	30	28	2269	2
+32	Victor Tvedt	MID	HAV	25	25	1275	5		32	Vidar Villersson	MID	OHM	30	28	2084	3		32	Jon Kärrman	FWD	OHM	30	20	1787	7.0		32	Bertil Österman	MID	TGV	30	28	2079	30		32	Emil Hansen	DEF	AVK	29	29	2371	104		32	Bror Lejden	GK	SDM	1	1	90	1
+33	Uwe Schneider	FWD	HAV	29	27	1900	5		33	Rikard Nilsson	FWD	OHM	30	28	2190	3		33	Algot Taube	FWD	TGV	30	28	2298	7.0		33	Jesper Olsen	MID	KFJ	30	30	2323	30		33	Ernst Kung	DEF	GFB	30	28	2411	104									
+34	Rikard Nilsson	FWD	OHM	30	28	2190	5		34	Sigvard Krut	MID	TGV	30	25	2132	3		34	Iisakki Saarikoski	DEF	HAV	30	30	2531	7.0		34	Torleif Moen	MID	TGV	30	24	2042	29		34	Eeriks Uđđi	DEF	OTR	30	30	2678	104									
+35	Halvar Arvidsson	MID	TGV	30	8	1334	5		35	Erland Lantz	MID	TGV	30	27	2141	3		35	Kent Forsberg	MID	HAV	30	27	2460	7.0		35	Markus Klerck	FWD	KFJ	30	30	2249	29		35	Vilgot Lindqvist	DEF	OHM	30	28	2505	103									
+36	Vilhelm Smed	MID	SDM	30	29	2242	5		36	Oseas Mattsson	FWD	MLM	30	30	1764	3		36	Tomás Uzcátegui	DEF	HAV	30	30	2258	7.0		36	Uwe Schneider	FWD	HAV	29	27	1900	27		36	Dale Landry	MID	OTR	30	24	2159	103									
+37	Jakob Davidsen	MID	VAT	30	24	2186	5		37	Ernst Kung	DEF	GFB	30	28	2411	3		37	Harald Nilsson	FWD	EYB	30	30	2041	7.0		37	Bertil Nyström	MID	RGD	29	25	1976	27		37	Dag Slättengren	MID	GUR	30	24	1936	99									
+38	Ambrose Pickett	MID	VAT	30	22	1962	5		38	Tore Alin	FWD	GFB	30	26	2318	3		38	Ragnvald Spjut	DEF	JYL	30	29	2549	7.0		38	Stig Holmberg	MID	RGD	29	29	2244	27		38	Mårten Skjöld	DEF	SDM	29	29	2456	98									
+39	Rolf Svegårdh	MID	VAT	30	27	2526	5		39	Poul Brodersen	MID	HAV	30	14	2020	3		39	Jørgen Lykke	FWD	JYL	30	30	2364	7.0		39	Artur Morgensson	DEF	MLM	30	29	2662	27		39	Ludvig Johansson	DEF	HAV	30	28	2380	97									
+40	Emrik Halvorsen	FWD	OTR	30	25	1825	5		40	Tomás Uzcátegui	DEF	HAV	30	30	2258	3		40	Philip McDonald	DEF	OTR	30	28	2577	7.0		40	Karl Schmidt	FWD	MLM	30	30	2042	27		40	Jóhann Sigfússon	DEF	KFJ	29	29	2527	96									
+41	Allan Plåt	MID	GFB	28	24	1963	4		41	Ludvig Brantman	FWD	SDM	30	30	1950	3		41	Valdemar Hård	FWD	AVK	30	22	1827	7.0		41	Emrik Halvorsen	FWD	OTR	30	25	1825	27		41	Kaj Uldaler	DEF	TGV	30	30	2460	96									
+42	Staffan Hage	FWD	OTR	29	13	1563	4		42	Oddmund Myhre	MID	RGD	30	25	2234	3		42	László Gazda	DEF	GUR	30	24	2217	7.0		42	Gustav Gyllenhaal	DEF	MLM	29	29	2453	26		42	Asbjørn Halvorsen	DEF	RGD	30	28	2479	96									
+43	Torsten Artursson	FWD	AVK	29	13	1518	4		43	Ludvig Nicolaisen	DEF	JYL	30	25	2261	3		43	Mogens Overgaard	GK	TGV	26	26	2340	6.9		43	Lukas Tross	MID	GFB	30	24	1975	26		43	Jakob Påhlsson	DEF	AVK	30	29	2592	96									
+44	Daniel Lindén	MID	MLM	30	29	2035	4		44	Josef Gudfredsson	MID	JYL	30	27	2348	3		44	Rikard Storgård	GK	OTR	26	26	2340	6.9		44	Trygve Ødegaard	MID	SDG	30	23	2073	26		44	Gillis Storm	MID	EYB	30	30	2466	95									
+45	Poul Brodersen	MID	HAV	30	14	2020	4		45	Jakob Davidsen	MID	VAT	30	24	2186	3		45	Jakob Månsson	GK	OHM	29	29	2606	6.9		45	Stellan Hjorth	MID	KJB	28	24	1998	25		45	Rolf Svegårdh	MID	VAT	30	27	2526	95									
+46	Greger Klintberg	MID	AVK	30	28	2110	4		46	Mikael Kotte	DEF	KJB	30	29	2631	3		46	Gustav Gyllenhaal	DEF	MLM	29	29	2453	6.9		46	Torvald Skogsberg	FWD	OTR	30	30	2297	25		46	Allan Plåt	MID	GFB	28	24	1963	94									
+47	Vilhelm Henriksson	MID	AVK	30	29	2219	4		47	Bengt Bokvist	DEF	KJB	30	30	2637	3		47	Rikard Läck	GK	SDM	29	29	2610	6.9		47	Jeppe Gärdestad	FWD	AVK	30	27	2271	25		47	François Ducreux	DEF	VAT	30	30	2583	94									
+48	Bertil Strömberg	MID	GUR	16	5	706	3		48	Karl Boldin	FWD	KJB	30	16	1803	3		48	Malte Fellman	GK	AVK	29	29	2610	6.9		48	Rikard Kovén	FWD	KJB	27	23	1734	24		48	Gustav Gyllenhaal	DEF	MLM	29	29	2453	93									
+49	Vilhelm Andersson	DEF	VAT	26	26	2154	3		49	Harald Alexanderssen	MID	KFJ	30	22	2031	3		49	Frans Persson	DEF	AVK	29	28	2444	6.9		49	Leo Strauss	FWD	MLM	30	30	1660	24		49	Edvard Bolander	DEF	GUR	29	26	2314	93									
+50	Halvar Mattsson	MID	EYB	29	29	2159	3		50	Jørgen Pansar	FWD	KFJ	30	23	1996	3		50	Lennart Jansson	MID	OHM	30	29	2489	6.9		50	Tomás Uzcátegui	DEF	HAV	30	30	2258	24		50	Lennart Jansson	MID	OHM	30	29	2489	93									
+51	Ragnvald Gillisson	FWD	SDM	29	16	1588	3		51	Jeppe Gärdestad	FWD	AVK	30	27	2271	3		51	Sigvard Krut	MID	TGV	30	25	2132	6.9		51	Oddmund Myhre	MID	RGD	30	25	2234	24		51	Valdemar Crona	DEF	EYB	29	24	2182	92									
+52	Stig Holmberg	MID	RGD	29	29	2244	3		52	Jonas Staffansson	MID	GUR	30	28	1892	3		52	Rhett Vance	GK	MLM	30	30	2693	6.9		52	Alfred Varde	FWD	OTR	25	24	1779	23		52	Birger Kandlöf	DEF	KJB	30	29	2639	92									
+53	Vilgot Roos	FWD	OTR	29	27	1763	3		53	Harald Trofast	FWD	OHM	21	11	1229	2		53	Artur Morgensson	DEF	MLM	30	29	2662	6.9		53	Ludvig Johansson	DEF	HAV	30	28	2380	23		53	Teemu Karjalainen	DEF	GUR	30	30	2655	92									
+54	Göran Vassberg	FWD	OHM	29	13	1355	3		54	Neil Dike	FWD	MLM	23	0	851	2		54	Trygve Ødegaard	MID	SDG	30	23	2073	6.9		54	Jakob Davidsen	MID	VAT	30	24	2186	23		54	Vilgot Hall	DEF	GFB	29	27	2430	91									
+55	Vidar Villersson	MID	OHM	30	28	2084	3		55	Albin Dahl	MID	SDG	23	8	1022	2		55	Ludvig Brantman	FWD	SDM	30	30	1950	6.9		55	Vilhelm Henriksson	MID	AVK	30	29	2219	23		55	Gösta Berggren	DEF	RGD	25	20	1873	89									
+56	Melker Skräddare	FWD	GFB	30	30	2157	3		56	Vilhelm Andersson	DEF	VAT	26	26	2154	2		56	Oddmund Myhre	MID	RGD	30	25	2234	6.9		56	Tomas Palmgren	MID	GUR	30	26	2462	23		56	Anton Westerberg	DEF	HAV	27	27	2280	89									
+57	Sigfrid Klinga	FWD	SDG	30	11	1501	3		57	Allan Plåt	MID	GFB	28	24	1963	2		57	Rolf Svegårdh	MID	VAT	30	27	2526	6.9		57	Sture Mossgren	DEF	KJB	25	24	2058	22		57	Victor Tvedt	MID	HAV	25	25	1275	88									
+58	Anders Halfdansson	MID	SDM	30	27	2373	3		58	Stellan Hjorth	MID	KJB	28	24	1998	2		58	Torvald Skogsberg	FWD	OTR	30	30	2297	6.9		58	Sven Emilsson	MID	HAV	27	18	1697	22		58	Alfred Varde	FWD	OTR	25	24	1779	87									
+59	Erling Solheim	FWD	RGD	30	28	2113	3		59	Ragnvald Ryberg	FWD	OHM	29	28	2221	2		59	Tomas Palmgren	MID	GUR	30	26	2462	6.9		59	Sten Hvit	DEF	OTR	28	25	2324	22		59	Ragnar Borgberg	MID	SDM	26	26	2147	87									
+60	Joar Berglund	FWD	JYL	30	30	1929	3		60	Gustav Gyllenhaal	DEF	MLM	29	29	2453	2		60	Dag Slättengren	MID	GUR	30	24	1936	6.9		60	Vidar Villersson	MID	OHM	30	28	2084	22		60	Mikael Kotte	DEF	KJB	30	29	2631	87									
+61	Carl Vallman	MID	KFJ	30	28	2169	3		61	Jens Geirsson	FWD	HAV	29	29	2610	2		61	Bernhard Berggren	GK	KFJ	23	23	2070	6.8		61	Ludvig Brantman	FWD	SDM	30	30	1950	22		61	Folke Melin	DEF	TGV	26	25	2115	86									
+62	Jeppe Gärdestad	FWD	AVK	30	27	2271	3		62	Eetu Lehtinen	MID	HAV	29	29	1553	2		62	Ragnar Borgberg	MID	SDM	26	26	2147	6.8		62	Markus Lejd	MID	KJB	30	23	1989	22		62	Valter Hagberg	DEF	VAT	28	21	1969	86									
+63	Győző Kolozs	MID	GUR	30	9	1226	3		63	Mårten Skjöld	DEF	SDM	29	29	2456	2		63	Harry Crawford	GK	RGD	26	26	2337	6.8		63	Jørgen Pansar	FWD	KFJ	30	23	1996	22		63	Anders Jakobsson	DEF	OHM	29	26	2368	86									
+64	Neil Dike	FWD	MLM	23	0	851	2		64	Lars Jørgensen	FWD	SDM	29	18	1745	2		64	Nils Nyquist	GK	HAV	27	27	2430	6.8		64	Leif Aasheim	FWD	RGD	29	29	2167	21		64	Staffan Hollén	DEF	KJB	30	30	2421	86									
+65	Albin Dahl	MID	SDG	23	8	1022	2		65	Tomas Stadling	MID	VAT	29	27	1926	2		65	Sven Emilsson	MID	HAV	27	18	1697	6.8		65	Vilgot Roos	FWD	OTR	29	27	1763	21		65	Jesper Olsen	MID	KFJ	30	30	2323	86									
+66	Odd Vingård	FWD	GFB	23	8	976	2		66	Edvard Bolander	DEF	GUR	29	26	2314	2		66	Mitch Dales	FWD	GUR	27	25	2253	6.8		66	Daniel Lindén	MID	MLM	30	29	2035	21		66	August Frimodig	DEF	SDG	29	29	2280	85									
+67	Kurt Brun	FWD	KJB	27	8	1031	2		67	Daniel Lindén	MID	MLM	30	29	2035	2		67	Göran Holmqvist	FWD	SDG	28	28	2054	6.8		67	Kent Forsberg	MID	HAV	30	27	2460	21		67	Johan Sture	DEF	SDG	30	28	2410	85									
+68	Arvid Wettergren	DEF	HAV	28	4	1268	2		68	Ragnar Sparre	DEF	GFB	30	29	2637	2		68	Uwe Schneider	FWD	HAV	29	27	1900	6.8		68	Jørgen Lykke	FWD	JYL	30	30	2364	21		68	Eugen Slägga	DEF	SDM	30	21	2035	85									
+69	David Valgren	FWD	JYL	28	11	1377	2		69	Melker Skräddare	FWD	GFB	30	30	2157	2		69	Uno Svensson	FWD	EYB	29	21	1598	6.8		69	Joar Berglund	FWD	JYL	30	30	1929	21		69	Poul Brodersen	MID	HAV	30	14	2020	84									
+70	Ragnvald Ryberg	FWD	OHM	29	28	2221	2		70	Kent Forsberg	MID	HAV	30	27	2460	2		70	Kåre Ingebretsen	FWD	RGD	29	28	2074	6.8		70	Halvar Mattsson	MID	EYB	29	29	2159	20		70	Ludvig Nicolaisen	DEF	JYL	30	25	2261	84									
+71	Folke Tallberg	FWD	JYL	29	6	1198	2		71	Mauritz Forsman	DEF	EYB	30	28	2361	2		71	Bertil Nyström	MID	RGD	29	25	1976	6.8		71	Frans Persson	DEF	AVK	29	28	2444	20		71	László Gazda	DEF	GUR	30	24	2217	84									
+72	Tomas Stadling	MID	VAT	29	27	1926	2		72	Henrik Ådahl	MID	SDG	30	29	2490	2		72	Tomas Stadling	MID	VAT	29	27	1926	6.8		72	Emil Hansen	DEF	AVK	29	29	2371	20		72	Göran Staffansson	DEF	GUR	29	29	2258	83									
+73	David Järnsmed	FWD	KFJ	29	8	1270	2		73	Sigfrid Klinga	FWD	SDG	30	11	1501	2		73	Edvard Bolander	DEF	GUR	29	26	2314	6.8		73	Rikard Nilsson	FWD	OHM	30	28	2190	20		73	Kent Forsberg	MID	HAV	30	27	2460	83									
+74	Oseas Mattsson	FWD	MLM	30	30	1764	2		74	Anders Halfdansson	MID	SDM	30	27	2373	2		74	Vidar Villersson	MID	OHM	30	28	2084	6.8		74	Melker Skräddare	FWD	GFB	30	30	2157	20		74	Dyre Mollberg	DEF	JYL	30	30	2449	83									
+75	Ludvig Johansson	DEF	HAV	30	28	2380	2		75	Joar Berglund	FWD	JYL	30	30	1929	2		75	Harald Olofsson	DEF	TGV	30	28	2536	6.8		75	Jakub Modelski	FWD	SDM	30	26	2132	20		75	Sakarias Skräddar	DEF	AVK	29	18	1953	82									
+76	Arvid Rosengren	FWD	SDG	30	29	2308	2		76	Johan Stille	DEF	OTR	30	30	2540	2		76	Leo Strauss	FWD	MLM	30	30	1660	6.8		76	Ludvig Nicolaisen	DEF	JYL	30	25	2261	20		76	Kåre Lindby	DEF	JYL	30	25	2391	82									
+77	Vilgot Pihl	MID	SDG	30	28	2152	2		77	Torsten Nyman	DEF	KFJ	30	30	2647	2		77	Oseas Mattsson	FWD	MLM	30	30	1764	6.8		77	Karl Kihlstedt	FWD	AVK	30	28	2050	20		77	Bror Rask	MID	EYB	28	12	1677	81									
+78	Ragnvald Spjut	DEF	JYL	30	29	2549	2		78	Jesper Olsen	MID	KFJ	30	30	2323	2		78	Ragnar Sparre	DEF	GFB	30	29	2637	6.8		78	Josef Gudfredsson	MID	JYL	30	27	2348	19		78	Carlos López	MID	HAV	30	8	1741	81									
+79	David Scott	DEF	VAT	30	11	1417	2		79	Vilhelm Henriksson	MID	AVK	30	29	2219	2		79	Lars Collin	FWD	GFB	30	26	2323	6.8		79	Fredrik Busck	MID	OTR	28	23	2190	18		79	Jon Kärrman	FWD	OHM	30	20	1787	80									
+80	Knut Boström	MID	KJB	30	10	1272	2		80	László Gazda	DEF	GUR	30	24	2217	2		80	Tore Alin	FWD	GFB	30	26	2318	6.8		80	Erland Lantz	MID	TGV	30	27	2141	18		80	Henrik Arnlund	DEF	GFB	28	25	1886	78									
+81	Karl Boldin	FWD	KJB	30	16	1803	2		81	Sixten Vallgren	MID	GUR	30	24	2251	2		81	Ludvig Johansson	DEF	HAV	30	28	2380	6.8		81	Tore Alin	FWD	GFB	30	26	2318	18		81	Torleif Moen	MID	TGV	30	24	2042	78									
+82	Dale Landry	MID	OTR	30	24	2159	2		82	Győző Kolozs	MID	GUR	30	9	1226	2		82	Poul Brodersen	MID	HAV	30	14	2020	6.8		82	Poul Brodersen	MID	HAV	30	14	2020	18		82	Benjamin Harrysson	MID	AVK	30	28	2522	78									
+83	Harald Alexanderssen	MID	KFJ	30	22	2031	2		83	Karl Konrad	DEF	VAT	16	3	529	1		83	Mauritz Forsman	DEF	EYB	30	28	2361	6.8		83	Johan Stille	DEF	OTR	30	30	2540	18		83	Johan Ung	FWD	VAT	28	27	2412	76									
+84	Jørgen Bøgebjerg	MID	AVK	30	4	1025	2		84	Karl Tångberg	MID	SDM	19	1	416	1		84	Gillis Storm	MID	EYB	30	30	2466	6.8		84	Dag Slättengren	MID	GUR	30	24	1936	18		84	Sigvard Krut	MID	TGV	30	25	2132	76									
+85	Sixten Vallgren	MID	GUR	30	24	2251	2		85	Jean Blanche	DEF	KJB	19	5	750	1		85	Vilgot Pihl	MID	SDG	30	28	2152	6.8		85	Vilhelm Andersson	DEF	VAT	26	26	2154	17		85	Vilhelm Henriksson	MID	AVK	30	29	2219	74									
+86	Dag Slättengren	MID	GUR	30	24	1936	2		86	Frans Klintberg	FWD	OTR	21	7	914	1		86	Johan Bastlund	DEF	SDM	30	30	2653	6.8		86	Mitch Dales	FWD	GUR	27	25	2253	17		86	Dag Magnussen	DEF	KFJ	23	21	1903	73									
+87	Karl Konrad	DEF	VAT	16	3	529	1		87	Folke Lindros	DEF	HAV	22	4	993	1		87	Folke Söderberg	DEF	RGD	30	30	2624	6.8		87	Vilgot Lindqvist	DEF	OHM	30	28	2505	17		87	Fredrik Busck	MID	OTR	28	23	2190	73									
+88	Edvard Havsund	FWD	JYL	17	3	621	1		88	Gösta Berggren	DEF	RGD	25	20	1873	1		88	Joar Berglund	FWD	JYL	30	30	1929	6.8		88	Holger Hufvudsson	MID	OHM	30	28	2397	17		88	Halvar Mattsson	MID	EYB	29	29	2159	71									
+89	Eigil Thielsen	MID	EYB	18	4	869	1		89	Folke Melin	DEF	TGV	26	25	2115	1		89	Jakob Davidsen	MID	VAT	30	24	2186	6.8		89	Arvid Rosengren	FWD	SDG	30	29	2308	17		89	Trygve Ødegaard	MID	SDG	30	23	2073	71									
+90	Folke Lindros	DEF	HAV	22	4	993	1		90	Vilhelm Bentin	DEF	SDG	26	21	1836	1		90	Emrik Halvorsen	FWD	OTR	30	25	1825	6.8		90	Staffan Hollén	DEF	KJB	30	30	2421	17		90	Erland Lantz	MID	TGV	30	27	2141	70									
+91	Vilhelm Bentin	DEF	SDG	26	21	1836	1		91	Ragnar Borgberg	MID	SDM	26	26	2147	1		91	Torsten Nyman	DEF	KFJ	30	30	2647	6.8		91	Karl Boldin	FWD	KJB	30	16	1803	17		91	Gunnar Åkerhielm	DEF	EYB	30	28	2465	70									
+92	Bror Lindqvist	DEF	SDG	26	12	1449	1		92	Hugo Korp	FWD	SDM	26	10	1242	1		92	Jørgen Pansar	FWD	KFJ	30	23	1996	6.8		92	Benjamin Harrysson	MID	AVK	30	28	2522	17		92	Artur Tjerbo	DEF	KFJ	30	28	2504	70									
+93	Erik Sundqvist	MID	VAT	28	26	2000	1		93	Kurt Brun	FWD	KJB	27	8	1031	1		93	Markus Klerck	FWD	KFJ	30	30	2249	6.8		93	Ragnar Borgberg	MID	SDM	26	26	2147	16		93	Vilhelm Bentin	DEF	SDG	26	21	1836	69									
+94	Wilhelm Wilhelmson	DEF	MLM	29	15	1927	1		94	Henrik Arnlund	DEF	GFB	28	25	1886	1		94	Benjamin Harrysson	MID	AVK	30	28	2522	6.8		94	Carlos López	MID	HAV	30	8	1741	16		94	Ulrik Granath	DEF	OHM	30	28	2382	69									
+95	Vilgot Hall	DEF	GFB	29	27	2430	1		95	Karl Westerlund	MID	SDG	28	21	1936	1		95	Sixten Vallgren	MID	GUR	30	24	2251	6.8		95	Mikael Kotte	DEF	KJB	30	29	2631	16		95	Ambrose Pickett	MID	VAT	30	22	1962	69									
+96	Knut Hedin	MID	GFB	29	25	2104	1		96	Johan Ung	FWD	VAT	28	27	2412	1		96	Jonas Staffansson	MID	GUR	30	28	1892	6.8		96	Bengt Bokvist	DEF	KJB	30	30	2637	16		96	Stig Holmberg	MID	RGD	29	29	2244	68									
+97	Rikard Konradsson	MID	GFB	29	10	1302	1		97	Erik Sundqvist	MID	VAT	28	26	2000	1		97	Henrik Banner	GK	SDG	8	7	636	6.7		97	Göran Holmqvist	FWD	SDG	28	28	2054	15		97	Oddmund Myhre	MID	RGD	30	25	2234	67									
+98	Henning Bjerre	MID	EYB	29	13	1598	1		98	Arvid Wettergren	DEF	HAV	28	4	1268	1		98	Fredrik Rasmusson	GK	SDG	23	23	2064	6.7		98	Sten Herdin	FWD	OTR	29	8	1253	15		98	Sven Emilsson	MID	HAV	27	18	1697	66									
+99	August Frimodig	DEF	SDG	29	29	2280	1		99	Haraldur Ólafsson	DEF	MLM	29	29	2475	1		99	Gösta Berggren	DEF	RGD	25	20	1873	6.7		99	Vilgot Pihl	MID	SDG	30	28	2152	15		99	Erik Sundqvist	MID	VAT	28	26	2000	65									
+100	Robert Jonsson	FWD	SDG	29	22	1963	1		100	Vilgot Hall	DEF	GFB	29	27	2430	1		100	Sture Mossgren	DEF	KJB	25	24	2058	6.7		100	Ragnvald Ryberg	FWD	OHM	29	28	2221	14		100	Tomas Stadling	MID	VAT	29	27	1926	64									
+101	Lars Jørgensen	FWD	SDM	29	18	1745	1		101	Knut Hedin	MID	GFB	29	25	2104	1		101	Anton Westerberg	DEF	HAV	27	27	2280	6.7		101	Wilhelm Wilhelmson	DEF	MLM	29	15	1927	14		101	Henrik Ådahl	MID	SDG	30	29	2490	63									
+102	Sven-Olof Lundin	DEF	RGD	29	29	2534	1		102	Valdemar Crona	DEF	EYB	29	24	2182	1		102	Valter Stubbe	GK	VAT	28	28	2520	6.7		102	Uno Svensson	FWD	EYB	29	21	1598	14		102	Mitch Dales	FWD	GUR	27	25	2253	62									
+103	Kåre Ingebretsen	FWD	RGD	29	28	2074	1		103	Henning Bjerre	MID	EYB	29	13	1598	1		103	Valter Hagberg	DEF	VAT	28	21	1969	6.7		103	Knut Lindgren	MID	EYB	29	24	2096	14		103	Stellan Hjorth	MID	KJB	28	24	1998	61									
+104	Sigurd Filipsson	FWD	OTR	29	6	1050	1		104	Uno Svensson	FWD	EYB	29	21	1598	1		104	Sten Hvit	DEF	OTR	28	25	2324	6.7		104	Knut Eisenberg	DEF	VAT	29	27	2031	14		104	Oseas Mattsson	FWD	MLM	30	30	1764	61									
+105	Frans Persson	DEF	AVK	29	28	2444	1		105	Knut Lindgren	MID	EYB	29	24	2096	1		105	Haraldur Ólafsson	DEF	MLM	29	29	2475	6.7		105	Harald Olofsson	DEF	TGV	30	28	2536	14		105	Harald Nilsson	FWD	EYB	30	30	2041	60									
+106	Sakarias Skräddar	DEF	AVK	29	18	1953	1		106	August Frimodig	DEF	SDG	29	29	2280	1		106	Eetu Lehtinen	MID	HAV	29	29	1553	6.7		106	Anders Halfdansson	MID	SDM	30	27	2373	14		106	Knut Hedin	MID	GFB	29	25	2104	59									
+107	Emil Hansen	DEF	AVK	29	29	2371	1		107	Ragnvald Gillisson	FWD	SDM	29	16	1588	1		107	August Frimodig	DEF	SDG	29	29	2280	6.7		107	Dag Magnussen	DEF	KFJ	23	21	1903	13		107	Bertil Österman	MID	TGV	30	28	2079	58									
+108	Ludvig Battenberg	FWD	KFJ	29	8	1118	1		108	Leif Aasheim	FWD	RGD	29	29	2167	1		108	Vilgot Roos	FWD	OTR	29	27	1763	6.7		108	Robert Jonsson	FWD	SDG	29	22	1963	13		108	Lukas Tross	MID	GFB	30	24	1975	58									
+109	Vilgot Lindqvist	DEF	OHM	30	28	2505	1		109	Bertil Nyström	MID	RGD	29	25	1976	1		109	Andreas Jonsson	DEF	OHM	30	28	2481	6.7		109	Lars Jørgensen	FWD	SDM	29	18	1745	13		109	Gunnar Gårdman	FWD	KJB	30	29	1972	58									
+110	Sigvard Krut	MID	TGV	30	25	2132	1		110	Torvald Holmberg	MID	JYL	29	9	1167	1		110	Vilgot Lindqvist	DEF	OHM	30	28	2505	6.7		110	Gunnar Vahlberg	DEF	TGV	30	10	1446	13		110	Torvald Skogsberg	FWD	OTR	30	30	2297	57									
+111	Erland Lantz	MID	TGV	30	27	2141	1		111	Vilgot Roos	FWD	OTR	29	27	1763	1		111	Rikard Nilsson	FWD	OHM	30	28	2190	6.7		111	Henrik Ådahl	MID	SDG	30	29	2490	13		111	Bertil Nyström	MID	RGD	29	25	1976	56									
+112	Set Törngren	MID	MLM	30	20	2210	1		112	David Järnsmed	FWD	KFJ	29	8	1270	1		112	Erland Lantz	MID	TGV	30	27	2141	6.7		112	László Gazda	DEF	GUR	30	24	2217	13		112	Holger Hufvudsson	MID	OHM	30	28	2397	56									
+113	Jan Morsztyn	FWD	MLM	30	21	2055	1		113	Frans Persson	DEF	AVK	29	28	2444	1		113	Rune Engdahl	DEF	TGV	30	29	2467	6.7		113	Sixten Vallgren	MID	GUR	30	24	2251	13		113	Vilgot Pihl	MID	SDG	30	28	2152	56									
+114	Kent Forsberg	MID	HAV	30	27	2460	1		114	Sakarias Skräddar	DEF	AVK	29	18	1953	1		114	Torleif Moen	MID	TGV	30	24	2042	6.7		114	Odd Vingård	FWD	GFB	23	8	976	12		114	Anders Halfdansson	MID	SDM	30	27	2373	54									
+115	Carlos López	MID	HAV	30	8	1741	1		115	Emil Hansen	DEF	AVK	29	29	2371	1		115	Ernst Kung	DEF	GFB	30	28	2411	6.7		115	Henrik Arnlund	DEF	GFB	28	25	1886	12		115	Frans Kjellman	MID	KJB	30	20	1949	54									
+116	Set Cedershiöld	MID	EYB	30	20	1799	1		116	Torsten Artursson	FWD	AVK	29	13	1518	1		116	Melker Skräddare	FWD	GFB	30	30	2157	6.7		116	Eskil Jern	FWD	EYB	28	9	1398	12		116	Sixten Vallgren	MID	GUR	30	24	2251	54									
+117	Gillis Storm	MID	EYB	30	30	2466	1		117	Jon Kärrman	FWD	OHM	30	20	1787	1		117	Carlos López	MID	HAV	30	8	1741	6.7		117	Vilhelm Granath	MID	JYL	28	22	2106	12		117	Carl Vallman	MID	KFJ	30	28	2169	53									
+118	Henrik Ådahl	MID	SDG	30	29	2490	1		118	Bertil Österman	MID	TGV	30	28	2079	1		118	Yngve Hellström	DEF	EYB	30	28	2269	6.7		118	Edvard Bolander	DEF	GUR	29	26	2314	12		118	Jonas Staffansson	MID	GUR	30	28	1892	53									
+119	Trygve Ødegaard	MID	SDG	30	23	2073	1		119	Harald Olofsson	DEF	TGV	30	28	2536	1		119	Sigfrid Filipsson	DEF	SDM	30	30	2653	6.7		119	Halvar Arvidsson	MID	TGV	30	8	1334	12		119	Knut Lindgren	MID	EYB	29	24	2096	52									
+120	Johan Bastlund	DEF	SDM	30	30	2653	1		120	Set Törngren	MID	MLM	30	20	2210	1		120	Ludvig Nicolaisen	DEF	JYL	30	25	2261	6.7		120	Ragnar Sparre	DEF	GFB	30	29	2637	12		120	Josef Gudfredsson	MID	JYL	30	27	2348	51									
+121	Jakub Modelski	FWD	SDM	30	26	2132	1		121	Jan Morsztyn	FWD	MLM	30	21	2055	1		121	Dyre Mollberg	DEF	JYL	30	30	2449	6.7		121	Mauritz Forsman	DEF	EYB	30	28	2361	12		121	Tomas Palmgren	MID	GUR	30	26	2462	51									
+122	Sverre Hansen	MID	RGD	30	8	1400	1		122	Bror Hurtig	FWD	GFB	30	7	1228	1		122	Mikael Kotte	DEF	KJB	30	29	2631	6.7		122	Sigfrid Klinga	FWD	SDG	30	11	1501	12		122	Karl Westerlund	MID	SDG	28	21	1936	50									
+123	Oddmund Myhre	MID	RGD	30	25	2234	1		123	Lukas Tross	MID	GFB	30	24	1975	1		123	Bengt Bokvist	DEF	KJB	30	30	2637	6.7		123	Erling Solheim	FWD	RGD	30	28	2113	12		123	Greger Klintberg	MID	AVK	30	28	2110	50									
+124	Ludvig Nicolaisen	DEF	JYL	30	25	2261	1		124	Carlos López	MID	HAV	30	8	1741	1		124	Frans Kjellman	MID	KJB	30	20	1949	6.7		124	Allan Bekkevold	MID	KFJ	30	29	2077	12		124	Vidar Villersson	MID	OHM	30	28	2084	49									
+125	Edvin Aldrin	MID	VAT	30	17	1844	1		125	Set Cedershiöld	MID	EYB	30	20	1799	1		125	Jakob Påhlsson	DEF	AVK	30	29	2592	6.7		125	Győző Kolozs	MID	GUR	30	9	1226	12		125	Jakob Davidsen	MID	VAT	30	24	2186	49									
+126	Birger Kandlöf	DEF	KJB	30	29	2639	1		126	Arvid Rosengren	FWD	SDG	30	29	2308	1		126	Vilhelm Henriksson	MID	AVK	30	29	2219	6.7		126	Anders Jakobsson	DEF	OHM	29	26	2368	11		126	Leo Strauss	FWD	MLM	30	30	1660	47									
+127	Torsten Nyman	DEF	KFJ	30	30	2647	1		127	Eugen Slägga	DEF	SDM	30	21	2035	1		127	Teemu Karjalainen	DEF	GUR	30	30	2655	6.7		127	Henning Bjerre	MID	EYB	29	13	1598	11		127	Melker Skräddare	FWD	GFB	30	30	2157	47									
+128	Allan Bekkevold	MID	KFJ	30	29	2077	1		128	Sigfrid Filipsson	DEF	SDM	30	30	2653	1		128	Mattias Rydkvist	GK	KFJ	7	7	630	6.6		128	Göran Staffansson	DEF	GUR	29	29	2258	11		128	Hugo Korp	FWD	SDM	26	10	1242	46									
+129	Jørgen Pansar	FWD	KFJ	30	23	1996	1		129	Vilhelm Smed	MID	SDM	30	29	2242	1		129	Harald Trofast	FWD	OHM	21	11	1229	6.6		129	Set Törngren	MID	MLM	30	20	2210	11		129	Kåre Ingebretsen	FWD	RGD	29	28	2074	46									
+130	Karl Kihlstedt	FWD	AVK	30	28	2050	1		130	Jakub Modelski	FWD	SDM	30	26	2132	1		130	Folke Melin	DEF	TGV	26	25	2115	6.6		130	Jan Morsztyn	FWD	MLM	30	21	2055	11		130	Frans Bindesbøll	FWD	JYL	29	27	2001	46									
+131	László Gazda	DEF	GUR	30	24	2217	1		131	Folke Söderberg	DEF	RGD	30	30	2624	1		131	Kurt Brun	FWD	KJB	27	8	1031	6.6		131	Ernst Kung	DEF	GFB	30	28	2411	11		131	Set Cedershiöld	MID	EYB	30	20	1799	46									
+132	Albin Lundqvist	MID	GUR	30	30	2210	1		132	Sverre Hansen	MID	RGD	30	8	1400	1		132	Eskil Jern	FWD	EYB	28	9	1398	6.6		132	Ragnvald Spjut	DEF	JYL	30	29	2549	11		132	Harald Alexanderssen	MID	KFJ	30	22	2031	46									
+									133	Erling Solheim	FWD	RGD	30	28	2113	1		133	Vilhelm Granath	MID	JYL	28	22	2106	6.6		133	Birger Kandlöf	DEF	KJB	30	29	2639	11		133	Göran Holmqvist	FWD	SDG	28	28	2054	45									
+									134	Ragnvald Spjut	DEF	JYL	30	29	2549	1		134	Stellan Hjorth	MID	KJB	28	24	1998	6.6		134	Greger Klintberg	MID	AVK	30	28	2110	11		134	Henning Bjerre	MID	EYB	29	13	1598	45									
+									135	Dyre Mollberg	DEF	JYL	30	30	2449	1		135	Fredrik Busck	MID	OTR	28	23	2190	6.6		135	Neil Dike	FWD	MLM	23	0	851	10		135	Set Törngren	MID	MLM	30	20	2210	45									
+									136	Jørgen Lykke	FWD	JYL	30	30	2364	1		136	Anders Jakobsson	DEF	OHM	29	26	2368	6.6		136	Rikard Konradsson	MID	GFB	29	10	1302	10		136	Jørgen Pansar	FWD	KFJ	30	23	1996	45									
+									137	Edvin Aldrin	MID	VAT	30	17	1844	1		137	Halvar Mattsson	MID	EYB	29	29	2159	6.6		137	August Frimodig	DEF	SDG	29	29	2280	10		137	Albin Lundqvist	MID	GUR	30	30	2210	44									
+									138	Birger Kandlöf	DEF	KJB	30	29	2639	1		138	Staffan Hage	FWD	OTR	29	13	1563	6.6		138	Yngve Hellström	DEF	EYB	30	28	2269	10		138	Lorenzo Di Villardo	DEF	GUR	27	10	1123	42									
+									139	Staffan Hollén	DEF	KJB	30	30	2421	1		139	Jóhann Sigfússon	DEF	KFJ	29	29	2527	6.6		139	Set Cedershiöld	MID	EYB	30	20	1799	10		139	Leif Jonsson	DEF	MLM	27	18	1699	42									
+									140	Gunnar Gårdman	FWD	KJB	30	29	1972	1		140	Sakarias Skräddar	DEF	AVK	29	18	1953	6.6		140	Sverre Hansen	MID	RGD	30	8	1400	10		140	Emrik Halvorsen	FWD	OTR	30	25	1825	42									
+									141	Philip McDonald	DEF	OTR	30	28	2577	1		141	Holger Hufvudsson	MID	OHM	30	28	2397	6.6		141	Harald Alexanderssen	MID	KFJ	30	22	2031	10		141	Markus Lejd	MID	KJB	30	23	1989	41									
+									142	Torvald Skogsberg	FWD	OTR	30	30	2297	1		142	Halvar Arvidsson	MID	TGV	30	8	1334	6.6		142	Gösta Berggren	DEF	RGD	25	20	1873	9		142	Karl Kihlstedt	FWD	AVK	30	28	2050	41									
+									143	Artur Tjerbo	DEF	KFJ	30	28	2504	1		143	Bertil Österman	MID	TGV	30	28	2079	6.6		143	Reidar Olausen	DEF	RGD	27	12	1476	9		143	Bror Lindqvist	DEF	SDG	26	12	1449	40									
+									144	Allan Bekkevold	MID	KFJ	30	29	2077	1		144	Johan Sture	DEF	SDG	30	28	2410	6.6		144	Arvid Wettergren	DEF	HAV	28	4	1268	9		144	Jeppe Gärdestad	FWD	AVK	30	27	2271	40									
+									145	Jørgen Bøgebjerg	MID	AVK	30	4	1025	1		145	Henrik Ådahl	MID	SDG	30	29	2490	6.6		145	Vilgot Hall	DEF	GFB	29	27	2430	9		145	David Valgren	FWD	JYL	28	11	1377	39									
+									146	Benjamin Harrysson	MID	AVK	30	28	2522	1		146	Sigfrid Klinga	FWD	SDG	30	11	1501	6.6		146	Torvald Holmberg	MID	JYL	29	9	1167	9		146	Lars Collin	FWD	GFB	30	26	2323	38									
+									147	Karl Kihlstedt	FWD	AVK	30	28	2050	1		147	Eugen Slägga	DEF	SDM	30	21	2035	6.6		147	Torsten Artursson	FWD	AVK	29	13	1518	9		147	Karl Boldin	FWD	KJB	30	16	1803	38									
+									148	Valdemar Von Brömsen	DEF	GUR	30	10	1483	1		148	Anders Halfdansson	MID	SDM	30	27	2373	6.6		148	Andreas Jonsson	DEF	OHM	30	28	2481	9		148	Markus Klerck	FWD	KFJ	30	30	2249	38									
+									149	Dag Slättengren	MID	GUR	30	24	1936	1		149	Kåre Lindby	DEF	JYL	30	25	2391	6.6		149	Kaj Uldaler	DEF	TGV	30	30	2460	9		149	Vilhelm Granath	MID	JYL	28	22	2106	37									
+									150	Albin Lundqvist	MID	GUR	30	30	2210	1		150	Birger Kandlöf	DEF	KJB	30	29	2639	6.6		150	Bror Hurtig	FWD	GFB	30	7	1228	9		150	Eetu Lehtinen	MID	HAV	29	29	1553	37									
+																		151	Markus Lejd	MID	KJB	30	23	1989	6.6		151	Iisakki Saarikoski	DEF	HAV	30	30	2531	9		151	Gunnar Vahlberg	DEF	TGV	30	10	1446	37									
+																		152	Eeriks Uđđi	DEF	OTR	30	30	2678	6.6		152	Philip McDonald	DEF	OTR	30	28	2577	9		152	Reidar Olausen	DEF	RGD	27	12	1476	36									
+																		153	Jeppe Gärdestad	FWD	AVK	30	27	2271	6.6		153	Carl Vallman	MID	KFJ	30	28	2169	9		153	David Scott	DEF	VAT	30	11	1417	36									
+																		154	Greger Klintberg	MID	AVK	30	28	2110	6.6		154	Frans Nord	MID	SDG	29	11	1435	8		154	Joar Berglund	FWD	JYL	30	30	1929	35									
+																		155	Győző Kolozs	MID	GUR	30	9	1226	6.6		155	Staffan Hage	FWD	OTR	29	13	1563	8		155	Valfrid Borgström	DEF	TGV	17	8	887	34									
+																		156	Valfrid Borgström	DEF	TGV	17	8	887	6.5		156	Rune Engdahl	DEF	TGV	30	29	2467	8		156	Vilgot Roos	FWD	OTR	29	27	1763	34									
+																		157	Jean Blanche	DEF	KJB	19	5	750	6.5		157	Eugen Slägga	DEF	SDM	30	21	2035	8		157	Mårten Bure	FWD	AVK	25	16	1599	33									
+																		158	Frans Klintberg	FWD	OTR	21	7	914	6.5		158	Sigfrid Filipsson	DEF	SDM	30	30	2653	8		158	Ragnvald Ryberg	FWD	OHM	29	28	2221	33									
+																		159	Neil Dike	FWD	MLM	23	0	851	6.5		159	Vilgot Renner	FWD	SDM	30	7	1295	8		159	Rikard Nilsson	FWD	OHM	30	28	2190	33									
+																		160	Albin Dahl	MID	SDG	23	8	1022	6.5		160	Kåre Lindby	DEF	JYL	30	25	2391	8		160	Jan Morsztyn	FWD	MLM	30	21	2055	33									
+																		161	Dag Magnussen	DEF	KFJ	23	21	1903	6.5		161	David Scott	DEF	VAT	30	11	1417	8		161	Uwe Schneider	FWD	HAV	29	27	1900	32									
+																		162	Odd Vingård	FWD	GFB	23	8	976	6.5		162	Torsten Nyman	DEF	KFJ	30	30	2647	8		162	Ludvig Brantman	FWD	SDM	30	30	1950	32									
+																		163	Hugo Korp	FWD	SDM	26	10	1242	6.5		163	Artur Tjerbo	DEF	KFJ	30	28	2504	8		163	Valdemar Hård	FWD	AVK	30	22	1827	32									
+																		164	Bror Lindqvist	DEF	SDG	26	12	1449	6.5		164	Jørgen Bøgebjerg	MID	AVK	30	4	1025	8		164	Rikard Kovén	FWD	KJB	27	23	1734	31									
+																		165	Ragnar Gilbertsson	GK	KJB	27	27	2430	6.5		165	Folke Lindros	DEF	HAV	22	4	993	7		165	Nils Armstark	DEF	VAT	28	12	1374	31									
+																		166	Lorenzo Di Villardo	DEF	GUR	27	10	1123	6.5		166	Vilhelm Bentin	DEF	SDG	26	21	1836	7		166	Uno Svensson	FWD	EYB	29	21	1598	31									
+																		167	Ragnvald Ryberg	FWD	OHM	29	28	2221	6.5		167	Kurt Brun	FWD	KJB	27	8	1031	7		167	Arvid Rosengren	FWD	SDG	30	29	2308	31									
+																		168	Valdemar Crona	DEF	EYB	29	24	2182	6.5		168	Haraldur Ólafsson	DEF	MLM	29	29	2475	7		168	Jørgen Lykke	FWD	JYL	30	30	2364	30									
+																		169	Lars Jørgensen	FWD	SDM	29	18	1745	6.5		169	Knut Hedin	MID	GFB	29	25	2104	7		169	Edvin Aldrin	MID	VAT	30	17	1844	30									
+																		170	Sigurd Filipsson	FWD	OTR	29	6	1050	6.5		170	Edvin Aldrin	MID	VAT	30	17	1844	7		170	Leif Aasheim	FWD	RGD	29	29	2167	28									
+																		171	Torsten Artursson	FWD	AVK	29	13	1518	6.5		171	Folke Melin	DEF	TGV	26	25	2115	6		171	Sten Herdin	FWD	OTR	29	8	1253	28									
+																		172	Göran Staffansson	DEF	GUR	29	29	2258	6.5		172	Leif Jonsson	DEF	MLM	27	18	1699	6		172	Rikard Konradsson	MID	GFB	29	10	1302	27									
+																		173	Ulrik Granath	DEF	OHM	30	28	2382	6.5		173	Karl Westerlund	MID	SDG	28	21	1936	6		173	Robert Jonsson	FWD	SDG	29	22	1963	27									
+																		174	Kaj Uldaler	DEF	TGV	30	30	2460	6.5		174	Nils Armstark	DEF	VAT	28	12	1374	6		174	Torvald Holmberg	MID	JYL	29	9	1167	27									
+																		175	Set Törngren	MID	MLM	30	20	2210	6.5		175	Valter Hagberg	DEF	VAT	28	21	1969	6		175	Frans Nord	MID	SDG	29	11	1435	26									
+																		176	Lukas Tross	MID	GFB	30	24	1975	6.5		176	Ragnvald Gillisson	FWD	SDM	29	16	1588	6		176	Sigfrid Klinga	FWD	SDG	30	11	1501	26									
+																		177	Arvid Rosengren	FWD	SDG	30	29	2308	6.5		177	Sigurd Filipsson	FWD	OTR	29	6	1050	6		177	Erling Solheim	FWD	RGD	30	28	2113	26									
+																		178	Asbjørn Halvorsen	DEF	RGD	30	28	2479	6.5		178	Sakarias Skräddar	DEF	AVK	29	18	1953	6		178	Hugo Dunder	MID	KFJ	19	12	1212	25									
+																		179	Erling Solheim	FWD	RGD	30	28	2113	6.5		179	Göran Vassberg	FWD	OHM	29	13	1355	6		179	Ernst Gustafsson	FWD	TGV	27	6	951	25									
+																		180	Josef Gudfredsson	MID	JYL	30	27	2348	6.5		180	Johan Bastlund	DEF	SDM	30	30	2653	6		180	Jakub Modelski	FWD	SDM	30	26	2132	25									
+																		181	David Scott	DEF	VAT	30	11	1417	6.5		181	Asbjørn Halvorsen	DEF	RGD	30	28	2479	6		181	Harald Trofast	FWD	OHM	21	11	1229	24									
+																		182	François Ducreux	DEF	VAT	30	30	2583	6.5		182	Vilhelm Smal	MID	KFJ	30	2	893	6		182	Lars Jørgensen	FWD	SDM	29	18	1745	24									
+																		183	Karl Boldin	FWD	KJB	30	16	1803	6.5		183	Jakob Påhlsson	DEF	AVK	30	29	2592	6		183	Mauritz Dalman	MID	GFB	24	11	1197	22									
+																		184	Johan Stille	DEF	OTR	30	30	2540	6.5		184	Teemu Karjalainen	DEF	GUR	30	30	2655	6		184	Folke Tallberg	FWD	JYL	29	6	1198	21									
+																		185	Artur Tjerbo	DEF	KFJ	30	28	2504	6.5		185	Valdemar Von Brömsen	DEF	GUR	30	10	1483	6		185	Allan Bekkevold	MID	KFJ	30	29	2077	21									
+																		186	Harald Alexanderssen	MID	KFJ	30	22	2031	6.5		186	Karl Konrad	DEF	VAT	16	3	529	5		186	Valdemar Von Brömsen	DEF	GUR	30	10	1483	21									
+																		187	Carl Vallman	MID	KFJ	30	28	2169	6.5		187	Jean Blanche	DEF	KJB	19	5	750	5		187	Győző Kolozs	MID	GUR	30	9	1226	21									
+																		188	Karl Kihlstedt	FWD	AVK	30	28	2050	6.5		188	Harald Trofast	FWD	OHM	21	11	1229	5		188	Eigil Thielsen	MID	EYB	18	4	869	19									
+																		189	Bertil Strömberg	MID	GUR	16	5	706	6.4		189	Albin Dahl	MID	SDG	23	8	1022	5		189	Jean Blanche	DEF	KJB	19	5	750	19									
+																		190	Karl Konrad	DEF	VAT	16	3	529	6.4		190	Hugo Korp	FWD	SDM	26	10	1242	5		190	Arvid Wettergren	DEF	HAV	28	4	1268	18									
+																		191	Jens Mattisson	MID	OHM	20	1	466	6.4		191	Rikard Storgård	GK	OTR	26	26	2340	5		191	Staffan Hage	FWD	OTR	29	13	1563	18									
+																		192	Folke Lindros	DEF	HAV	22	4	993	6.4		192	Göran Mattsson	GK	GFB	27	27	2430	5		192	Bror Hurtig	FWD	GFB	30	7	1228	18									
+																		193	Mårten Bure	FWD	AVK	25	16	1599	6.4		193	Anton Westerberg	DEF	HAV	27	27	2280	5		193	Vilgot Renner	FWD	SDM	30	7	1295	18									
+																		194	Reidar Olausen	DEF	RGD	27	12	1476	6.4		194	Ragnar Gilbertsson	GK	KJB	27	27	2430	5		194	Frans Klintberg	FWD	OTR	21	7	914	17									
+																		195	Ernst Gustafsson	FWD	TGV	27	6	951	6.4		195	David Valgren	FWD	JYL	28	11	1377	5		195	Sigurd Filipsson	FWD	OTR	29	6	1050	17									
+																		196	Leif Jonsson	DEF	MLM	27	18	1699	6.4		196	Valdemar Crona	DEF	EYB	29	24	2182	5		196	Evert Lindblad	FWD	TGV	30	24	2026	17									
+																		197	Karl Westerlund	MID	SDG	28	21	1936	6.4		197	Sven-Olof Lundin	DEF	RGD	29	29	2534	5		197	Sverre Hansen	MID	RGD	30	8	1400	17									
+																		198	Nils Armstark	DEF	VAT	28	12	1374	6.4		198	Jóhann Sigfússon	DEF	KFJ	29	29	2527	5		198	Ludvig Battenberg	FWD	KFJ	29	8	1118	16									
+																		199	Arvid Wettergren	DEF	HAV	28	4	1268	6.4		199	David Järnsmed	FWD	KFJ	29	8	1270	5		199	Ragnvald Gillisson	FWD	SDM	29	16	1588	15									
+																		200	Bror Rask	MID	EYB	28	12	1677	6.4		200	Knut Boström	MID	KJB	30	10	1272	5		200	Tomas Ivarsson	MID	OHM	30	4	1022	15									
+																		201	David Valgren	FWD	JYL	28	11	1377	6.4		201	Eeriks Uđđi	DEF	OTR	30	30	2678	5		201	Folke Lindros	DEF	HAV	22	4	993	14									
+																		202	Vilgot Hall	DEF	GFB	29	27	2430	6.4		202	Frans Klintberg	FWD	OTR	21	7	914	4		202	Albin Dahl	MID	SDG	23	8	1022	14									
+																		203	Knut Hedin	MID	GFB	29	25	2104	6.4		203	Långberg Rikardsson	MID	MLM	22	2	785	4		203	Kurt Brun	FWD	KJB	27	8	1031	14									
+																		204	Rikard Konradsson	MID	GFB	29	10	1302	6.4		204	Ernst Gustafsson	FWD	TGV	27	6	951	4		204	Algot Taube	FWD	TGV	30	28	2298	12									
+																		205	Henning Bjerre	MID	EYB	29	13	1598	6.4		205	Ludvig Battenberg	FWD	KFJ	29	8	1118	4		205	Knut Boström	MID	KJB	30	10	1272	12									
+																		206	Ragnvald Gillisson	FWD	SDM	29	16	1588	6.4		206	François Ducreux	DEF	VAT	30	30	2583	4		206	Långberg Rikardsson	MID	MLM	22	2	785	11									
+																		207	Torvald Holmberg	MID	JYL	29	9	1167	6.4		207	Bertil Strömberg	MID	GUR	16	5	706	3		207	Neil Dike	FWD	MLM	23	0	851	11									
+																		208	Folke Tallberg	FWD	JYL	29	6	1198	6.4		208	Valfrid Borgström	DEF	TGV	17	8	887	3		208	David Järnsmed	FWD	KFJ	29	8	1270	11									
+																		209	Sten Herdin	FWD	OTR	29	8	1253	6.4		209	Bjarne Gulbrandsen	FWD	RGD	21	5	836	3		209	Göran Vassberg	FWD	OHM	29	13	1355	11									
+																		210	Göran Vassberg	FWD	OHM	29	13	1355	6.4		210	Mauritz Dalman	MID	GFB	24	11	1197	3		210	Tore Alin	FWD	GFB	30	26	2318	11									
+																		211	Gunnar Vahlberg	DEF	TGV	30	10	1446	6.4		211	Bror Lindqvist	DEF	SDG	26	12	1449	3		211	Jørgen Bøgebjerg	MID	AVK	30	4	1025	11									
+																		212	Gunnar Åkerhielm	DEF	EYB	30	28	2465	6.4		212	Allan Sjöberg	GK	EYB	27	27	2230	3		212	Halvar Arvidsson	MID	TGV	30	8	1334	10									
+																		213	Set Cedershiöld	MID	EYB	30	20	1799	6.4		213	Ulrik Granath	DEF	OHM	30	28	2382	3		213	Vilhelm Smal	MID	KFJ	30	2	893	10									
+																		214	Vilgot Renner	FWD	SDM	30	7	1295	6.4		214	Folke Söderberg	DEF	RGD	30	30	2624	3		214	Gerhard Vadström	MID	AVK	18	1	413	9									
+																		215	Jakub Modelski	FWD	SDM	30	26	2132	6.4		215	Edvard Havsund	FWD	JYL	17	3	621	2		215	Jens Mattisson	MID	OHM	20	1	466	9									
+																		216	Sverre Hansen	MID	RGD	30	8	1400	6.4		216	Hugo Dunder	MID	KFJ	19	12	1212	2		216	Joachim Steiner	MID	RGD	25	4	831	9									
+																		217	Edvin Aldrin	MID	VAT	30	17	1844	6.4		217	Karl Tångberg	MID	SDM	19	1	416	2		217	Eskil Jern	FWD	EYB	28	9	1398	9									
+																		218	Staffan Hollén	DEF	KJB	30	30	2421	6.4		218	Mårten Bure	FWD	AVK	25	16	1599	2		218	Torsten Artursson	FWD	AVK	29	13	1518	9									
+																		219	Jørgen Bøgebjerg	MID	AVK	30	4	1025	6.4		219	Harry Crawford	GK	RGD	26	26	2337	2		219	Edvard Havsund	FWD	JYL	17	3	621	8									
+																		220	Valdemar Von Brömsen	DEF	GUR	30	10	1483	6.4		220	Bror Rask	MID	EYB	28	12	1677	2		220	Mogens Overgaard	GK	TGV	26	26	2340	6									
+																		221	Edvard Havsund	FWD	JYL	17	3	621	6.3		221	Folke Tallberg	FWD	JYL	29	6	1198	2		221	Karl Tångberg	MID	SDM	19	1	416	4									
+																		222	Eigil Thielsen	MID	EYB	18	4	869	6.3		222	Tomas Ivarsson	MID	OHM	30	4	1022	2		222	Bjarne Gulbrandsen	FWD	RGD	21	5	836	4									
+																		223	Bjarne Gulbrandsen	FWD	RGD	21	5	836	6.3		223	Gunnar Åkerhielm	DEF	EYB	30	28	2465	2		223	Odd Vingård	FWD	GFB	23	8	976	4									
+																		224	Långberg Rikardsson	MID	MLM	22	2	785	6.3		224	Johan Sture	DEF	SDG	30	28	2410	2		224	Bertil Strömberg	MID	GUR	16	5	706	3									
+																		225	Mauritz Dalman	MID	GFB	24	11	1197	6.3		225	Mikael Toft	GK	OTR	4	4	360	1		225	Karl Konrad	DEF	VAT	16	3	529	3									
+																		226	Joachim Steiner	MID	RGD	25	4	831	6.3		226	Klas Frisk	GK	TGV	4	4	360	1		226	Rikard Storgård	GK	OTR	26	26	2340	3									
+																		227	Vilhelm Bentin	DEF	SDG	26	21	1836	6.3		227	Mattias Rydkvist	GK	KFJ	7	7	630	1		227	Rikard Vinter	GK	JYL	27	27	2430	3									
+																		228	Henrik Arnlund	DEF	GFB	28	25	1886	6.3		228	Eigil Thielsen	MID	EYB	18	4	869	1		228	Ragnar Gilbertsson	GK	KJB	27	27	2430	3									
+																		229	Knut Lindgren	MID	EYB	29	24	2096	6.3		229	Joachim Steiner	MID	RGD	25	4	831	1		229	Bernhard Berggren	GK	KFJ	23	23	2070	2									
+																		230	Frans Nord	MID	SDG	29	11	1435	6.3		230	Mogens Overgaard	GK	TGV	26	26	2340	1		230	Harry Crawford	GK	RGD	26	26	2337	2									
+																		231	Robert Jonsson	FWD	SDG	29	22	1963	6.3		231	Lorenzo Di Villardo	DEF	GUR	27	10	1123	1		231	Göran Mattsson	GK	GFB	27	27	2430	2									
+																		232	David Järnsmed	FWD	KFJ	29	8	1270	6.3		232	Jakob Månsson	GK	OHM	29	29	2606	1		232	Nils Nyquist	GK	HAV	27	27	2430	2									
+																		233	Ludvig Battenberg	FWD	KFJ	29	8	1118	6.3		233	Malte Fellman	GK	AVK	29	29	2610	1		233	Mikael Toft	GK	OTR	4	4	360	1									
+																		234	Tomas Ivarsson	MID	OHM	30	4	1022	6.3											234	Klas Frisk	GK	TGV	4	4	360	1									
+																		235	Jan Morsztyn	FWD	MLM	30	21	2055	6.3											235	Mattias Rydkvist	GK	KFJ	7	7	630	1									
+																		236	Bror Hurtig	FWD	GFB	30	7	1228	6.3											236	Erland Falk	GK	EYB	11	3	432	1									
+																		237	Knut Boström	MID	KJB	30	10	1272	6.3											237	Fredrik Rasmusson	GK	SDG	23	23	2064	1									
+																		238	Vilhelm Smal	MID	KFJ	30	2	893	6.3											238	Allan Sjöberg	GK	EYB	27	27	2230	1									
+																		239	Allan Bekkevold	MID	KFJ	30	29	2077	6.3											239	Arno Coster	GK	GUR	27	27	2430	1									
+																		240	Hugo Dunder	MID	KFJ	19	12	1212	6.2											240	Valter Stubbe	GK	VAT	28	28	2520	1									
+																		241	Klas Frisk	GK	TGV	4	4	360	7.2											241	Rikard Läck	GK	SDM	29	29	2610	1									
+																		242	David Järnhammare	GK	OHM	2	1	94	7.0											242	Malte Fellman	GK	AVK	29	29	2610	1									
+																		243	Dan Rasmussen	GK	JYL	3	3	270	7.0											243	Rhett Vance	GK	MLM	30	30	2693	1									
+																		244	Kiromasa Kuroki	GK	VAT	2	2	180	7.0																											
+																		245	Kolbjørn Birkeland	GK	RGD	4	4	360	6.9																											
+																		246	Mikael Toft	GK	OTR	4	4	360	6.9																											
+																		247	Nils Östlund	GK	HAV	3	3	270	6.9																											
+																		248	David Asplund	GK	GUR	3	3	270	6.8																											
+																		249	Erland Falk	GK	EYB	11	3	432	6.7																											
+																		250	Artur Harms	GK	GFB	3	3	270	6.7																											
+																		251	Bror Lejden	GK	SDM	1	1	90	6.7																											
+																		252	Johan Tegelberg	GK	AVK	1	1	90	6.5																											
+																		253	Karl Tångberg	MID	SDM	19	1	416	6.4																											
+																		254	Gerhard Vadström	MID	AVK	18	1	413	6.3																											
+																		255	Jesper Roos	GK	KJB	3	3	270	6.3																											

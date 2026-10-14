@@ -177,7 +177,8 @@ export function meBallStep(mp, seconds, players, ctrl, skip) {
 /** Advance the real ball through substeps [from, to) of a slice of n, every body on its own line
  *  through the slice. Stops at the FIRST thing that happens and says what it was, so it can be settled
  *  where it happened rather than a quarter of a second later from wherever the ball had got to:
- *    { kind: "goal" | "woodwork" | "behind", conceding, y, z }  the goal line (interpolated to the plane)
+ *    { kind: "goal" | "woodwork" | "behind", conceding, y, z }  the goal line (interpolated to the plane, or
+ *                                                                 where it is once wholly over unseen; `lines` only)
  *    { kind: "touchline" }                                        wholly over a touchline (`lines` only)
  *    whatever `probe(i, f)` returns                               a man reaching it; see meTick
  *  with `at` = the substep it happened on, or null if the ball simply travelled. */
@@ -211,6 +212,17 @@ export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
         return { kind: "woodwork", conceding, y, z, at: i };
       }
       return { kind: "behind", conceding, y, z, at: i };
+    }
+    // ...AND THE WHOLE BALL BEHIND A GOAL LINE, HOWEVER IT GOT THERE, judged as the touchline is. The plane test sees
+    // a ball only as it crosses, and a man reaching it on that very substep ends the run above before the plane is
+    // asked: a keeper got a hand to a shot going past his post on the line, and the parry carried on from a centimetre
+    // over it with no line left to cross. Traced (Takarazuka v Spartak, seed 7): it came to rest nine metres behind the
+    // goal and nobody played on from the fourth minute to the whistle. Over between the posts and under the bar it went
+    // in; anywhere else it went behind.
+    if (lines && (mp.bx < -CFG.ballR || mp.bx > PITCH_L + CFG.ballR)) {
+      const conceding = mp.bx < 0 ? "home" : "away";
+      const inMouth = Math.abs(mp.by - ME_HALF_W) <= GOAL_HALF_W && mp.bz <= GOAL_H;
+      return { kind: inMouth ? "goal" : "behind", conceding, y: mp.by, z: mp.bz, at: i };
     }
   }
   return null;

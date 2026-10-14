@@ -500,6 +500,16 @@ export const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
                     defActs: 0, _att: null, passOk: 0, passFail: 0, duelWon: 0, duelLost: 0,
                     dribbles: 0, beaten: 0, aerials: 0 }));
 
+// Set once at kickoff from the bench each side actually named. Stored rather than derived:
+// red cards and unsubbed injuries also move players out, so a live count would drift.
+// Five substitutions is a property of the DECLARED bench width, not of how many names are in it —
+// a nation that lists 8 of its 11 subs still plays international rules. The length test stays as a
+// fallback for squads built before benchSize existed, including those inside older saves.
+// A club's eleven-man bench plays to five as well (Moukden and Kirin, 12 October 2026: "Put clubs on 5").
+// Sim All plays to the same rule (14 October 2026, "fix the Sim All cap too"): it read the named bench's length alone, so
+// a club naming five of its eleven places made three changes there and five in Live Match.
+export const subCapFor = (bench) => ((bench || []).some(p => p.benchSize >= 11) || (bench || []).length >= 11 ? 5 : 3);
+
 // A whole positional match, start to whistle, with no React anywhere near it. This is the shape the
 // tournament will eventually call instead of simInstantMatch.
 // homeAdv is optional and names the side playing at its own ground, or null for a neutral venue,
@@ -513,7 +523,7 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn, brain) {
   st.injuriesOn = injuriesOn !== false;
   st.players.home = meSide(hT); st.players.away = meSide(aT);
   st.bench = { home: meBench(hT), away: meBench(aT) };
-  st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+  st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
   st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
   st.fit = { home: meFitFor(hT), away: meFitFor(aT) };
@@ -581,7 +591,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   const st = createMatchState();
   st.players.home = meSide(hT); st.players.away = meSide(aT);
   st.bench = { home: meBench(hT), away: meBench(aT) };
-  st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+  st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
   st.formations = { home: hT.formation, away: aT.formation };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
   st.fit = { home: meFitFor(hT), away: meFitFor(aT) };

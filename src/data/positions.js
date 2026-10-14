@@ -41,9 +41,14 @@ export function posFitCost(a, b) {
 }
 // Whether a man's positions include a place: the position itself, or one of a bench place's group.
 export const fitsPlace = (own, place) => { const l = posList(own); return !l.length || (GROUP_POS[place] ? l.some(p => POS_GROUP[p] === place) : l.includes(place)); };
-// Which of his positions he plays a place from: the place itself if it is his, else the nearer of his two.
+// Which of his positions he plays a place from: the place itself if it is his, else whichever of his two costs him less
+// there (POS_DROP), the nearer where they cost the same. The engine plays him from the same one (src/engine/attributes.ts
+// meOwnFor). Taken as the nearer alone, a striker and right winger at left wing played it as a striker, two down, where a
+// right winger plays it at no cost (Moukden and Kirin, 14 October 2026: "Cheaper Position").
 export const ownFor = (own, place) => { const l = posList(own); if (!l.length) return place;
-  return l.includes(place) ? place : l.reduce((b, p) => (posFitCost(p, place) < posFitCost(b, place) ? p : b), l[0]); };
+  if (l.includes(place)) return place;
+  const cost = (p) => POS_DROP?.[p]?.[place] ?? 99;
+  return l.reduce((b, p) => (cost(p) < cost(b) || (cost(p) === cost(b) && posFitCost(p, place) < posFitCost(b, place)) ? p : b), l[0]); };
 
 // A squad's places: the formation's eleven (sposFor, from the engine's formations), then the bench, each bench place a
 // broad group. A national side's eleven take its starters' groups, slot for slot. A club's bench is eleven too (Moukden

@@ -42,7 +42,7 @@ import { dealPlan } from "./data/deals.js";
 import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, clubBench, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
-import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
+import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor, subCapFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
 import { toBlob } from "html-to-image";
 import { shotBlob, shotWarm } from "./shot.js";
@@ -50,7 +50,7 @@ import { DOCS, TRAIT_DOC, POS_NAME } from "./docs.js";
 import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
-export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
+export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim/core";
 // THE SHEETS, FROM THE RECORDS. Each preset sheet is written from src/data -- byte for byte the file in src/presets,
 // which `node test/records.mjs check` keeps true -- so every team builds exactly as it did when the app read the
 // files. The app no longer reads src/presets; those are copies for the tools that still read sheets.
@@ -2704,13 +2704,6 @@ const POS_SPECIFIC = ["GK","LB","CB","RB","LWB","RWB","DM","CM","AM","LM","RM","
 // which plays to 5 subs; every other roster keeps the 3 it always had. Read off the bench
 // the side actually started with, so the two teams can differ within one match.
 const subLimit = (s, side) => s?.subCap?.[side] ?? 3;
-// Set once at kickoff from the bench each side actually named. Stored rather than derived:
-// red cards and unsubbed injuries also move players out, so a live count would drift.
-// Five substitutions is a property of the DECLARED bench width, not of how many names are in it —
-// a nation that lists 8 of its 11 subs still plays international rules. The length test stays as a
-// fallback for squads built before benchSize existed, including those inside older saves.
-// A club's eleven-man bench plays to five as well (Moukden and Kirin, 12 October 2026: "Put clubs on 5").
-const subCapFor = (bench) => ((bench || []).some(p => p.benchSize >= 11) || (bench || []).length >= 11 ? 5 : 3);
 function refitLineup(squad, formation) {
   const xi = (squad || []).filter(p => !p.bench), bench = (squad || []).filter(p => p.bench);
   if (xi.length !== 11) return squad || [];

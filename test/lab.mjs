@@ -88,7 +88,10 @@ export function play(E, hT, aT, seed) {
   st.brain = 2; st.homeAdv = null; st.injuriesOn = false;
   st.players.home = E.meSide(hT); st.players.away = E.meSide(aT);
   st.bench = { home: E.meBench(hT), away: E.meBench(aT) };
-  st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+  // The app's rule (src/sim/core.ts subCapFor): five changes for a bench DECLARED eleven wide, however many it names.
+  // Written out here rather than read off E, so an arm on an older bundle plays to the same rule as the base.
+  const capOf = (b) => (b.some(p => p.benchSize >= 11) || b.length >= 11 ? 5 : 3);
+  st.subCap = { home: capOf(st.bench.home), away: capOf(st.bench.away) };
   st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
   st.strategy = { home: E.meStrategyFor(hT), away: E.meStrategyFor(aT) };
   st.fit = { home: E.meFitFor(hT), away: E.meFitFor(aT) };
