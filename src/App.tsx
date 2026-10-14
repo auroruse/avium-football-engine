@@ -4075,7 +4075,12 @@ const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), 
 // Heliodrome @ TIU" was the only one: the file was correct, the encoding was correct and the server
 // answered 200 for the URL, but neither the picker thumbnail nor the match backdrop would load it —
 // so the "@" is off the wire entirely rather than debugged further. Display name keeps the "@".
-const stadiumSrcs = (name) => [name.normalize("NFC"), name.normalize("NFD")]
+// A ground's photograph by its name however the apostrophe was typed: a name saved from the app carries the curly one
+// ("Pensioners’ Bridge", 14 October 2026) while the file was written with the straight one, and the two never met.
+const stadiumKey = (n) => String(n || "").normalize("NFC").replace(/[\u2018\u2019\u02BC`\u00B4]/g, "'");
+const STADIUM_FILE_BY = new Map(STADIUM_IMAGES.map(n => [stadiumKey(n), n]));
+const hasStadiumImg = (n) => STADIUM_FILE_BY.has(stadiumKey(n));
+const stadiumSrcs = (shown) => { const name = STADIUM_FILE_BY.get(stadiumKey(shown)) || shown; return [name.normalize("NFC"), name.normalize("NFD")]
   // Percent-encoded AND raw. encodeURIComponent escapes "@" to %40, which is correct but is a
   // different request path from the literal "@" — anything in front of the files that matches on
   // the raw path (a proxy, a CDN, a host that does not decode) sees the two as different names, and
@@ -4083,7 +4088,7 @@ const stadiumSrcs = (name) => [name.normalize("NFC"), name.normalize("NFD")]
   // the browser encodes the spaces itself and leaves the "@" alone.
   .flatMap(n => [encodeURIComponent(n), n])
   // The extension the manifest found for this ground (JPEG or PNG); a name it does not know tries both JPEG spellings.
-  .flatMap(n => (STADIUM_EXT[name.normalize("NFC")] ? [STADIUM_EXT[name.normalize("NFC")]] : [".jpg", ".jpeg"]).map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`));
+  .flatMap(n => (STADIUM_EXT[name.normalize("NFC")] ? [STADIUM_EXT[name.normalize("NFC")]] : [".jpg", ".jpeg"]).map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`)); };
 const stadiumBg = (name) => stadiumSrcs(name).map(u => `url("${u}")`).join(", ");
 // A ground shown at its own aspect ratio has to be a real <img>: a background-image has no
 // intrinsic size, so a div can only ever be told a height. Same candidate list, walked on error
@@ -6156,7 +6161,7 @@ export default function App() {
       const key = nat?.code || "";
       if (!groups.has(key)) groups.set(key, { code: key, name: nat?.name || "Unaffiliated", nation: nat, venues: [] });
       groups.get(key).venues.push({ stadium: st, city: meta?.city || t?.city || "", owner: t,
-        img: STADIUM_IMAGES.includes(st) ? st : null });
+        img: hasStadiumImg(st) ? st : null });
     }
     const out = [...groups.values()];
     out.forEach(g => g.venues.sort((a, b) => a.stadium.localeCompare(b.stadium)));
@@ -11371,7 +11376,7 @@ export default function App() {
   // finished last season when the caller already knows (the pyramid); otherwise it is read off its nation's last tables.
   const regTeamCard = (t, px) => {
     const isNT = isIntlLeague(t.league), n = regNationBy.get(nationCodeOf(t));
-    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = STADIUM_IMAGES.includes(st);
+    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = hasStadiumImg(st);
     const k1 = t.primaryColor || "var(--ux-panel-3)", k2 = t.secondaryColor || k1;
     const conf = isNT ? (t.conference || CONF_BY_CODE.get(t.code) || null) : null;
     let place = px?.was || null, moved = px?.moved || px?.next || null;
@@ -11545,7 +11550,7 @@ export default function App() {
           </div>
           <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.15fr)", gap: 20, minHeight: 0 }}>
             <div style={{ minWidth: 0, overflowY: "auto", minHeight: 0 }}>
-              {STADIUM_IMAGES.includes(st) && <StadiumImg name={st} style={{ marginBottom: 10 }} />}
+              {hasStadiumImg(st) && <StadiumImg name={st} style={{ marginBottom: 10 }} />}
               <div style={{ ...REG_H, marginBottom: 6 }}>{isNT ? "National team" : "Club"}</div>
               {fact("Manager", t.manager
                 ? <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><PlayerShot name={t.manager} size={24} />
@@ -11950,7 +11955,7 @@ export default function App() {
       const natCode = (host && nationCodeOf(host)) || meta?.nation || null;
       const city = g.clubs[0]?.city || g.nts[0]?.city || meta?.city || "";
       return { ...g, natCode, natT: natCode ? natTeamByCode.get(natCode) || null : null, city, host,
-        cap: g.capN ? g.capN.toLocaleString("en-US") : null, photo: STADIUM_IMAGES.includes(g.name),
+        cap: g.capN ? g.capN.toLocaleString("en-US") : null, photo: hasStadiumImg(g.name),
         key: pFold([g.name, city, ...g.clubs.map(t => t.name), ...g.nts.map(t => t.name)].join(" ")) };
     }).sort((a, b) => (b.capN ?? -1) - (a.capN ?? -1) || a.name.localeCompare(b.name));
     rows.forEach((r, i) => { r.rank = i + 1; });
@@ -15613,7 +15618,7 @@ export default function App() {
     })() : null;
     // The pitch.
     const slots = pitchSlots(t.formation || "4-3-3");
-    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = STADIUM_IMAGES.includes(st);
+    const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = hasStadiumImg(st);
     const lines = uxLinesOf(xi, bench, t.skill);
     const shirt = (c) => { const hex = String(c || "").toUpperCase();
       return (
@@ -15914,7 +15919,7 @@ export default function App() {
 
   // ════ A NATION: its national side as a banner, then its football as a pyramid ════
   const renderUxNation = (n) => {
-    const nt = n.nt, st = stripVenue(nt.stadium || ""), cap = venueCap(nt.stadium) || nt.stadiumCap || null, photo = STADIUM_IMAGES.includes(st);
+    const nt = n.nt, st = stripVenue(nt.stadium || ""), cap = venueCap(nt.stadium) || nt.stadiumCap || null, photo = hasStadiumImg(st);
     const c1 = nt.primaryColor || "#2a3a50", ink = (lumOf(c1) ?? 0) > 0.55 ? "#101418" : "#ffffff";
     const conf = confLabel(String(nt.conference || CONF_BY_CODE.get(nt.code) || "")) || null;
     // Where it stands in the AFA ranking (src/data/afa.js), and how far it moved from the year before.
@@ -16681,7 +16686,6 @@ export default function App() {
                 {/* Where it is and how many it holds, over the name in the same heavy condensed letters (Moukden and Kirin,
                     14 October 2026: "Just put City, Location · Capacity in the thick condensed font above stadium name"). */}
                 <div className="ux-st-loc" onClick={(e) => e.stopPropagation()}>
-                  {r.natT && <TeamCrest team={r.natT} size={26} />}
                   <span>{r.city && <CityLink name={r.city} style={{ borderBottom: "none" }} />}{r.city && r.natCode && ", "}
                     {r.natT ? <button type="button" className="ux-btnreset ux-a" onClick={() => openNation(r.natT.code)}>{r.natT.name}</button> : r.natCode}</span>
                   {r.cap && <>{(r.city || r.natCode) && <span className="ux-st-sep" aria-hidden="true" />}<span>{r.cap}</span></>}</div>
@@ -16812,7 +16816,7 @@ export default function App() {
     const { t, nt, L, natT, value } = r;
     const c1 = t.primaryColor || "var(--ux-panel-3)", c2 = t.secondaryColor || c1;
     const ink = t.primaryColor && (lumOf(t.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
-    const st = stripVenue(t.stadium || ""), photo = STADIUM_IMAGES.includes(st);
+    const st = stripVenue(t.stadium || ""), photo = hasStadiumImg(st);
     const barPct = (v) => (v == null ? 0 : Math.max(4, Math.min(100, (v - 60) / 30 * 100)));
     const mgr = t.manager ? uxMgrBy.get(pFold(t.manager)) || null : null;
     const mOvr = t.mgmt ?? mgr?.ovr ?? null, mAge = mgr?.born ? ageOf(mgr.born) : null;
@@ -19172,7 +19176,7 @@ export default function App() {
     const gNat = (gMeta?.nation && natTeamByCode.get(gMeta.nation)?.name) || natNameOf(gOwner);
     const gCity = gMeta?.city || gv?.city || gOwner?.city || "";
     const gCap = venueCap(gOwner?.stadium || "");
-    const gImg = ground && STADIUM_IMAGES.includes(ground) ? ground : null;
+    const gImg = ground && hasStadiumImg(ground) ? ground : null;
     const own = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
     const groundGroups = (skip) => venueIndex.map(g => [g.name, g.venues.filter(v => !skip.has(v.stadium))
       .map(v => ({ k: v.stadium, name: v.stadium, team: v.owner || g.nation || null, city: v.city }))]).filter(([, vs]) => vs.length);
@@ -21262,7 +21266,7 @@ export default function App() {
               const rk = m.tourn ? (m.tourn.replayKey || (fixtureKey(m.tourn.target) + (m.tourn.target?.flipped ? "_L2" : ""))) : null;
               const btn = { ...addBtn, padding: "8px 18px", fontSize: 12, background: "var(--chrome-panel)",
                             color: "var(--ui-text)" };
-              const hasPhoto = !!venue && STADIUM_IMAGES.includes(venue);
+              const hasPhoto = !!venue && hasStadiumImg(venue);
               // THE BANNER'S PARTS. Over the score, the competition and the round; under each side's name, its code, the
               // rating of its eleven and its shape, and its manager with his style (Moukden and Kirin, 10 October 2026).
               const compLine = m.tourn
@@ -21631,7 +21635,7 @@ export default function App() {
               setMePanel(next);
             };
             const speedLbl = (v) => v === 0.25 ? "¼" : v === 0.5 ? "½" : v + "x";
-            const hasGroundPhoto = !!venue && STADIUM_IMAGES.includes(venue);
+            const hasGroundPhoto = !!venue && hasStadiumImg(venue);
             return (
               <div className="ux-lm" style={{ position: "fixed", inset: 0, zIndex: 60 }}>
                 <div className="ux-lm-stage">

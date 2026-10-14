@@ -2207,7 +2207,6 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 .ux-st-loc { display: flex; align-items: center; font: 700 clamp(17px, 1.6vw, 24px)/1 var(--ux-f-title); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: #fff;
   text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, .95), 0 1px 3px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .7), 0 3px 24px rgba(0, 0, 0, .6); }
 .ux-st-loc a, .ux-st-loc button { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; text-shadow: inherit; }
-.ux-st-loc > :first-child:not(span) { margin-right: 12px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9)) drop-shadow(0 2px 10px rgba(0, 0, 0, .5)); }
 /* Between where it is and how many it holds: a heavy slanted bar in the accent, seen on any sky. */
 .ux-st-sep { width: 5px; height: 1.05em; margin: 0 .6em; background: var(--ux-accent); transform: skewX(-18deg);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 1px 6px rgba(0, 0, 0, .6); }
