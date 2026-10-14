@@ -1,5 +1,5 @@
 [
-{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"running","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:20:03.384Z","ended":null,"clock":{"n":44,"until":"2026-10-14T15:29:03.810Z"},"picks":[
+{"id":"ancc-1935","league":"l0021","year":1935,"window":7200,"status":"done","stats":"public/avium/pstats/ancc/1935.tsv","started":"2026-10-13T23:20:03.384Z","ended":"2026-10-14T13:29:47.660Z","clock":null,"picks":[
 {"n":1,"club":"t0246","player":"p5126","from":"t0318","out":null,"at":"2026-10-13T23:20:12.593Z","by":"auroruse","auto":false},
 {"n":2,"club":"t0245","player":"p5573","from":"t0338","out":null,"at":"2026-10-13T23:21:30.540Z","by":"auroruse","auto":false},
 {"n":3,"club":"t0235","player":"p5300","from":"t0326","out":null,"at":"2026-10-13T23:22:34.083Z","by":"auroruse","auto":false},
@@ -43,6 +43,6 @@
 {"n":41,"club":"t0210","player":"p5542","from":"t0337","out":null,"at":"2026-10-14T13:23:09.138Z","by":"auroruse","auto":false},
 {"n":42,"club":"t0293","player":"p5222","from":"t0322","out":null,"at":"2026-10-14T13:26:31.277Z","by":"GeneralVarah","auto":false},
 {"n":43,"club":"t0292","player":"p5683","from":"t0343","out":null,"at":"2026-10-14T13:29:03.810Z","by":"GeneralVarah","auto":false},
-{"n":44,"club":"t0153"}
+{"n":44,"club":"t0153","player":"p5288","from":"t0325","out":null,"at":"2026-10-14T13:29:47.660Z","by":"zezelandnationstates-hash","auto":false}
 ]}
 ]
