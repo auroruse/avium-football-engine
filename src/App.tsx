@@ -2675,9 +2675,12 @@ function seasonMVP(boards, only) {
 function parseChangelog(text) {
   const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
   return rows.slice(1)
-    .map(r => ({ season: r[0], comp: PSTATS_COMP[r[1]] || r[1], player: r[2], team: r[3], pos: r[4], old: +r[5], neu: +r[6] }))
+    .map(r => ({ season: r[0], comp: PSTATS_COMP[r[1]] || r[1], player: r[2], team: r[3], pos: r[4], old: +r[5], neu: +r[6], batch: (r[7] || "").trim() }))
     .filter(c => c.player && Number.isFinite(c.old) && Number.isFinite(c.neu));
 }
+// BATCH, when a row has one, names the refresh it belongs to: the 1935 refresh's rows each keep their own league as
+// COMPETITION, so a man's history shows the change under his league's season, and the Rating Changes page shows the
+// refresh as one batch (Moukden and Kirin, 14 October 2026: "one rebalance in the rebalance page").
 // hof.tsv: PLAYER / POS / NAT / CLUB / OVR / INDUCTED. The snapshot is what the Player
 // page falls back on once the man has left every preset; his career and changelog still come
 // from the archive like anyone else's.
@@ -10536,9 +10539,9 @@ export default function App() {
     };
     (pstats?.changelog || []).forEach((c, i) => {
       if (veiled(ridByName.get(pFold(c.player)))) return;     // a man hidden at a college (DESIGN.md, The ANCC)
-      const key = c.season + "\u0000" + c.comp;
+      const key = c.season + "\u0000" + (c.batch || c.comp);
       let b = by.get(key);
-      if (!b) { b = { key, season: c.season, comp: c.comp, rows: [], up: 0, down: 0, net: 0 }; by.set(key, b); out.push(b); }
+      if (!b) { b = { key, season: c.season, comp: c.batch || c.comp, rows: [], up: 0, down: 0, net: 0 }; by.set(key, b); out.push(b); }
       const d = c.neu - c.old, disp = fullDisplayName(c.player);
       b.rows.push({ ...c, i, d, b, t: sideOf(c), disp, fold: pFold(disp) + " " + pFold(c.player) });
       if (d > 0) b.up += 1; else if (d < 0) b.down += 1;
@@ -10957,8 +10960,8 @@ export default function App() {
     }
     if (!pstats) return;
     if (p.face === "changelog") {
-      const c = (pstats.changelog || []).find(x => urlSlug(x.season + " " + x.comp) === p.item);
-      if (c) setClOpen(c.season + "\u0000" + c.comp);
+      const c = (pstats.changelog || []).find(x => urlSlug(x.season + " " + (x.batch || x.comp)) === p.item);
+      if (c) setClOpen(c.season + "\u0000" + (c.batch || c.comp));
       settle(); return;
     }
     if (p.face === "seasons" || p.face === "cup") {
@@ -20027,9 +20030,9 @@ export default function App() {
               const log = pstats?.changelog || [];
               const batches = [];
               for (const c of log) {
-                const key = c.season + "\u0000" + c.comp;
+                const key = c.season + "\u0000" + (c.batch || c.comp);
                 let b = batches.find(x => x.key === key);
-                if (!b) { b = { key, season: c.season, comp: c.comp, rows: [] }; batches.push(b); }
+                if (!b) { b = { key, season: c.season, comp: c.batch || c.comp, rows: [] }; batches.push(b); }
                 b.rows.push(c);
               }
               batches.reverse();                                  // the file is oldest-first

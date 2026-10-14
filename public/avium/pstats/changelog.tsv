@@ -1,4 +1,4 @@
-SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
+SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1932	World Cup Qualifiers	Heliodoro Medina	AEM	DEF	59	62
 1932	World Cup Qualifiers	Axel Berg	LVO	GK	76	78
 1932	World Cup Qualifiers	Jesus Halconero	ASK	FWD	80	83
@@ -2065,3 +2065,1973 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1935	World Cup	Yonatan Cohen	SHI	GK	73	74
 1935	World Cup	Gilad Dahan	SHI	FWD	72	71
 1935	World Cup	Asaf Bar-Lev	SHI	DEF	70	71
+1935	2. Alemannische Oberliga	Klaas Vieth	AKE	FWD	77	75	Rebalance
+1935	2. Alemannische Oberliga	Jürg Gottlieb	AKE	DEF	76	74	Rebalance
+1935	2. Alemannische Oberliga	Ruben Hiedler	AKE	DEF	75	74	Rebalance
+1935	2. Alemannische Oberliga	Horst Fürst	AKE	FWD	74	72	Rebalance
+1935	2. Alemannische Oberliga	Gerlof Sitz	AKE	MID	72	71	Rebalance
+1935	2. Alemannische Oberliga	Eric Köhler	AKE	GK	72	70	Rebalance
+1935	2. Alemannische Oberliga	Hans-Günter Schroeter	AKE	MID	70	71	Rebalance
+1935	2. Alemannische Oberliga	Peter Schneiders	AKE	DEF	70	74	Rebalance
+1935	2. Alemannische Oberliga	Jannis Salzwedel	AKE	DEF	70	69	Rebalance
+1935	2. Alemannische Oberliga	Ernst Oberst	AKE	DEF	70	69	Rebalance
+1935	2. Alemannische Oberliga	Jacob Dohman	AKE	MID	68	70	Rebalance
+1935	2. Alemannische Oberliga	Adi Maurer	BER	MID	80	82	Rebalance
+1935	2. Alemannische Oberliga	Adrian Sorge	BER	FWD	73	77	Rebalance
+1935	2. Alemannische Oberliga	Malte Schroeder	BER	FWD	72	71	Rebalance
+1935	2. Alemannische Oberliga	Tilman Westenberg	BER	GK	71	72	Rebalance
+1935	2. Alemannische Oberliga	Raimund Ebner	BER	MID	71	72	Rebalance
+1935	2. Alemannische Oberliga	Marco Von Ingersleben	BER	DEF	70	71	Rebalance
+1935	2. Alemannische Oberliga	Chris Mounce	BER	MID	70	71	Rebalance
+1935	2. Alemannische Oberliga	Michi Häusler	BER	MID	69	70	Rebalance
+1935	2. Alemannische Oberliga	Arnošt Walther	DSC	MID	78	79	Rebalance
+1935	2. Alemannische Oberliga	Feliks Slezák	DSC	MID	76	77	Rebalance
+1935	2. Alemannische Oberliga	Konstanty Krall	DSC	MID	75	74	Rebalance
+1935	2. Alemannische Oberliga	Christoph Kasprzak	DSC	DEF	74	75	Rebalance
+1935	2. Alemannische Oberliga	Dominik Spellmeyer	DSC	MID	74	72	Rebalance
+1935	2. Alemannische Oberliga	Mateusz Hielder	DSC	GK	73	75	Rebalance
+1935	2. Alemannische Oberliga	Wit Szweda	DSC	FWD	72	71	Rebalance
+1935	2. Alemannische Oberliga	Konstanty Michael	DSC	MID	72	73	Rebalance
+1935	2. Alemannische Oberliga	Zbyšek Löwe	DSC	MID	71	69	Rebalance
+1935	2. Alemannische Oberliga	Jonasz Rybář	DSC	MID	70	71	Rebalance
+1935	2. Alemannische Oberliga	Šimon Wirt	DSC	DEF	70	69	Rebalance
+1935	2. Alemannische Oberliga	Otokar Kunz	DSC	DEF	70	72	Rebalance
+1935	2. Alemannische Oberliga	Leo Erkens	EYN	FWD	72	75	Rebalance
+1935	2. Alemannische Oberliga	Ronald Haanraats	EYN	MID	72	73	Rebalance
+1935	2. Alemannische Oberliga	Riny Maas	EYN	MID	71	73	Rebalance
+1935	2. Alemannische Oberliga	Kobus Van Rompaey	EYN	MID	71	72	Rebalance
+1935	2. Alemannische Oberliga	Kerneels Jansink	EYN	FWD	71	70	Rebalance
+1935	2. Alemannische Oberliga	Mario Ahner	EYN	DEF	71	73	Rebalance
+1935	2. Alemannische Oberliga	John Marquering	EYN	DEF	70	72	Rebalance
+1935	2. Alemannische Oberliga	Knut Schrum	EYN	DEF	70	71	Rebalance
+1935	2. Alemannische Oberliga	Izaäk Coenen	EYN	FWD	69	71	Rebalance
+1935	2. Alemannische Oberliga	Faas Wouters	EYN	MID	69	70	Rebalance
+1935	2. Alemannische Oberliga	Dick Heymans	EYN	DEF	69	71	Rebalance
+1935	2. Alemannische Oberliga	Theun Seelen	EYN	MID	68	67	Rebalance
+1935	2. Alemannische Oberliga	Rudolf Schmeling	FCZ	FWD	69	68	Rebalance
+1935	2. Alemannische Oberliga	Hans Günter Weiss	FCZ	FWD	68	70	Rebalance
+1935	2. Alemannische Oberliga	Gerd Rochen	FCZ	GK	68	69	Rebalance
+1935	2. Alemannische Oberliga	Finn Hartmann	FCZ	DEF	67	65	Rebalance
+1935	2. Alemannische Oberliga	Valentin Papp	FCZ	DEF	67	65	Rebalance
+1935	2. Alemannische Oberliga	Silvan Schuchard	FCZ	DEF	67	65	Rebalance
+1935	2. Alemannische Oberliga	Edgar Mueller	FCZ	MID	66	65	Rebalance
+1935	2. Alemannische Oberliga	Ronald Heinrich	FCZ	FWD	65	64	Rebalance
+1935	2. Alemannische Oberliga	Silas Nussbaum	FCZ	MID	65	63	Rebalance
+1935	2. Alemannische Oberliga	Ernst Colijn	GRU	FWD	72	74	Rebalance
+1935	2. Alemannische Oberliga	Arjen Paulis	GRU	FWD	71	73	Rebalance
+1935	2. Alemannische Oberliga	Ime Aartsen	GRU	FWD	70	72	Rebalance
+1935	2. Alemannische Oberliga	Jip Reijnders	GRU	DEF	69	70	Rebalance
+1935	2. Alemannische Oberliga	Wide Anjema	GRU	DEF	68	66	Rebalance
+1935	2. Alemannische Oberliga	Ullrich Riecht	GRU	GK	68	70	Rebalance
+1935	2. Alemannische Oberliga	Atse Antuma	GRU	MID	67	69	Rebalance
+1935	2. Alemannische Oberliga	Ties Meeuwsen	GRU	FWD	66	67	Rebalance
+1935	2. Alemannische Oberliga	Wessel Achterkamp	GRU	MID	65	67	Rebalance
+1935	2. Alemannische Oberliga	Alfons Assendorp	GRU	DEF	65	64	Rebalance
+1935	2. Alemannische Oberliga	Tjaard Hartman	GRU	MID	64	65	Rebalance
+1935	2. Alemannische Oberliga	Klaus Aldenkamp	KOL	DEF	73	75	Rebalance
+1935	2. Alemannische Oberliga	Ottmar Fertig	KOL	MID	72	73	Rebalance
+1935	2. Alemannische Oberliga	Nico Krause	KOL	DEF	72	71	Rebalance
+1935	2. Alemannische Oberliga	Herman Krusen	KOL	MID	71	69	Rebalance
+1935	2. Alemannische Oberliga	Wolf Claasen	KOL	DEF	71	69	Rebalance
+1935	2. Alemannische Oberliga	Wigbert Baanders	KOL	MID	71	72	Rebalance
+1935	2. Alemannische Oberliga	Dan Fiedler	KOL	DEF	71	70	Rebalance
+1935	2. Alemannische Oberliga	Knut Van Der Laan	KOL	DEF	69	68	Rebalance
+1935	2. Alemannische Oberliga	Alexander Haas	LSV	GK	70	69	Rebalance
+1935	2. Alemannische Oberliga	Konstantin Pfaff	LSV	DEF	66	68	Rebalance
+1935	2. Alemannische Oberliga	Jo Teufel	LSV	DEF	66	65	Rebalance
+1935	2. Alemannische Oberliga	Korbinian Fürst	LSV	DEF	65	62	Rebalance
+1935	2. Alemannische Oberliga	Detlev Bachmann	LSV	FWD	64	65	Rebalance
+1935	2. Alemannische Oberliga	André Gensch	LSV	MID	64	66	Rebalance
+1935	2. Alemannische Oberliga	Johannes Wolter	LSV	DEF	64	63	Rebalance
+1935	2. Alemannische Oberliga	Maxi Ernst	LSV	FWD	62	61	Rebalance
+1935	2. Alemannische Oberliga	Bertram Lehmann	LSV	MID	60	57	Rebalance
+1935	2. Alemannische Oberliga	Karl-Heinz Sorg	M95	MID	78	77	Rebalance
+1935	2. Alemannische Oberliga	Alwin Duerr	M95	MID	77	76	Rebalance
+1935	2. Alemannische Oberliga	Jannis Leverenz	M95	FWD	75	76	Rebalance
+1935	2. Alemannische Oberliga	Freddy Steuben	M95	DEF	74	73	Rebalance
+1935	2. Alemannische Oberliga	Heike Nagel	M95	DEF	74	71	Rebalance
+1935	2. Alemannische Oberliga	Konstantin Rose	M95	GK	72	69	Rebalance
+1935	2. Alemannische Oberliga	Frederick Schwarzenegger	M95	MID	71	70	Rebalance
+1935	2. Alemannische Oberliga	Helmar Knepp	M95	MID	70	68	Rebalance
+1935	2. Alemannische Oberliga	Stephan Shriver	M95	MID	69	68	Rebalance
+1935	2. Alemannische Oberliga	Felix Albrecht	MAI	FWD	69	68	Rebalance
+1935	2. Alemannische Oberliga	Gerhardt Schlender	MAI	FWD	69	68	Rebalance
+1935	2. Alemannische Oberliga	Freddy Käufer	MAI	DEF	69	68	Rebalance
+1935	2. Alemannische Oberliga	Gebhard Fabel	MAI	GK	69	68	Rebalance
+1935	2. Alemannische Oberliga	Konrad Rosenfeld	MAI	MID	68	70	Rebalance
+1935	2. Alemannische Oberliga	Marvin Simonis	MAI	MID	68	69	Rebalance
+1935	2. Alemannische Oberliga	Gerhardt Rapp	MAI	DEF	68	67	Rebalance
+1935	2. Alemannische Oberliga	Dietrich Manz	MAI	DEF	67	68	Rebalance
+1935	2. Alemannische Oberliga	Knut Kruse	MAI	DEF	67	68	Rebalance
+1935	2. Alemannische Oberliga	Tim Schuchard	MAI	DEF	64	66	Rebalance
+1935	2. Alemannische Oberliga	Frank GROßEL	MAI	FWD	63	64	Rebalance
+1935	2. Alemannische Oberliga	Gerhard Süss	RBZ	FWD	84	82	Rebalance
+1935	2. Alemannische Oberliga	Immanuel Hasenkamp	RBZ	MID	82	84	Rebalance
+1935	2. Alemannische Oberliga	Christof Dunst	RBZ	FWD	76	75	Rebalance
+1935	2. Alemannische Oberliga	Thorben Arbeit	RBZ	DEF	76	77	Rebalance
+1935	2. Alemannische Oberliga	Artur KRAUß	RBZ	GK	76	77	Rebalance
+1935	2. Alemannische Oberliga	Theophil Wild	RBZ	MID	75	74	Rebalance
+1935	2. Alemannische Oberliga	Ingolf Schnur	RBZ	FWD	73	74	Rebalance
+1935	2. Alemannische Oberliga	Arno Janson	RBZ	DEF	73	72	Rebalance
+1935	2. Alemannische Oberliga	Jörg Wörner	RBZ	MID	72	71	Rebalance
+1935	2. Alemannische Oberliga	Ulli Lafrentz	RBZ	DEF	72	74	Rebalance
+1935	2. Alemannische Oberliga	Gustav Beyer	RBZ	MID	71	73	Rebalance
+1935	2. Alemannische Oberliga	Kay Sorge	RWE	FWD	76	74	Rebalance
+1935	2. Alemannische Oberliga	Frenske Van Agteren	RWE	FWD	74	71	Rebalance
+1935	2. Alemannische Oberliga	Baptist Gerber	RWE	FWD	70	67	Rebalance
+1935	2. Alemannische Oberliga	Dennis Junge	RWE	FWD	70	68	Rebalance
+1935	2. Alemannische Oberliga	Funske Fischer	RWE	DEF	70	68	Rebalance
+1935	2. Alemannische Oberliga	Roger Fried	RWE	FWD	70	69	Rebalance
+1935	2. Alemannische Oberliga	Andi Latte	RWE	GK	70	69	Rebalance
+1935	2. Alemannische Oberliga	Joachim Ackermann	RWE	MID	68	70	Rebalance
+1935	2. Alemannische Oberliga	Korbinian Groot	RWE	DEF	68	67	Rebalance
+1935	2. Alemannische Oberliga	Arjan Van Kan	RWE	DEF	68	69	Rebalance
+1935	2. Alemannische Oberliga	Sieghard Schnoor	RWE	DEF	67	68	Rebalance
+1935	2. Alemannische Oberliga	Patrick Königsmann	RWE	MID	67	66	Rebalance
+1935	2. Alemannische Oberliga	Helge Schwarz	RWE	MID	65	64	Rebalance
+1935	2. Alemannische Oberliga	Tilo Hoedemaker	RWE	MID	64	63	Rebalance
+1935	2. Alemannische Oberliga	Eugen Kurzmann	SAA	DEF	72	74	Rebalance
+1935	2. Alemannische Oberliga	Reiner Schiss	SAA	GK	71	70	Rebalance
+1935	2. Alemannische Oberliga	Loup Gerd Burgstaller	SAA	FWD	69	68	Rebalance
+1935	2. Alemannische Oberliga	Edmund Melsbach	SAA	FWD	68	67	Rebalance
+1935	2. Alemannische Oberliga	Jens Aubert Habicht	SAA	DEF	68	63	Rebalance
+1935	2. Alemannische Oberliga	Armin Weiner	SAA	MID	67	68	Rebalance
+1935	2. Alemannische Oberliga	Gabriel Siebert	SAA	MID	67	66	Rebalance
+1935	2. Alemannische Oberliga	Hermann Raimund Behrends	SAA	DEF	67	66	Rebalance
+1935	2. Alemannische Oberliga	Émilien WEIß	SAA	MID	67	68	Rebalance
+1935	2. Alemannische Oberliga	Toussaint Jessy Guérin	SAA	MID	64	65	Rebalance
+1935	2. Alemannische Oberliga	Stephan Lewerenz	SFF	DEF	69	68	Rebalance
+1935	2. Alemannische Oberliga	Sören Kundert	SFF	DEF	68	69	Rebalance
+1935	2. Alemannische Oberliga	Heinrich Eichel	SFF	DEF	67	65	Rebalance
+1935	2. Alemannische Oberliga	Wolfgang Weimann	SFF	DEF	67	68	Rebalance
+1935	2. Alemannische Oberliga	Justus Janz	SFF	MID	66	65	Rebalance
+1935	2. Alemannische Oberliga	Gunther Berg	SFF	DEF	66	65	Rebalance
+1935	2. Alemannische Oberliga	Günther Kron	SFF	FWD	65	66	Rebalance
+1935	2. Alemannische Oberliga	Joachim Giese	SFF	MID	65	62	Rebalance
+1935	2. Alemannische Oberliga	Alwin Kunz	SFF	FWD	63	64	Rebalance
+1935	2. Alemannische Oberliga	Jonathan Meier	SFF	MID	62	63	Rebalance
+1935	2. Alemannische Oberliga	Heiner Appelhof	SSC	MID	79	81	Rebalance
+1935	2. Alemannische Oberliga	Joord Koeman	SSC	MID	78	79	Rebalance
+1935	2. Alemannische Oberliga	Sebastian Überseher	SSC	FWD	75	73	Rebalance
+1935	2. Alemannische Oberliga	Johann Talon	SSC	GK	74	76	Rebalance
+1935	2. Alemannische Oberliga	Gottfried Pahlke	SSC	DEF	73	76	Rebalance
+1935	2. Alemannische Oberliga	Hartwig Holland	SSC	DEF	72	71	Rebalance
+1935	2. Alemannische Oberliga	Gerd Hoover	SSC	DEF	71	73	Rebalance
+1935	2. Alemannische Oberliga	Uwe Böhmer	SSC	DEF	71	72	Rebalance
+1935	2. Alemannische Oberliga	Nicolaus Unruh	STP	DEF	71	69	Rebalance
+1935	2. Alemannische Oberliga	Youri Van Schoorl	STP	FWD	70	73	Rebalance
+1935	2. Alemannische Oberliga	Albert Daalman	STP	DEF	70	67	Rebalance
+1935	2. Alemannische Oberliga	Laurens Borchard	STP	DEF	70	67	Rebalance
+1935	2. Alemannische Oberliga	Dierk Achilles	STP	MID	69	70	Rebalance
+1935	2. Alemannische Oberliga	Bastiaan Bachmann	STP	MID	68	69	Rebalance
+1935	2. Alemannische Oberliga	Stefanus Van Hautum	STP	MID	68	67	Rebalance
+1935	2. Alemannische Oberliga	Johann Baptist Kühn	STP	MID	68	66	Rebalance
+1935	2. Alemannische Oberliga	Timo Spitznagel	STP	DEF	68	69	Rebalance
+1935	2. Alemannische Oberliga	Gabriël Appelhof	STP	MID	66	67	Rebalance
+1935	2. Alemannische Oberliga	Otto Baier	TUS	MID	74	73	Rebalance
+1935	2. Alemannische Oberliga	Philipp Hoffmann	TUS	FWD	71	72	Rebalance
+1935	2. Alemannische Oberliga	Dieter Wendel	TUS	DEF	71	72	Rebalance
+1935	2. Alemannische Oberliga	Gregor Laurenz	TUS	DEF	71	70	Rebalance
+1935	2. Alemannische Oberliga	Peer Verser	TUS	GK	71	72	Rebalance
+1935	2. Alemannische Oberliga	Burkhard Unruh	TUS	FWD	68	70	Rebalance
+1935	2. Alemannische Oberliga	Dennis Ohme	TUS	MID	68	65	Rebalance
+1935	2. Alemannische Oberliga	Laurenz Franz	TUS	MID	67	68	Rebalance
+1935	2. Alemannische Oberliga	Philipp Aleshire	TUS	DEF	67	69	Rebalance
+1935	2. Alemannische Oberliga	Klaus Essert	UKB	DEF	74	75	Rebalance
+1935	2. Alemannische Oberliga	Klaus-Peter Denzel	UKB	MID	71	69	Rebalance
+1935	2. Alemannische Oberliga	Jannis Derichs	UKB	FWD	70	71	Rebalance
+1935	2. Alemannische Oberliga	Gereon Hölzer	UKB	FWD	69	71	Rebalance
+1935	2. Alemannische Oberliga	Roland Ziegler	UKB	FWD	69	71	Rebalance
+1935	2. Alemannische Oberliga	Wieland Voll	UKB	DEF	69	70	Rebalance
+1935	2. Alemannische Oberliga	Wolfhard Pfeiffer	UKB	FWD	66	64	Rebalance
+1935	Allskyärnskan	Emil Hansen	AVK	DEF	77	78	Rebalance
+1935	Allskyärnskan	Jeppe Gärdestad	AVK	FWD	75	76	Rebalance
+1935	Allskyärnskan	Frans Persson	AVK	DEF	74	73	Rebalance
+1935	Allskyärnskan	Benjamin Harrysson	AVK	MID	74	75	Rebalance
+1935	Allskyärnskan	Malte Fellman	AVK	GK	72	73	Rebalance
+1935	Allskyärnskan	Jakob Påhlsson	AVK	DEF	72	73	Rebalance
+1935	Allskyärnskan	Jørgen Bøgebjerg	AVK	MID	68	69	Rebalance
+1935	Allskyärnskan	Mårten Bure	AVK	FWD	67	69	Rebalance
+1935	Allskyärnskan	Gerhard Vadström	AVK	MID	66	67	Rebalance
+1935	Allskyärnskan	Allan Sjöberg	EYB	GK	76	77	Rebalance
+1935	Allskyärnskan	Gillis Storm	EYB	MID	75	74	Rebalance
+1935	Allskyärnskan	Uno Svensson	EYB	FWD	74	75	Rebalance
+1935	Allskyärnskan	Halvar Mattsson	EYB	MID	73	72	Rebalance
+1935	Allskyärnskan	Set Cedershiöld	EYB	MID	72	69	Rebalance
+1935	Allskyärnskan	Mauritz Forsman	EYB	DEF	72	74	Rebalance
+1935	Allskyärnskan	Knut Lindgren	EYB	MID	71	69	Rebalance
+1935	Allskyärnskan	Gunnar Åkerhielm	EYB	DEF	69	71	Rebalance
+1935	Allskyärnskan	Henning Bjerre	EYB	MID	67	66	Rebalance
+1935	Allskyärnskan	Göran Mattsson	GFB	GK	75	77	Rebalance
+1935	Allskyärnskan	Ragnar Sparre	GFB	DEF	72	73	Rebalance
+1935	Allskyärnskan	Lukas Tross	GFB	MID	71	69	Rebalance
+1935	Allskyärnskan	Knut Hedin	GFB	MID	70	68	Rebalance
+1935	Allskyärnskan	Vilgot Hall	GFB	DEF	69	68	Rebalance
+1935	Allskyärnskan	Rikard Konradsson	GFB	MID	67	65	Rebalance
+1935	Allskyärnskan	Bror Hurtig	GFB	FWD	67	66	Rebalance
+1935	Allskyärnskan	Mauritz Dalman	GFB	MID	66	68	Rebalance
+1935	Allskyärnskan	Odd Vingård	GFB	FWD	64	66	Rebalance
+1935	Allskyärnskan	Arno Coster	GUR	GK	78	77	Rebalance
+1935	Allskyärnskan	Mitch Dales	GUR	FWD	77	78	Rebalance
+1935	Allskyärnskan	Dag Slättengren	GUR	MID	76	75	Rebalance
+1935	Allskyärnskan	Albin Lundqvist	GUR	MID	76	77	Rebalance
+1935	Allskyärnskan	Tomas Palmgren	GUR	MID	76	77	Rebalance
+1935	Allskyärnskan	Jonas Staffansson	GUR	MID	75	74	Rebalance
+1935	Allskyärnskan	László Gazda	GUR	DEF	75	76	Rebalance
+1935	Allskyärnskan	Edvard Bolander	GUR	DEF	74	75	Rebalance
+1935	Allskyärnskan	Göran Staffansson	GUR	DEF	73	72	Rebalance
+1935	Allskyärnskan	Tomás Uzcátegui	HAV	DEF	87	84	Rebalance
+1935	Allskyärnskan	Jens Geirsson	HAV	FWD	79	81	Rebalance
+1935	Allskyärnskan	Kent Forsberg	HAV	MID	79	76	Rebalance
+1935	Allskyärnskan	Iisakki Saarikoski	HAV	DEF	78	80	Rebalance
+1935	Allskyärnskan	Eetu Lehtinen	HAV	MID	76	73	Rebalance
+1935	Allskyärnskan	Sven Emilsson	HAV	MID	76	75	Rebalance
+1935	Allskyärnskan	Anton Westerberg	HAV	DEF	76	77	Rebalance
+1935	Allskyärnskan	Uwe Schneider	HAV	FWD	75	72	Rebalance
+1935	Allskyärnskan	Carlos López	HAV	MID	74	75	Rebalance
+1935	Allskyärnskan	Arvid Wettergren	HAV	DEF	70	72	Rebalance
+1935	Allskyärnskan	Folke Lindros	HAV	DEF	67	69	Rebalance
+1935	Allskyärnskan	Frans Bindesbøll	JYL	FWD	78	80	Rebalance
+1935	Allskyärnskan	Joar Berglund	JYL	FWD	77	78	Rebalance
+1935	Allskyärnskan	Rikard Vinter	JYL	GK	77	78	Rebalance
+1935	Allskyärnskan	Lennart Kampe	JYL	MID	76	80	Rebalance
+1935	Allskyärnskan	Ragnvald Spjut	JYL	DEF	75	77	Rebalance
+1935	Allskyärnskan	Dyre Mollberg	JYL	DEF	75	77	Rebalance
+1935	Allskyärnskan	Jørgen Lykke	JYL	FWD	74	76	Rebalance
+1935	Allskyärnskan	Ludvig Nicolaisen	JYL	DEF	73	74	Rebalance
+1935	Allskyärnskan	Dan Rasmussen	JYL	GK	70	71	Rebalance
+1935	Allskyärnskan	David Valgren	JYL	FWD	68	67	Rebalance
+1935	Allskyärnskan	Torvald Holmberg	JYL	MID	67	66	Rebalance
+1935	Allskyärnskan	Jesper Olsen	KFJ	MID	77	78	Rebalance
+1935	Allskyärnskan	Bernhard Berggren	KFJ	GK	73	71	Rebalance
+1935	Allskyärnskan	Mattias Rydkvist	KFJ	GK	71	68	Rebalance
+1935	Allskyärnskan	Jóhann Sigfússon	KFJ	DEF	71	68	Rebalance
+1935	Allskyärnskan	David Järnsmed	KFJ	FWD	70	69	Rebalance
+1935	Allskyärnskan	Vilhelm Smal	KFJ	MID	69	68	Rebalance
+1935	Allskyärnskan	Ludvig Battenberg	KFJ	FWD	66	63	Rebalance
+1935	Allskyärnskan	Gunnar Gårdman	KJB	FWD	77	80	Rebalance
+1935	Allskyärnskan	Rikard Kovén	KJB	FWD	77	80	Rebalance
+1935	Allskyärnskan	Markus Lejd	KJB	MID	76	75	Rebalance
+1935	Allskyärnskan	Mikael Kotte	KJB	DEF	75	74	Rebalance
+1935	Allskyärnskan	Bengt Bokvist	KJB	DEF	75	76	Rebalance
+1935	Allskyärnskan	Stellan Hjorth	KJB	MID	75	74	Rebalance
+1935	Allskyärnskan	Karl Boldin	KJB	FWD	74	73	Rebalance
+1935	Allskyärnskan	Sture Mossgren	KJB	DEF	74	75	Rebalance
+1935	Allskyärnskan	Staffan Hollén	KJB	DEF	74	71	Rebalance
+1935	Allskyärnskan	Birger Kandlöf	KJB	DEF	73	72	Rebalance
+1935	Allskyärnskan	Ragnar Gilbertsson	KJB	GK	73	72	Rebalance
+1935	Allskyärnskan	Jesper Roos	KJB	GK	72	70	Rebalance
+1935	Allskyärnskan	Karl Schmidt	MLM	FWD	79	81	Rebalance
+1935	Allskyärnskan	Wilhelm Wilhelmson	MLM	DEF	79	80	Rebalance
+1935	Allskyärnskan	Gustav Gyllenhaal	MLM	DEF	79	80	Rebalance
+1935	Allskyärnskan	Lennart Sommar	MLM	MID	78	81	Rebalance
+1935	Allskyärnskan	Daniel Lindén	MLM	MID	78	81	Rebalance
+1935	Allskyärnskan	Haraldur Ólafsson	MLM	DEF	78	76	Rebalance
+1935	Allskyärnskan	Leo Strauss	MLM	FWD	76	77	Rebalance
+1935	Allskyärnskan	Artur Morgensson	MLM	DEF	76	77	Rebalance
+1935	Allskyärnskan	Set Törngren	MLM	MID	73	70	Rebalance
+1935	Allskyärnskan	Simon Persson	MLM	GK	73	72	Rebalance
+1935	Allskyärnskan	Neil Dike	MLM	FWD	72	70	Rebalance
+1935	Allskyärnskan	Jan Morsztyn	MLM	FWD	72	70	Rebalance
+1935	Allskyärnskan	Jon Kärrman	OHM	FWD	76	77	Rebalance
+1935	Allskyärnskan	Vidar Villersson	OHM	MID	75	76	Rebalance
+1935	Allskyärnskan	Jakob Månsson	OHM	GK	75	76	Rebalance
+1935	Allskyärnskan	Vilgot Lindqvist	OHM	DEF	74	75	Rebalance
+1935	Allskyärnskan	Andreas Jonsson	OHM	DEF	74	75	Rebalance
+1935	Allskyärnskan	Ulrik Granath	OHM	DEF	72	70	Rebalance
+1935	Allskyärnskan	David Järnhammare	OHM	GK	71	72	Rebalance
+1935	Allskyärnskan	Harald Trofast	OHM	FWD	70	69	Rebalance
+1935	Allskyärnskan	Göran Vassberg	OHM	FWD	69	68	Rebalance
+1935	Allskyärnskan	Tomas Ivarsson	OHM	MID	68	70	Rebalance
+1935	Allskyärnskan	Dale Landry	OTR	MID	82	84	Rebalance
+1935	Allskyärnskan	Philip McDonald	OTR	DEF	79	80	Rebalance
+1935	Allskyärnskan	Rikard Storgård	OTR	GK	78	79	Rebalance
+1935	Allskyärnskan	Torvald Skogsberg	OTR	FWD	77	78	Rebalance
+1935	Allskyärnskan	Alfred Varde	OTR	FWD	76	75	Rebalance
+1935	Allskyärnskan	Sten Hvit	OTR	DEF	76	77	Rebalance
+1935	Allskyärnskan	Vilgot Roos	OTR	FWD	75	74	Rebalance
+1935	Allskyärnskan	Johan Stille	OTR	DEF	74	73	Rebalance
+1935	Allskyärnskan	Eeriks Uđđi	OTR	DEF	74	72	Rebalance
+1935	Allskyärnskan	Sten Herdin	OTR	FWD	73	70	Rebalance
+1935	Allskyärnskan	Frans Klintberg	OTR	FWD	68	69	Rebalance
+1935	Allskyärnskan	Sven-Olof Lundin	RGD	DEF	75	78	Rebalance
+1935	Allskyärnskan	Kåre Ingebretsen	RGD	FWD	74	75	Rebalance
+1935	Allskyärnskan	Leif Aasheim	RGD	FWD	73	76	Rebalance
+1935	Allskyärnskan	Asbjørn Halvorsen	RGD	DEF	71	69	Rebalance
+1935	Allskyärnskan	Reidar Olausen	RGD	DEF	69	68	Rebalance
+1935	Allskyärnskan	Kolbjørn Birkeland	RGD	GK	68	69	Rebalance
+1935	Allskyärnskan	Fredrik Rasmusson	SDG	GK	77	75	Rebalance
+1935	Allskyärnskan	Göran Holmqvist	SDG	FWD	76	75	Rebalance
+1935	Allskyärnskan	August Frimodig	SDG	DEF	75	73	Rebalance
+1935	Allskyärnskan	Arvid Rosengren	SDG	FWD	73	71	Rebalance
+1935	Allskyärnskan	Henrik Ådahl	SDG	MID	73	72	Rebalance
+1935	Allskyärnskan	Vilgot Pihl	SDG	MID	72	73	Rebalance
+1935	Allskyärnskan	Vilhelm Bentin	SDG	DEF	72	69	Rebalance
+1935	Allskyärnskan	Robert Jonsson	SDG	FWD	72	70	Rebalance
+1935	Allskyärnskan	Henrik Banner	SDG	GK	71	70	Rebalance
+1935	Allskyärnskan	Sigfrid Klinga	SDG	FWD	70	66	Rebalance
+1935	Allskyärnskan	Johan Sture	SDG	DEF	70	67	Rebalance
+1935	Allskyärnskan	Frans Nord	SDG	MID	68	64	Rebalance
+1935	Allskyärnskan	Albin Dahl	SDG	MID	67	69	Rebalance
+1935	Allskyärnskan	Vilhelm Smed	SDM	MID	76	79	Rebalance
+1935	Allskyärnskan	Mårten Skjöld	SDM	DEF	75	77	Rebalance
+1935	Allskyärnskan	Johan Bastlund	SDM	DEF	74	75	Rebalance
+1935	Allskyärnskan	Sigfrid Filipsson	SDM	DEF	74	75	Rebalance
+1935	Allskyärnskan	Anders Halfdansson	SDM	MID	73	74	Rebalance
+1935	Allskyärnskan	Lars Jørgensen	SDM	FWD	73	72	Rebalance
+1935	Allskyärnskan	Ragnvald Gillisson	SDM	FWD	69	71	Rebalance
+1935	Allskyärnskan	Evert Lindblad	TGV	FWD	76	77	Rebalance
+1935	Allskyärnskan	Bertil Österman	TGV	MID	74	73	Rebalance
+1935	Allskyärnskan	Torleif Moen	TGV	MID	73	72	Rebalance
+1935	Allskyärnskan	Erland Lantz	TGV	MID	72	70	Rebalance
+1935	Allskyärnskan	Kaj Uldaler	TGV	DEF	72	71	Rebalance
+1935	Allskyärnskan	Mogens Overgaard	TGV	GK	70	73	Rebalance
+1935	Allskyärnskan	Halvar Arvidsson	TGV	MID	69	71	Rebalance
+1935	Allskyärnskan	Klas Frisk	TGV	GK	68	67	Rebalance
+1935	Allskyärnskan	Valfrid Borgström	TGV	DEF	64	63	Rebalance
+1935	Allskyärnskan	Erik Sundqvist	VAT	MID	81	83	Rebalance
+1935	Allskyärnskan	Ambrose Pickett	VAT	MID	80	81	Rebalance
+1935	Allskyärnskan	Knut Eisenberg	VAT	DEF	78	79	Rebalance
+1935	Allskyärnskan	Johan Ung	VAT	FWD	76	78	Rebalance
+1935	Allskyärnskan	Tomas Stadling	VAT	MID	76	75	Rebalance
+1935	Allskyärnskan	Rolf Svegårdh	VAT	MID	75	76	Rebalance
+1935	Allskyärnskan	Vilhelm Andersson	VAT	DEF	75	76	Rebalance
+1935	Allskyärnskan	Jakob Davidsen	VAT	MID	74	75	Rebalance
+1935	Allskyärnskan	David Scott	VAT	DEF	74	72	Rebalance
+1935	Allskyärnskan	Edvin Aldrin	VAT	MID	73	71	Rebalance
+1935	Allskyärnskan	François Ducreux	VAT	DEF	73	72	Rebalance
+1935	Allskyärnskan	Kiromasa Kuroki	VAT	GK	73	72	Rebalance
+1935	Allskyärnskan	Karl Konrad	VAT	DEF	71	70	Rebalance
+1935	Allskyärnskan	Nils Armstark	VAT	DEF	66	67	Rebalance
+1935	Alemannische Oberliga	Tomáš Svoboda	ARM	MID	87	89	Rebalance
+1935	Alemannische Oberliga	Stijn Boelens	ARM	MID	86	88	Rebalance
+1935	Alemannische Oberliga	Kuzma Zvezdinsky	ARM	MID	86	87	Rebalance
+1935	Alemannische Oberliga	Klaus Bernhard	ARM	GK	86	88	Rebalance
+1935	Alemannische Oberliga	Jakub Dvořák	ARM	MID	84	81	Rebalance
+1935	Alemannische Oberliga	Florian Gruber	ARM	DEF	84	87	Rebalance
+1935	Alemannische Oberliga	Telmo Candeias	ARM	MID	83	81	Rebalance
+1935	Alemannische Oberliga	Matěj Křížek	ARM	DEF	78	77	Rebalance
+1935	Alemannische Oberliga	Severin Weyermann	ARM	FWD	77	78	Rebalance
+1935	Alemannische Oberliga	Rodion Prokhorov	ARM	MID	74	75	Rebalance
+1935	Alemannische Oberliga	Dirk Spannagel	BAI	MID	80	81	Rebalance
+1935	Alemannische Oberliga	Herwig Keil	BAI	GK	80	77	Rebalance
+1935	Alemannische Oberliga	Jupp Göbel	BAI	FWD	78	76	Rebalance
+1935	Alemannische Oberliga	Augustin Langer	BAI	MID	77	76	Rebalance
+1935	Alemannische Oberliga	Uwe Unkle	BAI	DEF	76	75	Rebalance
+1935	Alemannische Oberliga	Pascal Halle	BAI	DEF	76	75	Rebalance
+1935	Alemannische Oberliga	Gottfried Hüber	BAI	MID	75	72	Rebalance
+1935	Alemannische Oberliga	Manfred Beckenbauer	BAI	DEF	75	76	Rebalance
+1935	Alemannische Oberliga	Silvan Rosenfeld	BAI	MID	75	74	Rebalance
+1935	Alemannische Oberliga	Tom Kalbfleisch	BAI	GK	75	74	Rebalance
+1935	Alemannische Oberliga	Valentin Kästner	BAI	DEF	74	72	Rebalance
+1935	Alemannische Oberliga	Milan Paul	BAI	FWD	73	71	Rebalance
+1935	Alemannische Oberliga	Marzell Becke	BAI	MID	71	70	Rebalance
+1935	Alemannische Oberliga	Joop Lauwens	BTV	MID	76	75	Rebalance
+1935	Alemannische Oberliga	Steffen Schütze	BTV	DEF	76	80	Rebalance
+1935	Alemannische Oberliga	Ove Beck	BTV	MID	75	73	Rebalance
+1935	Alemannische Oberliga	Cor Brutz	BTV	DEF	75	73	Rebalance
+1935	Alemannische Oberliga	Otto Pander	BTV	FWD	74	73	Rebalance
+1935	Alemannische Oberliga	Otto Kühn	BTV	DEF	74	73	Rebalance
+1935	Alemannische Oberliga	Dan Bernhard	BTV	DEF	73	76	Rebalance
+1935	Alemannische Oberliga	Eskil Petersen	BTV	MID	70	68	Rebalance
+1935	Alemannische Oberliga	Ivo Schumacher	BTV	FWD	69	70	Rebalance
+1935	Alemannische Oberliga	Alf Alberink	BTV	DEF	69	68	Rebalance
+1935	Alemannische Oberliga	Stephan Kiefer	E02	MID	82	86	Rebalance
+1935	Alemannische Oberliga	Chris Weimann	E02	DEF	82	83	Rebalance
+1935	Alemannische Oberliga	Frans Cuijpers	E02	FWD	80	82	Rebalance
+1935	Alemannische Oberliga	Wilfried Sorge	E02	MID	80	81	Rebalance
+1935	Alemannische Oberliga	Sascha Van Middlesworth	E02	DEF	80	79	Rebalance
+1935	Alemannische Oberliga	Marvin Oppenheimer	E02	GK	80	82	Rebalance
+1935	Alemannische Oberliga	Kay Wilms	E02	FWD	77	78	Rebalance
+1935	Alemannische Oberliga	Johan Weinertitz	E02	DEF	77	76	Rebalance
+1935	Alemannische Oberliga	Geert Winklers	E02	FWD	74	75	Rebalance
+1935	Alemannische Oberliga	Hans Wauters	E02	MID	71	72	Rebalance
+1935	Alemannische Oberliga	Roland Hoch	EIE	GK	79	78	Rebalance
+1935	Alemannische Oberliga	Lex Goebel	EIE	DEF	77	79	Rebalance
+1935	Alemannische Oberliga	Niklaus Yancy	EIE	DEF	77	79	Rebalance
+1935	Alemannische Oberliga	Eckbert Guttenberg	EIE	MID	76	78	Rebalance
+1935	Alemannische Oberliga	Kunibert Aldenberg	EIE	MID	75	77	Rebalance
+1935	Alemannische Oberliga	Kasimir Krantz	EIE	MID	74	76	Rebalance
+1935	Alemannische Oberliga	Hanne Van Breda	EIE	FWD	72	71	Rebalance
+1935	Alemannische Oberliga	Brecht Kasper	EIE	GK	72	71	Rebalance
+1935	Alemannische Oberliga	Gerhardt Tangemann	EIE	MID	69	70	Rebalance
+1935	Alemannische Oberliga	Gonzalo Valbuena	E02	MID	92	91	Rebalance
+1935	Alemannische Oberliga	Gijs Dreesens	SPA	MID	91	92	Rebalance
+1935	Alemannische Oberliga	Manfred Frankenstein	F01	DEF	81	80	Rebalance
+1935	Alemannische Oberliga	Lucas Jespersen	F01	DEF	81	79	Rebalance
+1935	Alemannische Oberliga	Fabián Machado	F01	FWD	80	78	Rebalance
+1935	Alemannische Oberliga	Damian Assenberg	F01	MID	78	75	Rebalance
+1935	Alemannische Oberliga	Rolf Siemon	F01	MID	78	76	Rebalance
+1935	Alemannische Oberliga	Oswald Lange	F01	MID	77	76	Rebalance
+1935	Alemannische Oberliga	Sikke Pauwels	F01	MID	77	76	Rebalance
+1935	Alemannische Oberliga	Otmar Loritz	F01	FWD	76	75	Rebalance
+1935	Alemannische Oberliga	Till Gärtner	F01	DEF	73	71	Rebalance
+1935	Alemannische Oberliga	Erich Rot	FRM	MID	80	78	Rebalance
+1935	Alemannische Oberliga	Luitpolt Hubert	FRM	MID	80	78	Rebalance
+1935	Alemannische Oberliga	Thorsten Blumenthal	FRM	FWD	77	78	Rebalance
+1935	Alemannische Oberliga	Josef Schulze	FRM	MID	74	73	Rebalance
+1935	Alemannische Oberliga	Timo Habich	FRM	DEF	71	68	Rebalance
+1935	Alemannische Oberliga	Bodo Polzin	FRM	GK	71	70	Rebalance
+1935	Alemannische Oberliga	Narra Catacutan	HAN	DEF	87	89	Rebalance
+1935	Alemannische Oberliga	Nathaniel Vitale	HAN	DEF	84	85	Rebalance
+1935	Alemannische Oberliga	Vilmos Szilágyi	HAN	FWD	81	83	Rebalance
+1935	Alemannische Oberliga	Emmett Harrison	HAN	DEF	80	79	Rebalance
+1935	Alemannische Oberliga	Lisandro Rivas	HAN	MID	79	78	Rebalance
+1935	Alemannische Oberliga	Frederick Peters	HAN	MID	78	77	Rebalance
+1935	Alemannische Oberliga	Evgeny Makarov	HAN	DEF	77	76	Rebalance
+1935	Alemannische Oberliga	Gijsbert Troost	HAN	FWD	75	76	Rebalance
+1935	Alemannische Oberliga	Filippo Castiglione	LEI	DEF	88	86	Rebalance
+1935	Alemannische Oberliga	Simón Arismendi	LEI	FWD	87	84	Rebalance
+1935	Alemannische Oberliga	Marek Kováč	LEI	GK	87	88	Rebalance
+1935	Alemannische Oberliga	Wade Boone	LEI	DEF	84	83	Rebalance
+1935	Alemannische Oberliga	Conrad Bauer	LEI	MID	83	86	Rebalance
+1935	Alemannische Oberliga	Made Djelantik	LEI	FWD	82	80	Rebalance
+1935	Alemannische Oberliga	Juvenal Vera	LEI	MID	82	84	Rebalance
+1935	Alemannische Oberliga	Thomas Waldhaus	LEI	DEF	80	78	Rebalance
+1935	Alemannische Oberliga	Cayetano Montoya	LEI	DEF	79	78	Rebalance
+1935	Alemannische Oberliga	Ánselmo Fernandez	LEI	MID	78	77	Rebalance
+1935	Alemannische Oberliga	Desmond Benally	LEI	MID	78	76	Rebalance
+1935	Alemannische Oberliga	Cosimo Colombo	LEI	FWD	77	76	Rebalance
+1935	Alemannische Oberliga	Bernardo Figueira	LEI	FWD	77	73	Rebalance
+1935	Alemannische Oberliga	Raffael Beitel	NUR	FWD	77	78	Rebalance
+1935	Alemannische Oberliga	Kuno Unruh	NUR	DEF	77	76	Rebalance
+1935	Alemannische Oberliga	Jupp Hofmeister	NUR	MID	76	75	Rebalance
+1935	Alemannische Oberliga	Steffen Diefenbach	NUR	MID	75	72	Rebalance
+1935	Alemannische Oberliga	Erwin Braband	NUR	DEF	75	74	Rebalance
+1935	Alemannische Oberliga	Jockel Königsmann	NUR	MID	74	75	Rebalance
+1935	Alemannische Oberliga	Christof Becke	NUR	DEF	74	77	Rebalance
+1935	Alemannische Oberliga	Alex Ebbe	NUR	MID	73	72	Rebalance
+1935	Alemannische Oberliga	Tilo Burgstaller	NUR	MID	70	67	Rebalance
+1935	Alemannische Oberliga	Elias Kaumann	NUR	DEF	70	67	Rebalance
+1935	Alemannische Oberliga	Eckbert Wendel	NUR	FWD	67	68	Rebalance
+1935	Alemannische Oberliga	Mirek Tesařík	PRA	FWD	79	78	Rebalance
+1935	Alemannische Oberliga	Július Bernard	PRA	MID	78	79	Rebalance
+1935	Alemannische Oberliga	Lubor Hlaváček	PRA	MID	78	79	Rebalance
+1935	Alemannische Oberliga	Ctirad Ševčík	PRA	DEF	77	78	Rebalance
+1935	Alemannische Oberliga	Zikmund Pavlík	PRA	FWD	76	77	Rebalance
+1935	Alemannische Oberliga	Gabriel Tesařík	PRA	GK	76	75	Rebalance
+1935	Alemannische Oberliga	Edvard Janíček	PRA	DEF	75	76	Rebalance
+1935	Alemannische Oberliga	Drahoslav Pešek	PRA	MID	73	72	Rebalance
+1935	Alemannische Oberliga	Lenn Van Buren	RND	MID	79	77	Rebalance
+1935	Alemannische Oberliga	Stan Simons	RND	MID	77	75	Rebalance
+1935	Alemannische Oberliga	Han Lucas	RND	DEF	77	76	Rebalance
+1935	Alemannische Oberliga	Jozef Haenraets	RND	MID	76	74	Rebalance
+1935	Alemannische Oberliga	Joost Ramaker	RND	FWD	75	73	Rebalance
+1935	Alemannische Oberliga	Rob Wilms	RND	DEF	75	73	Rebalance
+1935	Alemannische Oberliga	Adriaan Meeuwes	RND	GK	74	71	Rebalance
+1935	Alemannische Oberliga	Mannes Timmermans	RND	MID	73	70	Rebalance
+1935	Alemannische Oberliga	Ivo Van Daele	RND	DEF	72	70	Rebalance
+1935	Alemannische Oberliga	James Elzinga	RND	MID	71	68	Rebalance
+1935	Alemannische Oberliga	Thor Andresen	SPA	FWD	85	86	Rebalance
+1935	Alemannische Oberliga	Ime Paulsen	SPA	MID	82	84	Rebalance
+1935	Alemannische Oberliga	Ole Toft	SPA	FWD	81	82	Rebalance
+1935	Alemannische Oberliga	Ane Ludvigsen	SPA	DEF	80	81	Rebalance
+1935	Alemannische Oberliga	Hauke Olesen	SPA	MID	79	80	Rebalance
+1935	Alemannische Oberliga	Meine Carlsen	SPA	DEF	78	81	Rebalance
+1935	Alemannische Oberliga	Leif Abel	SPA	DEF	76	75	Rebalance
+1935	Alemannische Oberliga	Filip Kartensen	SPA	FWD	74	72	Rebalance
+1935	Alemannische Oberliga	Olav Jensen	SPA	GK	74	76	Rebalance
+1935	Alemannische Oberliga	Oscar Carstensen	SPA	FWD	73	74	Rebalance
+1935	Alemannische Oberliga	Stig Van Wieren	SPA	DEF	72	70	Rebalance
+1935	Alemannische Oberliga	Lothar Höfler	STU	MID	80	81	Rebalance
+1935	Alemannische Oberliga	Humbert Baumann	STU	MID	77	80	Rebalance
+1935	Alemannische Oberliga	Gotthilf Brinkerhoff	STU	FWD	76	80	Rebalance
+1935	Alemannische Oberliga	Stav Wegener	STU	DEF	76	78	Rebalance
+1935	Alemannische Oberliga	Bernd Müller	STU	MID	75	77	Rebalance
+1935	Alemannische Oberliga	Hans-Joachim Enns	STU	MID	75	74	Rebalance
+1935	Alemannische Oberliga	Jaron Horn	STU	DEF	75	74	Rebalance
+1935	Alemannische Oberliga	Noga Bumgardner	STU	MID	72	74	Rebalance
+1935	Alemannische Oberliga	Akiva Schumacher	STU	DEF	72	73	Rebalance
+1935	Alemannische Oberliga	Kai Vonnegut	STU	DEF	70	71	Rebalance
+1935	Alemannische Oberliga	Guntram Jung	STU	FWD	68	67	Rebalance
+1935	Alemannische Oberliga	Till Höffler	STU	MID	68	69	Rebalance
+1935	Alemannische Oberliga	Deror Friedrich	STU	MID	67	68	Rebalance
+1935	Alemannische Oberliga	Boda Harns	VEY	GK	82	86	Rebalance
+1935	Alemannische Oberliga	Fabian Knef	VEY	FWD	81	83	Rebalance
+1935	Alemannische Oberliga	Pirmin Falk	VEY	DEF	81	82	Rebalance
+1935	Alemannische Oberliga	Johann Wildgrube	VEY	FWD	80	82	Rebalance
+1935	Alemannische Oberliga	Dieter Schwinghammer	VEY	MID	78	81	Rebalance
+1935	Alemannische Oberliga	Gero Wehunt	VEY	DEF	76	77	Rebalance
+1935	Alemannische Oberliga	Helmar Sauber	VEY	MID	76	81	Rebalance
+1935	Alemannische Oberliga	Jupp Neumann	VEY	DEF	75	78	Rebalance
+1935	Alemannische Oberliga	Alfons Haas	VEY	MID	71	72	Rebalance
+1935	Alemannische Oberliga	Magnus Beltz	VEY	MID	69	70	Rebalance
+1935	Alemannische Oberliga	Goonbert House	VEY	DEF	69	70	Rebalance
+1935	Alemannische Oberliga	Barnabas Henning	VPR	FWD	80	81	Rebalance
+1935	Alemannische Oberliga	Tadeáš Fischer	VPR	DEF	78	76	Rebalance
+1935	Alemannische Oberliga	Otto Slusser	VPR	DEF	77	78	Rebalance
+1935	Alemannische Oberliga	Erik Krämer	VPR	MID	76	74	Rebalance
+1935	Alemannische Oberliga	Bruno Sommer	VPR	GK	76	77	Rebalance
+1935	Alemannische Oberliga	Heinrich Krausser	VPR	DEF	75	73	Rebalance
+1935	Alemannische Oberliga	Eric Hass	VPR	MID	73	74	Rebalance
+1935	Alemannische Oberliga	Mirek Wirner	VPR	MID	72	70	Rebalance
+1935	Alemannische Oberliga	Kryštof Wolf	VPR	MID	70	72	Rebalance
+1935	Alemannische Oberliga	Wieland Hummel	VSC	FWD	80	81	Rebalance
+1935	Alemannische Oberliga	Gernot Falkenrath	VSC	MID	80	82	Rebalance
+1935	Alemannische Oberliga	Rolf Gärtner	VSC	MID	79	80	Rebalance
+1935	Alemannische Oberliga	Jaro Reis	VSC	DEF	79	78	Rebalance
+1935	Alemannische Oberliga	Uwe Daube	VSC	MID	79	76	Rebalance
+1935	Alemannische Oberliga	Radim Mueller	VSC	GK	78	75	Rebalance
+1935	Alemannische Oberliga	Leonhard Metzger	VSC	GK	76	75	Rebalance
+1935	Alemannische Oberliga	Marwin Kadlec	VSC	DEF	72	73	Rebalance
+1935	Alemannische Oberliga	Guntram Löwe	VSC	FWD	71	72	Rebalance
+1935	Alemannische Oberliga	Raphael Jung	ZUR	FWD	80	82	Rebalance
+1935	Alemannische Oberliga	Hartmann Kiefer	ZUR	DEF	79	80	Rebalance
+1935	Alemannische Oberliga	Hartwin Schwarz	ZUR	MID	78	79	Rebalance
+1935	Alemannische Oberliga	Augustin Sorg	ZUR	GK	78	80	Rebalance
+1935	Alemannische Oberliga	Anton Hersch	ZUR	MID	77	78	Rebalance
+1935	Alemannische Oberliga	Reinhold Weimann	ZUR	MID	77	78	Rebalance
+1935	Alemannische Oberliga	Wenzeslaus Pfeiffer	ZUR	MID	77	78	Rebalance
+1935	Alemannische Oberliga	Pascal Mendel	ZUR	MID	76	75	Rebalance
+1935	Alemannische Oberliga	Noah Weber	ZUR	FWD	75	76	Rebalance
+1935	Alemannische Oberliga	Senne Teunissen	ZUR	DEF	75	76	Rebalance
+1935	Alemannische Oberliga	Friedemann Nuremburg	ZUR	DEF	75	76	Rebalance
+1935	Championnat Arvernois	Thibaut Maesschalck	BLG	MID	78	79	Rebalance
+1935	Championnat Arvernois	Bruno Vandeputte	BLG	DEF	77	76	Rebalance
+1935	Championnat Arvernois	Jonas Verstraete	BLG	DEF	77	79	Rebalance
+1935	Championnat Arvernois	Renaat Houthoofd	BLG	MID	76	75	Rebalance
+1935	Championnat Arvernois	Wouter Claessens	BLG	GK	76	78	Rebalance
+1935	Championnat Arvernois	Lander Bruneel	BLG	FWD	75	74	Rebalance
+1935	Championnat Arvernois	Stijn Delvaux	BLG	MID	75	76	Rebalance
+1935	Championnat Arvernois	Kobe Servais	BLG	MID	74	75	Rebalance
+1935	Championnat Arvernois	Émile Vandersteen	BLG	DEF	72	70	Rebalance
+1935	Championnat Arvernois	Ruben Decoster	BLG	DEF	72	71	Rebalance
+1935	Championnat Arvernois	Joris Lambrechts	BLG	MID	71	69	Rebalance
+1935	Championnat Arvernois	Marc-Antoine Peyrefitte	BOR	FWD	78	77	Rebalance
+1935	Championnat Arvernois	Loïc Tardiveau	BOR	MID	78	77	Rebalance
+1935	Championnat Arvernois	Grégoire Sauveterre	BOR	MID	77	78	Rebalance
+1935	Championnat Arvernois	Xavier Montbrun	BOR	DEF	77	80	Rebalance
+1935	Championnat Arvernois	Pascal Villemain	BOR	MID	76	74	Rebalance
+1935	Championnat Arvernois	Ronan Brival	BOR	GK	76	74	Rebalance
+1935	Championnat Arvernois	Bertrand Mauclair	BOR	MID	75	76	Rebalance
+1935	Championnat Arvernois	Fabrice Duquesnoy	BOR	DEF	74	75	Rebalance
+1935	Championnat Arvernois	Régis Chambonnet	BOR	FWD	74	76	Rebalance
+1935	Championnat Arvernois	Yann Mercereau	BOR	FWD	72	69	Rebalance
+1935	Championnat Arvernois	Jean-Michel Roubaud	CDM	MID	76	77	Rebalance
+1935	Championnat Arvernois	Laurent Grimaldi	CDM	DEF	76	73	Rebalance
+1935	Championnat Arvernois	Dario Spinetta	CDM	FWD	74	75	Rebalance
+1935	Championnat Arvernois	Antoine Faravel	CDM	DEF	74	72	Rebalance
+1935	Championnat Arvernois	Charles-Henri Boissieu	CDM	MID	73	74	Rebalance
+1935	Championnat Arvernois	Antoine Ferracci	CDM	MID	73	72	Rebalance
+1935	Championnat Arvernois	Olivier Sanguinetti	CDM	DEF	73	71	Rebalance
+1935	Championnat Arvernois	Yvan Massena	CDM	MID	72	71	Rebalance
+1935	Championnat Arvernois	Pau Puigcorbé	FCB	FWD	85	84	Rebalance
+1935	Championnat Arvernois	Youssef Valverde	FCB	MID	84	85	Rebalance
+1935	Championnat Arvernois	Petr Procházka	FCB	FWD	83	82	Rebalance
+1935	Championnat Arvernois	Ellison Hargrove	FCB	DEF	82	80	Rebalance
+1935	Championnat Arvernois	Gaku Ibusuki	FCB	FWD	81	83	Rebalance
+1935	Championnat Arvernois	Jostein Helgesen	FCB	GK	81	79	Rebalance
+1935	Championnat Arvernois	Quim Estanyol	FCB	MID	79	78	Rebalance
+1935	Championnat Arvernois	Oriol Cabestany	FCB	DEF	79	81	Rebalance
+1935	Championnat Arvernois	Guiu Martorell	FCB	DEF	79	78	Rebalance
+1935	Championnat Arvernois	Ansgar Vielhauer	FCB	FWD	79	78	Rebalance
+1935	Championnat Arvernois	Marçal Vidiella	FCB	DEF	78	77	Rebalance
+1935	Championnat Arvernois	Nil Berenguer	FCB	FWD	78	77	Rebalance
+1935	Championnat Arvernois	Hugo Saint-Laurent	LUT	DEF	88	84	Rebalance
+1935	Championnat Arvernois	Oriol Montagut	LUT	DEF	87	83	Rebalance
+1935	Championnat Arvernois	Fabien Blanchet	LUT	GK	85	84	Rebalance
+1935	Championnat Arvernois	Silvio Caruso	LUT	FWD	82	84	Rebalance
+1935	Championnat Arvernois	Siegmund Stracke	LUT	FWD	80	81	Rebalance
+1935	Championnat Arvernois	Antoine Bagradian	LUT	MID	80	77	Rebalance
+1935	Championnat Arvernois	Côme Delacroix	LUT	MID	79	81	Rebalance
+1935	Championnat Arvernois	Anselme Vauquelin	LUT	MID	79	78	Rebalance
+1935	Championnat Arvernois	Ruben Delacroix	LUT	FWD	78	77	Rebalance
+1935	Championnat Arvernois	Julien Kirsch	LUZ	MID	78	79	Rebalance
+1935	Championnat Arvernois	Fernand Mullenbach	LUZ	MID	77	79	Rebalance
+1935	Championnat Arvernois	Camille Theisen	LUZ	DEF	76	78	Rebalance
+1935	Championnat Arvernois	Killian Charpentier	LUZ	DEF	76	78	Rebalance
+1935	Championnat Arvernois	Édouard Pescatore	LUZ	FWD	75	76	Rebalance
+1935	Championnat Arvernois	Léo Origer	LUZ	MID	75	77	Rebalance
+1935	Championnat Arvernois	Mathis Weiler	LUZ	GK	75	77	Rebalance
+1935	Championnat Arvernois	Nicolas Glesener	LUZ	FWD	71	73	Rebalance
+1935	Championnat Arvernois	Paul Scholer	LUZ	FWD	70	68	Rebalance
+1935	Championnat Arvernois	Hervé Thibodeau	OL	FWD	84	85	Rebalance
+1935	Championnat Arvernois	Christophe Gagnon	OL	GK	83	84	Rebalance
+1935	Championnat Arvernois	Dorian Roussel	OL	MID	80	82	Rebalance
+1935	Championnat Arvernois	Pierrick Berthelot	OL	DEF	80	81	Rebalance
+1935	Championnat Arvernois	Sylvain Courtemanche	OL	DEF	80	81	Rebalance
+1935	Championnat Arvernois	Léandre Pochard	OL	MID	79	80	Rebalance
+1935	Championnat Arvernois	Amaury Brissaud	OL	DEF	78	77	Rebalance
+1935	Championnat Arvernois	Lothaire Chalumeau	OL	DEF	77	79	Rebalance
+1935	Championnat Arvernois	Octave Faravel	OL	MID	77	79	Rebalance
+1935	Championnat Arvernois	Vinh Ngo	OM	FWD	82	80	Rebalance
+1935	Championnat Arvernois	Nabil Ouazzani	OM	MID	78	81	Rebalance
+1935	Championnat Arvernois	Sergei Smirnov	OM	DEF	78	80	Rebalance
+1935	Championnat Arvernois	Octave Étienne	OM	FWD	77	76	Rebalance
+1935	Championnat Arvernois	Conan Neitzel	OM	MID	77	75	Rebalance
+1935	Championnat Arvernois	Enzo Gorlomi	OM	DEF	76	77	Rebalance
+1935	Championnat Arvernois	Bastien Cavaillès	OM	MID	74	75	Rebalance
+1935	Championnat Arvernois	Valentin Peixoto	RCC	DEF	81	82	Rebalance
+1935	Championnat Arvernois	Jocelyn Teissier	RCC	MID	79	81	Rebalance
+1935	Championnat Arvernois	Cyprien Malartre	RCC	MID	76	77	Rebalance
+1935	Championnat Arvernois	Alban Fresnaye	RCC	DEF	76	75	Rebalance
+1935	Championnat Arvernois	Nolan Perrigault	RCC	FWD	75	76	Rebalance
+1935	Championnat Arvernois	Léon Chastellain	RCC	GK	74	72	Rebalance
+1935	Championnat Arvernois	Damien Roquefeuil	RCC	FWD	74	73	Rebalance
+1935	Championnat Arvernois	Aymeric Lescure	RCC	FWD	72	73	Rebalance
+1935	Championnat Arvernois	Victorin Dauphiné	RCC	MID	72	70	Rebalance
+1935	Championnat Arvernois	Clément Desrosiers	ULT	DEF	78	77	Rebalance
+1935	Championnat Arvernois	Baptiste Noirclerc	ULT	DEF	77	78	Rebalance
+1935	Championnat Arvernois	Vincent Tremblay	ULT	FWD	76	75	Rebalance
+1935	Championnat Arvernois	Théophile Anquetil	ULT	MID	76	74	Rebalance
+1935	Championnat Arvernois	Nicolas Boulloche	ULT	FWD	75	76	Rebalance
+1935	Championnat Arvernois	Gaël Bonnafous	ULT	MID	73	74	Rebalance
+1935	Elvesterian Premier League	Leonardo Urdaneta	AFC	DEF	83	82	Rebalance
+1935	Elvesterian Premier League	Martino Marrese	AFC	MID	79	80	Rebalance
+1935	Elvesterian Premier League	Parker Turner	AFC	GK	79	78	Rebalance
+1935	Elvesterian Premier League	Bogumił Cieślak	AFC	DEF	78	77	Rebalance
+1935	Elvesterian Premier League	Colin Bruguiére	AFC	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Ottavio Scarlatti	AFC	FWD	77	75	Rebalance
+1935	Elvesterian Premier League	Egeo Scalera	AFC	MID	77	74	Rebalance
+1935	Elvesterian Premier League	Teddy Varnham	AFC	MID	76	73	Rebalance
+1935	Elvesterian Premier League	Xander Bennett	AFC	MID	76	74	Rebalance
+1935	Elvesterian Premier League	Anacleto Figueiró	AFC	DEF	76	75	Rebalance
+1935	Elvesterian Premier League	Kilian Reuther	AFC	DEF	76	75	Rebalance
+1935	Elvesterian Premier League	Tyler Aldridge	AFC	MID	75	74	Rebalance
+1935	Elvesterian Premier League	Fergus Dunbroch	AFC	DEF	74	75	Rebalance
+1935	Elvesterian Premier League	Martim Duarte	BIX	MID	81	83	Rebalance
+1935	Elvesterian Premier League	Sōta Akutagawa	BIX	FWD	80	82	Rebalance
+1935	Elvesterian Premier League	Dario Moretti	BIX	DEF	80	81	Rebalance
+1935	Elvesterian Premier League	Álvaro Carvalho	BIX	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Misael Copeland	BIX	GK	78	79	Rebalance
+1935	Elvesterian Premier League	Cihan Kartaca	BIX	DEF	76	75	Rebalance
+1935	Elvesterian Premier League	Wendell Oberkampf	BIX	MID	76	75	Rebalance
+1935	Elvesterian Premier League	Tunç Kenaanoğlu	BRI	DEF	84	82	Rebalance
+1935	Elvesterian Premier League	Jorrit Blankenburg	BRI	FWD	82	83	Rebalance
+1935	Elvesterian Premier League	Fletcher Lancaster	BRI	FWD	81	80	Rebalance
+1935	Elvesterian Premier League	Baptiste Roux	BRI	MID	81	83	Rebalance
+1935	Elvesterian Premier League	Jesus Halconero	BRI	FWD	80	76	Rebalance
+1935	Elvesterian Premier League	Marcus Redfern	BRI	DEF	78	81	Rebalance
+1935	Elvesterian Premier League	Callum Davies	BRI	DEF	77	79	Rebalance
+1935	Elvesterian Premier League	Niall Hayes	BRI	FWD	76	75	Rebalance
+1935	Elvesterian Premier League	Dan Hobbs	BRI	MID	76	75	Rebalance
+1935	Elvesterian Premier League	Freddie Marchant	BRI	MID	75	74	Rebalance
+1935	Elvesterian Premier League	Maximilian Mollenhauer	BRU	GK	83	84	Rebalance
+1935	Elvesterian Premier League	Nélson Ferreira	BRU	FWD	81	82	Rebalance
+1935	Elvesterian Premier League	Nicasio Aranguren	BRU	MID	81	83	Rebalance
+1935	Elvesterian Premier League	Marian Bettencourt	BRU	FWD	81	82	Rebalance
+1935	Elvesterian Premier League	Emilio Escalona	BRU	DEF	79	78	Rebalance
+1935	Elvesterian Premier League	Curtis Haversham	BRU	DEF	79	80	Rebalance
+1935	Elvesterian Premier League	Matt Saltmarsh	BRU	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Achille Colasuonno	BRU	DEF	78	79	Rebalance
+1935	Elvesterian Premier League	Fulvio Scaparra	BRU	DEF	77	78	Rebalance
+1935	Elvesterian Premier League	Grzegorz Brzęczyszczykiewicz	BRW	FWD	86	88	Rebalance
+1935	Elvesterian Premier League	Attila D'Ambrosi	BRW	DEF	82	81	Rebalance
+1935	Elvesterian Premier League	Felix Hoffman	BRW	MID	80	79	Rebalance
+1935	Elvesterian Premier League	Rhys Deacon	BRW	FWD	79	80	Rebalance
+1935	Elvesterian Premier League	Warren Marshall	BRW	MID	78	76	Rebalance
+1935	Elvesterian Premier League	Ashley Halliwell	BRW	MID	78	76	Rebalance
+1935	Elvesterian Premier League	Sōichirō Fukatsu	BRW	DEF	78	77	Rebalance
+1935	Elvesterian Premier League	Reese Guerra	BRW	DEF	77	76	Rebalance
+1935	Elvesterian Premier League	Pau Bermúdez	GAE	FWD	78	79	Rebalance
+1935	Elvesterian Premier League	Miroslav Přibyl	GAE	FWD	77	78	Rebalance
+1935	Elvesterian Premier League	Mario Hoyo	GAE	DEF	77	80	Rebalance
+1935	Elvesterian Premier League	Simo Mannerheim	GAE	MID	77	79	Rebalance
+1935	Elvesterian Premier League	Marco Perono	GAE	DEF	77	78	Rebalance
+1935	Elvesterian Premier League	Miłosz Zawadzki	GAE	FWD	76	75	Rebalance
+1935	Elvesterian Premier League	Corwin Thistlewood	GAE	MID	75	76	Rebalance
+1935	Elvesterian Premier League	Jake Croft	GAE	MID	75	76	Rebalance
+1935	Elvesterian Premier League	Ellis West	GAL	FWD	81	83	Rebalance
+1935	Elvesterian Premier League	Myroslav Zalizniak	GAL	MID	81	84	Rebalance
+1935	Elvesterian Premier League	Peter Baláž	GAL	DEF	81	84	Rebalance
+1935	Elvesterian Premier League	Ayato Hachikawa	GAL	FWD	79	78	Rebalance
+1935	Elvesterian Premier League	Rory Kincardine	GAL	DEF	79	80	Rebalance
+1935	Elvesterian Premier League	Zalán Váradi	GAL	DEF	79	80	Rebalance
+1935	Elvesterian Premier League	Cael Cunningham	GAL	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Tyson Yazzie	GAL	DEF	78	79	Rebalance
+1935	Elvesterian Premier League	Cael Price	GAL	FWD	77	76	Rebalance
+1935	Elvesterian Premier League	Luke Fanshawe	GAL	MID	76	78	Rebalance
+1935	Elvesterian Premier League	András Kelemen	GAL	DEF	74	72	Rebalance
+1935	Elvesterian Premier League	Masaru Jakamarra	MNC	FWD	87	85	Rebalance
+1935	Elvesterian Premier League	Sawyer Pinkerton	MNC	FWD	81	79	Rebalance
+1935	Elvesterian Premier League	Tsutomu Hagiwara	MNC	DEF	80	78	Rebalance
+1935	Elvesterian Premier League	Mathijs Holleman	MNC	MID	79	80	Rebalance
+1935	Elvesterian Premier League	Nicanor Arandia	MNC	FWD	79	78	Rebalance
+1935	Elvesterian Premier League	Reinhard Stollenwerk	MNC	MID	79	78	Rebalance
+1935	Elvesterian Premier League	Max Reeves	MNC	FWD	78	77	Rebalance
+1935	Elvesterian Premier League	Cameron Lyons	MNC	DEF	78	77	Rebalance
+1935	Elvesterian Premier League	Nate Entwistle	MNC	DEF	78	76	Rebalance
+1935	Elvesterian Premier League	Sullivan Marchbank	MNC	GK	78	77	Rebalance
+1935	Elvesterian Premier League	Dylan Webb	MNC	FWD	77	76	Rebalance
+1935	Elvesterian Premier League	Eino Lehtimäki	MNC	DEF	77	76	Rebalance
+1935	Elvesterian Premier League	Harrison Vose	MNU	FWD	78	79	Rebalance
+1935	Elvesterian Premier League	Augustijn Verhoeven	MNU	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Braulio Salvatierra	MNU	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Fritz Hafer	MNU	MID	77	75	Rebalance
+1935	Elvesterian Premier League	Zsombor Dömötör	MNU	DEF	76	78	Rebalance
+1935	Elvesterian Premier League	Axel Berg	MNU	GK	76	75	Rebalance
+1935	Elvesterian Premier League	Inácio Madureira	MNU	DEF	75	77	Rebalance
+1935	Elvesterian Premier League	Finn Ashcroft	MNU	MID	74	75	Rebalance
+1935	Elvesterian Premier League	Owen Bramley	MNU	MID	73	71	Rebalance
+1935	Elvesterian Premier League	Yurii Zahrebelny	MNU	MID	73	72	Rebalance
+1935	Elvesterian Premier League	Arcadio Villa	MYH	MID	79	80	Rebalance
+1935	Elvesterian Premier League	Marcus Wright	MYH	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Íñigo Basterretxea	MYH	DEF	78	79	Rebalance
+1935	Elvesterian Premier League	Simon Schulhof	MYH	DEF	78	80	Rebalance
+1935	Elvesterian Premier League	Ludovico Riggio	MYH	MID	75	73	Rebalance
+1935	Elvesterian Premier League	Colwyn Powell	MYH	MID	73	72	Rebalance
+1935	Elvesterian Premier League	Olegario Pérez	PCH	MID	82	83	Rebalance
+1935	Elvesterian Premier League	Alejandro Varga	PCH	DEF	80	82	Rebalance
+1935	Elvesterian Premier League	Hans-Jürgen Hōnigsberg	PCH	MID	79	80	Rebalance
+1935	Elvesterian Premier League	Biel Biel	PCH	FWD	78	79	Rebalance
+1935	Elvesterian Premier League	George Smith	PCH	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Jonathan Cannon	PCH	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Conor Dawson	PCH	DEF	77	78	Rebalance
+1935	Elvesterian Premier League	Reuben Mendoza	PCH	DEF	75	76	Rebalance
+1935	Elvesterian Premier League	Tilman Zartmann	PIS	DEF	81	82	Rebalance
+1935	Elvesterian Premier League	Dietrich Kunze	PIS	FWD	78	80	Rebalance
+1935	Elvesterian Premier League	Nathan Bass	PIS	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Ryōichi Nakashima	PIS	GK	78	80	Rebalance
+1935	Elvesterian Premier League	Ferruccio Noseda	PIS	MID	77	81	Rebalance
+1935	Elvesterian Premier League	Miles Marsh	PIS	FWD	75	74	Rebalance
+1935	Elvesterian Premier League	Imre Kárpáti	PIS	DEF	75	74	Rebalance
+1935	Elvesterian Premier League	Changming Zhao	PIS	DEF	72	71	Rebalance
+1935	Elvesterian Premier League	Aldric Penhaligon	SCR	MID	78	79	Rebalance
+1935	Elvesterian Premier League	Tanjin Tsukahara	SCR	DEF	78	80	Rebalance
+1935	Elvesterian Premier League	Jackson Miller	SCR	GK	78	79	Rebalance
+1935	Elvesterian Premier League	Wendelin Gratz	SCR	MID	77	78	Rebalance
+1935	Elvesterian Premier League	Borys Skovoroda	SCR	MID	76	77	Rebalance
+1935	Elvesterian Premier League	Osbert Crowe	SCR	DEF	76	75	Rebalance
+1935	Elvesterian Premier League	Oisín Doolan	SCR	FWD	75	76	Rebalance
+1935	Elvesterian Premier League	Horace Peshlakai	SHE	FWD	87	86	Rebalance
+1935	Elvesterian Premier League	Spencer Chadwick	SHE	MID	85	87	Rebalance
+1935	Elvesterian Premier League	Alden Maddox	SHE	MID	79	78	Rebalance
+1935	Elvesterian Premier League	Don Archibald Bates	SHE	DEF	79	80	Rebalance
+1935	Elvesterian Premier League	Cristian Costanza	SHE	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Tristan Margetts	SHE	GK	78	77	Rebalance
+1935	Elvesterian Premier League	Julian Bosblooms	SHE	MID	78	76	Rebalance
+1935	Elvesterian Premier League	Ottone Brancaleone	SHE	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Ivo Brandão	STM	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Pietro Borromeo	STM	GK	78	79	Rebalance
+1935	Elvesterian Premier League	Djeferson Béliveau	STM	MID	77	78	Rebalance
+1935	Elvesterian Premier League	Callum Hedgecoe	STM	DEF	77	78	Rebalance
+1935	Elvesterian Premier League	Finn Sutton	STM	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Isaac Pendridge	STM	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Jerzy Wiśniewski	STM	DEF	77	76	Rebalance
+1935	Elvesterian Premier League	Severino Guzmán	STM	FWD	76	75	Rebalance
+1935	Elvesterian Premier League	Lewis Bardsley	TOT	FWD	89	90	Rebalance
+1935	Elvesterian Premier League	Simphiwe Chabalala	TOT	MID	85	86	Rebalance
+1935	Elvesterian Premier League	Vojtěch Novotný	TOT	DEF	83	80	Rebalance
+1935	Elvesterian Premier League	Izan Santander	TOT	DEF	79	77	Rebalance
+1935	Elvesterian Premier League	Giacomo Russo	TOT	DEF	79	78	Rebalance
+1935	Elvesterian Premier League	Veikko Haapasalo	TOT	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Emilio Bianchi	TOT	MID	76	75	Rebalance
+1935	Elvesterian Premier League	Philip Klein	TYN	DEF	82	79	Rebalance
+1935	Elvesterian Premier League	Dillon Heath	TYN	FWD	81	80	Rebalance
+1935	Elvesterian Premier League	Anton Friedeberg	TYN	MID	81	80	Rebalance
+1935	Elvesterian Premier League	Yūto Kanbara	TYN	DEF	78	75	Rebalance
+1935	Elvesterian Premier League	Cortland Beaumont	TYN	MID	78	76	Rebalance
+1935	Elvesterian Premier League	Kael Rowntree	TYN	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Rowan Fenwick	TYN	FWD	76	75	Rebalance
+1935	Elvesterian Premier League	Arturo Morgado	TYN	DEF	76	77	Rebalance
+1935	Elvesterian Premier League	Kai Hunt	TYN	MID	76	75	Rebalance
+1935	Elvesterian Premier League	Eiichi Fujimori	TYN	MID	75	76	Rebalance
+1935	Elvesterian Premier League	Earl Tomlinson	WE	MID	82	85	Rebalance
+1935	Elvesterian Premier League	Arséne La Fromboise	WE	DEF	81	80	Rebalance
+1935	Elvesterian Premier League	Marcus Ellingham	WE	FWD	79	80	Rebalance
+1935	Elvesterian Premier League	Maxence Beauvilliers	WE	DEF	79	80	Rebalance
+1935	Elvesterian Premier League	Harry Brown	WE	DEF	78	79	Rebalance
+1935	Elvesterian Premier League	Rhys Townsend	WE	GK	78	79	Rebalance
+1935	Elvesterian Premier League	Miles Cheswick	WE	MID	77	79	Rebalance
+1935	Elvesterian Premier League	Nándor Mészáros	WE	MID	77	76	Rebalance
+1935	Elvesterian Premier League	Theo Moss	WE	MID	77	80	Rebalance
+1935	Elvesterian Premier League	Owen Ashworth	WE	DEF	77	76	Rebalance
+1935	Elvesterian Premier League	Ben Prewett	WE	FWD	76	77	Rebalance
+1935	Elvesterian Premier League	Milan Ivanov	WE	MID	76	75	Rebalance
+1935	Elvesterian Premier League	Joris Van Antwerp	WIN	DEF	89	87	Rebalance
+1935	Elvesterian Premier League	Brock Fairweather	WIN	DEF	84	80	Rebalance
+1935	Elvesterian Premier League	Emrys Lockwood	WIN	MID	80	79	Rebalance
+1935	Elvesterian Premier League	Alain Saffron	WIN	MID	78	77	Rebalance
+1935	Elvesterian Premier League	Reuben Ashton	WIN	MID	77	78	Rebalance
+1935	Elvesterian Premier League	Tatsuki Akagawa	WNC	FWD	81	79	Rebalance
+1935	Elvesterian Premier League	Adrian Booth	WNC	FWD	78	79	Rebalance
+1935	Elvesterian Premier League	Falco Monopoli	WNC	GK	78	79	Rebalance
+1935	Elvesterian Premier League	Neizan Escribano	WNC	MID	77	79	Rebalance
+1935	Elvesterian Premier League	Prescott Hargrave	WNC	MID	77	78	Rebalance
+1935	Elvesterian Premier League	Sterling Caulfield	WNC	DEF	77	78	Rebalance
+1935	Elvesterian Premier League	Fabio Loeb	WNC	DEF	76	75	Rebalance
+1935	Elvesterian Premier League	Leandro Martinelli	WNC	DEF	74	76	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Maoz Shaked	AIS	MID	72	71	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Marwan Touma	AIS	FWD	67	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Louay Abu-Sitta	AIS	FWD	67	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Hamza Al-Qadi	AIS	DEF	65	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Firas Bishara	AIS	DEF	64	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nizar Farhat	AIS	MID	64	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Walid Mansour	AIS	FWD	60	59	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Issam Zoghbi	ESH	FWD	68	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Eyal Ovadia	ESH	FWD	68	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Meir Barda	ESH	MID	67	68	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Lahav Agam	ESH	DEF	67	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Avichai Biran	ESH	FWD	67	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Yaniv Nachmias	ESH	GK	66	65	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Gadi Harari	ESH	DEF	65	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Bassel Barakat	ESH	DEF	65	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Dariush Hamedani	ESH	DEF	64	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Peleg Peleg-Or	ESH	FWD	62	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Gilad Zaguri	ESH	MID	61	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Amichai Shtern	HET	DEF	69	70	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ran Uzan	HET	MID	68	71	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Idan Suissa	HET	MID	68	70	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Boaz Ben-Ami	HET	FWD	67	68	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Shai Azoulay	HET	MID	67	70	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Yonah Golan	HET	MID	66	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Adi Madmoni	HET	MID	66	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ehud Halevi	HET	GK	66	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Harel Mamo	HET	DEF	65	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nissim Rubinstein	HET	DEF	65	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Roee Yehezkel	HET	MID	62	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Lev Ben-David	HET	DEF	59	57	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Asaf Bar-Lev	HNH	DEF	71	73	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Kamran Farahmand	HNH	MID	64	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Omar Jubran	HNH	FWD	64	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Itamar Tzarfati	HNH	FWD	64	62	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Erez Dahari	HNH	MID	64	62	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nader Al-Sayed	HNH	MID	63	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Netanel Vaknin	HNH	DEF	62	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Mahmoud Nassar	HNH	GK	62	65	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Khaled Al-Najjar	HNH	DEF	61	62	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ehud Weizman	HNH	DEF	61	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nawaf Hijazi	HNH	MID	58	59	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Yishai Galili	KHS	MID	70	71	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Uriel Mazor	KHS	MID	69	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Behrouz Sabzevari	KHS	FWD	64	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Itai Shapira	KHS	FWD	64	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Eyal Segal	KHS	FWD	64	62	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Amjad Nabhan	KHS	DEF	63	62	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Tal Sasson	KHS	DEF	63	65	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Shai Sabag	KHS	GK	63	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Diaa Odeh	KHS	DEF	62	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Serhat Gökmen	KHS	MID	61	59	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Bnaya Kabalo	KHS	MID	58	59	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Segev Even-Khen	MGN	MID	73	76	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Gilad Dahan	MGN	FWD	71	75	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Roi Ben-Haim	MGN	DEF	69	71	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Navid Zarrinkoub	MGN	MID	68	70	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Elkana Rotem	MGN	MID	68	70	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Dolev Nagar	MGN	MID	68	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nadav Tzur	MGN	DEF	67	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Netanel Elbaz	MGN	MID	65	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Kyrillos Sennefer	MGN	MID	63	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Itamar Ben-Zaken	MGN	MID	61	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Zamir Peled	MKA	MID	68	69	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Siavash Tabatabai	MKA	FWD	66	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Sagi Melamed	MKA	GK	66	68	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ziyad Al-Rifai	MKA	DEF	65	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Wael Halabi	MKA	MID	64	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Kfir Turgeman	MKA	DEF	63	58	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ariel Lugassy	MKA	MID	63	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Jad Qassem	MKA	DEF	63	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Zaid Nakhleh	MKA	MID	60	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Shlomi Barkan	MKA	FWD	60	59	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Dolev Amsalem	MKA	DEF	57	58	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Iddo Avni	SGN	GK	70	72	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Tomer Ivgi	SGN	DEF	67	66	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Raz Zoaretz	SGN	MID	67	65	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Ramin Qajarian	SGN	FWD	66	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Uri Kastiel	SGN	FWD	66	67	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Elad Ifrach	SGN	FWD	66	64	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Nevo Pinto	SGN	FWD	66	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Koby Ben-Shabbat	SGN	MID	64	63	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Yair Ohana	SGN	DEF	64	61	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Hadar Rahamim	SGN	DEF	63	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Yigal Revivo	SGN	FWD	61	60	Rebalance
+1935	Hagbia Haleumi Hashiboniti	Oren Shemesh	SGN	FWD	60	58	Rebalance
+1935	Karjanian Premier League	Neçirvan Barzani	AFK	FWD	86	83	Rebalance
+1935	Karjanian Premier League	Konsta Yrjölä	AFK	DEF	85	87	Rebalance
+1935	Karjanian Premier League	James Feruccio	AFK	MID	81	83	Rebalance
+1935	Karjanian Premier League	Chenguang Pei	AFK	FWD	78	76	Rebalance
+1935	Karjanian Premier League	Vladimir Tsoikov	AFK	FWD	75	76	Rebalance
+1935	Karjanian Premier League	Jean Montblanche	AFK	GK	75	78	Rebalance
+1935	Karjanian Premier League	Markku Lappalainen	AFK	DEF	72	73	Rebalance
+1935	Karjanian Premier League	Aake Toivalainen	AFK	DEF	70	69	Rebalance
+1935	Karjanian Premier League	Aleks Kärkärinnen	AFK	GK	69	71	Rebalance
+1935	Karjanian Premier League	Aleksanteri Räsänen	ARK	GK	76	77	Rebalance
+1935	Karjanian Premier League	Taavi Saarela	ARK	MID	76	75	Rebalance
+1935	Karjanian Premier League	Otto Hannuksela	ARK	FWD	75	73	Rebalance
+1935	Karjanian Premier League	Veitto Harttikainen	ARK	DEF	75	76	Rebalance
+1935	Karjanian Premier League	Dömötör Barta	ARK	DEF	74	72	Rebalance
+1935	Karjanian Premier League	Ivaan Mielonen	ARK	DEF	73	72	Rebalance
+1935	Karjanian Premier League	Taisto Tervorinen	ARK	DEF	73	72	Rebalance
+1935	Karjanian Premier League	Seppo Puhakka	ARK	MID	73	71	Rebalance
+1935	Karjanian Premier League	Hugo Ploomõts	ARK	MID	72	71	Rebalance
+1935	Karjanian Premier League	Ivan Gavrilovic	ARK	DEF	72	73	Rebalance
+1935	Karjanian Premier League	Taikō Aoki	ARK	MID	70	69	Rebalance
+1935	Karjanian Premier League	Teepoo Nasarinen	ARK	MID	70	69	Rebalance
+1935	Karjanian Premier League	Pouria Asghari	ARK	GK	67	66	Rebalance
+1935	Karjanian Premier League	Visker Nsytröm	KAL	FWD	74	75	Rebalance
+1935	Karjanian Premier League	Gustav Pennanen	KAL	GK	71	72	Rebalance
+1935	Karjanian Premier League	Kurtsov Zaitsev	KAL	MID	70	71	Rebalance
+1935	Karjanian Premier League	Patrik Miettula	KAL	MID	70	71	Rebalance
+1935	Karjanian Premier League	Kalle Ruokonen	KAL	MID	69	70	Rebalance
+1935	Karjanian Premier League	Nakato Fujimoto	KAL	FWD	67	70	Rebalance
+1935	Karjanian Premier League	Niiko Rautia	KAL	DEF	67	66	Rebalance
+1935	Karjanian Premier League	Aleksi Järveläinen	KUI	GK	83	88	Rebalance
+1935	Karjanian Premier League	Takuma Nakamura	KUI	FWD	80	83	Rebalance
+1935	Karjanian Premier League	Otto Kask	KUI	MID	79	83	Rebalance
+1935	Karjanian Premier League	Tarvo Puusepp	KUI	FWD	78	81	Rebalance
+1935	Karjanian Premier League	Mikko Niskanen	KUI	DEF	77	80	Rebalance
+1935	Karjanian Premier League	Albert Kuusela	KUI	DEF	77	80	Rebalance
+1935	Karjanian Premier League	Balázs Aba	KUI	DEF	77	79	Rebalance
+1935	Karjanian Premier League	Tarmo Pallonen	KUI	DEF	77	75	Rebalance
+1935	Karjanian Premier League	Gregor Toivonen	KUI	MID	76	78	Rebalance
+1935	Karjanian Premier League	Einari Välinen	KUI	MID	75	78	Rebalance
+1935	Karjanian Premier League	Vladimir Smirnovic	KUI	MID	75	77	Rebalance
+1935	Karjanian Premier League	Rauli Jokinen	KUI	DEF	75	77	Rebalance
+1935	Karjanian Premier League	Damian Jalkanen	KUI	GK	75	74	Rebalance
+1935	Karjanian Premier League	Ferencz Vágó	KUI	MID	73	74	Rebalance
+1935	Karjanian Premier League	Kanta Zielenski	KUI	DEF	72	73	Rebalance
+1935	Karjanian Premier League	Markku Jäämaalainen	KUI	FWD	67	66	Rebalance
+1935	Karjanian Premier League	Yrjö Pietarinen	MPA	FWD	77	74	Rebalance
+1935	Karjanian Premier League	Nicolai Taicescu	MPA	FWD	77	76	Rebalance
+1935	Karjanian Premier League	Antos Niillán	MPA	MID	76	75	Rebalance
+1935	Karjanian Premier League	Sámme Náinnas	MPA	GK	75	74	Rebalance
+1935	Karjanian Premier League	Ilmari Kiviojanen	MPA	FWD	73	72	Rebalance
+1935	Karjanian Premier League	Noori Samalainen	MPA	DEF	73	72	Rebalance
+1935	Karjanian Premier League	Gregor Tsorovic	MPA	MID	71	70	Rebalance
+1935	Karjanian Premier League	Nazer Shahrivar	MPA	MID	71	70	Rebalance
+1935	Karjanian Premier League	Söls Hættán	MPA	GK	69	70	Rebalance
+1935	Karjanian Premier League	Omar Kazluaska	MRJ	FWD	83	86	Rebalance
+1935	Karjanian Premier League	Daru Jafari	MRJ	MID	82	84	Rebalance
+1935	Karjanian Premier League	Erik Aalto	MRJ	GK	82	84	Rebalance
+1935	Karjanian Premier League	Santteri Ylikangas	MRJ	DEF	80	78	Rebalance
+1935	Karjanian Premier League	Bort Org	MRJ	FWD	79	80	Rebalance
+1935	Karjanian Premier League	Yūki Hattori	MRJ	FWD	77	78	Rebalance
+1935	Karjanian Premier League	Péter Alföldi	MRJ	FWD	74	75	Rebalance
+1935	Karjanian Premier League	Johann Berglund	MRJ	MID	74	73	Rebalance
+1935	Karjanian Premier League	Olli Aaskruus	MRJ	DEF	74	75	Rebalance
+1935	Karjanian Premier League	Ivan Kenderic	MRJ	DEF	74	71	Rebalance
+1935	Karjanian Premier League	Ohto Voutilainen	MRJ	DEF	72	70	Rebalance
+1935	Karjanian Premier League	Iilmeri Vähäsarja	MRJ	GK	71	72	Rebalance
+1935	Karjanian Premier League	Aonuma Jingūji	NOW	DEF	81	78	Rebalance
+1935	Karjanian Premier League	Roððo Duongi	NOW	FWD	79	76	Rebalance
+1935	Karjanian Premier League	Aarne Kainulainen	NOW	MID	78	76	Rebalance
+1935	Karjanian Premier League	Saīd Farzan	NOW	FWD	77	76	Rebalance
+1935	Karjanian Premier League	Fernando Esturas	NOW	DEF	77	74	Rebalance
+1935	Karjanian Premier League	Rainer Pakarinen	NOW	MID	75	73	Rebalance
+1935	Karjanian Premier League	Petri Kumpulainen	NOW	GK	75	73	Rebalance
+1935	Karjanian Premier League	Aalto Huttunen	NOW	DEF	75	72	Rebalance
+1935	Karjanian Premier League	Mona Zhuravlyov	NOW	GK	74	75	Rebalance
+1935	Karjanian Premier League	Zhalek Cheremesinoff	NOW	MID	73	71	Rebalance
+1935	Karjanian Premier League	Andero Randmaa	NOW	DEF	73	72	Rebalance
+1935	Karjanian Premier League	Paates Kajatamäki	NOW	DEF	73	70	Rebalance
+1935	Karjanian Premier League	Kolomir Onappovic	NOW	MID	72	71	Rebalance
+1935	Karjanian Premier League	Luuka Velikkon	NOW	FWD	68	69	Rebalance
+1935	Karjanian Premier League	Soino Jaakola	PIE	MID	79	78	Rebalance
+1935	Karjanian Premier League	Katsuki Watanabe	PIE	MID	78	79	Rebalance
+1935	Karjanian Premier League	Leevi Kaaren	PIE	MID	77	76	Rebalance
+1935	Karjanian Premier League	Markku Hongisto	PIE	MID	76	75	Rebalance
+1935	Karjanian Premier League	Eesko Vähäjärvi	PIE	GK	76	75	Rebalance
+1935	Karjanian Premier League	Robert Kivisilta	PIE	DEF	74	73	Rebalance
+1935	Karjanian Premier League	Teima Uibo	PIE	DEF	74	72	Rebalance
+1935	Karjanian Premier League	Gustav Kalliokoski	PJS	FWD	77	76	Rebalance
+1935	Karjanian Premier League	Yerucham Lehrer	PJS	MID	76	77	Rebalance
+1935	Karjanian Premier League	Eetu Hämälainen	PJS	MID	76	75	Rebalance
+1935	Karjanian Premier League	Jaakima Porvorinen	PJS	FWD	75	74	Rebalance
+1935	Karjanian Premier League	Artyom Vladimovic	PJS	DEF	75	76	Rebalance
+1935	Karjanian Premier League	Ernesto Torres	PJS	GK	73	74	Rebalance
+1935	Karjanian Premier League	Töhötöm Molnár	PJS	FWD	71	70	Rebalance
+1935	Karjanian Premier League	Ilkka Vuorinen	PJS	DEF	71	67	Rebalance
+1935	Karjanian Premier League	Isko Nieminen	PJS	GK	70	71	Rebalance
+1935	Karjanian Premier League	Lajos Újföldi	PJS	MID	69	71	Rebalance
+1935	Karjanian Premier League	Erno Koittilainen	PJS	DEF	68	67	Rebalance
+1935	Karjanian Premier League	Jaan Soosaar	RJK	MID	83	86	Rebalance
+1935	Karjanian Premier League	Ohttola Sillaste	RJK	DEF	81	85	Rebalance
+1935	Karjanian Premier League	James Smith	RJK	DEF	80	81	Rebalance
+1935	Karjanian Premier League	Aleksi Kaasik	RJK	GK	77	78	Rebalance
+1935	Karjanian Premier League	Rautta Kokko	RJK	GK	77	78	Rebalance
+1935	Karjanian Premier League	Erno Jumanen	RJK	MID	76	77	Rebalance
+1935	Karjanian Premier League	Erast Pobedonostsev	RJK	FWD	75	76	Rebalance
+1935	Karjanian Premier League	Toivo Grigorovic	RJK	DEF	75	77	Rebalance
+1935	Karjanian Premier League	Ulrik Zilinkas	RJK	MID	74	75	Rebalance
+1935	Karjanian Premier League	Chu Hwang	RJK	DEF	69	70	Rebalance
+1935	Karjanian Premier League	Kuismaa Kivisild	RPS	FWD	81	83	Rebalance
+1935	Karjanian Premier League	Teemo Aasmae	RPS	GK	79	77	Rebalance
+1935	Karjanian Premier League	Erik Jones	RPS	FWD	77	76	Rebalance
+1935	Karjanian Premier League	Johannn Schumacher	RPS	MID	77	75	Rebalance
+1935	Karjanian Premier League	Sojjo Sarapuu	RPS	DEF	77	76	Rebalance
+1935	Karjanian Premier League	Ritomo Hoshino	RPS	MID	77	76	Rebalance
+1935	Karjanian Premier League	Juhani Honkinensto	RPS	MID	76	75	Rebalance
+1935	Karjanian Premier League	Eema Põder	RPS	DEF	76	74	Rebalance
+1935	Karjanian Premier League	Arvin Lindqvist	RPS	MID	75	74	Rebalance
+1935	Karjanian Premier League	Ezequiel Mulholland	RSR	MID	80	78	Rebalance
+1935	Karjanian Premier League	Eski Ruudanen	RSR	DEF	79	77	Rebalance
+1935	Karjanian Premier League	Kasperi Karinen	RSR	GK	78	77	Rebalance
+1935	Karjanian Premier League	Bruno Del Pino	RSR	FWD	77	76	Rebalance
+1935	Karjanian Premier League	Charle Valtterinen	RSR	FWD	77	75	Rebalance
+1935	Karjanian Premier League	Albert Pottaslainen	RSR	MID	77	75	Rebalance
+1935	Karjanian Premier League	Nemanja Petrovic	RSR	FWD	76	75	Rebalance
+1935	Karjanian Premier League	Samara Josefovic	RSR	DEF	76	75	Rebalance
+1935	Karjanian Premier League	Carl Mathiassen	RSR	DEF	75	74	Rebalance
+1935	Karjanian Premier League	Anton Lehtoranten	RSR	MID	75	72	Rebalance
+1935	Karjanian Premier League	Rautta Korpela	RSR	GK	75	74	Rebalance
+1935	Karjanian Premier League	Teemo Õunapuu	RSR	MID	74	73	Rebalance
+1935	Karjanian Premier League	Karin Tuomela	RSR	DEF	72	70	Rebalance
+1935	Karjanian Premier League	Kasper Kaljurand	SYV	MID	88	89	Rebalance
+1935	Karjanian Premier League	Lauri Purvalainen	SYV	MID	80	78	Rebalance
+1935	Karjanian Premier League	Christian Leino	SYV	GK	79	77	Rebalance
+1935	Karjanian Premier League	Henrik Kristianson	SYV	FWD	78	80	Rebalance
+1935	Karjanian Premier League	Márton Nagy	SYV	MID	78	77	Rebalance
+1935	Karjanian Premier League	Eemeli Uusitalo	SYV	DEF	78	76	Rebalance
+1935	Karjanian Premier League	Ryūhei Amamiya	SYV	MID	77	76	Rebalance
+1935	Karjanian Premier League	Santeri Helkanen	SYV	DEF	77	75	Rebalance
+1935	Karjanian Premier League	Yngvar Gustavsonn	SYV	FWD	76	77	Rebalance
+1935	Karjanian Premier League	Pekka Sihvonen	SYV	MID	76	75	Rebalance
+1935	Karjanian Premier League	Johann Falkenhayn	SYV	DEF	76	75	Rebalance
+1935	Karjanian Premier League	Teemo Højland	SYV	MID	75	72	Rebalance
+1935	Karjanian Premier League	Pietari Pietilä	TPS	MID	71	73	Rebalance
+1935	Karjanian Premier League	Raitis Saarinen	TPS	FWD	70	74	Rebalance
+1935	Karjanian Premier League	Jarmo Sillanpää	TPS	DEF	70	71	Rebalance
+1935	Karjanian Premier League	Aaro Soini	TPS	MID	69	70	Rebalance
+1935	Karjanian Premier League	Taavetti Kankkunen	TPS	MID	68	70	Rebalance
+1935	Karjanian Premier League	Luukas Väyrinen	TPS	MID	67	68	Rebalance
+1935	Karjanian Premier League	Into Kangas	TPS	MID	67	68	Rebalance
+1935	Karjanian Premier League	Portik Likkastov	TPS	DEF	67	65	Rebalance
+1935	Karjanian Premier League	Taisto Konstalainen	TPS	GK	67	69	Rebalance
+1935	Karjanian Premier League	Hermes Toivolainen	TPS	DEF	66	65	Rebalance
+1935	Karjanian Premier League	Antero Laajunen	TPS	DEF	66	69	Rebalance
+1935	Karjanian Premier League	Gerhard Inselne	TPS	DEF	66	67	Rebalance
+1935	Karjanian Premier League	Constantin Reverdin	VKS	MID	83	84	Rebalance
+1935	Karjanian Premier League	Aaro Turunen	VKS	MID	78	79	Rebalance
+1935	Karjanian Premier League	Kalle Olstalainen	VKS	DEF	78	80	Rebalance
+1935	Karjanian Premier League	Kalle Räikkönen	VKS	DEF	78	80	Rebalance
+1935	Karjanian Premier League	Robin Pärn	VKS	FWD	77	78	Rebalance
+1935	Karjanian Premier League	Pedrik Pärtel	VKS	MID	77	79	Rebalance
+1935	Karjanian Premier League	Olavi Routsalainen	VKS	DEF	77	79	Rebalance
+1935	Karjanian Premier League	Ivan Yakhontoff	VKS	MID	75	76	Rebalance
+1935	Karjanian Premier League	Aleksanteri Korhonenvaara	VKS	DEF	74	75	Rebalance
+1935	Karjanian Premier League	Sebastian Silfersparre	VKS	FWD	73	74	Rebalance
+1935	Karjanian Premier League	Sentia Ojala	VKS	GK	71	72	Rebalance
+1935	Karjanian Premier League	Günther Rajala	XIV	FWD	79	80	Rebalance
+1935	Karjanian Premier League	Roope Hietala	XIV	MID	78	79	Rebalance
+1935	Karjanian Premier League	Robin Karlsson	XIV	MID	78	79	Rebalance
+1935	Karjanian Premier League	Aaron Kumpula	XIV	DEF	77	78	Rebalance
+1935	Karjanian Premier League	Zdeno Medved	XIV	DEF	77	78	Rebalance
+1935	Karjanian Premier League	Ludvig Laaksonen	XIV	GK	77	76	Rebalance
+1935	Karjanian Premier League	Hietta Auvinen	XIV	DEF	76	75	Rebalance
+1935	Karjanian Premier League	Jaan Kuuskrand	XIV	DEF	75	74	Rebalance
+1935	Karjanian Premier League	Tazta Daryaei	XIV	GK	73	72	Rebalance
+1935	Karjanian Premier League	Taame Kankanpää	XIV	FWD	72	70	Rebalance
+1935	Karjanian Premier League	Folke Raudkalda	XIV	MID	72	73	Rebalance
+1935	Liga-ye Bālande	Suhayl Al-Marwan	BAZ	FWD	63	64	Rebalance
+1935	Liga-ye Bālande	Behnam Pasdar	BAZ	DEF	60	62	Rebalance
+1935	Liga-ye Bālande	Bardia Sorkhābi	BAZ	DEF	59	56	Rebalance
+1935	Liga-ye Bālande	Kambiz Golchin	BAZ	DEF	58	61	Rebalance
+1935	Liga-ye Bālande	Sohail Diba	BAZ	GK	57	58	Rebalance
+1935	Liga-ye Bālande	Dara Mosaffa	BAZ	DEF	56	57	Rebalance
+1935	Liga-ye Bālande	Taghi Hashemi-Far	BAZ	MID	56	58	Rebalance
+1935	Liga-ye Bālande	Reza Khorshidi	BAZ	DEF	56	55	Rebalance
+1935	Liga-ye Bālande	Orod Pourahmadi	BAZ	FWD	55	53	Rebalance
+1935	Liga-ye Bālande	Arsalan Sharif	BAZ	MID	55	56	Rebalance
+1935	Liga-ye Bālande	Jahan Radish	BAZ	MID	54	55	Rebalance
+1935	Liga-ye Bālande	Payam Esmaili	BAZ	DEF	52	50	Rebalance
+1935	Liga-ye Bālande	Carmel Waley	BDS	DEF	62	61	Rebalance
+1935	Liga-ye Bālande	Ranen Mocatta	BDS	DEF	60	61	Rebalance
+1935	Liga-ye Bālande	Jamal Al-Sayyad	BDS	DEF	59	60	Rebalance
+1935	Liga-ye Bālande	Salim Al-Bahri	BDS	GK	59	62	Rebalance
+1935	Liga-ye Bālande	Ahmad Ibn Majid	BDS	DEF	58	60	Rebalance
+1935	Liga-ye Bālande	Qais Al-Lulu	BDS	FWD	56	57	Rebalance
+1935	Liga-ye Bālande	Feivel Weizman	BDS	FWD	55	52	Rebalance
+1935	Liga-ye Bālande	Hamza Sahil	BDS	DEF	55	53	Rebalance
+1935	Liga-ye Bālande	Hilal Al-Shiraa	BDS	MID	54	55	Rebalance
+1935	Liga-ye Bālande	Zayit Bloom	BDS	MID	53	52	Rebalance
+1935	Liga-ye Bālande	Ammar Al-Shabak	BDS	MID	53	50	Rebalance
+1935	Liga-ye Bālande	Tariq Al-Nawti	BDS	MID	52	54	Rebalance
+1935	Liga-ye Bālande	Faris Qarib	BDS	GK	52	53	Rebalance
+1935	Liga-ye Bālande	Aitan Sassoon	BDS	MID	51	53	Rebalance
+1935	Liga-ye Bālande	Sepehr Qaleb	BOL	FWD	60	59	Rebalance
+1935	Liga-ye Bālande	Milad Sarboland	BOL	FWD	58	54	Rebalance
+1935	Liga-ye Bālande	Mehran Degdan	BOL	DEF	58	57	Rebalance
+1935	Liga-ye Bālande	Hooman Parvareh	BOL	MID	57	59	Rebalance
+1935	Liga-ye Bālande	Nima Tasfiyeh	BOL	DEF	57	56	Rebalance
+1935	Liga-ye Bālande	Peyman Neybor	BOL	MID	56	55	Rebalance
+1935	Liga-ye Bālande	Kaveh Boluri	BOL	DEF	56	58	Rebalance
+1935	Liga-ye Bālande	Sohrab Palayesh	BOL	GK	55	53	Rebalance
+1935	Liga-ye Bālande	Farshad Qand	BOL	DEF	55	57	Rebalance
+1935	Liga-ye Bālande	Omid Shakari	BOL	FWD	54	55	Rebalance
+1935	Liga-ye Bālande	Vahid Shekarriz	BOL	MID	54	55	Rebalance
+1935	Liga-ye Bālande	Ramin Degchi	BOL	MID	53	52	Rebalance
+1935	Liga-ye Bālande	Arash Nabat	BOL	DEF	52	53	Rebalance
+1935	Liga-ye Bālande	Payam Joshan	BOL	GK	51	50	Rebalance
+1935	Liga-ye Bālande	Tirdad Behdād	DAN	FWD	64	62	Rebalance
+1935	Liga-ye Bālande	Nikan Mehrāzar	DAN	FWD	64	61	Rebalance
+1935	Liga-ye Bālande	Delshad Ostāadi	DAN	MID	60	62	Rebalance
+1935	Liga-ye Bālande	Anoush Sadeghi-Pour	DAN	MID	59	60	Rebalance
+1935	Liga-ye Bālande	Danial Raad	DAN	DEF	59	57	Rebalance
+1935	Liga-ye Bālande	Farzin Roshani	DAN	FWD	58	59	Rebalance
+1935	Liga-ye Bālande	Jahangir Keramati	DAN	GK	58	57	Rebalance
+1935	Liga-ye Bālande	Shervin Shojaii	DAN	DEF	58	57	Rebalance
+1935	Liga-ye Bālande	Navid Mirzaii	DAN	DEF	53	52	Rebalance
+1935	Liga-ye Bālande	Ehsan Vahdat	DAN	MID	51	50	Rebalance
+1935	Liga-ye Bālande	Orod Daryāei	DAN	FWD	50	53	Rebalance
+1935	Liga-ye Bālande	Khashayar Barzkuh	DFK	DEF	63	59	Rebalance
+1935	Liga-ye Bālande	Vishtasp Taftan	DFK	DEF	62	61	Rebalance
+1935	Liga-ye Bālande	Zavareh Tirandaz	DFK	FWD	60	62	Rebalance
+1935	Liga-ye Bālande	Goshtasp Ahangar	DFK	DEF	60	59	Rebalance
+1935	Liga-ye Bālande	Bozorgmehr Damavand	DFK	DEF	59	57	Rebalance
+1935	Liga-ye Bālande	Iman Kandan	DFK	FWD	57	59	Rebalance
+1935	Liga-ye Bālande	Mardavij Tabar	DFK	FWD	56	57	Rebalance
+1935	Liga-ye Bālande	Narsi Polad	DFK	DEF	55	56	Rebalance
+1935	Liga-ye Bālande	Ragheb Sangvar	DFK	GK	54	55	Rebalance
+1935	Liga-ye Bālande	Kambakhsh Avaz	DFK	MID	53	55	Rebalance
+1935	Liga-ye Bālande	Piruz Shirkuh	DFK	MID	53	50	Rebalance
+1935	Liga-ye Bālande	Titus Hochberg	FOU	DEF	74	75	Rebalance
+1935	Liga-ye Bālande	Shervin Pournejad	FOU	MID	63	64	Rebalance
+1935	Liga-ye Bālande	Tourang Soltani-Pour	FOU	FWD	58	57	Rebalance
+1935	Liga-ye Bālande	Hormoz Mottaghi	FOU	GK	58	60	Rebalance
+1935	Liga-ye Bālande	Behrad Pakuh	FOU	MID	58	60	Rebalance
+1935	Liga-ye Bālande	Afshin Lakzāyi	FOU	MID	57	58	Rebalance
+1935	Liga-ye Bālande	Farbod Ghaderi	FOU	FWD	56	57	Rebalance
+1935	Liga-ye Bālande	Danial Meskini	FOU	DEF	56	57	Rebalance
+1935	Liga-ye Bālande	Kian Abdi	FOU	DEF	55	56	Rebalance
+1935	Liga-ye Bālande	Kaveh Mohebi	FOU	MID	54	56	Rebalance
+1935	Liga-ye Bālande	Jahid Hajati	FOU	MID	52	53	Rebalance
+1935	Liga-ye Bālande	Ehsan Sarbāzi	FOU	FWD	50	51	Rebalance
+1935	Liga-ye Bālande	Kamyar Tarokh	KEM	GK	61	58	Rebalance
+1935	Liga-ye Bālande	Arman Daneshmand	KEM	DEF	55	57	Rebalance
+1935	Liga-ye Bālande	Farbod Kalami	KEM	FWD	54	55	Rebalance
+1935	Liga-ye Bālande	Bahador Roshanfekr	KEM	DEF	54	51	Rebalance
+1935	Liga-ye Bālande	Tourang Maqāli	KEM	MID	53	55	Rebalance
+1935	Liga-ye Bālande	Setareh Radahn	KEM	DEF	53	50	Rebalance
+1935	Liga-ye Bālande	Shahriar Daftari	KEM	MID	52	50	Rebalance
+1935	Liga-ye Bālande	Orod Vāzhe	KEM	FWD	51	48	Rebalance
+1935	Liga-ye Bālande	Mehrzad Zamani	KEM	FWD	50	49	Rebalance
+1935	Liga-ye Bālande	Jahan Shokoufeh	KEM	MID	49	46	Rebalance
+1935	Liga-ye Bālande	Varshasb Tarjomāni	KEM	GK	49	48	Rebalance
+1935	Liga-ye Bālande	Ibrahim Jammal	KRV	DEF	58	60	Rebalance
+1935	Liga-ye Bālande	Ibn Battuta	KRV	FWD	54	52	Rebalance
+1935	Liga-ye Bālande	Hilal Al-Qafila	KRV	DEF	54	52	Rebalance
+1935	Liga-ye Bālande	Dhiyab Marhala	KRV	DEF	53	54	Rebalance
+1935	Liga-ye Bālande	Salih Al-Rawiya	KRV	DEF	52	49	Rebalance
+1935	Liga-ye Bālande	Awad Al-Waha	KRV	DEF	49	47	Rebalance
+1935	Liga-ye Bālande	Ghanim Al-Khan	KRV	MID	48	45	Rebalance
+1935	Liga-ye Bālande	Turki Miqbas	KRV	GK	48	49	Rebalance
+1935	Liga-ye Bālande	Salman Al-Samm	KRV	MID	46	44	Rebalance
+1935	Liga-ye Bālande	Mutlaq Bayda	KRV	MID	45	46	Rebalance
+1935	Liga-ye Bālande	Saqr Al-Dana	MVA	MID	59	58	Rebalance
+1935	Liga-ye Bālande	Hamdan Majra	MVA	MID	57	55	Rebalance
+1935	Liga-ye Bālande	Sultan Al-Safa	MVA	FWD	54	51	Rebalance
+1935	Liga-ye Bālande	Khalaf Al-Hassat	MVA	GK	54	57	Rebalance
+1935	Liga-ye Bālande	Suwayd Mahhar	MVA	DEF	54	55	Rebalance
+1935	Liga-ye Bālande	Juma Tawwash	MVA	DEF	53	52	Rebalance
+1935	Liga-ye Bālande	Darwish Sahil	MVA	MID	53	52	Rebalance
+1935	Liga-ye Bālande	Rashid Al-Buri	MVA	DEF	52	53	Rebalance
+1935	Liga-ye Bālande	Rashed Mashta	MVA	FWD	51	50	Rebalance
+1935	Liga-ye Bālande	Mubarak Al-Khayt	MVA	GK	50	51	Rebalance
+1935	Liga-ye Bālande	Hamed Najafi	SRD	FWD	68	70	Rebalance
+1935	Liga-ye Bālande	Sohrab Khalidi	SRD	MID	63	62	Rebalance
+1935	Liga-ye Bālande	Mansour Rayegan	SRD	FWD	62	60	Rebalance
+1935	Liga-ye Bālande	Dariush Karim-Pour	SRD	MID	62	60	Rebalance
+1935	Liga-ye Bālande	Rostam Mansouri	SRD	DEF	62	65	Rebalance
+1935	Liga-ye Bālande	Behnam Hassan-Zadeh	SRD	MID	61	59	Rebalance
+1935	Liga-ye Bālande	Ardeshir Faisali	SRD	MID	60	61	Rebalance
+1935	Liga-ye Bālande	Bahman Parastui	SRD	GK	60	62	Rebalance
+1935	Liga-ye Bālande	Mehrdad Hashemi	SRD	DEF	60	55	Rebalance
+1935	Liga-ye Bālande	Kambiz Yektabar	SRD	DEF	59	58	Rebalance
+1935	Liga-ye Bālande	Nariman Behnoush	SRD	GK	58	59	Rebalance
+1935	Liga-ye Bālande	Ehsan Yektai-Far	SRD	MID	54	56	Rebalance
+1935	Liga-ye Bālande	Manuchehr Behdad	SRD	DEF	53	55	Rebalance
+1935	Liga-ye Bālande	Faramarz Qaderi	SRD	MID	52	53	Rebalance
+1935	Liga-ye Bālande	Orbalaye Mohammadi	SRD	FWD	51	48	Rebalance
+1935	Liga-ye Bālande	Idris Katib	TAR	GK	62	63	Rebalance
+1935	Liga-ye Bālande	Muthanna Rasif	TAR	FWD	61	62	Rebalance
+1935	Liga-ye Bālande	Hunayn Ibn Ishaq	TAR	MID	61	63	Rebalance
+1935	Liga-ye Bālande	Munir Mizan	TAR	DEF	59	61	Rebalance
+1935	Liga-ye Bālande	Hazim Wazzan	TAR	MID	58	57	Rebalance
+1935	Liga-ye Bālande	Sabah Jumruk	TAR	DEF	58	61	Rebalance
+1935	Liga-ye Bālande	Sayf Al-Hammal	TAR	FWD	57	59	Rebalance
+1935	Liga-ye Bālande	Ubayd Al-Daftar	TAR	MID	57	58	Rebalance
+1935	Liga-ye Bālande	Rafiq Al-Qayd	TAR	MID	56	58	Rebalance
+1935	Liga-ye Bālande	Talib Barid	TAR	MID	55	56	Rebalance
+1935	Liga-ye Bālande	Ghassan Al-Tabi	TAR	MID	54	55	Rebalance
+1935	Liga-ye Bālande	Wasim Makhzan	TAR	FWD	53	55	Rebalance
+1935	Liga-ye Bālande	Keyvan Rahnavard	TND	GK	63	62	Rebalance
+1935	Liga-ye Bālande	Iraj Shahvand	TND	DEF	63	62	Rebalance
+1935	Liga-ye Bālande	Garshasp Bonyadi	TND	DEF	62	64	Rebalance
+1935	Liga-ye Bālande	Mihran Dastgerd	TND	DEF	61	60	Rebalance
+1935	Liga-ye Bālande	Ardavan Poladvand	TND	MID	61	59	Rebalance
+1935	Liga-ye Bālande	Sanjar Hamrah	TND	MID	60	61	Rebalance
+1935	Liga-ye Bālande	Qobad Zarrinkafsh	TND	DEF	60	61	Rebalance
+1935	Liga-ye Bālande	Narseh Mostowfi	TND	MID	59	57	Rebalance
+1935	Liga-ye Bālande	Borzu Yekrang	TND	MID	58	56	Rebalance
+1935	Liga-ye Bālande	Farrokh Andisheh	TND	MID	57	56	Rebalance
+1935	Liga-ye Bālande	Karan Shateri	TND	MID	57	58	Rebalance
+1935	Liga-ye Bālande	Omah Azir	TND	FWD	56	55	Rebalance
+1935	Liga-ye Bālande	Simak Paydar	TND	DEF	56	55	Rebalance
+1935	Liga-ye Bālande	Yazdan Sarband	TND	GK	55	56	Rebalance
+1935	Liga-ye Bālande	Tus Gerayeli	TND	MID	54	56	Rebalance
+1935	Liga-ye Bālande	Dadmehr Khatti	TND	FWD	53	56	Rebalance
+1935	Liga-ye Mellī	Kasra Sharareh	AHA	FWD	62	60	Rebalance
+1935	Liga-ye Mellī	Hossein Sina	AHA	MID	60	58	Rebalance
+1935	Liga-ye Mellī	Yashar Niroomand	AHA	DEF	59	56	Rebalance
+1935	Liga-ye Mellī	Kian Forough	AHA	GK	59	58	Rebalance
+1935	Liga-ye Mellī	Sina Partow	AHA	DEF	59	56	Rebalance
+1935	Liga-ye Mellī	Parsa Taabesh	AHA	FWD	58	60	Rebalance
+1935	Liga-ye Mellī	Bahador Afruz	AHA	DEF	58	55	Rebalance
+1935	Liga-ye Mellī	Artin Barqi	AHA	MID	58	59	Rebalance
+1935	Liga-ye Mellī	Farzin Simkesh	AHA	DEF	58	57	Rebalance
+1935	Liga-ye Mellī	Behrouz Simband	AHA	DEF	55	56	Rebalance
+1935	Liga-ye Mellī	Mani Cheragh	AHA	GK	54	56	Rebalance
+1935	Liga-ye Mellī	Soheil Germai	AHA	MID	54	55	Rebalance
+1935	Liga-ye Mellī	Rasoul Atash	AHA	FWD	54	52	Rebalance
+1935	Liga-ye Mellī	Miklós Nagy	AZA	GK	84	81	Rebalance
+1935	Liga-ye Mellī	Farhad Adelstein	AZA	FWD	73	74	Rebalance
+1935	Liga-ye Mellī	Sohrab Bozorgi	AZA	DEF	70	68	Rebalance
+1935	Liga-ye Mellī	Bijan Shakibaii	AZA	MID	69	71	Rebalance
+1935	Liga-ye Mellī	Nariman Freydooni	AZA	MID	66	69	Rebalance
+1935	Liga-ye Mellī	Manuchehr Khorrami	AZA	DEF	63	65	Rebalance
+1935	Liga-ye Mellī	Kamran Vakili	AZA	DEF	62	65	Rebalance
+1935	Liga-ye Mellī	Peyman Forouzandeh	AZA	DEF	55	54	Rebalance
+1935	Liga-ye Mellī	Omid Khoshnam	AZA	FWD	53	54	Rebalance
+1935	Liga-ye Mellī	Esfandiar Rouintan	AZA	MID	52	50	Rebalance
+1935	Liga-ye Mellī	Siavash Mehrian	DAR	MID	76	79	Rebalance
+1935	Liga-ye Mellī	Yuto Ōtani	DAR	FWD	75	74	Rebalance
+1935	Liga-ye Mellī	Parviz Tahmasb	DAR	DEF	75	77	Rebalance
+1935	Liga-ye Mellī	Valterri Lehtonen	DAR	FWD	74	73	Rebalance
+1935	Liga-ye Mellī	Dariush Karimi	DAR	FWD	70	71	Rebalance
+1935	Liga-ye Mellī	Sasan Bayat	DAR	MID	68	67	Rebalance
+1935	Liga-ye Mellī	Fereydoun Vatankhah	DAR	MID	67	64	Rebalance
+1935	Liga-ye Mellī	Bahram Aliabadi	DAR	MID	65	64	Rebalance
+1935	Liga-ye Mellī	Arash Davidi	DAR	DEF	64	65	Rebalance
+1935	Liga-ye Mellī	Hushang Mansour	DAR	DEF	62	61	Rebalance
+1935	Liga-ye Mellī	Esfandiar Hajipour	DAR	MID	52	53	Rebalance
+1935	Liga-ye Mellī	Omid Ghorbani	DAR	FWD	51	52	Rebalance
+1935	Liga-ye Mellī	Tourang Khānlari	DGD	MID	69	70	Rebalance
+1935	Liga-ye Mellī	Kianoush Bahari	DGD	DEF	68	71	Rebalance
+1935	Liga-ye Mellī	Davoud Kheybari	DGD	MID	68	69	Rebalance
+1935	Liga-ye Mellī	Jahanbakhsh Pahlavāni	DGD	MID	66	67	Rebalance
+1935	Liga-ye Mellī	Navid Lofti	DGD	MID	63	62	Rebalance
+1935	Liga-ye Mellī	Emad Askari	DGD	MID	62	65	Rebalance
+1935	Liga-ye Mellī	Hushmand Qajar	DGD	DEF	61	59	Rebalance
+1935	Liga-ye Mellī	Ehsan Mokhtari	DGD	MID	53	54	Rebalance
+1935	Liga-ye Mellī	Kaveh Rezghi	EST	MID	72	71	Rebalance
+1935	Liga-ye Mellī	Zareen Fahrzan	EST	FWD	69	70	Rebalance
+1935	Liga-ye Mellī	Mohammad Reza Pahlavi	EST	DEF	65	63	Rebalance
+1935	Liga-ye Mellī	Kourosh Abedi	EST	DEF	63	62	Rebalance
+1935	Liga-ye Mellī	Fardin Mehrgan	EST	FWD	62	61	Rebalance
+1935	Liga-ye Mellī	Arsalan Kheybari	EST	MID	61	60	Rebalance
+1935	Liga-ye Mellī	Sohrab Gandomzar	EST	MID	60	57	Rebalance
+1935	Liga-ye Mellī	Milad Khoraki	EST	DEF	60	61	Rebalance
+1935	Liga-ye Mellī	Obaid Yektai	EST	FWD	59	60	Rebalance
+1935	Liga-ye Mellī	Pouria Sahrāyi	EST	DEF	54	55	Rebalance
+1935	Liga-ye Mellī	Jahan Sarafrāz	EST	MID	53	54	Rebalance
+1935	Liga-ye Mellī	Antaei Djurunga	HOM	DEF	72	73	Rebalance
+1935	Liga-ye Mellī	Sina Parandeh	HOM	FWD	67	69	Rebalance
+1935	Liga-ye Mellī	Abbas Firnas	HOM	FWD	66	67	Rebalance
+1935	Liga-ye Mellī	Shahram Tizpar	HOM	FWD	62	63	Rebalance
+1935	Liga-ye Mellī	Artin Oqab	HOM	FWD	61	63	Rebalance
+1935	Liga-ye Mellī	Arya Badpa	HOM	GK	58	60	Rebalance
+1935	Liga-ye Mellī	Nima Parvaneh	HOM	DEF	58	59	Rebalance
+1935	Liga-ye Mellī	Farzad Charkh	HOM	MID	57	58	Rebalance
+1935	Liga-ye Mellī	Aryan Shahpar	HOM	MID	57	58	Rebalance
+1935	Liga-ye Mellī	Yashar Balparan	HOM	FWD	55	58	Rebalance
+1935	Liga-ye Mellī	Behrouz Charhzan	HOM	MID	55	56	Rebalance
+1935	Liga-ye Mellī	Mani Aseman	HOM	GK	54	55	Rebalance
+1935	Liga-ye Mellī	Erik Ratas	MEH	GK	69	70	Rebalance
+1935	Liga-ye Mellī	Nikan Ostūri	MEH	FWD	68	72	Rebalance
+1935	Liga-ye Mellī	Tourang Asyaban	MEH	MID	64	65	Rebalance
+1935	Liga-ye Mellī	Shahin Cyrusi	MEH	MID	63	61	Rebalance
+1935	Liga-ye Mellī	Jahan Mashayekhi	MEH	FWD	62	64	Rebalance
+1935	Liga-ye Mellī	Arman Spahani	MEH	DEF	58	59	Rebalance
+1935	Liga-ye Mellī	Mazyar Sasanian	MEH	DEF	58	61	Rebalance
+1935	Liga-ye Mellī	Farzam Kavehgar	MEH	MID	57	60	Rebalance
+1935	Liga-ye Mellī	Bardia Mehrjui	MEH	MID	57	60	Rebalance
+1935	Liga-ye Mellī	Ramtin Avestani	MEH	DEF	57	61	Rebalance
+1935	Liga-ye Mellī	Darab Pāriguri	MEH	DEF	56	57	Rebalance
+1935	Liga-ye Mellī	Jamshid Khordadi	MEH	DEF	53	55	Rebalance
+1935	Liga-ye Mellī	Ehsan Yazdgardi	MEH	MID	52	54	Rebalance
+1935	Liga-ye Mellī	Orod Pāriduyani	MEH	MID	51	52	Rebalance
+1935	Liga-ye Mellī	Houman Tirgan	MEH	FWD	50	53	Rebalance
+1935	Liga-ye Mellī	Renji Yamase	NAQ	MID	69	70	Rebalance
+1935	Liga-ye Mellī	Artin Darbaf	NAQ	MID	68	69	Rebalance
+1935	Liga-ye Mellī	Omar Khayyam	NAQ	MID	68	67	Rebalance
+1935	Liga-ye Mellī	Yashar Shaneh	NAQ	MID	66	65	Rebalance
+1935	Liga-ye Mellī	Sina Gereh	NAQ	FWD	63	62	Rebalance
+1935	Liga-ye Mellī	Shahram Tarhkar	NAQ	DEF	62	63	Rebalance
+1935	Liga-ye Mellī	Siamak Golbaf	NAQ	GK	62	61	Rebalance
+1935	Liga-ye Mellī	Mani Naqshband	NAQ	MID	61	62	Rebalance
+1935	Liga-ye Mellī	Arsham Nakhris	NAQ	DEF	59	58	Rebalance
+1935	Liga-ye Mellī	Soheil Chelesh	NAQ	MID	57	56	Rebalance
+1935	Liga-ye Mellī	Aryan Pardeh	NAQ	GK	55	56	Rebalance
+1935	Liga-ye Mellī	Kenneth Haugland	NSR	DEF	85	80	Rebalance
+1935	Liga-ye Mellī	Raleigh Preston	NSR	FWD	80	79	Rebalance
+1935	Liga-ye Mellī	Kōhei Gushiken	NSR	DEF	77	74	Rebalance
+1935	Liga-ye Mellī	Silas Davis	NSR	MID	77	74	Rebalance
+1935	Liga-ye Mellī	Loïc Kervadec	NSR	MID	77	76	Rebalance
+1935	Liga-ye Mellī	Ziyad Subaie	NSR	MID	75	70	Rebalance
+1935	Liga-ye Mellī	Faisal Al-Dosari	NSR	GK	68	69	Rebalance
+1935	Liga-ye Mellī	Jaadallah El-Farid	NSR	MID	65	64	Rebalance
+1935	Liga-ye Mellī	Turki Ibn Shammari	NSR	DEF	64	63	Rebalance
+1935	Liga-ye Mellī	Mishal Malki	NSR	MID	62	58	Rebalance
+1935	Liga-ye Mellī	Majed Al-Otaibi	NSR	DEF	62	58	Rebalance
+1935	Liga-ye Mellī	Yazeed Al-Braik	NSR	FWD	61	60	Rebalance
+1935	Liga-ye Mellī	Badr Yami	NSR	MID	60	62	Rebalance
+1935	Liga-ye Mellī	Waleed Al-Anazi	NSR	GK	60	59	Rebalance
+1935	Liga-ye Mellī	Fawaz Amri	NSR	DEF	59	58	Rebalance
+1935	Liga-ye Mellī	Vahid Lorestani	PAS	GK	86	87	Rebalance
+1935	Liga-ye Mellī	Ashkan Mahdavi	PAS	FWD	82	83	Rebalance
+1935	Liga-ye Mellī	Eskandar Dehghan	PAS	DEF	76	80	Rebalance
+1935	Liga-ye Mellī	Sōta Wakatsuki	PAS	MID	75	79	Rebalance
+1935	Liga-ye Mellī	Vahram Nouri	PAS	FWD	68	66	Rebalance
+1935	Liga-ye Mellī	Mohsen Tabrizi	PAS	DEF	68	70	Rebalance
+1935	Liga-ye Mellī	Nader Daneshi	PAS	FWD	67	66	Rebalance
+1935	Liga-ye Mellī	Behzad Pourmehrdad	PAS	MID	66	62	Rebalance
+1935	Liga-ye Mellī	Hormoz Ershadi	PAS	MID	66	64	Rebalance
+1935	Liga-ye Mellī	Sohrab Karimzadeh	PAS	DEF	64	63	Rebalance
+1935	Liga-ye Mellī	Reza Mozaffari	PAS	DEF	63	64	Rebalance
+1935	Liga-ye Mellī	Naif Khaldi	SHU	FWD	67	66	Rebalance
+1935	Liga-ye Mellī	Khalid Al-Sahli	SHU	DEF	64	62	Rebalance
+1935	Liga-ye Mellī	Adel Al-Dakhil	SHU	MID	64	63	Rebalance
+1935	Liga-ye Mellī	Muhannad Al-Raml	SHU	MID	63	62	Rebalance
+1935	Liga-ye Mellī	Omar Tamimi	SHU	FWD	63	61	Rebalance
+1935	Liga-ye Mellī	Saud Nakhli	SHU	GK	62	64	Rebalance
+1935	Liga-ye Mellī	Zaid Al-Hazmi	SHU	MID	62	61	Rebalance
+1935	Liga-ye Mellī	Yousef Al-Marri	SHU	DEF	61	62	Rebalance
+1935	Liga-ye Mellī	Ali Al-Shuaibi	SHU	GK	60	61	Rebalance
+1935	Liga-ye Mellī	Ammar Al-Baqami	SHU	MID	60	61	Rebalance
+1935	Liga-ye Mellī	Osama Al-Najem	SHU	FWD	59	60	Rebalance
+1935	Liga-ye Mellī	Takeru Mikado	SKH	MID	83	81	Rebalance
+1935	Liga-ye Mellī	Alex Kaczmarek	SKH	FWD	79	78	Rebalance
+1935	Liga-ye Mellī	Kai Ouyang	SKH	GK	79	78	Rebalance
+1935	Liga-ye Mellī	Tole-Buqa Inalchi	SKH	MID	77	75	Rebalance
+1935	Liga-ye Mellī	Ryōhei Iwakuma	SKH	DEF	75	74	Rebalance
+1935	Liga-ye Mellī	Ardalan Danesh	SKH	DEF	74	73	Rebalance
+1935	Liga-ye Mellī	Mehran Shahi	SKH	MID	73	71	Rebalance
+1935	Liga-ye Mellī	Rintarō Kiyomizu	SKH	DEF	73	71	Rebalance
+1935	Liga-ye Mellī	Kaveh Bahmani	SKH	FWD	67	66	Rebalance
+1935	Liga-ye Mellī	Parviz Ghaderi	SKH	FWD	65	64	Rebalance
+1935	Liga-ye Mellī	Farzin Khosravi	SKH	GK	61	62	Rebalance
+1935	Liga-ye Mellī	Nima Sarmast	SKH	DEF	56	53	Rebalance
+1935	nl1	Merkurios Kudanbes	ASH	DEF	80	81	Rebalance
+1935	nl1	Asahi Nishioka	ASH	FWD	78	80	Rebalance
+1935	nl1	Ignazio Esposito	ASH	MID	77	78	Rebalance
+1935	nl1	Tomoki Iwabuchi	ASH	MID	76	77	Rebalance
+1935	nl1	Sōta Kuribayashi	ASH	GK	76	77	Rebalance
+1935	nl1	Fionn Larraghy	ASH	MID	75	76	Rebalance
+1935	nl1	Goshi Suganuma	ASH	DEF	75	76	Rebalance
+1935	nl1	Bjarke Lindqvist	ASH	DEF	75	74	Rebalance
+1935	nl1	Tsuyoshi Mikuriya	ASH	DEF	74	75	Rebalance
+1935	nl1	Tōichirō Kaneshiro	ASH	FWD	73	74	Rebalance
+1935	nl1	Jean-Luc Moreau	ASH	MID	73	71	Rebalance
+1935	nl1	Percival Graves	ASH	MID	73	72	Rebalance
+1935	nl1	Rémi Gauthier	AYA	FWD	87	86	Rebalance
+1935	nl1	Étienne Trieu	AYA	MID	86	88	Rebalance
+1935	nl1	Gen Fija	AYA	DEF	86	88	Rebalance
+1935	nl1	Makisig Liwanag	AYA	MID	82	85	Rebalance
+1935	nl1	Toma Shimabukuro	AYA	GK	82	85	Rebalance
+1935	nl1	Anton Kaasik	AYA	MID	79	80	Rebalance
+1935	nl1	Tsuyoshi Tsukimori	AYA	DEF	77	78	Rebalance
+1935	nl1	Kōhei Asamura	AYA	FWD	75	77	Rebalance
+1935	nl1	Hayate Shirakawa	AYA	DEF	75	76	Rebalance
+1935	nl1	Rikiya Kawashiri	AYA	DEF	73	71	Rebalance
+1935	nl1	Kōzō Fujise	DYM	DEF	90	89	Rebalance
+1935	nl1	Kendrick Nakai	DYM	MID	82	80	Rebalance
+1935	nl1	Magnus Andersson	CSR	GK	82	81	Rebalance
+1935	nl1	Walter Thurmund III	DYM	MID	81	79	Rebalance
+1935	nl1	Pedram Nazeri	DYM	MID	80	82	Rebalance
+1935	nl1	Yoru Shirase	DYM	MID	80	81	Rebalance
+1935	nl1	Igor Novikov	CSR	MID	80	79	Rebalance
+1935	nl1	Seishirō Amane	DYM	DEF	80	78	Rebalance
+1935	nl1	Anoup Ptahmose	FCH	MID	83	86	Rebalance
+1935	nl1	Akihisa Kubo	FCH	GK	83	80	Rebalance
+1935	nl1	Daulat Siregar	FCH	FWD	81	82	Rebalance
+1935	nl1	Voptá Hendá	FCH	FWD	78	81	Rebalance
+1935	nl1	Baldomero Quintana	FCH	FWD	78	77	Rebalance
+1935	nl1	Melvyn Raes	FCH	MID	76	77	Rebalance
+1935	nl1	Yūdai Tōjō	FCH	DEF	76	75	Rebalance
+1935	nl1	Yūma Shindō	FCH	FWD	74	75	Rebalance
+1935	nl1	Trent Hawthorne	ISS	FWD	93	92	Rebalance
+1935	nl1	Yerrin Chindura	ISS	MID	87	88	Rebalance
+1935	nl1	Kiyoshi Torigoe	ISS	MID	86	84	Rebalance
+1935	nl1	Ludovic Mercadier	ISS	GK	83	82	Rebalance
+1935	nl1	Naoto Umenokōji	ISS	DEF	82	81	Rebalance
+1935	nl1	Nicolas Bellamy	ISS	DEF	80	79	Rebalance
+1935	nl1	Keigo Machida	ISS	DEF	79	78	Rebalance
+1935	nl1	Rhys Warwick	ISS	MID	77	76	Rebalance
+1935	nl1	Jacinto Valencia	ISS	DEF	77	76	Rebalance
+1935	nl1	Volkan Arslan	ISS	GK	77	78	Rebalance
+1935	nl1	Kōtarō Unno	KAM	FWD	80	79	Rebalance
+1935	nl1	Shintarō Katahira	KAM	DEF	79	81	Rebalance
+1935	nl1	Rachid Ouédraogo	KAM	MID	78	76	Rebalance
+1935	nl1	Thibault Verschueren	KAM	FWD	77	76	Rebalance
+1935	nl1	Ryūtarō Washio	KAM	MID	75	76	Rebalance
+1935	nl1	Iñigo Arrizabalaga	KAM	DEF	74	73	Rebalance
+1935	nl1	Jenő Németh	KAM	DEF	73	75	Rebalance
+1935	nl1	Shūji Kannazuki	KAN	GK	79	80	Rebalance
+1935	nl1	Ander Zubikarai	KAN	FWD	78	80	Rebalance
+1935	nl1	Niccolò Donizetti	KAN	MID	77	79	Rebalance
+1935	nl1	Heikki Kovalainen	KAN	DEF	77	79	Rebalance
+1935	nl1	Cesare Bottinelli	KAN	MID	76	78	Rebalance
+1935	nl1	Shigematsu Sato	KAN	FWD	75	78	Rebalance
+1935	nl1	Erdem Polat	KAN	DEF	74	76	Rebalance
+1935	nl1	Eliezer Bansa	KAN	MID	74	77	Rebalance
+1935	nl1	Sagip Gatmaitan	KAN	DEF	74	73	Rebalance
+1935	nl1	Ryōhei Ikegaya	KAN	DEF	73	75	Rebalance
+1935	nl1	Kanata Murakumo	KAN	MID	73	75	Rebalance
+1935	nl1	Sadao Garabin	KAN	MID	71	69	Rebalance
+1935	nl1	Muzaffer Doğan	KOS	DEF	80	77	Rebalance
+1935	nl1	Susumu Kikkawa	KOS	DEF	77	75	Rebalance
+1935	nl1	Dvir Alon	KOS	MID	75	77	Rebalance
+1935	nl1	Ippei Sawaki	KOS	MID	75	76	Rebalance
+1935	nl1	Kenzō Fujinami	KOS	GK	75	73	Rebalance
+1935	nl1	Mizuki Hoshizaki	KOS	MID	74	75	Rebalance
+1935	nl1	Naohiro Shiina	KOS	DEF	74	75	Rebalance
+1935	nl1	Tsukasa Nirei	KOS	GK	71	70	Rebalance
+1935	nl1	Kakha Kvernadze	VIR	MID	86	83	Rebalance
+1935	nl1	Andrea Ferrari	SPK	DEF	81	78	Rebalance
+1935	nl1	Kemar Browner	SPK	MID	81	79	Rebalance
+1935	nl1	Eito Dōmeki	MAK	MID	78	77	Rebalance
+1935	nl1	Ryūnosuke Chimura	MAK	GK	78	75	Rebalance
+1935	nl1	Rúben Guerreiro	MAK	FWD	77	76	Rebalance
+1935	nl1	Sōma Kirizuka	DYM	MID	77	74	Rebalance
+1935	nl1	Vladimír Králik	DYM	DEF	77	78	Rebalance
+1935	nl1	Kacper Dembiński	MAK	MID	76	75	Rebalance
+1935	nl1	Taishi Inomata	MAK	DEF	76	75	Rebalance
+1935	nl1	Bastien Shengelia	DYM	FWD	74	73	Rebalance
+1935	nl1	Mirko Begović	MAK	DEF	72	74	Rebalance
+1935	nl1	Eisuke Sato	NAG	GK	85	82	Rebalance
+1935	nl1	Sviatoslav Boyko	NAG	MID	84	85	Rebalance
+1935	nl1	József Antall	NAG	FWD	83	82	Rebalance
+1935	nl1	Sheng Huang	NAG	MID	81	82	Rebalance
+1935	nl1	Valente Pantuso	NAG	DEF	79	80	Rebalance
+1935	nl1	Tetsuya Mibu	NAG	MID	79	80	Rebalance
+1935	nl1	Umberto Bellarmino	NAG	MID	78	79	Rebalance
+1935	nl1	Maxime Vaillancourt	NAG	MID	78	79	Rebalance
+1935	nl1	Takeru Nakandakari	NIK	DEF	80	81	Rebalance
+1935	nl1	Drake Kessler	NIK	MID	79	78	Rebalance
+1935	nl1	Cristian Urdaneta	NIK	DEF	78	79	Rebalance
+1935	nl1	Torbjørn Kvamme	NIK	MID	78	79	Rebalance
+1935	nl1	Parnell Chee	NIK	GK	77	78	Rebalance
+1935	nl1	Sarp Sayda	NIK	DEF	76	75	Rebalance
+1935	nl1	Robert Berthold	NIK	FWD	75	76	Rebalance
+1935	nl1	Renpei Shimotsuma	NIK	DEF	74	75	Rebalance
+1935	nl1	Junichiro Tarugara	NIK	MID	74	75	Rebalance
+1935	nl1	Ganzorig Erdene	ORU	FWD	90	91	Rebalance
+1935	nl1	Amgalanbaatar Sükh	ORU	DEF	80	82	Rebalance
+1935	nl1	Tömörbaatar Ganzorig	ORU	DEF	79	82	Rebalance
+1935	nl1	Arslanbaatar Ganbold	ORU	MID	78	82	Rebalance
+1935	nl1	Od-Erdene Tsakhia	ORU	GK	77	78	Rebalance
+1935	nl1	Chinbat Oyuunbileg	ORU	DEF	76	75	Rebalance
+1935	nl1	Yūdai Kaminaga	ORU	FWD	74	73	Rebalance
+1935	nl1	Chaghagan Uua Uder	ORU	MID	74	75	Rebalance
+1935	nl1	Sōta Washizu	ORU	DEF	74	75	Rebalance
+1935	nl1	Durí Karí	SAT	MID	83	84	Rebalance
+1935	nl1	Siim Kallasmaa	SAT	MID	78	79	Rebalance
+1935	nl1	Zvonimir Pašalić	SAT	MID	78	77	Rebalance
+1935	nl1	Kōsei Habara	SAT	DEF	78	77	Rebalance
+1935	nl1	Sélim Bouziane	SAT	DEF	78	77	Rebalance
+1935	nl1	Sōshi Nagumo	SAT	MID	77	76	Rebalance
+1935	nl1	Yūgo Arashiyama	SAT	GK	77	76	Rebalance
+1935	nl1	Tamer Khalil	SAT	MID	75	71	Rebalance
+1935	nl1	Yaqub Ghattas	SAT	MID	74	72	Rebalance
+1935	nl1	Yavuz Koç	SHM	FWD	82	79	Rebalance
+1935	nl1	Gunther Hellams	SHM	DEF	78	79	Rebalance
+1935	nl1	Rasmus Karlssen	SHM	FWD	77	78	Rebalance
+1935	nl1	Lakan Dimayuga	SHM	DEF	76	74	Rebalance
+1935	nl1	Ashim Bhattacharya	SHM	GK	76	78	Rebalance
+1935	nl1	Matvei Popov	SHM	DEF	72	71	Rebalance
+1935	nl1	William Levice	TOY	MID	81	82	Rebalance
+1935	nl1	Korbinian Eckert	SHR	GK	77	78	Rebalance
+1935	nl1	Alvaro Small	ISS	MID	76	77	Rebalance
+1935	nl1	Ned Stowmarsh	SHR	MID	76	77	Rebalance
+1935	nl1	Miro Heikkinen	SHR	MID	75	74	Rebalance
+1935	nl1	Orlando Correa	VIR	DEF	75	76	Rebalance
+1935	nl1	Mircea Ionescu	SHR	MID	74	73	Rebalance
+1935	nl1	Lingyun Hao	SHR	DEF	73	70	Rebalance
+1935	nl1	Tōgo Wanibuchi	SHR	GK	70	68	Rebalance
+1935	nl1	Basem Shenouda	SHZ	GK	86	85	Rebalance
+1935	nl1	Hiromu Furuhashi	SHZ	FWD	83	81	Rebalance
+1935	nl1	Aurélien Pasquier	SHZ	MID	82	81	Rebalance
+1935	nl1	Kenshirō Unagami	SHZ	DEF	82	83	Rebalance
+1935	nl1	Takamasa Hida	SHZ	DEF	81	79	Rebalance
+1935	nl1	Kieran Frost	SHZ	MID	80	79	Rebalance
+1935	nl1	Warrik Wirandaru	SHZ	DEF	80	79	Rebalance
+1935	nl1	Began Andersen	SHZ	DEF	80	76	Rebalance
+1935	nl1	Daichi Komatsubara	SHZ	MID	79	80	Rebalance
+1935	nl1	Yūto Shiranui	SHZ	DEF	79	78	Rebalance
+1935	nl1	Haruto Kido	SHZ	MID	77	76	Rebalance
+1935	nl1	Kyōsuke Komine	SHZ	FWD	76	75	Rebalance
+1935	nl1	Florian Van Can	SPK	FWD	92	91	Rebalance
+1935	nl1	Péter Szabó	SPK	MID	91	92	Rebalance
+1935	nl1	Denis Kuznetsov	SPK	MID	90	89	Rebalance
+1935	nl1	Marcello La Barca	SPK	MID	87	86	Rebalance
+1935	nl1	Kazuyoshi Hiranuma	SPK	DEF	84	82	Rebalance
+1935	nl1	Daigo Takanashi	SPK	DEF	84	81	Rebalance
+1935	nl1	Olander Strandberg	SPK	DEF	83	85	Rebalance
+1935	nl1	Arthur Kohlberg	MAK	DEF	82	79	Rebalance
+1935	nl1	Sixten Karlsson	MAK	MID	80	78	Rebalance
+1935	nl1	Karl Hauschka	SPK	DEF	77	78	Rebalance
+1935	nl1	Reito Fuyutsuki	MAK	MID	76	78	Rebalance
+1935	nl1	Yōhei Takigawa	MAK	FWD	75	76	Rebalance
+1935	nl1	Ricardo Sherman	SSK	MID	87	88	Rebalance
+1935	nl1	Makoto Kishima	SSK	MID	85	86	Rebalance
+1935	nl1	Dural Tanumura	SSK	GK	84	86	Rebalance
+1935	nl1	Domenico Vivaldi	SSK	DEF	83	87	Rebalance
+1935	nl1	Shin Segawa	SSK	DEF	80	81	Rebalance
+1935	nl1	Gergő Tóth	SSK	DEF	80	81	Rebalance
+1935	nl1	Noriyuki Kiriyama	SSK	FWD	77	79	Rebalance
+1935	nl1	Antonio Margheriti	SSK	MID	77	76	Rebalance
+1935	nl1	Sudhir Chakraborty	DYM	MID	84	83	Rebalance
+1935	nl1	Arnold Bjarnfreðsson	TAK	FWD	82	80	Rebalance
+1935	nl1	Gvidas Rimkevičius	DYM	DEF	81	80	Rebalance
+1935	nl1	Gunner Cannon	TAK	MID	80	79	Rebalance
+1935	nl1	Wout Vandenberghe	TAK	MID	77	78	Rebalance
+1935	nl1	Shōhei Kaburagi	TAK	MID	76	75	Rebalance
+1935	nl1	Semyon Volkov	TAK	GK	76	75	Rebalance
+1935	nl1	Yoshio Hanazawa	TAK	FWD	75	76	Rebalance
+1935	nl1	Tōru Chikuami	TAK	DEF	75	73	Rebalance
+1935	nl1	Eisuke Tatebayashi	TAK	DEF	73	72	Rebalance
+1935	nl1	Keigo Katsuragi	TAK	GK	68	67	Rebalance
+1935	nl1	August Rittenhouse	VIR	MID	88	87	Rebalance
+1935	nl1	Nikolaos Papadopoulos	VIR	GK	86	87	Rebalance
+1935	nl1	Themistoklis Zervas	VIR	MID	84	85	Rebalance
+1935	nl1	Genma Nishigawa	VIR	DEF	83	84	Rebalance
+1935	nl1	Kazuki Fondo	SHR	DEF	80	81	Rebalance
+1935	nl1	Teguh Setiawan	VIR	DEF	79	80	Rebalance
+1935	nl2	Kaspar Eichendorff	BGE	FWD	77	79	Rebalance
+1935	nl2	Guowei Sun	BGE	FWD	77	78	Rebalance
+1935	nl2	Ben Caldicott	BGE	DEF	77	78	Rebalance
+1935	nl2	Ren Ikegami	BGE	GK	76	77	Rebalance
+1935	nl2	Naguib Sharawi	BGE	DEF	75	76	Rebalance
+1935	nl2	Genzō Ariyoshi	BGE	DEF	74	77	Rebalance
+1935	nl2	Fábio Pintassilgo	BGE	MID	73	76	Rebalance
+1935	nl2	Yūsuke Konparu	BGE	MID	72	75	Rebalance
+1935	nl2	Khagendra Mitra	BGE	DEF	72	71	Rebalance
+1935	nl2	Toshiya Kogure	BGE	DEF	72	73	Rebalance
+1935	nl2	Sōta Mitsuya	BGE	FWD	71	72	Rebalance
+1935	nl2	Alarico Canavese	CHU	MID	77	76	Rebalance
+1935	nl2	Diego Montenegro	CHU	DEF	77	76	Rebalance
+1935	nl2	Naoya Kurihara	CHU	DEF	76	77	Rebalance
+1935	nl2	Akihiro Kaibara	CHU	FWD	75	78	Rebalance
+1935	nl2	Perceval Lamarque	CHU	DEF	72	71	Rebalance
+1935	nl2	Akira Suenaga	CHU	GK	72	73	Rebalance
+1935	nl2	Hajime Natsukawa	CHU	DEF	71	69	Rebalance
+1935	nl2	Shinobu Muraoka	CHU	MID	69	67	Rebalance
+1935	nl2	Tolga Baykurt	DAI	FWD	72	69	Rebalance
+1935	nl2	Takao Nishigaki	DAI	MID	71	74	Rebalance
+1935	nl2	Shōji Wakasugi	DAI	FWD	70	69	Rebalance
+1935	nl2	Yoshifumi Aramaki	DAI	MID	70	71	Rebalance
+1935	nl2	Michiharu Sone	DAI	DEF	70	71	Rebalance
+1935	nl2	Kiyonori Tsujii	DAI	MID	70	69	Rebalance
+1935	nl2	Toshiyuki Ōgaki	DAI	GK	70	71	Rebalance
+1935	nl2	Duarte Semedinho	DAI	GK	70	68	Rebalance
+1935	nl2	Kiyoshi Takaoka	DAI	FWD	69	70	Rebalance
+1935	nl2	Tadashi Yamakura	DAI	MID	69	70	Rebalance
+1935	nl2	Diederik Van Oorschot	HAK	MID	73	74	Rebalance
+1935	nl2	Yoshito Naganuma	HAK	DEF	73	72	Rebalance
+1935	nl2	Sadao Niimura	HAK	MID	72	70	Rebalance
+1935	nl2	Toshio Kawai	HAK	DEF	72	71	Rebalance
+1935	nl2	Yukio Horikiri	HAK	MID	68	66	Rebalance
+1935	nl2	Seiichi Muranaka	HAK	GK	68	70	Rebalance
+1935	nl2	Kiyoharu Shinozuka	HAR	MID	72	73	Rebalance
+1935	nl2	Konrad Steinbach	HAR	DEF	72	73	Rebalance
+1935	nl2	Sadanori Kurihashi	HAR	DEF	72	73	Rebalance
+1935	nl2	Shōhei Kanehara	HAR	MID	72	73	Rebalance
+1935	nl2	Ruggero Valsecchi	HAR	MID	72	70	Rebalance
+1935	nl2	Fritz Doberstein	HAR	DEF	72	71	Rebalance
+1935	nl2	Yasunori Ōtake	HAR	FWD	71	70	Rebalance
+1935	nl2	Shigeo Yabuki	HAR	MID	71	70	Rebalance
+1935	nl2	Yūichi Abekawa	HAR	DEF	71	68	Rebalance
+1935	nl2	Bogdan Marynych	HAR	MID	71	70	Rebalance
+1935	nl2	Masayuki Tobimatsu	HAR	GK	71	72	Rebalance
+1935	nl2	Tarō Mashiko	HAR	FWD	70	71	Rebalance
+1935	nl2	Ryōhei Kujirai	HAR	DEF	70	71	Rebalance
+1935	nl2	Aubrey Pendragon	HEI	MID	76	77	Rebalance
+1935	nl2	Ferran Bastida	HEI	MID	75	78	Rebalance
+1935	nl2	Reinhardt Auerbach	HEI	GK	75	74	Rebalance
+1935	nl2	Tetsuya Morooka	HEI	DEF	74	73	Rebalance
+1935	nl2	Eero Lahtinen	HEI	DEF	74	73	Rebalance
+1935	nl2	Yūki Shirakura	HEI	MID	73	71	Rebalance
+1935	nl2	Masato Hirayama	HEI	MID	73	71	Rebalance
+1935	nl2	Ryūnosuke Ōba	HEI	DEF	72	74	Rebalance
+1935	nl2	Naoki Shimazaki	HEI	FWD	69	67	Rebalance
+1935	nl2	Daichi Mutō	HEI	MID	69	70	Rebalance
+1935	nl2	Bayu Hartawan	HEI	MID	69	70	Rebalance
+1935	nl2	Wolfram Dachstein	HKR	MID	78	80	Rebalance
+1935	nl2	Mikel Otxoa	HKR	FWD	72	73	Rebalance
+1935	nl2	Takamitsu Enomoto	HKR	MID	72	70	Rebalance
+1935	nl2	Yevhen Horlytsky	HKR	MID	71	72	Rebalance
+1935	nl2	Shunsuke Arikawa	HKR	DEF	71	73	Rebalance
+1935	nl2	Shigeru Komiyama	HKR	MID	71	70	Rebalance
+1935	nl2	Yasunari Kikuta	HKR	MID	71	72	Rebalance
+1935	nl2	Hidenobu Sakamaki	HKR	DEF	71	72	Rebalance
+1935	nl2	Tomonori Kushida	HKR	MID	70	71	Rebalance
+1935	nl2	Osamu Fuchigami	HKR	MID	70	69	Rebalance
+1935	nl2	Kazuhiko Ōtsuki	HKR	DEF	70	72	Rebalance
+1935	nl2	Phani Kyaithang	IFK	MID	74	76	Rebalance
+1935	nl2	Genki Toba	IFK	MID	74	72	Rebalance
+1935	nl2	Shūhei Ozaki	IFK	FWD	72	71	Rebalance
+1935	nl2	Itsuki Tsukahara	IFK	MID	72	70	Rebalance
+1935	nl2	Hidenori Nishizawa	IFK	MID	71	70	Rebalance
+1935	nl2	Bilan Terauchi	IFK	GK	71	70	Rebalance
+1935	nl2	Nobuhiro Azusawa	IFK	DEF	70	71	Rebalance
+1935	nl2	Baluk Cheraga	IFK	DEF	69	65	Rebalance
+1935	nl2	Shigenori Isobe	IZM	MID	72	73	Rebalance
+1935	nl2	Yūji Tsukamoto	IZM	DEF	72	73	Rebalance
+1935	nl2	Naoharu Kidokoro	IZM	MID	72	71	Rebalance
+1935	nl2	Cengiz Altinok	IZM	FWD	71	74	Rebalance
+1935	nl2	Nobuaki Shimomura	IZM	DEF	71	69	Rebalance
+1935	nl2	Toshifumi Kawahara	IZM	GK	71	72	Rebalance
+1935	nl2	Takeshi Horinouchi	IZM	FWD	70	69	Rebalance
+1935	nl2	Hiroshi Umemura	KCH	DEF	75	73	Rebalance
+1935	nl2	Tomio Sakuma	KCH	DEF	75	77	Rebalance
+1935	nl2	Isao Katayama	KCH	FWD	73	75	Rebalance
+1935	nl2	Kōji Nakahira	KCH	GK	73	71	Rebalance
+1935	nl2	Michinori Kusakabe	KCH	DEF	71	73	Rebalance
+1935	nl2	Takeo Shimojō	KCH	MID	70	69	Rebalance
+1935	nl2	Yasuo Kambara	KCH	MID	70	67	Rebalance
+1935	nl2	Yoshiaki Tsuzuki	KCH	MID	69	66	Rebalance
+1935	nl2	Masanori Hirose	KCH	FWD	68	65	Rebalance
+1935	nl2	Sakuji Morooka	KCH	FWD	67	68	Rebalance
+1935	nl2	Tadao Shimokawa	KCH	FWD	66	67	Rebalance
+1935	nl2	Duarte Monfortinho	KOB	MID	70	69	Rebalance
+1935	nl2	Masaaki Horigome	KOB	DEF	70	69	Rebalance
+1935	nl2	Toshio Aramaki	KOB	MID	70	68	Rebalance
+1935	nl2	Sadanobu Kiriyama	KOB	MID	70	72	Rebalance
+1935	nl2	Tsunehisa Matsuoka	KOB	MID	70	68	Rebalance
+1935	nl2	Toshikazu Sugaya	KOB	DEF	70	71	Rebalance
+1935	nl2	Tadashi Anegawa	KOB	GK	70	71	Rebalance
+1935	nl2	Yasunari Komiya	KOB	DEF	70	71	Rebalance
+1935	nl2	Kunio Shirakawa	KOB	DEF	70	69	Rebalance
+1935	nl2	Nobuo Takeshima	KOB	FWD	69	70	Rebalance
+1935	nl2	Norihisa Kameda	KOB	FWD	69	68	Rebalance
+1935	nl2	Kiyotaka Shirane	KOB	MID	69	70	Rebalance
+1935	nl2	Shigeru Kanemaru	KOB	GK	69	68	Rebalance
+1935	nl2	Johann Peukert	MAT	MID	77	76	Rebalance
+1935	nl2	Séamus Ó'Duinnín	MAT	FWD	73	74	Rebalance
+1935	nl2	Sanat Barua	MAT	MID	73	71	Rebalance
+1935	nl2	Ryōta Miyazawa	MAT	MID	72	73	Rebalance
+1935	nl2	Rostam Khalili	MAT	MID	72	70	Rebalance
+1935	nl2	Shōichi Umeda	MAT	GK	72	71	Rebalance
+1935	nl2	Minoru Andō	MAT	MID	71	70	Rebalance
+1935	nl2	Nobuyuki Sakurai	MAT	DEF	71	70	Rebalance
+1935	nl2	Yūsuke Shiota	MAT	DEF	71	72	Rebalance
+1935	nl2	Jatin Sudatta	MAT	FWD	69	68	Rebalance
+1935	nl2	Kō Asakura	MOT	FWD	75	76	Rebalance
+1935	nl2	Gerd Linnenkamp	MOT	FWD	73	72	Rebalance
+1935	nl2	Yoshiki Takenouchi	MOT	DEF	71	70	Rebalance
+1935	nl2	Sadao Kuriki	MOT	DEF	71	70	Rebalance
+1935	nl2	Yūzō Sakatani	MOT	FWD	70	71	Rebalance
+1935	nl2	Susumu Horii	MOT	DEF	70	69	Rebalance
+1935	nl2	Hiroyuki Mashiba	MOT	MID	70	68	Rebalance
+1935	nl2	Kaoru Nishimori	MOT	MID	70	68	Rebalance
+1935	nl2	Nuno Teixeirinha	MOT	MID	70	69	Rebalance
+1935	nl2	Masaru Niinuma	MOT	DEF	70	69	Rebalance
+1935	nl2	Vilgot Sundkvist	MRG	MID	77	79	Rebalance
+1935	nl2	Tarran Nyaruguru	MRG	DEF	73	74	Rebalance
+1935	nl2	Gen Suematsu	MRG	MID	73	72	Rebalance
+1935	nl2	Ryūhei Kuriyama	MRG	FWD	72	70	Rebalance
+1935	nl2	Shinnosuke Hibino	MRG	DEF	70	68	Rebalance
+1935	nl2	Akito Namiki	MRG	MID	70	72	Rebalance
+1935	nl2	Tatsuya Okuyama	MRG	DEF	70	67	Rebalance
+1935	nl2	Shinji Tadayama	MRG	MID	70	69	Rebalance
+1935	nl2	Masaharu Kawabata	MRG	DEF	70	71	Rebalance
+1935	nl2	Takeo Kinoshita	MRG	DEF	69	66	Rebalance
+1935	nl2	Godfrey Plantagenet	NSJ	DEF	76	75	Rebalance
+1935	nl2	Hayato Kirino	NSJ	DEF	74	73	Rebalance
+1935	nl2	Kiyoshi Wadatsumi	NSJ	MID	72	73	Rebalance
+1935	nl2	Shun'ichi Tamba	NSJ	FWD	71	70	Rebalance
+1935	nl2	Kazushige Nomoto	NSJ	MID	71	67	Rebalance
+1935	nl2	Sadao Higuchi	NSJ	FWD	70	74	Rebalance
+1935	nl2	Michiya Ōkubo	NSJ	DEF	70	71	Rebalance
+1935	nl2	Akira Mitomo	NSJ	DEF	70	72	Rebalance
+1935	nl2	Ridwan Saputra	NSJ	MID	69	66	Rebalance
+1935	nl2	Baluk Ndembwe	NSJ	GK	68	72	Rebalance
+1935	nl2	Séverin Laubresse	OTA	MID	76	77	Rebalance
+1935	nl2	Anders Lundvik	OTA	FWD	75	77	Rebalance
+1935	nl2	Akio Hamaoka	OTA	FWD	74	75	Rebalance
+1935	nl2	Ryōsuke Kanai	OTA	FWD	71	72	Rebalance
+1935	nl2	Shigeyoshi Hotta	OTA	DEF	71	70	Rebalance
+1935	nl2	Katsumi Umehara	OTA	FWD	70	71	Rebalance
+1935	nl2	Nobuo Shindō	OTA	FWD	70	69	Rebalance
+1935	nl2	Kōhei Itagaki	OTA	DEF	70	71	Rebalance
+1935	nl2	Yasuharu Katsuragawa	OTA	GK	69	71	Rebalance
+1935	nl2	Eren Peretz	RYO	MID	78	79	Rebalance
+1935	nl2	Lam Vu	RYO	MID	76	78	Rebalance
+1935	nl2	Yūya Tachikawa	RYO	GK	76	78	Rebalance
+1935	nl2	Hiroaki Tomioka	RYO	MID	73	74	Rebalance
+1935	nl2	Kentarō Ishizuka	RYO	DEF	73	74	Rebalance
+1935	nl2	Naoto Soejima	RYO	DEF	73	74	Rebalance
+1935	nl2	Daisuke Imaoka	RYO	MID	72	73	Rebalance
+1935	nl2	Shōhei Kazama	RYO	DEF	72	74	Rebalance
+1935	nl2	Takeshi Ubukata	RYO	MID	72	71	Rebalance
+1935	nl2	Nyilan Shikishima	RYO	FWD	71	69	Rebalance
+1935	nl2	Ren Sasaoka	RYO	DEF	70	67	Rebalance
+1935	nl2	Tomonori Wakiya	RYO	DEF	69	67	Rebalance
+1935	nl2	Sōichirō Miura	SEN	DEF	77	78	Rebalance
+1935	nl2	Dānilo Pavlović	SEN	GK	77	78	Rebalance
+1935	nl2	Stéphan Konaté	SEN	FWD	75	78	Rebalance
+1935	nl2	Yūsuke Nobata	SEN	MID	74	75	Rebalance
+1935	nl2	Ákos Tolvaj	SEN	FWD	73	75	Rebalance
+1935	nl2	Matej Holešovský	SEN	DEF	73	72	Rebalance
+1935	nl2	Taras Bondarenko	SEN	MID	72	71	Rebalance
+1935	nl2	Levi Nez	SUM	FWD	78	79	Rebalance
+1935	nl2	Yëría Kaché	SUM	MID	77	80	Rebalance
+1935	nl2	Gakuto Minamikawa	SUM	MID	77	80	Rebalance
+1935	nl2	Diedrich Fassbender	SUM	MID	77	76	Rebalance
+1935	nl2	Hengbo Liu	SUM	DEF	76	79	Rebalance
+1935	nl2	Haruki Edagawa	SUM	GK	76	77	Rebalance
+1935	nl2	Heng Kong	SUM	DEF	75	79	Rebalance
+1935	nl2	Miika Kyllönen	SUM	DEF	74	73	Rebalance
+1935	nl2	Bence Zsolnay	SUM	DEF	74	73	Rebalance
+1935	nl2	Wahyu Wibowo	SUM	FWD	72	70	Rebalance
+1935	nl2	Sadatoshi Fukumori	THT	MID	71	70	Rebalance
+1935	nl2	Kunimitsu Saigō	THT	DEF	71	73	Rebalance
+1935	nl2	Yoshimi Kurahashi	THT	FWD	70	71	Rebalance
+1935	nl2	Takashi Shiomura	THT	FWD	70	69	Rebalance
+1935	nl2	Michio Hiraga	THT	MID	70	67	Rebalance
+1935	nl2	Nobuki Hayashida	THT	MID	70	67	Rebalance
+1935	nl2	Naohiro Tōjō	THT	DEF	70	69	Rebalance
+1935	nl2	Toshiaki Hamamura	THT	GK	70	69	Rebalance
+1935	nl2	Rui Mascarenhinho	THT	DEF	70	69	Rebalance
+1935	nl2	Yasunobu Narita	THT	MID	69	68	Rebalance
+1935	nl2	Genzō Toyama	TOH	MID	72	70	Rebalance
+1935	nl2	Kanji Shirahama	TOH	FWD	71	72	Rebalance
+1935	nl2	Michio Takenaka	TOH	FWD	71	70	Rebalance
+1935	nl2	Susumu Shiina	TOH	FWD	71	70	Rebalance
+1935	nl2	Kōichi Ōtani	TOH	FWD	71	70	Rebalance
+1935	nl2	Nurettin Bozok	TOH	MID	71	69	Rebalance
+1935	nl2	Mamoru Kikkawa	TOH	MID	71	69	Rebalance
+1935	nl2	Ilkka Virtasalo	TOH	DEF	71	72	Rebalance
+1935	nl2	Shōji Araki	TOH	DEF	71	73	Rebalance
+1935	nl2	Sōma Kirishima	TOY	FWD	79	78	Rebalance
+1935	nl2	Katsumi Enokida	TOY	MID	78	80	Rebalance
+1935	nl2	Cooper Saint John	TOY	DEF	78	79	Rebalance
+1935	nl2	Serhat Di̇lbaz	TOY	MID	77	79	Rebalance
+1935	nl2	Akseli Ruotsalainen	TOY	DEF	76	75	Rebalance
+1935	nl2	Arkady Vsevolozhsky	TOY	MID	75	76	Rebalance
+1935	nl2	Biret-Ánde Sara	TOY	DEF	75	76	Rebalance
+1935	nl2	Adrien Beausoleil	SHR	MID	74	75	Rebalance
+1935	nl2	Issei Kunieda	TOY	MID	74	75	Rebalance
+1935	nl2	Shōgo Togashi	SHR	MID	72	71	Rebalance
+1935	nl2	Hamad Zahrani	TOY	MID	71	70	Rebalance
+1935	nl2	Hiroto Nakatsuka	TOY	MID	70	67	Rebalance
+1935	nl2	Aatos Niemelä	UNT	MID	77	76	Rebalance
+1935	nl2	Yūdai Kanesaka	UNT	FWD	72	71	Rebalance
+1935	nl2	Nobuo Kasahara	UNT	FWD	72	71	Rebalance
+1935	nl2	Cesare Montaldo	UNT	MID	72	70	Rebalance
+1935	nl2	Hirotaka Misumi	UNT	DEF	72	71	Rebalance
+1935	nl2	Isamu Kotobuki	UNT	FWD	71	72	Rebalance
+1935	nl2	Kentarō Asahina	UNT	MID	71	70	Rebalance
+1935	nl2	Rikuo Haneda	UNT	GK	71	73	Rebalance
+1935	nl2	Miron Zalesky	UNT	DEF	71	72	Rebalance
+1935	nl2	Shirō Fukuhara	UNT	GK	71	69	Rebalance
+1935	nl2	Szymon Kowalczyk	VAL	MID	76	80	Rebalance
+1935	nl2	Tomohiro Arimatsu	VAL	FWD	75	77	Rebalance
+1935	nl2	Cory Gallegos	VAL	MID	75	78	Rebalance
+1935	nl2	Celestino Fiorentini	VAL	DEF	74	75	Rebalance
+1935	nl2	Cedric Warburton	VAL	MID	73	74	Rebalance
+1935	nl2	Panting Jugah	VAL	DEF	72	73	Rebalance
+1935	nl2	Ryōsuke Kujiraoka	VAL	FWD	70	68	Rebalance
+1935	nl2	Takumi Sengoku	VAL	MID	69	67	Rebalance
+1935	nl2	Erfan Rastkar	VAL	DEF	69	68	Rebalance
+1935	Primera División	Ismael Menéndez	ATO	DEF	88	86	Rebalance
+1935	Primera División	Teotónio Cavaco	ATO	FWD	81	82	Rebalance
+1935	Primera División	Salvador Figueiredo	ATO	MID	81	83	Rebalance
+1935	Primera División	Volkert Lindenau	ATO	FWD	80	83	Rebalance
+1935	Primera División	Nuno Almada	ATO	MID	80	81	Rebalance
+1935	Primera División	Gil Moutinho	ATO	MID	78	79	Rebalance
+1935	Primera División	Zakaria Bouhaddou	ATO	FWD	78	77	Rebalance
+1935	Primera División	Shenoute Nebamun	ATO	GK	77	76	Rebalance
+1935	Primera División	Sang Pham	ATO	MID	75	76	Rebalance
+1935	Primera División	Bento Seixas	ATO	MID	74	75	Rebalance
+1935	Primera División	Matías Salcedo	CA	FWD	85	84	Rebalance
+1935	Primera División	Ausiàs Campanar	CA	MID	84	86	Rebalance
+1935	Primera División	Duarte Magalhães	CA	DEF	82	81	Rebalance
+1935	Primera División	Anselmo Rebelo	CA	GK	82	79	Rebalance
+1935	Primera División	Augustin Aragonés	CA	MID	80	79	Rebalance
+1935	Primera División	Aristides Pimentel	CA	FWD	79	78	Rebalance
+1935	Primera División	Aleix Benimaclet	CA	DEF	79	81	Rebalance
+1935	Primera División	Volkmar Scherer	CA	FWD	77	76	Rebalance
+1935	Primera División	Rodrigo Benavente	CA	MID	75	74	Rebalance
+1935	Primera División	Dinis Estrela	CCF	MID	83	84	Rebalance
+1935	Primera División	Ilídio Paradela	CCF	GK	82	81	Rebalance
+1935	Primera División	Hugo Vilarinho	CCF	MID	81	82	Rebalance
+1935	Primera División	Shigeru Kurose	CCF	MID	78	77	Rebalance
+1935	Primera División	Abel Taveira	CCF	DEF	77	74	Rebalance
+1935	Primera División	Joaquim Brandão	CCF	DEF	77	78	Rebalance
+1935	Primera División	Emídio Campelo	CCF	DEF	76	74	Rebalance
+1935	Primera División	Jehezkiel Lawai	CCF	DEF	75	74	Rebalance
+1935	Primera División	Simão Azevedo	CCF	FWD	74	72	Rebalance
+1935	Primera División	Leandro Boavida	CCF	DEF	74	73	Rebalance
+1935	Primera División	Yeray Bengoetxea	CGV	MID	84	85	Rebalance
+1935	Primera División	Koldo Aranburu	CGV	FWD	80	81	Rebalance
+1935	Primera División	Patxi Elorriaga	CGV	FWD	79	78	Rebalance
+1935	Primera División	Mikel Goikoetxea	CGV	MID	79	78	Rebalance
+1935	Primera División	Eneko Berasategi	CGV	FWD	78	77	Rebalance
+1935	Primera División	Ander Zumalde	CGV	DEF	76	77	Rebalance
+1935	Primera División	Iker Lasarte	CGV	GK	75	74	Rebalance
+1935	Primera División	Kenzō Takemiya	RC	FWD	78	80	Rebalance
+1935	Primera División	Melquíades Porzuna	RC	GK	78	79	Rebalance
+1935	Primera División	Fulgencio Manzanares	RC	DEF	77	76	Rebalance
+1935	Primera División	Nicasio Miguelturra	RC	FWD	74	76	Rebalance
+1935	Primera División	Herminio Tomelloso	RC	MID	74	72	Rebalance
+1935	Primera División	Anacleto Valdepeñas	RC	DEF	74	73	Rebalance
+1935	Primera División	Genaro Piedrabuena	RC	MID	73	72	Rebalance
+1935	Primera División	Bonifacio Socuéllamos	RC	FWD	72	73	Rebalance
+1935	Primera División	Buwi Calang	RC	FWD	71	70	Rebalance
+1935	Primera División	Dwight Whitfield	RT	FWD	78	80	Rebalance
+1935	Primera División	Nicolau Ferrandis	RT	DEF	78	80	Rebalance
+1935	Primera División	Anastasio Illescas	RT	GK	77	78	Rebalance
+1935	Primera División	Fructuoso Navahermosa	RT	FWD	75	76	Rebalance
+1935	Primera División	Marcelino Burguillos	RT	MID	75	77	Rebalance
+1935	Primera División	Perfecto Ocaña	RT	MID	73	69	Rebalance
+1935	Primera División	Faustino Orgaz	RT	MID	72	75	Rebalance
+1935	Primera División	Ambrosio Polán	RT	MID	72	71	Rebalance
+1935	Primera División	Aniceto Menasalbas	RT	FWD	71	72	Rebalance
+1935	Primera División	Higinio Villaseca	RT	MID	69	70	Rebalance
+1935	Primera División	Casimiro Belchite	SRK	DEF	78	77	Rebalance
+1935	Primera División	Gaudioso Ejea	SRK	MID	75	74	Rebalance
+1935	Primera División	Titus Calloway	SRK	MID	74	75	Rebalance
+1935	Primera División	Pishoy Djehuty	SRK	DEF	74	73	Rebalance
+1935	Primera División	Abanoub Sethnakht	SRK	MID	73	72	Rebalance
+1935	Primera División	Tomé Resende	SRK	MID	73	72	Rebalance
+1935	Primera División	Guillem Orriols	VLQ	GK	83	85	Rebalance
+1935	Primera División	Enric Sollana	VLQ	FWD	81	79	Rebalance
+1935	Primera División	Vicent Massanassa	VLQ	MID	80	82	Rebalance
+1935	Primera División	Bernat Tormos	VLQ	DEF	78	79	Rebalance
+1935	Primera División	Fabrice Delahaye	VLQ	DEF	78	79	Rebalance
+1935	Primera División	Kidlat Ilagan	VLQ	MID	77	76	Rebalance
+1935	Primera División	Puso Kalaw	VLQ	MID	74	75	Rebalance
+1935	Turulországi Felsőliga	József Kőszegi	CNV	MID	67	64	Rebalance
+1935	Turulországi Felsőliga	Zsombor Tanyasi	CNV	GK	67	68	Rebalance
+1935	Turulországi Felsőliga	Gyula Papp	CNV	MID	66	67	Rebalance
+1935	Turulországi Felsőliga	Krisztián Bárkásy	CNV	MID	64	65	Rebalance
+1935	Turulországi Felsőliga	Ádám Rácsos	CNV	DEF	64	62	Rebalance
+1935	Turulországi Felsőliga	Norbert Petrezselyem	CNV	DEF	63	65	Rebalance
+1935	Turulországi Felsőliga	Zoltán Ezüst	CNV	GK	63	64	Rebalance
+1935	Turulországi Felsőliga	Nándor Telekes	CNV	DEF	62	64	Rebalance
+1935	Turulországi Felsőliga	Károly Szidány	CNV	FWD	61	60	Rebalance
+1935	Turulországi Felsőliga	Róbert Barcsay	CNV	DEF	61	60	Rebalance
+1935	Turulországi Felsőliga	Csanád Apáca	DBZ	MID	68	67	Rebalance
+1935	Turulországi Felsőliga	John Poacher	DBZ	FWD	67	70	Rebalance
+1935	Turulországi Felsőliga	István Tóth	DBZ	MID	67	68	Rebalance
+1935	Turulországi Felsőliga	Botond Szarvasy	DBZ	FWD	66	67	Rebalance
+1935	Turulországi Felsőliga	Szabolcs Mezei	DBZ	MID	66	67	Rebalance
+1935	Turulországi Felsőliga	Erik Baltás	DBZ	DEF	65	66	Rebalance
+1935	Turulországi Felsőliga	Benjámin Dreimann	DBZ	GK	65	66	Rebalance
+1935	Turulországi Felsőliga	Alexander Vésztői	DBZ	MID	64	65	Rebalance
+1935	Turulországi Felsőliga	Frigyes Kenyeres	DBZ	MID	63	66	Rebalance
+1935	Turulországi Felsőliga	Pál Gerendásy	DBZ	DEF	63	67	Rebalance
+1935	Turulországi Felsőliga	Aladár Mézga	DBZ	MID	63	65	Rebalance
+1935	Turulországi Felsőliga	Bendegúz Nagy	DBZ	DEF	62	63	Rebalance
+1935	Turulországi Felsőliga	Ernő Nemecsek	DBZ	DEF	60	61	Rebalance
+1935	Turulországi Felsőliga	Zsolt Vadász	DTK	FWD	75	73	Rebalance
+1935	Turulországi Felsőliga	Zsombor Nyitráv	DTK	MID	75	77	Rebalance
+1935	Turulországi Felsőliga	György Erdős	DTK	MID	74	75	Rebalance
+1935	Turulországi Felsőliga	Johannn Baumgartner	DTK	FWD	73	72	Rebalance
+1935	Turulországi Felsőliga	Miklós Szlitlán	DTK	DEF	73	75	Rebalance
+1935	Turulországi Felsőliga	Nimród Somogyi	DTK	FWD	72	74	Rebalance
+1935	Turulországi Felsőliga	Koppány Tálcásy	DTK	MID	72	71	Rebalance
+1935	Turulországi Felsőliga	Sándor Teleki	DTK	DEF	72	73	Rebalance
+1935	Turulországi Felsőliga	Lukács Rózsa	DTK	DEF	68	69	Rebalance
+1935	Turulországi Felsőliga	Csongor Pásztor	DTK	DEF	66	67	Rebalance
+1935	Turulországi Felsőliga	Elemér Lakóczy	KDH	MID	76	77	Rebalance
+1935	Turulországi Felsőliga	Benedek Arany	KDH	MID	75	76	Rebalance
+1935	Turulországi Felsőliga	Norbert Fejes	KDH	DEF	74	75	Rebalance
+1935	Turulországi Felsőliga	Zsigmond Fekete	KDH	GK	74	73	Rebalance
+1935	Turulországi Felsőliga	Kristóf Talajos	KDH	FWD	73	76	Rebalance
+1935	Turulországi Felsőliga	Gáspár Slattics	KDH	MID	73	74	Rebalance
+1935	Turulországi Felsőliga	Ármin Gyenes	KDH	DEF	73	74	Rebalance
+1935	Turulországi Felsőliga	László Csikós	KDH	FWD	72	71	Rebalance
+1935	Turulországi Felsőliga	Ottó Tavasy	KDH	MID	71	72	Rebalance
+1935	Turulországi Felsőliga	László Móricz	KDH	DEF	71	72	Rebalance
+1935	Turulországi Felsőliga	Roland Demjén	KDH	FWD	69	72	Rebalance
+1935	Turulországi Felsőliga	Francisco Juárez	MTZ	FWD	71	70	Rebalance
+1935	Turulországi Felsőliga	Alvin Búzás	MTZ	FWD	70	68	Rebalance
+1935	Turulországi Felsőliga	Bertalan Kormos	MTZ	DEF	68	66	Rebalance
+1935	Turulországi Felsőliga	Ajnár Szilaj	MTZ	FWD	66	64	Rebalance
+1935	Turulországi Felsőliga	Péter Márványos	MTZ	DEF	65	60	Rebalance
+1935	Turulországi Felsőliga	Márton Szénás	MTZ	MID	64	61	Rebalance
+1935	Turulországi Felsőliga	Roland Kardos	MTZ	DEF	64	62	Rebalance
+1935	Turulországi Felsőliga	Huba Tornácz	MTZ	DEF	63	64	Rebalance
+1935	Turulországi Felsőliga	Csaba Dobozos	MTZ	MID	63	60	Rebalance
+1935	Turulországi Felsőliga	Ezrael Vízszegi	MTZ	MID	62	63	Rebalance
+1935	Turulországi Felsőliga	Farkas Vadász	MTZ	MID	60	62	Rebalance
+1935	Turulországi Felsőliga	Elek Árpás	MTZ	MID	59	60	Rebalance
+1935	Turulországi Felsőliga	Károly Nedváry	PSK	DEF	71	69	Rebalance
+1935	Turulországi Felsőliga	László Báthory	PSK	GK	71	70	Rebalance
+1935	Turulországi Felsőliga	Balázs Halász	PSK	DEF	70	67	Rebalance
+1935	Turulországi Felsőliga	Dominik Tóth	PSK	DEF	69	64	Rebalance
+1935	Turulországi Felsőliga	Matúš Cízik	PSK	GK	69	66	Rebalance
+1935	Turulországi Felsőliga	Zsigmond Zászlós	PSK	MID	68	66	Rebalance
+1935	Turulországi Felsőliga	Gyula Almán	PSK	MID	67	65	Rebalance
+1935	Turulországi Felsőliga	Nándor Bölcs	PSK	DEF	67	65	Rebalance
+1935	Turulországi Felsőliga	Bencze Rudán	PSK	FWD	66	63	Rebalance
+1935	Turulországi Felsőliga	Dömötör Borostyán	PSK	FWD	65	63	Rebalance
+1935	Turulországi Felsőliga	Zalán Tresznyik	PSK	MID	63	62	Rebalance
+1935	Turulországi Felsőliga	Kelemen Társas	SBE	GK	70	69	Rebalance
+1935	Turulországi Felsőliga	Ödön Kolostoros	SBE	DEF	68	71	Rebalance
+1935	Turulországi Felsőliga	Rezső Szalkay	SBE	DEF	67	66	Rebalance
+1935	Turulországi Felsőliga	Tivadar Szercseny	SBE	MID	66	65	Rebalance
+1935	Turulországi Felsőliga	Sebestyén Fábián	SBE	DEF	66	65	Rebalance
+1935	Turulországi Felsőliga	Péter Takács	SBE	GK	66	67	Rebalance
+1935	Turulországi Felsőliga	Ferenc Szabó	SBE	MID	65	63	Rebalance
+1935	Turulországi Felsőliga	László Molnár	SBE	FWD	64	67	Rebalance
+1935	Turulországi Felsőliga	Dezső Balogh	SBE	FWD	63	64	Rebalance
+1935	Turulországi Felsőliga	János Vitéz	SBE	MID	63	65	Rebalance
+1935	Turulországi Felsőliga	Elemér Balázs	SBE	MID	63	62	Rebalance
+1935	Turulországi Felsőliga	Nimród Szegvári	SZT	FWD	72	74	Rebalance
+1935	Turulországi Felsőliga	Yriö Pohjolainen	SZT	FWD	70	71	Rebalance
+1935	Turulországi Felsőliga	Márk Vígh	SZT	MID	69	71	Rebalance
+1935	Turulországi Felsőliga	Walter Katona	SZT	MID	69	70	Rebalance
+1935	Turulországi Felsőliga	Rajmond Bácszegi	SZT	MID	69	70	Rebalance
+1935	Turulországi Felsőliga	István Barta	SZT	DEF	68	71	Rebalance
+1935	Turulországi Felsőliga	Árvin Kodály	SZT	GK	68	71	Rebalance
+1935	Turulországi Felsőliga	Dénes Kender	SZT	DEF	67	69	Rebalance
+1935	Turulországi Felsőliga	Árpád Halasdy	SZT	DEF	67	68	Rebalance
+1935	Turulországi Felsőliga	Leó Császár	SZT	MID	66	69	Rebalance
+1935	Turulországi Felsőliga	Vilmos Ács	SZT	MID	64	65	Rebalance
+1935	Turulországi Felsőliga	Balázs Givrocsics	SZT	MID	64	66	Rebalance
+1935	Turulországi Felsőliga	Baltazár Németh	SZT	GK	64	65	Rebalance
+1935	Turulországi Felsőliga	Vilmos Kovácsevics	SZT	DEF	63	64	Rebalance
+1935	Turulországi Felsőliga	Viktor Hentes	SZV	FWD	75	74	Rebalance
+1935	Turulországi Felsőliga	Olivér Selymes	SZV	DEF	73	71	Rebalance
+1935	Turulországi Felsőliga	Máté Szalka	SZV	GK	73	71	Rebalance
+1935	Turulországi Felsőliga	Vilmos Paraszt	SZV	DEF	72	71	Rebalance
+1935	Turulországi Felsőliga	Mátyás Havasy	SZV	DEF	71	69	Rebalance
+1935	Turulországi Felsőliga	Iván Petrovics	SZV	GK	70	69	Rebalance
+1935	Turulországi Felsőliga	Luca Bareghi	SZV	DEF	70	68	Rebalance
+1935	Turulországi Felsőliga	Ármin Rácz	SZV	DEF	70	67	Rebalance
+1935	Turulországi Felsőliga	Bálint Sándor	SZV	MID	69	68	Rebalance
+1935	Turulországi Felsőliga	Bertód Lakatos	SZV	MID	68	65	Rebalance
+1935	Turulországi Felsőliga	Tibor Pintér	SZV	MID	67	62	Rebalance
+1935	Turulországi Felsőliga	Boldizsár Mátrai	SZV	FWD	65	63	Rebalance
+1935	Turulországi Felsőliga	Jakab Kürtös	SZV	MID	65	63	Rebalance
+1935	Turulországi Felsőliga	Ferenc Keresztes	SZV	FWD	63	64	Rebalance
+1935	Turulországi Felsőliga	István Magvasi	TTK	FWD	76	79	Rebalance
+1935	Turulországi Felsőliga	Lajos Nagy	TTK	MID	73	72	Rebalance
+1935	Turulországi Felsőliga	Ferencz Tóth	TTK	GK	73	75	Rebalance
+1935	Turulországi Felsőliga	Flórián Losonczy	TTK	FWD	72	69	Rebalance
+1935	Turulországi Felsőliga	János Juhász	TTK	DEF	72	74	Rebalance
+1935	Turulországi Felsőliga	Attila Kovács	TTK	DEF	71	72	Rebalance
+1935	Turulországi Felsőliga	Árpád Gulyás	TTK	MID	70	71	Rebalance
+1935	Turulországi Felsőliga	Péter Mákos	TTK	DEF	70	71	Rebalance
+1935	Turulországi Felsőliga	Márk Tapolczai	TTK	MID	68	67	Rebalance
+1935	Turulországi Felsőliga	Dominik Délvölgyi	TTK	MID	68	69	Rebalance
+1935	Turulországi Felsőliga	Károly Patakos	TTK	GK	68	69	Rebalance
+1935	Turulországi Felsőliga	Ákos Tanyasi	TTK	DEF	67	68	Rebalance
+1935	Turulországi Felsőliga	Márton Mészáros	TTK	DEF	66	65	Rebalance
+1935	Turulországi Felsőliga	Kornél Sós	UKH	MID	75	77	Rebalance
+1935	Turulországi Felsőliga	Zoltán Nagyfalvi	UKH	MID	73	75	Rebalance
+1935	Turulországi Felsőliga	Tamás Indásy	UKH	MID	72	74	Rebalance
+1935	Turulországi Felsőliga	Balázs Baráth	UKH	MID	71	70	Rebalance
+1935	Turulországi Felsőliga	Rajmond Kondács	UKH	GK	71	73	Rebalance
+1935	Turulországi Felsőliga	Dániel Almády	UKH	DEF	70	68	Rebalance
+1935	Turulországi Felsőliga	Péter Lipót	UKH	FWD	69	72	Rebalance
+1935	Turulországi Felsőliga	Attila Sluszter	UKH	MID	69	68	Rebalance
+1935	Turulországi Felsőliga	Marczell Szatmári	UKH	DEF	69	72	Rebalance
+1935	Turulországi Felsőliga	Henrik Szűcs	UKH	DEF	68	69	Rebalance
+1935	Turulországi Felsőliga	Márton Herczeg	UKH	GK	67	66	Rebalance
+1935	Turulországi Felsőliga	Ferenc Lisztes	UKH	DEF	65	67	Rebalance
+1935	Turulországi Felsőliga	Rudolf Szimondy	VTC	FWD	69	67	Rebalance
+1935	Turulországi Felsőliga	Róbert Szivacsos	VTC	MID	69	67	Rebalance
+1935	Turulországi Felsőliga	Albert Orvos	VTC	DEF	69	68	Rebalance
+1935	Turulországi Felsőliga	Géza Szakács	VTC	FWD	68	67	Rebalance
+1935	Turulországi Felsőliga	Domonkos Kovács	VTC	MID	68	67	Rebalance
+1935	Turulországi Felsőliga	Sándor Veres	VTC	DEF	67	65	Rebalance
+1935	Turulországi Felsőliga	Simon Gabonás	VTC	MID	66	65	Rebalance
+1935	Turulországi Felsőliga	Patrik Csillag	VTC	DEF	66	63	Rebalance
+1935	Turulországi Felsőliga	Szilárd Sertés	VTC	FWD	65	64	Rebalance
+1935	Turulországi Felsőliga	Szilveszter Nádor	VTC	MID	65	63	Rebalance
+1935	Turulországi Felsőliga	Noel Karácsony	VTC	DEF	64	63	Rebalance
+1935	Turulországi Felsőliga	Antall Kerekes	VTC	MID	63	64	Rebalance
