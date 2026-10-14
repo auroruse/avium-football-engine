@@ -50,3 +50,7 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 13	1935	2026-10-14T13:36:18.788Z	player	p5610	Toshiaki KIDOKORO	GK	74	21	2500000	t0148	RöPS	t0165	Toksavaara Lõvid	zezelandnationstates-hash
 13	1935	2026-10-14T13:36:18.788Z	player	p2796	Urmas KAUPPILA	ST	76	22	5700000	t0165	Toksavaara Lõvid	t0148	RöPS	zezelandnationstates-hash
 14	1935	2026-10-14T13:36:41.193Z	player	p2797	Topias HAKALA	GK	57	29	85000	t0165	Toksavaara Lõvid			zezelandnationstates-hash
+15	1935	2026-10-14T14:39:45.130Z	player	p5393	Kemar MACHADO	CB	75	21	3400000			t0203	Spartak Kanagawa	auroruse
+15	1935	2026-10-14T14:39:45.130Z	player	p5169	Hugues DE MOLAY	DM	78	21	7900000			t0203	Spartak Kanagawa	auroruse
+15	1935	2026-10-14T14:39:45.130Z	player	p5587	Galvarino CALFUCURÁ	CM	77	21	6300000			t0203	Spartak Kanagawa	auroruse
+15	1935	2026-10-14T14:39:45.130Z	player	p5177	Kutay KARTACA	RM	76	21	5000000			t0203	Spartak Kanagawa	auroruse
