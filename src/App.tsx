@@ -2070,14 +2070,15 @@ function parseBulk(text) {
 // the table, so the sim fielded a worse side than the sheet showed. The column is still read, but
 // only as the fallback for a row with no rated squad -- a team typed into the bulk importer, or a
 // division whose players are not written yet.
-// A side is worth the mean of everyone in its squad, bench included, club and country alike. That
-// is the OVR column's own rule -- checked against all 183 rows, every one exact -- and the engine
-// matches it rather than inventing a second answer, which is the whole reason the authored rating
-// went away. It briefly averaged only the eleven for clubs, because that was the rule then.
+// A side is worth the mean of its starting eleven, club and country alike (Moukden and Kirin, 14 October 2026: "Team
+// OVRs should only use starting XI"); the bench no longer counts, so a club's six newest open places and an eleven-man
+// national bench cannot pull it about. The OVR column keeps the same rule (src/data/rules.js, test/lineups.mjs), and the
+// engine matches it rather than inventing a second answer. A squad with no rated starter falls back on everyone rated.
 // One decimal, because the sheet carries one: rounding to an integer reintroduces a disagreement
 // of up to half a point on every row.
 const squadSkill = (squad) => {
-  const rated = (squad || []).filter(p => p.name && !String(p.name).startsWith("#") && p.ovr != null);
+  const ok = (p) => p.name && !String(p.name).startsWith("#") && p.ovr != null;
+  const xi = (squad || []).filter(p => ok(p) && !p.bench), rated = xi.length ? xi : (squad || []).filter(ok);
   if (!rated.length) return null;
   return Math.round(rated.reduce((a, p) => a + p.ovr, 0) / rated.length * 10) / 10;
 };

@@ -418,7 +418,8 @@ function createDraft(rec, d, n, h) {
         const side = next.teams.find(t => teamKey(t) === mgrClubOf.get(manager)), m = next.managers.find(x => x.id === manager);
         style = side?.style || styleName(m?.style) || "Balanced";
       }
-      const ratings = squad.filter(Boolean).map(pid => everyone().find(p => p.id === pid)?.ovr || 0);
+      // A side is worth its starting eleven (14 October 2026: "Team OVRs should only use starting XI").
+      const ratings = squad.slice(0, 11).filter(Boolean).map(pid => everyone().find(p => p.id === pid)?.ovr || 0);
       add.teams.push({ id: nextId([...next.teams, ...add.teams], "t"), file: n.nation, nation: n.nation, at: "", code: c.code, name: c.name,
         ovr: (ratings.reduce((a, b) => a + b, 0) / Math.max(1, ratings.length)).toFixed(1), style, formation: c.formation, timeWasting: TIME_WASTING.includes(c.timeWasting) ? c.timeWasting : "Never",
         gkPassing: "Short", dlBehavior: "No Instruction", manager, squad, home: c.home, away: c.away, location: c.location, stadium: c.stadium, group: n.name });
@@ -443,7 +444,7 @@ function createDraft(rec, d, n, h) {
   // Its new men first, each a record of his own in his place.
   const squad = padPlaces(n.squad).map(v => { if (!isNew(v)) return v || null; const pid = nextId([...next.players, ...add.players], "p");
     add.players.push({ id: pid, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null), ...(gradOk(v.grad) ? { grad: v.grad } : null) }); return pid; });
-  const ovrs = squad.filter(Boolean).map(pid => [...next.players, ...add.players].find(p => p.id === pid)?.ovr || 0);
+  const ovrs = squad.slice(0, 11).filter(Boolean).map(pid => [...next.players, ...add.players].find(p => p.id === pid)?.ovr || 0);
   const team = { id, file, nation: n.nation, at: "", code: n.code, name: n.name, ovr: (ovrs.reduce((a, b) => a + b, 0) / Math.max(1, ovrs.length)).toFixed(1),
                  style, formation: n.formation, timeWasting: TIME_WASTING.includes(n.timeWasting) ? n.timeWasting : "Never", gkPassing: "Short", dlBehavior: "No Instruction",
                  manager: n.manager || null, squad, home: n.home, away: n.away, location: n.location, stadium: n.stadium, group: n.group };

@@ -43,6 +43,8 @@ const idOf = (v) => (v && typeof v === "object" ? v.id : v) || null;
 const own = (v) => posList(players.get(idOf(v))?.pos);
 const ovr = (v) => players.get(idOf(v))?.ovr ?? 0;
 const at = (v, place) => ovrAt(ovr(v), own(v), place);
+// A side's OVR column: its starting eleven's mean, one decimal (14 October 2026: "Team OVRs should only use starting XI").
+const xiOvr = (sq) => { const r = sq.slice(0, 11).filter(Boolean).map(ovr); return r.length ? (r.reduce((a, b) => a + b, 0) / r.length).toFixed(1) : null; };
 const nm = (v) => { const p = players.get(idOf(v)); return p ? `${p.name.split(" ").pop()} ${p.ovr}` : "?"; };
 
 // An optimal assignment of men to places, best score first: rows the places, columns the men, padded square.
@@ -99,6 +101,14 @@ function select(t) {
   return [...xi, ...bench, ...Array(Math.max(0, n - 11 - bench.length)).fill(null)].slice(0, n);
 }
 
+//   node test/lineups.mjs ovr [write]  every side's OVR column worked out again from its eleven
+if (process.argv[2] === "ovr") {
+  let n = 0;
+  for (const t of teams) { const o = Array.isArray(t.squad) ? xiOvr(t.squad) : null; if (o != null && o !== t.ovr) { n++; if (process.argv[3] === "write") t.ovr = o; } }
+  console.log(`${n} sides' OVR differs from their eleven's`);
+  if (process.argv[3] === "write") { writeFileSync(join(ROOT, "src/data/teams.json"), dumpRecords(teams)); console.log("wrote src/data/teams.json"); }
+  process.exit(0);
+}
 if (process.argv[2] === "nations") {
   const write = process.argv[3] === "write";
   let sides = 0, changed = 0, ins = 0, gain = 0;
@@ -116,7 +126,7 @@ if (process.argv[2] === "nations") {
     if (after.every((v, i) => idOf(v) === idOf(before[i]))) continue;
     changed++; ins += newIn.length; gain += d;
     if (newIn.length) lines.push([d, `${t.code.padEnd(4)} ${t.name.slice(0, 18).padEnd(18)} eleven ${d >= 0 ? "+" : ""}${d}  in ${newIn.length}: ${newIn.map(nm).join(", ")}  out: ${out.map(nm).join(", ")}`]);
-    if (write) t.squad = after;
+    if (write) { t.squad = after; t.ovr = xiOvr(after) ?? t.ovr; }
   }
   lines.sort((a, b) => b[0] - a[0]).forEach(([, l]) => console.log(l));
   console.log(`\n${sides} Avium national sides; ${changed} change, ${ins} men called up in place of others, elevens ${gain >= 0 ? "+" : ""}${gain} rating points as played`);
@@ -143,7 +153,7 @@ for (const t of teams) {
   const ins = after.slice(0, 11).filter(v => v && !before.slice(0, 11).map(idOf).includes(idOf(v)));
   if (ins.length) xiChanged++;
   report.push({ t, d, diff, ins, outs: before.slice(0, 11).filter(v => v && !after.slice(0, 11).map(idOf).includes(idOf(v))) });
-  if (write) t.squad = after;
+  if (write) { t.squad = after; t.ovr = xiOvr(after) ?? t.ovr; }
 }
 report.sort((a, b) => b.d - a.d);
 for (const r of report.slice(0, 40)) if (r.ins.length)
