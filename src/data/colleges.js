@@ -4,8 +4,10 @@
 
 // The season the colleges are playing, by the year it ends, which is also the draft it feeds: 1934/35 and the 1935 draft
 // (the user filed the first season as 1935 beside the NL's, 14 October 2026: "Shift Back To 1935")
-// to start. It moves on once a draft is held (the draft, stage 3).
-export const COLLEGE_SEASON = 1935;
+// to start. It moves on once a draft is held (the draft, stage 3): the 1935 draft ended 14 October 2026, its undrafted
+// final-year men gone to free agency, so the colleges now play 1935/36 for the 1936 draft ("the draft will be back for
+// next year"), whose record waits in src/data/drafts.json.
+export const COLLEGE_SEASON = 1936;
 
 // A course is four years.
 export const YEARS = ["First Year", "Second Year", "Third Year", "Final Year"];

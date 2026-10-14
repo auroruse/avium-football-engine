@@ -19,7 +19,10 @@ const { applyDraft, idOf, teamKey, posFitCost, posList, slotLabels, ownersOf } =
 
 let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined ? "" : "   " + JSON.stringify(got)}`); };
-const read = (f) => JSON.parse(fs.readFileSync(new URL("../src/data/" + f, import.meta.url), "utf8"));
+// The records as they stood with the 1935 draft waiting (421ef99), so the draft is tested on the field it was held for
+// and the test still reads true after it is over (14 October 2026: the draft ended, its free agents gone, 1936 waiting).
+const AT = "421ef99";
+const read = (f) => JSON.parse(execFileSync("git", ["-C", ROOT, "show", AT + ":src/data/" + f], { encoding: "utf8", maxBuffer: 1 << 28 }));
 const rec0 = { players: read("players.json"), managers: read("managers.json"), teams: read("teams.json"), leagues: read("leagues.json") };
 const editors = read("editors.json"), drafts = read("drafts.json");
 const judge = (rec) => { const P = new Map(rec.players.map(p => [p.id, p]));

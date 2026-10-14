@@ -698,7 +698,7 @@ to come to another club, and pick for the club on the clock.
 **When it ends** every final-year man not drafted leaves his college for free agency, where any club signs him through the
 usual save, first come first served. A drafted or released man shows his rating like anyone else's. The draft is then filed
 under the Championship ("Editor Tab, Then Archive"): its Draft tab shows the board and every pick, and a drafted man's page
-says which pick took him and where. The draft keeps its own record; its moves are not in the Trades log.
+says which pick took him and where. The draft keeps its own record; its moves are not in the Trades log. Then the colleges move on a year (`COLLEGE_SEASON`) and the next draft's record waits in `drafts.json`, every pick still the tables' to give: the 1935 draft ended 14 October 2026, its 131 undrafted final-year men free agents, and the 1936 draft waits (the user: "the draft will be back for next year").
 
 **The board** (Editor, Draft). The draft's name, its state and the clock over the 44 picks, eleven to a row, each cell its
 number and the club holding it by its code, the full name on hover (the user, 13 October 2026: "Show team codes"); a pick
