@@ -5805,5 +5805,10 @@
 {"id":"p5843","name":"Hussam ASMARI","nat":"VAR","ovr":70,"born":"1912-08-15","pos":["DM","CM"]},
 {"id":"p5844","name":"Thamer AL-BALAWI","nat":"VAR","ovr":67,"born":"1916-01-07","pos":["CM"]},
 {"id":"p5845","name":"Abdulaziz AL-THUNAYAN","nat":"VAR","ovr":63,"born":"1918-01-19","pos":["RM","AM"]},
-{"id":"p5846","name":"Meshari RUWAILI","nat":"VAR","ovr":74,"born":"1913-11-19","pos":["AM","CM"]}
+{"id":"p5846","name":"Meshari RUWAILI","nat":"VAR","ovr":74,"born":"1913-11-19","pos":["AM","CM"]},
+{"id":"p5847","name":"Masoud EBRAHIMI","nat":"VAR","ovr":63,"born":"1918-04-19","pos":["LB"]},
+{"id":"p5848","name":"Pejman VAFAEI","nat":"VAR","ovr":71,"born":"1913-07-11","pos":["CB"]},
+{"id":"p5849","name":"Shapour AZARGOSHASB","nat":"VAR","ovr":67,"born":"1915-06-02","pos":["RB","CB"]},
+{"id":"p5850","name":"Mehdi JAHROMI","nat":"VAR","ovr":66,"born":"1916-11-14","pos":["LW"]},
+{"id":"p5851","name":"Behrang TABATABAEI","nat":"VAR","ovr":72,"born":"1913-12-06","pos":["ST","RW"]}
 ]
