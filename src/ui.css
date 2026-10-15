@@ -202,7 +202,16 @@
 .ux-form .ux-d { background: var(--ux-draw-bg); color: var(--ux-draw); }
 .ux-form .ux-l { background: var(--ux-loss-bg); color: var(--ux-loss); }
 .ux-res { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
-.ux-res small { margin-left: -5px; font-size: 11px; font-weight: 500; color: var(--ux-text-3); }
+.ux-res { position: relative; }
+.ux-res small { font-size: 11px; font-weight: 500; color: var(--ux-text-3); }
+/* A shoot-out won: its P between the dot and the score; lost: past the score, out of the line so the score stays put. */
+.ux-res small.ux-res-pl { margin: 0 -4px 0 -3px; }
+.ux-res small.ux-res-pr { position: absolute; left: 100%; margin-left: 3px; }
+/* A score's P, AG or AET on the winner's side, out of the line so the score never moves. */
+.ux-sc { position: relative; }
+.ux-sc-m { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 500; line-height: 1; white-space: nowrap; }
+.ux-sc-h { right: 100%; margin-right: 4px; }
+.ux-sc-a { left: 100%; margin-left: 4px; }
 .ux-tbl td.ux-comp { font-size: 11px; font-weight: 500; color: var(--ux-text-2); }
 .ux-opp { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .ux-res::before { content: ""; width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; flex-shrink: 0; }

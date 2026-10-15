@@ -15819,7 +15819,7 @@ export default function App() {
                   <td title={m.opp}><div className="ux-tc">{ot && <TeamCrest team={ot} size={16} />}<b className="ux-opp">{ot?.code || abbr(m.opp)}</b></div></td>
                   <td className="ux-c ux-dim">{m.home ? "H" : "A"}</td>
                   <td className="ux-n"><span className={"ux-res ux-" + m.o} style={mono} title={m.pens ? `Penalties ${m.pens[0]}-${m.pens[1]}` : undefined}>
-                    {m.us}-{m.them}{m.pens && <small>P</small>}</span></td>
+                    {m.pens && m.o === "w" && <small className="ux-res-pl">P</small>}{m.us}-{m.them}{m.pens && m.o !== "w" && <small className="ux-res-pr">P</small>}</span></td>
                 </tr>); })}
                 {!feed.length && <tr><td colSpan={5} className="ux-dim">{regLoading ? "Loading" : "None"}</td></tr>}</tbody>
             </table></div>), true)}
@@ -17224,9 +17224,18 @@ export default function App() {
     uxSumMemo.current.set(s.id, out);
     return out;
   };
-  // A score as the archive writes it: a shoot-out adds a P (its own score on hover), extra time without one AET.
-  const uxScore = (g, pens, aet) => (<>{g}{pens ? <small className="ux-dim" title={`${pens[0]}-${pens[1]} On Penalties`}> P</small>
-    : aet ? <small className="ux-dim"> AET</small> : null}</>);
+  // A score as the archive writes it: a shoot-out adds a P (its own score on hover), a tie settled on away goals AG, extra
+  // time without either AET. The mark stands on the winner's side and outside the score, so the score never moves and never
+  // reads as the loser's (Moukden and Kirin, 15 October 2026: "Viridia won on pens. Make the score never move and just make
+  // P/AG/whatever appear on either side, whichever won"). `agSide` is "h" or "a" when away goals settled it.
+  const uxScore = (g, pens, aet, agSide) => {
+    const [h, a] = String(g).split("-").map(Number);
+    const tag = pens ? "P" : agSide ? "AG" : aet ? "AET" : null;
+    if (!tag) return g;
+    const side = pens ? (pens[0] > pens[1] ? "h" : "a") : agSide || (h > a ? "h" : "a");
+    const mk = <small className={"ux-dim ux-sc-m ux-sc-" + side} title={pens ? `${pens[0]}-${pens[1]} On Penalties` : undefined}>{tag}</small>;
+    return <span className="ux-sc">{side === "h" && mk}{g}{side === "a" && mk}</span>;
+  };
   // A competition's champions added up: each side's titles and runners-up, and the last season it won.
   const uxArcTally = (c) => {
     const by = new Map();
@@ -18468,8 +18477,9 @@ export default function App() {
     if (r.twoLeg) {
       if (r.partial) return <>{r.leg1.home}-{r.leg1.away}<small className="ux-dim"> L1</small></>;
       const ag = !r.et && !r.pen && r.awayGoalsRule && r.agg.home === r.agg.away;
+      const agSide = ag ? (koWinner(m)?.name === m.home?.name ? "h" : "a") : null;
       return <span title={`Leg 1 ${r.leg1.home}-${r.leg1.away}, Leg 2 ${r.leg2.away}-${r.leg2.home}`}>
-        {uxScore(`${r.agg.home}-${r.agg.away}`, r.pen ? [r.pen.home, r.pen.away] : null, !!r.et)}{ag && <small className="ux-dim"> AG</small>}</span>;
+        {uxScore(`${r.agg.home}-${r.agg.away}`, r.pen ? [r.pen.home, r.pen.away] : null, !!r.et, agSide)}</span>;
     }
     return uxScore(`${r.ftHome + (r.et?.home || 0)}-${r.ftAway + (r.et?.away || 0)}`, r.pen ? [r.pen.home, r.pen.away] : null, !!r.et);
   };
@@ -19361,7 +19371,7 @@ export default function App() {
               <td className="ux-dim" style={mono}>{uxSeasonName(s)}</td>
               <td title={s.comp}><div className="ux-tc"><LeagueCrest league={s.comp} size={14} /><b className="ux-code" style={mono}>{uxCompAbbr(s)}</b></div></td>
               <td className="ux-n" style={mono}>{codeOf(r.hk)}</td>
-              <td className="ux-c" style={mono}>{r.hg}-{r.ag}{r.pens ? <small className="ux-dim"> P</small> : null}</td>
+              <td className="ux-c" style={mono}>{uxScore(`${r.hg}-${r.ag}`, r.pens, false)}</td>
               <td style={mono}>{codeOf(r.ak)}</td>
             </tr>))}</tbody>
         </table></div></>) : <div className="ux-empty">{regLoading ? "Loading" : "Never Met"}</div>, true, "m-h2h");
@@ -19611,7 +19621,7 @@ export default function App() {
                       <td title={f.opp}><div className="ux-tc">{ot && <TeamCrest team={ot} size={16} />}<b className="ux-opp">{ot?.code || abbr(f.opp)}</b><span className="ux-dim">{ot?.name || f.opp}</span></div></td>
                       <td className="ux-c ux-dim">{f.home ? "H" : "A"}</td>
                       <td className="ux-n"><span className={"ux-res ux-" + f.o} style={mono} title={f.pens ? `Penalties ${f.pens[0]}-${f.pens[1]}` : undefined}>
-                        {f.us}-{f.them}{f.pens && <small>P</small>}</span></td>
+                        {f.pens && f.o === "w" && <small className="ux-res-pl">P</small>}{f.us}-{f.them}{f.pens && f.o !== "w" && <small className="ux-res-pr">P</small>}</span></td>
                     </tr>); })}
                   {!results.length && <tr><td colSpan={two ? 6 : 5} className="ux-dim">{regLoading ? "Loading" : "None"}</td></tr>}</tbody>
               </table></div>), true)}
