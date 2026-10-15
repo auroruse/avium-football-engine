@@ -503,6 +503,12 @@ foulAggr: 0.25,
   // he moves by (match.ts, the passers rework): fitted 1.49 / 0.80 / 0.66 against shipped 1.37 / 0.72 / 0.80, completion
   // 75.5% -> 76.7%. L keeps its figure again: the fit's 6.05 stood on 40 late passes of 39,121.
   passCal0: 1.49, passCalB: 0.80, passCalR: 0.66, passCalL: 13.78,
+  // THE RESTART'S OWN BELIEF (mind/decide.ts mindRestart, 16 October 2026). The same components as the open-play pass and
+  // its own fit, plus one term for a ball in the air (passCalSH): a dead ball is struck still, at a man who is set, by a
+  // passer nobody may close down, so an unmarked centre-back eight metres away is not the 84% the open-play belief tops
+  // out at -- priced on it, a free short goal kick looked worse than a contested punt and keepers went long. Fitted by
+  // test/ratings.mjs derive on the restarts the taker chose (pp.cr).
+  passCalS0: 1.49, passCalSB: 0.80, passCalSR: 0.66, passCalSL: 13.78, passCalSH: 0,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price

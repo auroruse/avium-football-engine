@@ -13,7 +13,7 @@ import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meXgCal, meDecide, meShotP, meShotSit, meWindUp } from "./decide";
-import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
+import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindRestart, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meCtrl, meDanger, meDir, meGoalX, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
@@ -1062,8 +1062,9 @@ export function meDead(s, kind, side, ticks, out) {
   // sets the MINIMUM before anyone can take it.
   const mp = s.mePos;
   meSPBegin(s, kind, side, out);
-  mp.sp.minT = mp.sp.quick ? CFG.spMinT
-             : Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  // minT0 is what it would wait as an ordinary restart, kept for one played quickly that turns out not to be on (meTick).
+  mp.sp.minT0 = Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  mp.sp.minT = mp.sp.quick ? CFG.spMinT : mp.sp.minT0;
   // The ball has to be on the spot before anybody can strike it. minT is only known here, after
   // meSPBegin has already sized the fetch, so this is where the two are reconciled.
   mp.sp.ft = Math.min(mp.sp.ft, mp.sp.minT);
@@ -1999,12 +2000,22 @@ export function meTick(s, rng, out) {
     meSPShape(s);
     meMove(s, rng);
     if (s.brain === 2) mindSense(s);
+    // A QUICK ONE ONLY IF IT IS STILL ON (user, 16 October 2026: restarts "rushed"). Whether a restart is played quickly
+    // is decided as the ball goes dead, on where everybody was then, and was never asked again: by the time the taker
+    // was over it the man who had been free could have a presser on him or a body in the lane. Over it, he looks again,
+    // and a ball anybody can contest (mePassRisk above nought) is no longer a quick one: the restart waits out the time an
+    // ordinary one takes (minT0) while the shape forms, and is priced again when it is taken.
+    if (s.brain === 2 && mp.sp.quick && (mp.sp.kind === "throw" || mp.sp.kind === "goalkick" || mp.sp.kind === "freekick")
+        && meSPReady(s)) {
+      const qo = mindRestart(s, mp.sp);
+      if (!qo || qo.risk > 0) { mp.sp.quick = 0; mp.sp.minT = Math.max(mp.sp.minT, mp.sp.minT0 ?? mp.sp.minT); return; }
+    }
     if (meSPReady(s)) {
       // Read off the restart before it is taken, because meSPTake clears it. The card is applied
       // AFTER the ball has gone, so a second yellow can send him off without the delivery having to
       // come off the boot of a man who is already walking.
       const wW = mp.sp.waste || 0, wI = mp.sp.ti, wS = mp.sp.side, wX = mp.sp.x, wY = mp.sp.y, wK = mp.sp.kind;
-      meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy);
+      meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, s.brain === 2 ? mindRestart : null);
       // A throw-in is a pass to the man it is thrown to, and the thrower steps back onto the pitch (mindOnThrow).
       if (s.brain === 2 && wK === "throw" && mp.passPending?.k === "throw" && mp.fj >= 0) mindOnThrow(s, wS, wI, mp.fj);
       if (wW > 0 && rng.u() < CFG.wasteCard * wW) {
@@ -2150,7 +2161,7 @@ export function meTick(s, rng, out) {
                               // beaten, exactly as a missed tackle leaves him. See config.
                               // In the second brain the men are the ones committed at the strike (pp.eng), and the ball
                               // has to have gone past him inside his reach: within pressThruR of the line it travelled.
-                              if (pp.sy !== undefined) {
+                              if (pp.sy !== undefined && !pp.rs) {
                                 const _d2 = pp.side === "home" ? 1 : -1, _op = s.players[meOther(pp.side)] || [];
                                 const _lx = mp.bx - pp.sx, _ly = mp.by - pp.sy, _ll = _lx * _lx + _ly * _ly || 1;
                                 if ((mp.bx - pp.sx) * _d2 > 4)
@@ -2173,14 +2184,14 @@ export function meTick(s, rng, out) {
                                 // What it was worth: a completed pass, plus what it gained. Only
                                 // forward progress pays, and it is capped so one long ball out of
                                 // defence cannot outscore a passage of play.
-                                const _fwd = pp.sx === undefined ? 0
+                                const _fwd = pp.sx === undefined || pp.rs ? 0
                                            : (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx);
                                 meRate(pp.byP, CFG.ratePass
                                   + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg);
                                 // The table stat. Raw completions crowned the man who recycled at
                                 // the back; a pass that GAINS ground is the one worth counting, and
                                 // the gain required shrinks as play moves higher (Wyscout tiers).
-                                if (pp.sx !== undefined) {
+                                if (pp.sx !== undefined && !pp.rs) {
                                   const _gx = meGoalX(pp.side);
                                   const _sOwn = Math.abs(pp.sx - _gx) > PITCH_L / 2;
                                   const _eOwn = Math.abs(mp.bx - _gx) > PITCH_L / 2;
@@ -2191,7 +2202,7 @@ export function meTick(s, rng, out) {
                               out.poss[pp.side] += (pp.t || 0);
                               // Ground actually gained by a pass that found a team-mate. A side can
                               // complete 160 passes a game and be no nearer the goal at the end of it.
-                              if (out.passFwd && pp.sx !== undefined)
+                              if (out.passFwd && pp.sx !== undefined && !pp.rs)
                                 out.passFwd[pp.side] += (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx); }
     else { out.passFail++;
            if (pp.byP) { pp.byP.passFail = (pp.byP.passFail || 0) + 1; meRate(pp.byP, -CFG.ratePassFail); }
@@ -3463,7 +3474,9 @@ export function meTick(s, rng, out) {
         // fraction of the reading and all of the running that goes with it, so he was sent where he could not get to,
         // jogged there because he had time, and the ball went past in front of him.
         const ppC = mp.passPending;
-        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && ppC.k === "cross" && ppC.sx !== undefined && ppC.side === sd) {
+        // ...AND A THROW, OR A RESTART PLAYED IN THE AIR TO A MAN (mindRestart, ppC.pr), by the man it is played to: one throw
+        // in six ran past its man on the old reach model (traced, 16 October 2026).
+        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || (ppC.pr && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
@@ -3480,7 +3493,8 @@ export function meTick(s, rng, out) {
         // meMeetAir, rolling), and goes for the first point of its path he can make. Over the same eight fixtures, balls
         // to the feet of a man sprinting when it was struck were kept 63% -> 79%, and those running on past him 14% -> 5%.
         // A ball to feet only: one into space or through is met on his run (meMove, thruRun), which steers him itself.
-        if (!airPred && rcv && q.pos !== "GK" && ppC && ppC.side === sd && ppC.sx !== undefined && !ppC.high && !ppC.thru) {
+        // A restart played to a man (ppC.pr) is met by this law once it is down below recvAirZ, thrown or lofted.
+        if (!airPred && rcv && q.pos !== "GK" && ppC && ppC.side === sd && ppC.sx !== undefined && (!ppC.high || ppC.pr) && !ppC.thru) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const gm = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), CFG.recvAirZ, 0, CFG.reach,

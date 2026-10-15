@@ -732,7 +732,7 @@ export function meSPReady(s) {
 }
 
 /** Take it. Each restart has its own delivery -- this is not the open-play decision code. */
-export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
+export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
   const mp = s.mePos, sp = mp.sp;
   const side = sp.side, us = s.players[side];
   const dir = meDir(side), gx = meGoalX(side);
@@ -757,8 +757,16 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     && meAttrs(taker).strength >= CFG.longThrowStr
     && us.some((q, i) => i !== sp.ti && q && !q.off && q.pos !== "GK" && inArea(q)
                         && Math.hypot(q.x - sp.x, q.y - sp.y) <= CFG.longThrowMax);
+  // THE PASS OUT OF A RESTART IS PRICED AS A PASS (mind/decide.ts mindRestart, the second brain): every team-mate on the
+  // open-play passer's own arithmetic, the lane and the race to the ball included. The weighted draw below stays for the
+  // deliveries -- a corner, a long throw, a free kick into the area -- and for the first brain.
+  const toArea = sp.kind === "corner" || longThrow
+    || (sp.kind === "freekick" && Math.abs(gx - sp.x) < CFG.spShootRange + 12);
+  const priced = pick && !toArea && (sp.kind === "throw" || sp.kind === "goalkick" || sp.kind === "freekick")
+    ? pick(s, sp) : null;
+  if (globalThis.__spPick) globalThis.__spPick(sp, priced);       // harness-only: what the restart was priced at
   const cands = [];
-  for (let i = 0; i < us.length; i++) {
+  for (let i = 0; i < us.length && !priced; i++) {
     // A man parked off the pitch was the likeliest target for any throw-in taken near him.
     if (i === sp.ti || us[i].pos === "GK" || us[i].off) continue;
     // Never level with or behind the ball at a goal kick. The weighted draw below is exp(-d), so a
@@ -812,8 +820,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     if (into || longThrow) w *= (0.5 + meAttrs(q).strength / 99) * (1 + (meBadgeFx(q).spAir ?? 0));
     cands.push([i, w]);
   }
-  let ti = -1;
-  if (cands.length) {
+  let ti = priced ? priced.j : -1;
+  if (!priced && cands.length) {
     let tw = 0; for (const c of cands) tw += c[1];
     let r = rng.u() * tw;
     for (const c of cands) { r -= c[1]; if (r <= 0) { ti = c[0]; break; } }
@@ -926,8 +934,16 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   }
   const q = ti >= 0 ? us[ti] : null;
   const aerial = sp.kind === "corner" || longThrow;
-  let tx = q ? (aerial ? (q._rx ?? q.x) : q.x) : sp.x + dir * 20,
-      ty = q ? (aerial ? (q._ry ?? q.y) : q.y) : ME_HALF_W;
+  // NOBODY TO PLAY IT TO is not a ball to nobody in the middle of the pitch. It was aimed twenty metres out at the centre
+  // spot's line: along the ground for a goal kick, straight to whoever pressed it, and for a throw a 39 m "throw" across
+  // the pitch. A throw goes down the line, to where the shape sends a man to show for it (meSPShape); a goal kick or a
+  // free kick goes long, into their half.
+  const inw = sp.y < ME_HALF_W ? 1 : -1;
+  let tx = priced ? priced.ax : q ? (aerial ? (q._rx ?? q.x) : q.x)
+         : sp.kind === "throw" ? sp.x + dir * 6 : sp.x + dir * (sp.kind === "goalkick" ? 55 : 35),
+      ty = priced ? priced.ay : q ? (aerial ? (q._ry ?? q.y) : q.y)
+         : sp.kind === "throw" ? sp.y + inw * 3 : ME_HALF_W;
+  tx = Math.max(1, Math.min(PITCH_L - 1, tx)); ty = Math.max(1, Math.min(PITCH_W - 1, ty));
   // A CORNER IS FLIGHTED TO HIS HEAD, NOT HIS FEET: solved to arrive at crossZ where his run ends
   // (meLoftFor), which turns the reception into the aerial duel a corner actually is. It used to be
   // aimed spCrossOver metres beyond him, to make up for a loft that landed short of wherever it was
@@ -936,7 +952,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
   if (globalThis.__prov) mp._spLast = { k: longThrow ? "longthrow" : sp.kind, t: mp.tick, side, d: Math.hypot(meGoalX(side) - sp.x, ME_HALF_W - sp.y) };
   // ...and a throw-in is THROWN. It was struck along the ground like a pass.
-  const high = sp.kind === "corner" || sp.kind === "throw"
+  const high = priced ? priced.high : sp.kind === "corner" || sp.kind === "throw" || !q
     || (sp.kind === "goalkick" && ((s.strategy?.[side]?.gkDist || 0) > 0 || Math.hypot(tx - sp.x, ty - sp.y) > CFG.loftD))
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);
   // NO SET-PIECE DELIVERY IS COMMENTARY. A throw, a goal kick, a corner swung in and a free kick
@@ -947,7 +963,14 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // The taker gets credited for it like any other pass. Left off, every corner, throw, goal kick
   // and free kick completed into the match total and onto nobody's name -- about twenty-five passes
   // a match, which is where the per-player column stopped reconciling with the team's.
-  mp.passPending = { side, byP: taker, k: longThrow ? "longthrow" : sp.kind };
+  // ...AND IT IS A PASS ON THE PITCH TOO. Without where it was struck from, where it was aimed and how long it had been
+  // travelling, the man it was played to ran on the old reach model (the receiver law, match.ts, keys on sx) and let one
+  // throw in six run past him, and the other side's reading of it was charged afresh every slice (passPending.t was never
+  // set, so seenD was NaN). rs marks it a restart, so the pass bookkeeping that reads sx (progress credit, the
+  // played-through press) treats it as it always has; nobody was committed to the ball at a dead ball (eng).
+  mp.passPending = { side, byP: taker, k: longThrow ? "longthrow" : sp.kind, t: 0, sx: sp.x, sy: sp.y, ax: tx, ay: ty,
+                     d: Math.hypot(tx - sp.x, ty - sp.y),
+                     fj: ti, high: !!high, thru: false, rs: 1, pr: priced ? 1 : 0, cr: priced?.cr || null, eng: [] };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
   if (globalThis.__sp) {
     globalThis.__sp[sp.kind] = (globalThis.__sp[sp.kind] || 0) + 1;
