@@ -128,6 +128,11 @@ const hans = (ovr, badges) => ({ id: "n5", what: "players", name: "Hans TRAIT", 
 { const s = plan(ED, { new: [{ id: "n3", what: "managers", name: "Karl BAUER", nat: "ALE", born: "1890-05-06", style: "counterattack", ovr: 72 }] });
   const r = s.requests[0], yes = r && settle(OV, r, "accept");
   ok("a new manager is let in by the overseer", !s.errors.length && !yes.errors.length && after(yes.apply).managers.some(m => m.name === "Karl BAUER" && m.style === "Counter-Attack"), [s.errors, yes?.errors]); }
+// Managers alone of another nation (editors.json "managers"): Karjania's editor makes Turulian managers, nobody else does.
+{ const tur = { id: "n9", what: "managers", name: "Lajos KOVACS", nat: "TUR", born: "1886-02-02", style: "counterattack", ovr: 64 };
+  const kar = plan("zezelandnationstates-hash", { new: [tur] }), other = plan(ED, { new: [tur] });
+  ok("Karjania's editor may make a Turulian manager", !kar.errors.length && kar.requests.some(r => r.kind === "new"), kar.errors);
+  ok("another editor may not", other.errors.some(e => /not a nationality of yours/.test(e)), other.errors); }
 { // A new club: sixteen men from the bench of each other ALE club, and no manager.
   const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 16), squad = clubs.map(t => ids(t)[old(t, 15)]).filter(Boolean);
   while (squad.length < 16) squad.push(ids(clubs[0])[old(clubs[0], 14 - (16 - squad.length))]);

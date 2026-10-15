@@ -34,7 +34,7 @@ import editorsRec from "./data/editors.json";
 // and until then the copy it was built with (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
 import { fetchAtlas } from "./data/atlas.js";
-import { OVERSEER, clubNations, isNational, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
+import { OVERSEER, clubNations, isNational, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
@@ -8817,7 +8817,8 @@ export default function App() {
     if (!draftSize(draft)) return null;
     const editors = { overseers: overseer ? [scope.login] : [],
                       editors: { ...(editorsRec.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) },
-                      clubs: { ...(editorsRec.clubs || {}), ...(scope.role === "editor" ? { [scope.login]: scope.clubs || [] } : null) } };
+                      clubs: { ...(editorsRec.clubs || {}), ...(scope.role === "editor" ? { [scope.login]: scope.clubs || [] } : null) },
+                      managers: { ...(editorsRec.managers || {}), ...(scope.role === "editor" ? { [scope.login]: scope.managers || [] } : null) } };
     return planSave(recBase, editors, requests, scope.login, draft, judge, "", () => "");
   }, [draftList, recBase, draft, requests, scope, overseer, judge]);
   // What went live is main's now: the base moves, and it stays laid under the cart in this browser until a build carries
@@ -12888,7 +12889,7 @@ export default function App() {
           <div className="ux-ed-form">
             <dl className="ux-ed-dl">
               {field("Name", <input className="ux-ed-in" placeholder={k === "teams" ? "Club Name" : "Given Name SURNAME"} value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
-              {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || k === "players")} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
+              {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || k === "players", k === "managers" ? mgrNations(scope) : undefined)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
               {k !== "teams" && field("Date Of Birth", edBornAge(f.born, f.age, upd, k === "managers" ? 90 : 60))}
               {k === "players" && field("Position", sel("Position", f.pos, Object.keys(POS_NAME).map(c => [c, `${c} ${POS_NAME[c]}`]), v => upd({ pos: v })))}
               {k === "players" && field("Second Position", (
@@ -14191,7 +14192,7 @@ export default function App() {
   // below its level; traits his rating affords.
   const shFormReady = (kind, f) => { const blank = f.ovr === "" || f.ovr == null, newClub = !!f.side?.startsWith("new:");
     if (!((f.name || "").trim() && f.nat && f.born && (blank ? !overseer || newClub : Number.isInteger(+f.ovr) && +f.ovr >= 25 && +f.ovr <= 99))) return false;
-    if (kind === "managers") return !!f.style && (overseer || (scope.nations || []).includes(f.nat));
+    if (kind === "managers") return !!f.style && (overseer || mgrNations(scope).includes(f.nat));
     return !!f.pos && (blank ? edCapOf(f.nat) == null : edUnderCap(f.nat, f.ovr)) && (overseer || !traitsProblem(f.badges, shNum(f.ovr))); };
   const shAddNew = (kind) => { const f = edForms[kind]; if (!f) return; const o = { id: edUid(), ...shFormObj(kind, f) };
     if (kind === "players") {
@@ -14749,7 +14750,7 @@ export default function App() {
             <SlideName text={(isMg ? "Manages " : "Joins ") + sideName + (place ? " · " + place : "")} /></span>}</div>
           <dl className="ux-sh-facts ux-sh-wide">
             {row("Name", <input className="ux-sh-fi ux-sh-flat" autoFocus={mode === "new"} placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
-            {row("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || !isMg)} placeholder="Search Nations" cls="ux-sh-spk" onPick={it => upd({ nat: it.k })} />)}
+            {row("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || !isMg, isMg ? mgrNations(scope) : undefined)} placeholder="Search Nations" cls="ux-sh-spk" onPick={it => upd({ nat: it.k })} />)}
             {row("Born", <span className="ux-sh-born">
               <input className={"ux-sh-fi ux-sh-flat" + (f.born ? "" : " ux-need")} type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "", bornSet: true })} />
               <input className="ux-sh-fi ux-sh-flat ux-sh-fage" style={mono} placeholder="Age" aria-label="Age" title="Draws A Date Of Birth For This Age" key={"age" + (f.born || "")} defaultValue={age ?? ""}
@@ -15135,7 +15136,7 @@ export default function App() {
               <div className="ux-scrim" onClick={() => setAcctOpen(false)} />
               <div className="ux-menu" role="menu" aria-label="Account" onKeyDown={e => { if (e.key === "Escape") setAcctOpen(false); }}>
                 <div className="ux-menu-head"><b>{session.login}</b>
-                  {asViewer ? "Overseer, In Viewer Mode" : overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {[...scope.nations.map(c => natOptions.name.get(c) || c), ...(scope.clubs || []).map(c => `${natOptions.name.get(c) || c} Clubs`)].join(", ")}</> : "Viewer"}</div>
+                  {asViewer ? "Overseer, In Viewer Mode" : overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {[...scope.nations.map(c => natOptions.name.get(c) || c), ...(scope.clubs || []).map(c => `${natOptions.name.get(c) || c} Clubs`), ...(scope.managers || []).map(c => `${natOptions.name.get(c) || c} Managers`)].join(", ")}</> : "Viewer"}</div>
                 <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" autoFocus onClick={signOut}>Sign Out</button>
               </div></>)}
           </div>
@@ -16699,7 +16700,10 @@ export default function App() {
           <div className="ux-st-glow" aria-hidden="true" style={{ backgroundImage: r.photo ? stadiumBg(r.name) : `linear-gradient(135deg, ${tint}, ${tint2})` }} />
           <div className={"ux-st-card" + (r.photo ? " ux-st-ph" : "")} role={r.photo ? "button" : undefined} tabIndex={r.photo ? 0 : undefined}
             aria-label={r.photo ? r.name : undefined} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === "Enter") open(r); }}
-            style={{ backgroundImage: r.photo ? stadiumBg(r.name) : `linear-gradient(135deg, ${tint} 0 50%, ${tint2} 50% 100%)` }}>
+            style={r.photo ? undefined : { backgroundImage: `linear-gradient(135deg, ${tint} 0 50%, ${tint2} 50% 100%)` }}>
+            {/* The photograph as a real image, so the card takes its own shape (every ground is 2000 x 400) instead of
+                cropping and stretching it to the window's (Moukden and Kirin, 15 October 2026). */}
+            {r.photo && <StadiumImg name={r.name} style={{ borderRadius: 0, border: "none" }} />}
             <div className="ux-st-rank" aria-hidden="true"><small>#</small>{r.rank}</div>
             <div className="ux-st-foot">
               <div className="ux-st-id">
@@ -16720,7 +16724,7 @@ export default function App() {
         </section>);
     };
     return (
-      <div className="ux-body" style={{ gridTemplateRows: "minmax(240px, 44vh) minmax(0, 1fr)" }}>
+      <div className="ux-body" style={{ gridTemplateRows: "auto minmax(0, 1fr)" }}>
         {pick ? hero(pick) : <div />}
         <section className="ux-panel">
           <div className="ux-ph"><h2 className="ux-pt">Stadiums</h2></div>

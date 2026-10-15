@@ -2200,26 +2200,29 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 .ux-st-hero { position: relative; min-height: 0; isolation: isolate; }
 .ux-st-glow { position: absolute; inset: -40px; z-index: -1; background-size: cover; background-position: center; pointer-events: none;
   filter: blur(60px) saturate(1.6) brightness(.75); opacity: .85; }
-.ux-st-card { position: relative; height: 100%; border-radius: 12px; overflow: hidden; background: #000 center / cover no-repeat; color: #fff;
+/* The card is the photograph's own shape (every ground is 2000 x 400) and never wider than the file, so it is never cropped or
+   stretched; a ground with no photograph keeps the same 5:1. The lettering sizes off the card, not the window. */
+.ux-st-card { position: relative; max-width: 2000px; margin: 0 auto; container-type: inline-size; border-radius: 12px; overflow: hidden; background: #000 center / cover no-repeat; color: #fff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .16), 0 0 0 5px rgba(0, 0, 0, .35), 0 40px 90px -30px #000, 0 0 140px -20px var(--st-tint); }
 .ux-st-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 0 0 1px rgba(255, 255, 255, .05); }
 .ux-st-card.ux-st-ph { cursor: zoom-in; }
-.ux-st-rank { position: absolute; right: 28px; top: 6px; font: 700 132px/1 var(--ux-f-title); letter-spacing: -.02em; pointer-events: none;
+.ux-st-card:not(.ux-st-ph) { aspect-ratio: 5; }
+.ux-st-rank { position: absolute; right: 28px; top: 6px; font: 700 min(132px, 9cqw)/1 var(--ux-f-title); letter-spacing: -.02em; pointer-events: none;
   color: rgba(255, 255, 255, .06); -webkit-text-stroke: 1.5px rgba(255, 255, 255, .7);
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, .8)) drop-shadow(0 2px 12px rgba(0, 0, 0, .5)); }
-.ux-st-rank small { font-size: 56px; vertical-align: 50px; margin-right: 4px; }
+.ux-st-rank small { font-size: min(56px, 3.8cqw); vertical-align: min(50px, 3.4cqw); margin-right: 4px; }
 .ux-st-foot { position: absolute; left: 24px; right: 24px; bottom: 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 /* The words straight on the photograph, each letter outlined and shadowed close (Moukden and Kirin, 14 October 2026: "On The
    Photo, Shadowed Letters"), so a bright sky or stand never takes them and nothing is laid over the picture. */
 .ux-st-id { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.ux-st-loc { display: flex; align-items: center; font: 700 clamp(17px, 1.6vw, 24px)/1 var(--ux-f-title); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: #fff;
+.ux-st-loc { display: flex; align-items: center; font: 700 clamp(14px, 1.7cqw, 24px)/1 var(--ux-f-title); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: #fff;
   text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, .95), 0 1px 3px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .7), 0 3px 24px rgba(0, 0, 0, .6); }
 .ux-st-loc a, .ux-st-loc button { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; text-shadow: inherit; }
 /* Between where it is and how many it holds: a heavy slanted bar in the accent, seen on any sky. */
 .ux-st-sep { width: 5px; height: 1.05em; margin: 0 .6em; background: var(--ux-accent); transform: skewX(-18deg);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 1px 6px rgba(0, 0, 0, .6); }
-.ux-st-name { font: 700 clamp(34px, 4.2vw, 68px)/.95 var(--ux-f-title); letter-spacing: .01em; text-transform: uppercase;
+.ux-st-name { font: 700 clamp(26px, 4.4cqw, 68px)/.95 var(--ux-f-title); letter-spacing: .01em; text-transform: uppercase;
   margin: 0; text-shadow: 0 0 1px #000, 0 0 3px rgba(0, 0, 0, .95), 0 2px 6px rgba(0, 0, 0, .85), 0 0 18px rgba(0, 0, 0, .6), 0 6px 40px rgba(0, 0, 0, .55); }
 .ux-st-ten { flex: none; display: flex; gap: 10px; }
 .ux-st-tn { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 10px; text-align: left; color: #fff;

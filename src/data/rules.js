@@ -32,15 +32,19 @@ export const OVERSEER = "@overseer";
 
 // Someone's standing: the overseer has every right; an editor has the nations listed against their GitHub name, and
 // any nations whose clubs and leagues alone they keep (editors.json "clubs": the user, 11 October 2026, "Give the
-// Karjanian access to the Turulian LEAGUE (not NT)").
+// Karjanian access to the Turulian LEAGUE (not NT)"); and any nations whose managers alone they may make (editors.json
+// "managers": Moukden and Kirin, 15 October 2026, "Give Karjania the ability to make Turulian managers").
 export function scopeOf(editors, login) {
   const l = lc(login), mine = (book) => Object.entries(book || {}).filter(([u]) => lc(u) === l).flatMap(([, n]) => n);
   const overseer = (editors?.overseers || []).some(o => lc(o) === l);
   const nations = mine(editors?.editors), clubs = mine(editors?.clubs).filter(c => !nations.includes(c));
-  return { login: String(login || ""), role: overseer ? "overseer" : nations.length || clubs.length ? "editor" : "viewer", nations, clubs };
+  const managers = mine(editors?.managers).filter(c => !nations.includes(c));
+  return { login: String(login || ""), role: overseer ? "overseer" : nations.length || clubs.length || managers.length ? "editor" : "viewer", nations, clubs, managers };
 }
 // The nations whose clubs and leagues someone keeps: their own, and those whose clubs alone they were given.
 export const clubNations = (scope) => [...(scope.nations || []), ...(scope.clubs || [])];
+// The nationalities someone may make new managers of: their own, and those whose managers alone they were given.
+export const mgrNations = (scope) => [...(scope.nations || []), ...(scope.managers || [])];
 export const owns = (scope, t) => scope.role === "overseer" || (!!t && scope.role === "editor"
   && (scope.nations.includes(nationOf(t)) || (!isNational(t) && (scope.clubs || []).includes(nationOf(t)))));
 // The people who answer for a team: its nation's editors, and for a club anyone given that nation's clubs (the overseer
@@ -220,7 +224,7 @@ function newProblems(rec, n, scope, over, h) {
   const mine = (code) => over || scope.nations.includes(code), mineClubs = (code) => over || clubNations(scope).includes(code);
   if (n.what !== "teams") {
     if (!nationCode(n.nat)) bad("not a nationality");
-    else if (!mine(n.nat)) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
+    else if (!(n.what === "managers" ? over || mgrNations(scope).includes(n.nat) : mine(n.nat))) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
     if (!(n.born && birthDateOk(n.born))) bad("a date of birth is a real date, for a man at least 14");
     if (n.grad != null && !gradOk(n.grad)) bad("a graduation year is a year");
     // An editor may leave the rating for the overseer, who sets it to let the man in.
@@ -271,7 +275,7 @@ function newManProblems(rec, m, kind, scope, over, bad) {
   if (!m || typeof m !== "object") { bad(`${w}: not a ${kind === "players" ? "player" : "manager"}`); return; }
   if (!text(m.name, 60)) bad(`${w}: not a usable name`);
   if (!nationCode(m.nat)) bad(`${w}: not a nationality`);
-  else if (!over && !scope.nations.includes(m.nat)) { const why = kind === "players" ? foreignProblem(rec, m.nat, m.ovr) : "not a nationality of yours"; if (why) bad(`${w}: ${why}`); }
+  else if (!over && !(kind === "managers" ? mgrNations(scope) : scope.nations).includes(m.nat)) { const why = kind === "players" ? foreignProblem(rec, m.nat, m.ovr) : "not a nationality of yours"; if (why) bad(`${w}: ${why}`); }
   if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
   if (kind === "players" && m.grad != null && !gradOk(m.grad)) bad(`${w}: a graduation year is a year`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
