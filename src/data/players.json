@@ -5823,5 +5823,11 @@
 {"id":"p5861","name":"Dinyar ARDESHIRI","nat":"VAR","ovr":65,"born":"1915-08-22","pos":["DM","CM"]},
 {"id":"p5862","name":"Mahyar KESHTKAR","nat":"VAR","ovr":68,"born":"1914-05-01","pos":["CM","AM"]},
 {"id":"p5863","name":"Kazem ZAREI","nat":"VAR","ovr":62,"born":"1917-03-22","pos":["CM"]},
-{"id":"p5864","name":"Amin KHERADMAND","nat":"VAR","ovr":60,"born":"1917-12-02","pos":["RM","AM"]}
+{"id":"p5864","name":"Amin KHERADMAND","nat":"VAR","ovr":60,"born":"1917-12-02","pos":["RM","AM"]},
+{"id":"p5865","name":"Nawaf MUTAIRI","nat":"VAR","ovr":64,"born":"1914-12-12","pos":["CB"]},
+{"id":"p5866","name":"Bassam ZUBAIDI","nat":"VAR","ovr":62,"born":"1915-12-24","pos":["DM"]},
+{"id":"p5867","name":"Muath AL-GHAMDI","nat":"VAR","ovr":65,"born":"1913-10-14","pos":["CM","AM"]},
+{"id":"p5868","name":"Anas AL-SHAHRANI","nat":"VAR","ovr":60,"born":"1917-12-17","pos":["RM","LM"]},
+{"id":"p5869","name":"Musab AL-SUWAYLIM","nat":"VAR","ovr":61,"born":"1917-04-21","pos":["RW"]},
+{"id":"p5870","name":"Hatem AL-KHAIBARI","nat":"VAR","ovr":66,"born":"1913-08-13","pos":["ST","LW"]}
 ]
