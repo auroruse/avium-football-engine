@@ -503,6 +503,12 @@ foulAggr: 0.25,
   // he moves by (match.ts, the passers rework): fitted 1.49 / 0.80 / 0.66 against shipped 1.37 / 0.72 / 0.80, completion
   // 75.5% -> 76.7%. L keeps its figure again: the fit's 6.05 stood on 40 late passes of 39,121.
   passCal0: 1.49, passCalB: 0.80, passCalR: 0.66, passCalL: 13.78,
+  // THE RESTART'S OWN BELIEF (mind/decide.ts mindRestart, 16 October 2026). The same components as the open-play pass and
+  // its own fit, plus one term for a ball in the air (passCalSH): a dead ball is struck still, at a man who is set, by a
+  // passer nobody may close down, so an unmarked centre-back eight metres away is not the 84% the open-play belief tops
+  // out at -- priced on it, a free short goal kick looked worse than a contested punt and keepers went long. Fitted by
+  // test/ratings.mjs derive on the restarts the taker chose (pp.cr).
+  passCalS0: 1.49, passCalSB: 0.80, passCalSR: 0.66, passCalSL: 13.78, passCalSH: 0,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -625,10 +631,15 @@ foulAggr: 0.25,
   // -like change over a better player out of position.
   subCap: 5, subFromTick: 1700, subStamina: 74, subKnockBias: 14, subSamePos: 8,
   // THE SECOND BRAIN'S BENCH (match.ts meCoachSubs; user, 11 October 2026), set by reasoning, not measured: before the
-  // hour (subLateMin) a change for tired legs only below subEarly, legs that are gone; from it the usual subStamina line,
-  // up to subReadPts / 2 higher for the best manager and as much lower for the worst. At most subWindows stoppages for
-  // changes in the ninety (the break not counted, one more in extra time), subWinGap minutes or more apart.
-  subEarly: 55, subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8,
+  // hour (subLateMin) a change for tired legs only once his legs are gone (pressLegs); the coach weighs every change
+  // (match.ts meCoachSubs), seeing tiredness up to subReadPts / 2 points sooner for the best manager and as much later for
+  // the worst. At most subWindows stoppages for changes in the ninety (the break not counted, one more in extra time),
+  // subWinGap minutes or more apart. subLegsW is what a point of stamina costs a man, in points of rating: measured, a
+  // side held at each stamina against the same side held fresh and some points down (test/specs/fatigue.mjs).
+  subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8, subLegsW: 0.30,
+  // Where a substitute comes on (match.ts meSub): this far from halfway on his own bench's side, this far inside the
+  // benches' touchline. Two and a half metres is where the Live Match draws each dugout's first man.
+  subEnterX: 2.5, subEnterIn: 0.5,
   // Stamina per metre run. Swept in test/stamsweep.mjs against what it does to the bench, because
   // the two are one question -- a threshold cannot fire if nobody ever gets near it:
   //   0.0026 -> half time 93.8, full time median 87.8, 0.29 subs a match   (what shipped)

@@ -114,7 +114,7 @@ export function play(E, hT, aT, seed) {
     if (globalThis.__pass2) globalThis.__pass2(pp, okSide, st, mp.bx, mp.by);
     const sd = pp.side, S = P[sd];
     if (!S) return;
-    if (pp.sx === undefined) { S.set++; return; }                 // a restart's delivery
+    if (pp.sx === undefined || pp.rs) { S.set++; return; }       // a restart (pp.rs: it carries its strike since 16 Oct 2026)
     const ok = okSide === sd, k = KIND[pp.k] || "feet";
     S.n++; if (ok) S.ok++;
     S.kn[k]++; if (ok) S.kok[k]++;
@@ -322,10 +322,12 @@ async function runJobIn(E, spec, arm, ci, k0, n) {
     const sd = (fx.seed + (arm.seed || 0) * 2654435761) >>> 0;
     const run = spec.runner === "sim" ? simMatch : play;
     const r = fx.home ? run(E, me, op, sd) : run(E, op, me, sd);
+    // A probe spec may hand back its own records for the match (globalThis.__labRow), kept on the row as X.
+    const X = globalThis.__labRow ? globalThis.__labRow(fx.home ? "home" : "away") : null;
     const S = fx.home ? r.home : r.away, O = fx.home ? r.away : r.home;
     const G = S.G; delete S.G; delete O.G;
     const AN = S.AN, ANo = O.AN; delete S.AN; delete O.AN;
-    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O, ...(G ? { G } : null), ...(AN ? { AN, ANo } : null) });
+    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O, ...(G ? { G } : null), ...(AN ? { AN, ANo } : null), ...(X ? { X } : null) });
   }
   return rows;
 }
