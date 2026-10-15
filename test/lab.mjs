@@ -62,11 +62,16 @@ function anatomyOf(shots, prov) {
     return dep < 5.5 && ay < 9.16 ? 0 : dep < 16.5 && ay < 20.16 ? 1 : 2; };
   for (const sd of SIDES) {
     const A = AN[sd] = { zf: [0, 0, 0], zgf: [0, 0, 0], zh: [0, 0, 0], zgh: [0, 0, 0], frf: [0, 0, 0], frh: [0, 0, 0],
-      out: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hd: new Array(41).fill(0), hdrFrom: {}, SH: {}, GL: [] };
+      out: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hd: new Array(41).fill(0), hdrFrom: {}, SH: {}, GL: [],
+      // HEADERS AT GOAL (15 Oct 2026, the user: "they seemed limp and weak"): how each one ended, its xG, how hard the ball
+      // was coming (hin) and how hard it left his head (hv, and hvz up), and goals by what delivered it.
+      ho: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hxg: 0, hv: 0, hvz: 0, hin: 0, hdrGoal: {} };
     for (const r of shots) {
       if (r.side !== sd) continue;
       const z = ZB(r), g = r.out === "goal" ? 1 : 0;
-      if (r.hdr) { A.zh[z]++; A.zgh[z] += g; A.frh[z] += r.fr || 0; const k = r.from || "?"; A.hdrFrom[k] = (A.hdrFrom[k] || 0) + 1; }
+      if (r.hdr) { A.zh[z]++; A.zgh[z] += g; A.frh[z] += r.fr || 0; const k = r.from || "?"; A.hdrFrom[k] = (A.hdrFrom[k] || 0) + 1;
+                   A.ho[r.out || "other"]++; A.hxg += r.xg || 0; A.hv += r.v || 0; A.hvz += r.vz || 0; A.hin += r.inV || 0;
+                   if (g) A.hdrGoal[k] = (A.hdrGoal[k] || 0) + 1; }
       else { A.zf[z]++; A.zgf[z] += g; A.frf[z] += r.fr || 0; A.hd[Math.min(40, Math.floor(r.d))]++; }
       A.out[r.out || "other"]++;
       if (r.nm) { const e = A.SH[r.nm] || (A.SH[r.nm] = [r.pos, 0, 0, 0, r.role || "-", 0, 0, 0, 0]); e[1]++; e[2] += g; e[3] += r.xg || 0;
@@ -246,10 +251,20 @@ export function play(E, hT, aT, seed) {
 export function simMatch(E, hT, aT, seed) {
   let SO = null; globalThis.__simOut = (o) => { SO = { cor: o.corners, sh: o.shots, sot: o.onTarget }; };
   if (globalThis.__anat) { globalThis.__shots = []; globalThis.__prov = []; }
+  // ...and every open-play cross (15 Oct 2026): struck, who touched it first, and the aerial duels on it.
+  const CX = { home: { n: 0, rcv: 0, mate: 0, opp: 0, gk: 0, duelW: 0, duelL: 0 }, away: { n: 0, rcv: 0, mate: 0, opp: 0, gk: 0, duelW: 0, duelL: 0 } };
+  if (globalThis.__anat) { globalThis.__pres = []; globalThis.__airDuel = [];
+    globalThis.__strike = (pp) => { if (pp && pp.k === "cross" && pp.sx !== undefined && CX[pp.side]) CX[pp.side].n++; }; }
   const r = E.simPositionalMatch(new E.RNG(seed >>> 0 || 7), hT.skill, aT.skill, false, hT.style, aT.style, hT.formation, aT.formation,
     null, hT.strategy, aT.strategy, hT.squad, aT.squad, null, null, true, { home: hT.mgmt ?? null, away: aT.mgmt ?? null });
   const AN = globalThis.__anat ? anatomyOf(globalThis.__shots, globalThis.__prov) : null;
-  if (globalThis.__anat) { globalThis.__shots = null; globalThis.__prov = null; }
+  if (globalThis.__anat) {
+    for (const e of globalThis.__pres || []) { const c = e.k === "cross" ? CX[e.side] : null; if (!c) continue;
+      if (e.who === "opp") { if (e.gk) c.gk++; else c.opp++; } else c[e.who]++; }
+    for (const e of globalThis.__airDuel || []) { const c = e.k === "cross" ? CX[e.side] : null; if (c) { if (e.won) c.duelW++; else c.duelL++; } }
+    for (const sd of SIDES) AN[sd].cx = CX[sd];
+    globalThis.__shots = null; globalThis.__prov = null; globalThis.__pres = null; globalThis.__airDuel = null; globalThis.__strike = null;
+  }
   globalThis.__simOut = null;
   const res = {};
   for (const sd of SIDES) {
