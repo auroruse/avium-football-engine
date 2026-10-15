@@ -5917,5 +5917,11 @@
 {"id":"p5955","name":"Humaid AL-FATTAM","nat":"VAR","ovr":53,"born":"1915-11-03","pos":["RB","LB"]},
 {"id":"p5956","name":"Eisa AL-SAMBUK","nat":"VAR","ovr":53,"born":"1917-04-15","pos":["DM"]},
 {"id":"p5957","name":"Marwan AL-TABBAB","nat":"VAR","ovr":57,"born":"1914-12-14","pos":["CM","AM"]},
-{"id":"p5958","name":"Hazza AL-RADHIF","nat":"VAR","ovr":56,"born":"1914-02-09","pos":["ST"]}
+{"id":"p5958","name":"Hazza AL-RADHIF","nat":"VAR","ovr":56,"born":"1914-02-09","pos":["ST"]},
+{"id":"p5959","name":"Mahan SAHHAFI","nat":"VAR","ovr":56,"born":"1913-11-24","pos":["CB"]},
+{"id":"p5960","name":"Sadegh QESSEHGOU","nat":"VAR","ovr":48,"born":"1918-02-19","pos":["CB"]},
+{"id":"p5961","name":"Faraz VARAGHI","nat":"VAR","ovr":51,"born":"1917-03-21","pos":["LWB"]},
+{"id":"p5962","name":"Javad JELDSAZ","nat":"VAR","ovr":53,"born":"1916-02-09","pos":["RWB"]},
+{"id":"p5963","name":"Hafez GHAZALSARA","nat":"VAR","ovr":55,"born":"1915-01-13","pos":["CM"]},
+{"id":"p5964","name":"Saadi KETABDAR","nat":"VAR","ovr":55,"born":"1913-10-01","pos":["ST"]}
 ]
