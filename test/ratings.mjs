@@ -268,9 +268,13 @@ function shapeTable(rows) {
 }
 
 // ---------------------------------------------------------------- parent
-const mode = ["check", "derive"].includes(process.argv[2]) ? process.argv[2] : "run";
+// On the cloud lab (LAB_TEST=ratings.mjs) the mode comes in as RATINGS_MODE and N as RATINGS_N, and only the first runner
+// plays it: this harness does not split itself, so the other nineteen leave at once.
+if (/^[1-9]\d*\/\d+$/.test(process.env.SHARD || "")) process.exit(0);
+const mode = ["check", "derive"].includes(process.argv[2]) ? process.argv[2]
+           : ["check", "derive"].includes(process.env.RATINGS_MODE) ? process.env.RATINGS_MODE : "run";
 const argN = mode === "run" ? process.argv[2] : process.argv[3], argW = mode === "run" ? process.argv[3] : process.argv[4];
-const N = +(argN || 200), W = Math.max(1, Math.min(+(argW || 8), os.cpus().length));
+const N = +(argN || process.env.RATINGS_N || 200), W = Math.max(1, Math.min(+(argW || 8), os.cpus().length));
 const SEED = +(process.env.SEED || 100000);
 const src = path.join(HERE, "engine.mjs");
 if (!fs.existsSync(src)) { console.log("no test/engine.mjs -- run: zsh test/rebuild.sh"); process.exit(1); }

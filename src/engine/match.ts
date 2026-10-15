@@ -6,7 +6,8 @@ import { meChaseStyle, meSetStyle, meShapeFor, meTenMenStyle } from "./manager";
 import { ME_DEF_FORM, formAtkW, pitchSlots, sposFor } from "./formations";
 import { POS_ROLE, ovrAt, ownFor, posDrop } from "../data/positions.js";
 import { meHungarian } from "./assignment";
-import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
+import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meHeadV, meKickBall, meKnock, meShootBall } from "./ball";
+import { meMeetAir } from "./pass";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
 import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
@@ -347,10 +348,12 @@ export function meMove(s, rng) {
       // later. He is not chasing this ball down. He is getting across it.
       const gkShot = p.pos === "GK" && mp.shot && mp.shot.side !== side;
       // The keeper is sent by his own judgement (brain.ts), which already names the spot he is going to.
+      // A cross he is meeting (CFG.airFineSub) is not paced: he goes, plants on the spot and waits for it there.
+      const airMt = i === scramble && mp.idx < 0 && p._airMt === mp.tick && p.pos !== "GK";
       if (i === scramble && !gkShot && p.pos !== "GK") {
         // Run at where the ball WILL be, not where it is, and spend only the effort the race needs:
         // a man with time jogs to the spot, a man who is late sprints (AIfunctions.cpp:827-838).
-        if (mp.idx < 0 && p._icx !== undefined) { tx = p._icx; ty = p._icy; budget = p._icMs || 0; }
+        if (mp.idx < 0 && p._icx !== undefined) { tx = p._icx; ty = p._icy; budget = airMt ? 0 : p._icMs || 0; }
         else { tx = mp.bx; ty = mp.by; }
       }
       // THE BALL IN BEHIND IS MET ON THE RUN (user, 11 October 2026: through balls "straight into the keeper", "struck
@@ -472,6 +475,7 @@ export function meMove(s, rng) {
       // arriving behind him take it. That is the jockeying.
       const coming = mp.bvx * (p.x - mp.bx) + mp.bvy * (p.y - mp.by) > 0;
       const stopAt = (mp.sp && p._spSet) ? 0.12 : p.pos === "GK" ? 0.25 : onBall ? 0
+                   : airMt ? CFG.airHoldR
                    : i === scramble ? (deadBall || !onLine || meet || !coming || thruRun || airBall || looseAtk ? 0 : CFG.scrambleStop)
                    : p._closing ? CFG.closeStop : 1.3;
       if (d < stopAt) { p.vx = 0; p.vy = 0; continue; }   // arrived; stop rather than jiggle on the spot
@@ -685,6 +689,8 @@ export function meMove(s, rng) {
       }
       // Walking onto a set-piece mark: no momentum, so he arrives on it rather than orbiting it.
       if (mp.sp && d < CFG.spArrive) acc = 1;
+      // ...and onto the spot where he meets a cross: his last steps put him on it rather than through it.
+      if (airMt && d < CFG.airArrive) acc = 1;
       if (diving) acc = 1;                       // he throws himself; there is no wind-up
       // A KEEPER SHUFFLES. Adjusting his angle is side-steps, not a sprinter's turn: on the runner's
       // momentum a reversal kept 19% of the change a slice, and a pass across the box moved his spot a
@@ -2429,7 +2435,7 @@ export function meTick(s, rng, out) {
         return;
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
-                if (sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "wide";
+                if (sh._r != null && globalThis.__shots) { globalThis.__shots[sh._r].out = "wide"; globalThis.__shots[sh._r].over = cross.z > GOAL_H ? 1 : 0; }
                 if (sh.p) meRate(sh.p, -CFG.rateShotOff);
                 mePenRes(out, sh);
                 meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
@@ -2672,7 +2678,7 @@ export function meTick(s, rng, out) {
         // where it was aimed, how high and how fast. Gated like __fire.
         if (globalThis.__pres && mp.passPending && mp.passPending.k && !mp.passPending._seen) {
           const pp0 = mp.passPending; pp0._seen = 1;
-          globalThis.__pres.push({ k: pp0.k, who: bs !== pp0.side ? "opp" : bi === pp0.fj ? "rcv" : "mate",
+          globalThis.__pres.push({ k: pp0.k, side: pp0.side, gk: isGK ? 1 : 0, who: bs !== pp0.side ? "opp" : bi === pp0.fj ? "rcv" : "mate",
             d: +Math.hypot(mp.bx - (pp0.ax ?? mp.bx), mp.by - (pp0.ay ?? mp.by)).toFixed(1),
             past: pp0.ax === undefined ? 0 : +(((mp.bx - pp0.sx) * (pp0.ax - pp0.sx) + (mp.by - pp0.sy) * (pp0.ay - pp0.sy))
                   / Math.max(0.1, Math.hypot(pp0.ax - pp0.sx, pp0.ay - pp0.sy)) - Math.hypot(pp0.ax - pp0.sx, pp0.ay - pp0.sy)).toFixed(1),
@@ -2765,7 +2771,7 @@ export function meTick(s, rng, out) {
           // it only if he wins the duel -- strength, who is goal-side, how close the other man got -- and losing
           // it, the other man heads it clear. The tackle has always been settled this way (mind/duel.ts).
           if (mp.passPending && mp.passPending.side === bs) {
-            const ob = meOther(bs), gxD = meGoalX(bs);
+            const ob = meOther(bs), gxD = meGoalX(bs), dk = mp.passPending.k;
             let c = null, ci = -1, cd = CFG.airR;
             s.players[ob].forEach((o, j) => { if (o && !o.off && o.pos !== "GK") { const d = Math.hypot(o.x - q.x, o.y - q.y); if (d < cd) { cd = d; c = o; ci = j; } } });
             if (c) {
@@ -2781,12 +2787,16 @@ export function meTick(s, rng, out) {
                 const ax = gxD - c.x, ay = ME_HALF_W - c.y, al = Math.hypot(ax, ay) || 1;
                 const tx = c.x - ax / al * CFG.headOut, ty = c.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
                 meEvt(out, "clear", ob, c.x, c.y, tx, ty, null);
-                meKnock(mp, rng, tx, ty, CFG.headClearV * (CFG.headLo + meAttrs(c).air / 99 * (1 - CFG.headLo)), CFG.headClearVz);
+                // How hard it goes is the header's law (ball.ts meHeadV): his run, his nod, and the pace of the ball.
+                { const H = meHeadV(mp.bvx, mp.bvy, (c._pvx || 0) / ME_DT, (c._pvy || 0) / ME_DT,
+                                    CFG.headSnap * (CFG.headLo + meAttrs(c).air / 99 * (1 - CFG.headLo)), tx - mp.bx, ty - mp.by);
+                  const L = Math.hypot(tx - mp.bx, ty - mp.by);
+                  meKnock(mp, rng, mp.bx + H.dx * L, mp.by + H.dy * L, H.v, CFG.headClearVz); }
                 mp._loose = mp.tick; mp._looseWhy = "won header";
-                if (globalThis.__airDuel) globalThis.__airDuel.push({ won: 0, pDef });
+                if (globalThis.__airDuel) globalThis.__airDuel.push({ won: 0, pDef, k: dk, side: bs });
                 return true;
               }
-              if (globalThis.__airDuel) globalThis.__airDuel.push({ won: 1, pDef });
+              if (globalThis.__airDuel) globalThis.__airDuel.push({ won: 1, pDef, k: dk, side: bs });
             }
           }
           // HE HEADS IT WHERE HE MET IT. The ground branch below rewinds the ball to the contact
@@ -2831,7 +2841,7 @@ export function meTick(s, rng, out) {
                         xgN: meXgCal(meShotP(s, bs, q, q.x, q.y, true, CFG.gkRefSkill)) * CFG.headXg,
                         lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1, d: dGoalA, hdr: 1 };
             if (globalThis.__shots) globalThis.__shots.push({ side: bs, d: dGoalA, pt: mp.possT ?? -1,
-              lt: mp.tick - (mp._loose ?? -1e9), press: 0, xg: hp, hdr: 1, why: mp._looseWhy });
+              lt: mp.tick - (mp._loose ?? -1e9), press: 0, xg: hp, hdr: 1, why: mp._looseWhy, inV: +inV.toFixed(1) });
 
             // Headers goalwards are frequent and mostly speculative; the ones that matter
             // arrive as a save, a miss or a goal a moment later and those still report.
@@ -2861,8 +2871,10 @@ export function meTick(s, rng, out) {
               // the error is a gaussian of that scale, as a struck shot's is (meShootBall), clamped at three of it.
               const gz = () => { const u = Math.max(1e-9, rng.u()); return Math.max(-3, Math.min(3, Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng.u()))); };
               const ha = Math.atan2(aimY - q.y, gxA - q.x) + (CFG.headSigma ? gz() * CFG.headSigma : rng.u() + rng.u() - 1) * hw;
-              const hd = Math.hypot(gxA - q.x, aimY - q.y);
-              meKnock(mp, rng, q.x + Math.cos(ha) * hd, q.y + Math.sin(ha) * hd, CFG.headV * power,
+              const hd = Math.hypot(gxA - q.x, aimY - q.y), tgx = q.x + Math.cos(ha) * hd, tgy = q.y + Math.sin(ha) * hd;
+              // ...AND AS HARD AS THE COLLISION MAKES IT (ball.ts meHeadV): his run into it, his nod, the pace of the ball.
+              const H = meHeadV(mp.bvx, mp.bvy, (q._pvx || 0) / ME_DT, (q._pvy || 0) / ME_DT, CFG.headSnap * power, tgx - mp.bx, tgy - mp.by);
+              meKnock(mp, rng, mp.bx + H.dx * hd, mp.by + H.dy * hd, H.v,
                       CFG.headSigma ? CFG.headVz0 + gz() * CFG.headSigma * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)) * 0.5
                                     : 0.35 + (rng.u() - 0.5) * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)));
             }
@@ -2870,7 +2882,7 @@ export function meTick(s, rng, out) {
             if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
               R.i = bi; R.nm = q.fullName || q.name; R.pos = q.pos; R.y = +(q.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0; R.from = _hFrom;
               R.ph = mp.mind?.ph?.[bs]?.ph || "-"; R.role = q._mr; R.spK = mp._spLast && mp._spLast.side === bs && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
-              R.duel = duel ? 1 : 0; }
+              R.duel = duel ? 1 : 0; R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.vz = +mp.bvz.toFixed(1); }
             mePlanSave(s, mp.shot);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
@@ -2890,15 +2902,17 @@ export function meTick(s, rng, out) {
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
             if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, meDefPay(s, meSideOfP(s, q), q.x, q.y, CFG.rateClear));
                           q.defActs = (q.defActs || 0) + 1; }
-            // A RELIEF HEADER IS A CLEARANCE AND HAS TO TRAVEL LIKE ONE. At headV * power * 0.75
-            // it left his head at 5-9 m/s with almost no loft and carried six to ten metres --
-            // the arithmetic of the knock against the aim is why "clearances barely do anything":
-            // the ball landed on the edge of his own box at a fifty-fifty. A defensive header is
-            // the one contact a defender puts everything through: headClearV and a real loft
-            // carry it past the second ball.
+            // A RELIEF HEADER IS A CLEARANCE AND HAS TO TRAVEL LIKE ONE. At a flat 0.75 of the
+            // attacking header's pace it left his head at 5-9 m/s with almost no loft and carried six
+            // to ten metres -- the arithmetic of the knock against the aim is why "clearances barely do
+            // anything": the ball landed on the edge of his own box at a fifty-fifty. A defensive header
+            // is the one contact a defender puts everything through: his full nod, the pace the ball
+            // brings (meHeadV) and a real loft carry it past the second ball.
             if (relief) {
               meEvt(out, "clear", bs, q.x, q.y, tx, ty, null);
-              meKnock(mp, rng, tx, ty, CFG.headClearV * power, CFG.headClearVz);
+              const H = meHeadV(mp.bvx, mp.bvy, (q._pvx || 0) / ME_DT, (q._pvy || 0) / ME_DT, CFG.headSnap * power, tx - mp.bx, ty - mp.by);
+              const L = Math.hypot(tx - mp.bx, ty - mp.by);
+              meKnock(mp, rng, mp.bx + H.dx * L, mp.by + H.dy * L, H.v, CFG.headClearVz);
               mp._loose = mp.tick; mp._looseWhy = "relief header";
               return true;
             }
@@ -2909,7 +2923,9 @@ export function meTick(s, rng, out) {
             // turned out to be. Everything muted here still FIRES: the pitch draws it and every
             // counter, out.clears and the player T+C column included, still moves.
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty, null);
-            meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
+            { const H = meHeadV(mp.bvx, mp.bvy, (q._pvx || 0) / ME_DT, (q._pvy || 0) / ME_DT, CFG.headSnap * power * CFG.headKnock, tx - mp.bx, ty - mp.by);
+              const L = Math.hypot(tx - mp.bx, ty - mp.by);
+              meKnock(mp, rng, mp.bx + H.dx * L, mp.by + H.dy * L, H.v, 0.9); }
             mp._loose = mp.tick; mp._looseWhy = "knock-down header";  // a headed ball into an area is nobody's yet
           }
           return true;
@@ -3403,6 +3419,20 @@ export function meTick(s, rng, out) {
         if (rcv && airPred && q.pos !== "GK" && !boxBall) {
           const lo = meIntercept(q, mp, vmax, undefined, lagM, seenMs, CFG.recvAirZ);
           if (lo.ok && mp.ttbBest[meOther(sd)] > lo.ms + CFG.recvAirMs) ic = lo;
+        }
+        // THE CROSS IS MET WHERE IT CAN BE HEADED (CFG.airFineSub; pass.ts meMeetAir). Every man of the side that put an
+        // open-play cross in solves his meeting on the flight itself, at the pace he really moves, after the rest of a
+        // reading that began at the strike -- the receiver's share of it, rcvLag, for all of them: they were waiting for
+        // it. The intercept above found the first quarter-second slot he could "make" on a clock that charged him a
+        // fraction of the reading and all of the running that goes with it, so he was sent where he could not get to,
+        // jogged there because he had time, and the ball went past in front of him.
+        const ppC = mp.passPending;
+        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && ppC.k === "cross" && ppC.sx !== undefined && ppC.side === sd) {
+          const qa = meAttrs(q);
+          const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
+          const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
+                               CFG.headReach * (CFG.headLo + (1 - CFG.headLo) * qa.air / 99), rcv ? CFG.reach : CFG.cutReach);
+          if (am) { ic = am; q._airMt = mp.tick; }
         }
         q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
       }
@@ -3980,6 +4010,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
   mp.passPending = { side, p: act.p, c: act.c, thru: !!act.thru, high: !!act.high, d: dist, forced,
                      off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x, sy: p.y, byP: p, ax: lx, ay: ly, fj: act.j,
                      k: act.pk || "feet", ft: !!act.ft };
+  if (globalThis.__strike) globalThis.__strike(mp.passPending);         // harness-only: every pass as it is struck
   // WHO WAS COMMITTED TO THE BALL WHEN IT WAS PLAYED (the second brain): the man on it, the man squeezing him and
   // the men jumping his passes. The second brain gives everyone a new job the moment the ball is in the air, so by
   // the time a pass arrived nobody was still pressing, and the played-through press (where a pass completes) never
@@ -4086,7 +4117,10 @@ function meFlick(s, rng, out, side, i, q, power) {
   if (bv < 4 || mp.bvx / bv * dir < 0.2) return false;
   const bux = mp.bvx / bv, buy = mp.bvy / bv;
   const us = s.players[side], off = meOffsideLine(s, side);
-  const spd = Math.min(18, bv * CFG.flickKeep + CFG.headV * power * 0.25);
+  // Its pace is the header's law (ball.ts meHeadV): first on the line the ball is already on, to lead the man it is
+  // flicked to, then the real one, at him.
+  const fpx = (q._pvx || 0) / ME_DT, fpy = (q._pvy || 0) / ME_DT, snap = CFG.headSnap * power;
+  const spd = Math.min(18, meHeadV(mp.bvx, mp.bvy, fpx, fpy, snap, bux, buy).v);
   let bj = -1, bsc = -Infinity, bx = 0, by = 0;
   for (let j = 0; j < us.length; j++) {
     const t = us[j];
@@ -4101,7 +4135,8 @@ function meFlick(s, rng, out, side, i, q, power) {
   if (bj < 0) return false;
   const sk = Math.max(0, Math.min(1, (meAttrs(q).strength / 99 + meTech(meAttrs(q).pass)) / 2));
   const ang = Math.atan2(by - mp.by, bx - mp.bx) + (rng.u() + rng.u() - 1) * CFG.flickNoise * (1 - 0.6 * sk) * Math.PI / 180;
-  mp.bvx = Math.cos(ang) * spd; mp.bvy = Math.sin(ang) * spd; mp.bvz = 2.5;
+  const H = meHeadV(mp.bvx, mp.bvy, fpx, fpy, snap, Math.cos(ang), Math.sin(ang)), fv = Math.min(18, H.v);
+  mp.bvx = H.dx * fv; mp.bvy = H.dy * fv; mp.bvz = 2.5;
   mp.fj = bj;
   mp.passPending = { side, p: 0.5, thru: true, high: true, d: Math.hypot(bx - q.x, by - q.y), off: false,
                      ox: us[bj].x, oy: us[bj].y, t: 0, sx: q.x, sy: q.y, byP: q, ax: bx, ay: by, fj: bj, k: "flick" };
