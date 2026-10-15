@@ -889,8 +889,12 @@ function resolveHomeAdv(homeName, awayName, config, isGroup, homeSkill, awaySkil
   if (km === "first") return "home";
   return null;
 }
-function resolveKOHomeAdv(m, config) {
+// `key` is the fixture's own key (fixtureKey). A NEUTRAL GRAND FINAL (koGFNeutral; Moukden and Kirin, 15 October 2026, for the
+// 1935 Nations League: "grand final is neutral HA") gives nobody the ground in a double elimination's grand final or its reset,
+// whatever the rule for every other tie; a fixture's own override still wins over it (tGetHA).
+function resolveKOHomeAdv(m, config, key) {
   if (!m.home || !m.away) return null;
+  if (config.koGFNeutral && (key === "gf" || key === "reset")) return null;
   if (config.homeAdvKO === "host" || config.homeAdvGroup === "host") {
     const ht = config.homeAdvTeams || [];
     const hHost = ht.includes(m.home.name), aHost = ht.includes(m.away.name);
@@ -5629,7 +5633,7 @@ const T_PRESETS = {
   cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
   worldCup: { label: "World Cup", config: { mode: "double", singleType: "groups", numGroups: 12, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 3, to: 3, label: "Pool Qualification", color: "#4a7ab5", type: "best", bestCount: 8 }] } },
   clubWorldCup: { label: "Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "swiss", rrLegs: 1, allocMode: "seed", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: false, koFormat: "single", homeAdvTeams: [], advPerGroup: 8, numPots: 4, swissRounds: 8, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'buchholz', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
-  nationsLeague: { label: "Nations League", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "random", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "double_elim", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
+  nationsLeague: { label: "Nations League", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "random", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "double_elim", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [], koReset: true, koGFNeutral: false } },
   _divider1: { label: "──────────", divider: true },
   oldUCL: { label: "Legacy UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
@@ -5644,6 +5648,10 @@ const T_PRESETS = {
   // THE 1935 CLUB WORLD SHIELD (Moukden and Kirin, 14 October 2026: "Same rules as CWC").
   cws1935: { label: "1935 Club World Shield", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koFinalOneLeg: true, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "draw", koDrawRounds: [], koDrawRules: { sameGroup: true, sameConf: false, sameNation: true, seedSplit: true }, drawRules: { maxPerNation: 0, maxPerConf: 0, pins: {}, potMode: "nation", pots: {} }, koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   wc1935: { label: "1935 World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  // THE 1935 NATIONS LEAGUE (Moukden and Kirin, 15 October 2026: "One-legged HA, weaker team gets it, but grand final is neutral
+  // HA"): the Nations League's double elimination of one-leg ties, the weaker side at home in every one, and the grand final at
+  // a neutral ground. No reset match, as in 1934, when the lower bracket's winner beat the upper's in a single grand final.
+  nl1935: { label: "1935 Nations League", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "random", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "double_elim", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [], koReset: false, koGFNeutral: true } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -8342,7 +8350,7 @@ export default function App() {
       hostModeActive = tConfig.homeAdvGroup === "host";
     } else {
       if (tConfig.koLegs === 2 && !tOneLegFinal(target)) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
-      else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
+      else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig, venueKey)); }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
     // Host-nation tournaments give EVERY match a ground from the pool, not just the fixtures where
@@ -9860,7 +9868,7 @@ export default function App() {
           result.scorers = { leg1: s1.scorers, leg2: s2.scorers }; result.ogs = { leg1: s1.ogs, leg2: s2.ogs };
         } else {
           const gH = result.ftHome + (result.et?.home || 0), gA = result.ftAway + (result.et?.away || 0), w = koWinner(target);
-          const s = tTypedSim(target.home, target.away, tGetHA(haKey, resolveKOHomeAdv(target, tConfig)), un, null,
+          const s = tTypedSim(target.home, target.away, tGetHA(haKey, resolveKOHomeAdv(target, tConfig, haKey)), un, null,
             { home: [result.ftHome, result.et?.home || 0], away: [result.ftAway, result.et?.away || 0] });
           const rH = accumulateMatchStats(target.home, gH, gA, w === target.home, gH === gA && !result.pen, s.cards?.home, un, s.playerData.home);
           const rA = accumulateMatchStats(target.away, gA, gH, w === target.away, gH === gA && !result.pen, s.cards?.away, un, s.playerData.away);
@@ -10195,7 +10203,7 @@ export default function App() {
   // work -- who is banned, what the tie is worth, which ground -- and only the last line touched
   // the engine, so that line becomes a job and the caller decides which thread runs it.
   const tKOJob = (m, legTarget, haKey, unavailSet, seed) => {
-    const haDefault = resolveKOHomeAdv(m, tConfig);
+    const haDefault = resolveKOHomeAdv(m, tConfig, haKey);
     const ov = tHomeAdvOverrides[haKey] || null;
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
     // haKey uniquely tags which fixture this is ("gf"/"reset" = the true decider even in a
@@ -18262,7 +18270,8 @@ export default function App() {
             {uxTog("Two Legs", tConfig.koLegs === 2, v => setTConfig(c => ({ ...c, koLegs: v ? 2 : 1 })))}
             {tConfig.koLegs === 2 && uxTog("Away Goals", tConfig.koAwayGoals, v => setTConfig(c => ({ ...c, koAwayGoals: v })))}
             {tConfig.koLegs === 2 && tConfig.koFormat !== "double_elim" && uxTog("One-Leg Final", !!tConfig.koFinalOneLeg, v => setTConfig(c => ({ ...c, koFinalOneLeg: v })))}
-            {tConfig.koFormat === "double_elim" && uxTog("Reset Match", tConfig.koReset !== false, v => setTConfig(c => ({ ...c, koReset: v })))}</>)}
+            {tConfig.koFormat === "double_elim" && uxTog("Reset Match", tConfig.koReset !== false, v => setTConfig(c => ({ ...c, koReset: v })))}
+            {tConfig.koFormat === "double_elim" && tConfig.koLegs !== 2 && uxTog("Neutral Grand Final", !!tConfig.koGFNeutral, v => setTConfig(c => ({ ...c, koGFNeutral: v })))}</>)}
           {tNumByes > 0 && uxFRow(tNumByes === 1 ? "1 Bye" : tNumByes + " Byes", uxSegIn("Byes", tConfig.koByeMode, [["auto", "By Ranking"], ["manual", "By Hand"]], v => setTConfig(c => ({ ...c, koByeMode: v }))))}
           {uxFRow("Allocation", uxSegIn("Knockout Allocation", tConfig.koAllocMode, [["seed", "Seed"], ["random", "Random"], ["manual", "By Hand"], ["draw", "Draw"],
             ...(tConfig.mode === "double" ? [["crossover", "Crossover"]] : [])], v => setTConfig(c => ({ ...c, koAllocMode: v }))))}
@@ -18739,7 +18748,8 @@ export default function App() {
             {tHasKO && <>
               {fact("Knockout", [c.koFormat === "double_elim" ? "Double Elimination" : "Single Elimination", c.koLegs === 2 ? "Two Legs" : null,
                 c.koLegs === 2 && c.koAwayGoals ? "Away Goals" : null, c.koLegs === 2 && c.koFinalOneLeg && c.koFormat !== "double_elim" ? "One-Leg Final" : null, c.thirdPlace && c.koFormat !== "double_elim" ? "Third-Place Match" : null,
-                c.koFormat === "double_elim" && c.koReset !== false ? "Reset Match" : null].filter(Boolean).join(", "))}
+                c.koFormat === "double_elim" && c.koReset !== false ? "Reset Match" : null,
+                c.koFormat === "double_elim" && c.koLegs !== 2 && c.koGFNeutral ? "Neutral Grand Final" : null].filter(Boolean).join(", "))}
               {fact("Knockout Allocation", alloc[c.koAllocMode] || c.koAllocMode)}</>}
             {tHasGroups && qz.length > 0 && fact("Qualification Zones", (
               <div className="ux-zlist">{qz.map((z, zi) => <span key={zi}><i style={{ background: z.color }} />{z.label}

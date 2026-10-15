@@ -250,7 +250,7 @@ export const DOCS = [
       "Tournaments are kept in this browser and saved by themselves a moment after every change. Saved lists them newest first, with the stage each has reached, its leader or winner and the matches played. Each row has Rename, Copy, Export and Delete, and New Tournament and Import are in the page bar. An exported tournament is a file another browser can import. A tournament copies its sides' squads when it is made, so later changes to a squad never reach it.",
     ] },
     { id: "formats", title: "Formats", body: [
-      "New Tournament starts from a preset or from scratch. The presets are League, Cup, World Cup, Club World Cup, Nations League, Legacy UCL, Legacy WC and 1935 World Cup. Three fields come ready-made: the 1934 and 1935 World Cups, with their groups as drawn, and the 1934 Club World Shield.",
+      "New Tournament starts from a preset or from scratch. The presets are League, Cup, World Cup, Club World Cup, Nations League, Legacy UCL, Legacy WC, 1935 Club World Cup, 1935 Club World Shield, 1935 World Cup and 1935 Nations League. Three fields come ready-made: the 1934 and 1935 World Cups, with their groups as drawn, and the 1934 Club World Shield.",
       { dl: [
         ["Structure", "Groups; Groups, Then Knockout; or Knockout."],
         ["Groups", "From 1 to 26, played as a round robin over the legs you choose, or Swiss, over up to one round fewer than a group's size."],
