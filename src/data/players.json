@@ -5810,5 +5810,12 @@
 {"id":"p5848","name":"Pejman VAFAEI","nat":"VAR","ovr":71,"born":"1913-07-11","pos":["CB"]},
 {"id":"p5849","name":"Shapour AZARGOSHASB","nat":"VAR","ovr":67,"born":"1915-06-02","pos":["RB","CB"]},
 {"id":"p5850","name":"Mehdi JAHROMI","nat":"VAR","ovr":66,"born":"1916-11-14","pos":["LW"]},
-{"id":"p5851","name":"Behrang TABATABAEI","nat":"VAR","ovr":72,"born":"1913-12-06","pos":["ST","RW"]}
+{"id":"p5851","name":"Behrang TABATABAEI","nat":"VAR","ovr":72,"born":"1913-12-06","pos":["ST","RW"]},
+{"id":"p5852","name":"Kiavash ANSARI","nat":"VAR","ovr":62,"born":"1917-11-22","pos":["LB"]},
+{"id":"p5853","name":"Jamasp BASTANI","nat":"VAR","ovr":66,"born":"1915-10-30","pos":["CB"]},
+{"id":"p5854","name":"Hadi MOHTASHAM","nat":"VAR","ovr":70,"born":"1915-03-04","pos":["RB","RM"]},
+{"id":"p5855","name":"Vahab MORADKHANI","nat":"VAR","ovr":64,"born":"1917-01-30","pos":["DM","CM"]},
+{"id":"p5856","name":"Behnoud ASADI","nat":"VAR","ovr":70,"born":"1914-03-10","pos":["CM","AM"]},
+{"id":"p5857","name":"Rouzbeh FARAHANI","nat":"VAR","ovr":71,"born":"1914-01-15","pos":["LW"]},
+{"id":"p5858","name":"Sorena KAMALI","nat":"VAR","ovr":65,"born":"1916-11-04","pos":["ST"]}
 ]
