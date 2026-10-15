@@ -499,7 +499,10 @@ foulAggr: 0.25,
   // Refit 15 Oct 2026 (400 matches, cloud run 38766807350) once defenders read a pass once from the strike (match.ts,
   // seenD): the belief ran ten points optimistic where most passes live (0.79 believed, 0.67 kept) and completion fell
   // 81.6% -> 75.5%. L keeps its shipped figure: fitted on the few dozen late passes it swung to 0.29.
-  passCal0: 1.37, passCalB: 0.72, passCalR: 0.80, passCalL: 13.78,
+  // Refit 15 Oct 2026 again (400 matches, cloud run 38790625332) once the man a ground pass is played to met it on the law
+  // he moves by (match.ts, the passers rework): fitted 1.49 / 0.80 / 0.66 against shipped 1.37 / 0.72 / 0.80, completion
+  // 75.5% -> 76.7%. L keeps its figure again: the fit's 6.05 stood on 40 late passes of 39,121.
+  passCal0: 1.49, passCalB: 0.80, passCalR: 0.66, passCalL: 13.78,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -1822,11 +1825,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 15 Oct 2026 (400 matches, cloud run 38748626857) with gkExp, for crosses met on the flight and the header
   // made a collision: forwards had drifted to a 7.06 mean with 12% of full matches at 8.0+ (6.99 before either change).
   // ...and again the same day (400 matches, 38767912910) once defenders read a pass once (match.ts, seenD).
+  // ...and the outfield again that evening (400 matches, 38790625332) once the man a ground pass is played to met it on
+  // the law he moves by (match.ts, the passers rework): forwards had fallen to a 6.76 mean with 2.8% of full matches at
+  // 8.0+. Keepers held every par as shipped and keep theirs, with gkExp: neither the shot nor the keeper moved.
   rateFin: {
     GK:  { mid: 0.438, up: 1.215, dn: 0.673, tail: 0.954 },
-    DEF: { mid: 0.811, up: 0.984, dn: 0.931, tail: 1.189 },
-    MID: { mid: 0.658, up: 0.773, dn: 1.243, tail: 1.047 },
-    FWD: { mid: 0.896, up: 0.719, dn: 0.943, tail: 1.497 },
+    DEF: { mid: 0.841, up: 1.061, dn: 0.974, tail: 0.972 },
+    MID: { mid: 0.668, up: 0.798, dn: 1.266, tail: 1.024 },
+    FWD: { mid: 0.807, up: 0.821, dn: 1.019, tail: 1.303 },
   },
 
   kickLock: 3,

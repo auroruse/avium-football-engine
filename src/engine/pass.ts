@@ -80,8 +80,10 @@ export function meMeetLoft(sx, sy, qx, qy, qvx, qvy, ux, uy, vd, kind, early) {
  *  then turns and runs at `vmax` by the law meMove moves him (meRunAt above): from velocity v0 his momentum carries
  *  him v0 k, k = tau (1 - e^(-t/tau)), and running he can add vmax (t - k) in any direction -- so the ground he can
  *  cover by then is a circle of that radius round the end of his drift, and tau is longer for a man turning back.
+ *  `roll`: the ball is along the ground, so every point of its path under `ceil` is his to meet, coming down or not --
+ *  the man a ground pass is played to (match.ts), on the same law.
  *  Returns { x, y, z, ms, slotMs, ok } or null when no point of the flight is his. */
-export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep) {
+export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep, roll) {
   const F = meBallFine(mp), m = F[0] | 0;
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v0 = Math.hypot(vx, vy);
   // Can he be within tol of (x, y) tt s from now: the circle his legs can cover round where his momentum takes him.
@@ -104,14 +106,14 @@ export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep) {
   if (keep) {
     let kj = -1, kd = 0.6;
     for (let j = 1; j < m; j++) { const o = 1 + 4 * j, z = F[o + 3];
-      if (!(z < F[o - 1]) || z > ceil) continue;
+      if ((!roll && !(z < F[o - 1])) || z > ceil) continue;
       const d = Math.hypot(F[o + 1] - keep.x, F[o + 2] - keep.y); if (d < kd) { kd = d; kj = j; } }
     if (kj > 0) { const o = 1 + 4 * kj, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
       if (can(t, x, y, reachOf(o, z > CFG.headMinZ) * CFG.airMeetTol)) return { x, y, z, ms: t * 1000, slotMs: Math.max(1, t * 1000), ok: 1 }; }
   }
   for (let j = 1; j < m; j++) {
     const o = 1 + 4 * j, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
-    if (!(z < F[o - 1]) || z > ceil) continue;             // still climbing off the boot, or over him
+    if ((!roll && !(z < F[o - 1])) || z > ceil) continue;  // still climbing off the boot, or over him
     if (!onPitch(x, y, 0)) break;                           // gone out: nowhere after this is his
     const tt = t - CFG.airMeetEarly, r = reachOf(o, z > CFG.headMinZ);
     // Inside airArrive his last steps put him on the spot with no momentum to carry him through it (match.ts), and
