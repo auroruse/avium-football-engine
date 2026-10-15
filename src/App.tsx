@@ -913,6 +913,16 @@ function resolveKOHomeAdv(m, config, key) {
 
 // ═══ TOURNAMENT UTILS ════════════════════════════════════════════════════════
 const GL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+// A FAIR SHUFFLE (Fisher-Yates): every order equally likely. Sorting on a random comparison is not one -- the sort's own order
+// shows through and some orders come up far more than others -- and the bracket's hand-picked-byes route compared on a fresh
+// generator seeded with the same millisecond at every step, so its every answer was the same and "Random" laid the field
+// out in ranking order, or in exactly the reverse (Moukden and Kirin, 15 October 2026: "Are you SURE that random bracket
+// allocation is actually random").
+function shuffled(a, u = Math.random) {
+  const o = [...a];
+  for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(u() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+  return o;
+}
 function genRR(teams, legs) {
   const lg = legs || 1;
   // The circle method below is correct for ANY starting order of `list` — every round is
@@ -921,7 +931,7 @@ function genRR(teams, legs) {
   // lists don't read as a predictable rotation off the seed/draw order) at zero cost to
   // correctness. Legs beyond the first are derived from this same shuffled base, so the
   // randomization is naturally consistent across a double round-robin.
-  const list = [...teams].sort(() => Math.random() - 0.5); if (list.length % 2 !== 0) list.push(null);
+  const list = shuffled(teams); if (list.length % 2 !== 0) list.push(null);
   const n = list.length, base = [];
   for (let r = 0; r < n - 1; r++) {
     const matches = [];
@@ -1046,9 +1056,9 @@ function allocSeed(teams, ng, format, legs) {
   return grps;
 }
 function allocRandom(teams, ng, format, legs) {
-  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const order = shuffled(teams);
   const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] }));
-  shuffled.forEach((t, i) => grps[i % ng].teams.push(t));
+  order.forEach((t, i) => grps[i % ng].teams.push(t));
   grps.forEach(g => initGroup(g, format, legs));
   return grps;
 }
@@ -10212,7 +10222,7 @@ export default function App() {
     }
     const slots = [...byeSlots];
     let ordered;
-    if (km === "random") { ordered = rest.sort(() => new RNG(Date.now()).u() - 0.5); }
+    if (km === "random") { ordered = shuffled(rest); }
     else { ordered = [...rest]; }
     let oi = 0; for (let i = 0; i < n2; i += 2) { if (byeMatches.has(i / 2)) continue; slots[i] = ordered[oi++] || null; slots[i + 1] = ordered[oi++] || null; }
     const first = [];
