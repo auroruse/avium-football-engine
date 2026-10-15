@@ -226,9 +226,9 @@ export const CFG = {
   throwMax: 24, longThrowX: 30, longThrowStr: 78, longThrowWalk: 22, longThrowMax: 34,
   // A FLICK-ON is a header played on to a team-mate running beyond, in the direction the ball was
   // already travelling (within flickCos of it), flickMinD-flickMaxD away, from further than
-  // flickGoalD from goal: the knock-on of a long ball, never a header teed up in the box. It keeps
-  // flickKeep of the ball's pace, and is flickNoise degrees wide at the worst.
-  flickCos: 0.70, flickMinD: 5, flickMaxD: 22, flickGoalD: 26, flickKeep: 0.55, flickNoise: 14,
+  // flickGoalD from goal: the knock-on of a long ball, never a header teed up in the box. Its pace is the header's law
+  // (headE), and it is flickNoise degrees wide at the worst.
+  flickCos: 0.70, flickMinD: 5, flickMaxD: 22, flickGoalD: 26, flickNoise: 14,
   // The range he is looking to shoot from, and how far each step of chance creation moves it.
   // shotBand is the free zone beyond the preferred range before distance starts costing him, and it
   // is ZERO because the band was the wrong idea here. A threshold only works if it sits inside the
@@ -1683,7 +1683,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.75, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.78, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1709,7 +1709,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // in the sample and is set level with the band below rather than left under it.
   // Re-derived again that afternoon (1,200 matches) for the box runs, the long shot and its penalties (shotLaneK): the
   // keepers had drifted to +0.09 a match of credit.
-  gkExp: [[0.05, 0.06], [0.10, 0.11], [0.20, 0.24], [0.30, 0.61], [0.40, 0.85], [0.60, 0.88], [1.01, 0.89]],
+  // Re-derived 15 Oct 2026 for crosses met on the flight and the header made a collision, on 800 matches pooled from the
+  // derive (cloud run 38748626857) and its check on fresh seeds (38749814702): shots of 0.1-0.3 went in more often,
+  // headers among them, and keepers had 9% of their full matches at 6.0 or below against 6%. The derive alone put the
+  // 0.3-0.4 band at 0.90 and its check found 0.79.
+  gkExp: [[0.05, 0.05], [0.10, 0.11], [0.20, 0.28], [0.30, 0.65], [0.40, 0.85], [0.60, 0.88], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1811,11 +1815,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
   ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
   // Re-derived 12 Oct 2026 (800 matches) with gkExp above, and again that afternoon (1,200 matches) with it.
+  // Re-derived 15 Oct 2026 (400 matches, cloud run 38748626857) with gkExp, for crosses met on the flight and the header
+  // made a collision: forwards had drifted to a 7.06 mean with 12% of full matches at 8.0+ (6.99 before either change).
   rateFin: {
-    GK:  { mid: 0.499, up: 1.231, dn: 0.676, tail: 0.975 },
-    DEF: { mid: 0.798, up: 1.171, dn: 0.965, tail: 1.163 },
-    MID: { mid: 0.710, up: 0.862, dn: 1.218, tail: 1.091 },
-    FWD: { mid: 0.650, up: 0.861, dn: 1.270, tail: 1.143 },
+    GK:  { mid: 0.510, up: 1.215, dn: 0.642, tail: 0.814 },
+    DEF: { mid: 0.775, up: 1.099, dn: 0.985, tail: 1.061 },
+    MID: { mid: 0.709, up: 0.794, dn: 1.192, tail: 1.018 },
+    FWD: { mid: 0.897, up: 0.766, dn: 0.977, tail: 1.571 },
   },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
@@ -1837,23 +1843,27 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // letting it fall to your feet in a crowd is how you get robbed, so a marked man attacks it
   // with his head -- which is most of the box at a corner.
   headDuelR: 2.4,
-  // A relief header is a clearance and travels like one: launch speed before the strength scale,
-  // and its loft. The old knock (headV * power * 0.75, vz 0.9) left the head at 5-9 m/s and
-  // carried six to ten metres against an 18 m aim -- a fifty-fifty on the edge of his own box.
-  headClearV: 13, headClearVz: 3.5,
+  // A relief header is a clearance and travels like one: its loft. The old knock (vz 0.9) carried six to ten metres
+  // against an 18 m aim -- a fifty-fifty on the edge of his own box. How hard it goes is the header's law (headE).
+  headClearVz: 3.5,
   // THE AERIAL DUEL (match.ts, THE DUEL): an opponent inside airR of a man about to head a ball delivered to him
   // wins it with airDef, plus airStr of their strength gap over 99, plus or minus airGoalSide for being goal-side
   // of him or not, less airDist for every metre past 0.8 m he is from him. At 2.0 / 0.45 crosses into a deep block
   // still found their man 31% of the time; at 2.6 / 0.55, 26% (80 matches, 6 Oct 2026; real football ~20-25%).
   airR: 2.6, airDef: 0.55, airStr: 1.0, airGoalSide: 0.10, airDist: 0.15,
-  // What a header DOES. Inside headShotR of the goal he is attacking he heads it at goal; anywhere
-  // else he heads it away from his own. headV is how hard, before strength scales it -- a header
-  // travels a fraction of what a struck ball does.
-  // 12 -> 15 and headAim 0.55 -> 0.8 of the way to the post (12 October 2026): at 12 and 0.55 a header at goal was a
-  // slow ball near the middle that the keeper reached seven times in eight, and headers went in at 8% against a real
-  // 11-12%. The knock-down and the flick, which go off the same pace, travel a little further with it; measured, that
-  // alone is worth -0.19 goals a match (2.99 -> 2.80 on 400 fixtures), so the two were set together.
-  headShotR: 12, headAim: 0.8, headV: 15,
+  // What a header DOES. Inside headShotR of the goal he is attacking he heads it at goal, headAim of the way to the
+  // post; anywhere else he heads it away from his own.
+  // HOW HARD IS A COLLISION (ball.ts meHeadV; user, 15 October 2026: "Make header velocity dependent on two things.
+  // Momentum of the player going into it, and momentum of the ball"). Every header left the head at a flat headV 15 m/s
+  // scaled by strength, whatever was coming at it: one off a driven cross was no harder than one off a lob, a header
+  // met a 15 m/s cross at 13.6 m/s, and keepers saved three in four of the ones on target against the Premier League's
+  // two in three (cloud run 38712328164). Now the forehead goes through the ball at the man's run plus a nod of headSnap
+  // (by strength, headLo..1), and the ball comes off it headE of its approach and the rest of its own pace. Set so a
+  // header of a ball at rest leaves at 6.4 m/s standing and about 8 at a run, which is what Becker et al. measured
+  // (2021: amateurs heading a pendulum ball, 6.4 standing, 8.3 running): (1 + 0.5) x 5 x 0.85 = 6.4. A knock-down is
+  // nodded at headKnock of that, into an area rather than through it. Set by that study, not measured here; the old
+  // pace of the knock-down and the flick was worth 0.19 goals a match between headV 12 and 15 (12 October 2026).
+  headShotR: 12, headAim: 0.8, headE: 0.5, headSnap: 5, headKnock: 0.5,
   // How far a header travels. Inside clearDepth of his own goal it is a clearance, aimed away;
   // beyond it, a knock-down aimed at the best man he can reach within headOut * 1.4.
   headOut: 18,
@@ -2175,6 +2185,24 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ...but not the balls a side puts INTO THE BOX to be headed (match.ts boxBall/boxHead): the kinds listed here are
   // attacked in the air when they meet the man in the area, and headed at goal inside headShotR.
   boxBallK: { cross: 1, corner: 1, longthrow: 1, freekick: 1 },
+  // THE CROSS IS MET WHERE IT CAN BE HEADED (match.ts, pass.ts meMeetAir; user, 15 October 2026: "the vast majority of
+  // crosses were too fast to be threatening, whizzing past the striker in front"). Traced over six Arminia-Viridia
+  // matches, a third of all open-play crosses went past the man they were for at a height he could have met, a median
+  // 1.4 m from him against a header's half a metre: he was still running at it in 13 of those 30 (late) and had gone
+  // past the spot in 11. The intercept he was sent to was the first quarter-second slot of the forecast he could "make" on a time
+  // model that charges him rcvLag of the reading but every metre of the movement that comes with it (5 m in a fifth of
+  // a second), and a cross covers 4-5 m between two slots, so the stretch of it at head height usually fell between
+  // them. The men attacking an open-play cross now solve the meeting on the flight itself, stepped every airFineSub
+  // substeps, at the pace and turn meMove actually moves them (pass.ts meRunAt's law), after the rest of a reading that
+  // starts at the strike, and go to the first point where it can be headed -- or, failing that, met lower -- that they
+  // can reach airMeetEarly s before the ball, within airMeetTol of their reach. There the man going for it plants on the
+  // spot (inside airArrive m his last steps put him on it) and holds inside airHoldR until it arrives, where he used to
+  // run on through it. ...AND THE CROSS IS PUT WHERE HE ARRIVES crossLead s BEFORE THE BALL (mind/decide.ts), where it
+  // was put on the point of his run he reaches at the same instant: a man already sprinting had no pace left to make up
+  // a metre of error, and a cross is a metre out more often than not (median 1.1 m off its aim at head height). Set by
+  // reasoning, not measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot
+  // the ball went through untouched twice, and his side had the first touch on 61%.
+  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, crossLead: 0.2,
   // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
@@ -2478,7 +2506,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // A header at goal: headNoise degrees wide at the worst, headNoiseSkill of that off for the strongest,
   // headNoiseDuel more with a man jumping with him, headNoisePace more on a ball coming at 20 m/s, and
   // up to headNoiseZ m/s of error in how it comes off his head vertically.
-  headNoise: 11, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 3,
+  // 11 -> 15 and 3 -> 7 (15 October 2026, the user: "more header can then go over, and wider too"), with the header's
+  // pace made a collision (ball.ts meHeadV). Measured on the cloud (run 38745612550, 4000 paired League One fixtures, Sim
+  // All) against the Premier League's headed shots of 2019/20-2023/24: on target 56% -> 42% (36-39%), scored 13.8% ->
+  // 13.9% (10-13.5%), the ones on target scored 25% -> 33% (28-35%), 15% over the bar and 24% wide (about a third of the
+  // misses over, as in the real game), 16% of all goals (13-20%); goals a match 2.76 -> 2.74, xG booked 0.140 a header
+  // against 0.139 scored. The new pace at the old 11 / 3 put 37% of the ones on target in and headers at 21% of shots
+  // scored (2.97 goals a match); 13 / 5.5 left them too accurate, 47% on target and 16% scored.
+  headNoise: 15, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 7,
   // headSigma 0 keeps that triangular error; above 0 the error is a gaussian of headSigma times it, aimed headVz0 m/s up.
   // 1.1 (12 October 2026): headers on the frame 91% -> 56%, the real game's two in five of all headers once the
   // blocked ones are counted.

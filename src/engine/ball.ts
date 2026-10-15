@@ -278,6 +278,30 @@ export function meBallPredict(mp) {
   }
 }
 
+// THE FLIGHT, FINELY (pass.ts meMeetAir). The forecast is a slice apart, and a cross covers four or five metres in a
+// slice: the stretch of it a man can head, between his chest and the top of his jump, lasts about a fifth of a second
+// and usually falls between two slots. Stepped from the forecast's own slot states with the same integrator, every
+// CFG.airFineSub substeps, into one flat array: F[0] the count, then [t, x, y, z] per sample, t in seconds from now.
+// Built at most once a slice, and only when somebody asks.
+const _fg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
+let _fF = null, _fMp = null, _fAt = -1, _fB = NaN, _fZ = NaN;
+export function meBallFine(mp) {
+  const S = mp._pS;
+  if (_fF && _fMp === mp && _fAt === mp.tick && Object.is(_fB, mp.bx) && Object.is(_fZ, mp.bz)) return _fF;
+  const per = Math.round(ME_DT / BALL_SUB), k = Math.max(1, CFG.airFineSub | 0), n = (PRED_SLOTS - 1) * Math.ceil(per / k);
+  const F = _fF && _fF.length === 1 + 4 * n ? _fF : (_fF = new Float64Array(1 + 4 * n));
+  let m = 0;
+  if (S) for (let s = 0; s < PRED_SLOTS - 1; s++) {
+    _pGet(_fg, S[s]);
+    for (let i = 0; i < per; i++) {
+      if (i % k === 0) { const o = 1 + 4 * m++; F[o] = (s * per + i) * BALL_SUB; F[o + 1] = _fg.bx; F[o + 2] = _fg.by; F[o + 3] = _fg.bz; }
+      stepOnce(_fg);
+    }
+  }
+  F[0] = m; _fMp = mp; _fAt = mp.tick; _fB = mp.bx; _fZ = mp.bz;
+  return F;
+}
+
 // THE PITCH THE BALL IS ACTUALLY PLAYED ON. stepOnce takes ballDrag off the full 3D velocity every
 // substep and then takes ballFric and ballFricLin off the horizontal velocity AGAIN while the ball
 // is down in the grass, so a rolling ball really decelerates by
@@ -536,6 +560,40 @@ export function meFkArc(d, z0, rng) {
 }
 
 /** A nudge rather than a kick: deflections, dispossessions, blocks. */
+/** THE HEADER, A COLLISION (CFG.headE; user, 15 October 2026: "Make header velocity dependent on two things. Momentum
+ *  of the player going into it, and momentum of the ball"). The forehead, braced by the neck and the body behind it, is
+ *  far heavier than the ball and goes through the contact at its own velocity: his run (pvx, pvy) and his nod through
+ *  the ball, `snap` m/s along the point of the forehead it meets, n. Off that moving forehead the ball's approach along
+ *  n comes back headE of it and the rest of its pace carries on, so with (ux, uy) the ball coming in
+ *      v' = u + (1 + headE) (snap - (u - p).n) n
+ *  A driven cross keeps most of its pace and a man arriving at a run adds his own; a ball dropping dead is headed with
+ *  what the neck can give it. He picks n to send it along (dx, dy): the roots of v' x d among the n the ball is coming
+ *  onto, the hardest of them. With none -- a ball too quick across him to turn that far -- it goes where the nearest
+ *  of them sends it. Horizontal only: how high a header goes is its own aim (match.ts). Returns { v, dx, dy }: its pace
+ *  and the unit direction it leaves in. */
+const _hA = { ok: false, vx: 0, vy: 0, g: 0, al: 0 }, _hB = { ok: false, vx: 0, vy: 0, g: 0, al: 0 }, _hM = { ok: false, vx: 0, vy: 0, g: 0, al: 0 };
+export function meHeadV(ux, uy, pvx, pvy, snap, dx, dy) {
+  const e = CFG.headE, l = Math.hypot(dx, dy) || 1, ax = dx / l, ay = dy / l, wx = ux - pvx, wy = uy - pvy;
+  const at = (a, r) => { const nx = Math.cos(a), ny = Math.sin(a), wn = wx * nx + wy * ny, k = (1 + e) * (snap - wn);
+    r.ok = wn - snap < 0; r.vx = ux + k * nx; r.vy = uy + k * ny; r.g = r.vx * ay - r.vy * ax; r.al = r.vx * ax + r.vy * ay; return r; };
+  const N = 180, step = 2 * Math.PI / N;
+  let best = -1, fv = 0, fc = -2, fdx = ax, fdy = ay;
+  at(-Math.PI, _hA);
+  for (let i = 1; i <= N; i++) {
+    const a1 = -Math.PI + step * i, B = at(a1, _hB);
+    if (B.ok && B.al > 0) { const v = Math.hypot(B.vx, B.vy), c = B.al / v; if (c > fc) { fc = c; fv = v; fdx = B.vx / v; fdy = B.vy / v; } }
+    if (_hA.ok && B.ok && (_hA.g < 0) !== (B.g < 0)) {
+      let lo = a1 - step, hi = a1, glo = _hA.g;
+      for (let it = 0; it < 24; it++) { const m = (lo + hi) / 2, M = at(m, _hM); if ((M.g < 0) === (glo < 0)) { lo = m; glo = M.g; } else hi = m; }
+      const M = at((lo + hi) / 2, _hM);
+      if (M.ok && M.al > best) best = M.al;
+    }
+    _hA.ok = B.ok; _hA.g = B.g;
+  }
+  if (best > 0) return { v: best, dx: ax, dy: ay };
+  return fc > -2 ? { v: fv, dx: fdx, dy: fdy } : { v: (1 + e) * Math.max(0, snap), dx: ax, dy: ay };
+}
+
 export function meKnock(mp, rng, tx, ty, speed, vz) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.3, Math.hypot(dx, dy));
   mp.bvx = dx / d * speed; mp.bvy = dy / d * speed; mp.bvz = vz || 0;
