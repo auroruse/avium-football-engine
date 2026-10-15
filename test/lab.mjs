@@ -114,7 +114,7 @@ export function play(E, hT, aT, seed) {
     if (globalThis.__pass2) globalThis.__pass2(pp, okSide, st, mp.bx, mp.by);
     const sd = pp.side, S = P[sd];
     if (!S) return;
-    if (pp.sx === undefined) { S.set++; return; }                 // a restart's delivery
+    if (pp.sx === undefined || pp.rs) { S.set++; return; }       // a restart (pp.rs: it carries its strike since 16 Oct 2026)
     const ok = okSide === sd, k = KIND[pp.k] || "feet";
     S.n++; if (ok) S.ok++;
     S.kn[k]++; if (ok) S.kok[k]++;

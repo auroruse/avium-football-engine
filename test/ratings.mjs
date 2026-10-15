@@ -83,8 +83,10 @@ if (process.argv[2] === "--worker") {
     // lofted, into space, reached the man it was played to, and the belief's components
     // [okBase, okRisk, okLate, d, lane, press, recvPress] for the calibration fit.
     const r3 = (v) => v == null ? null : +(+v).toFixed(3);
-    const passes = globalThis.__pp.filter(e => e[0]).map(([by, pr, ok, d, hi, th, hit, c]) =>
-      [+((by.ovr0 ?? by.ovr) - team[sideOf(by)].xi).toFixed(1), by.pos, r3(pr || 0), ok, r3(d || 0), hi, th, hit, c ? c.map(r3) : null]);
+    // ...and for a restart played to a man (mind/decide.ts mindRestart), its own belief's components
+    // [okBase, okRisk, okLate, high] for the restart's fit (CFG.passCalS*).
+    const passes = globalThis.__pp.filter(e => e[0]).map(([by, pr, ok, d, hi, th, hit, c, cr, k]) =>
+      [+((by.ovr0 ?? by.ovr) - team[sideOf(by)].xi).toFixed(1), by.pos, r3(pr || 0), ok, r3(d || 0), hi, th, hit, c ? c.map(r3) : null, cr ? cr.map(r3) : null, cr ? k : null]);
     lines.push(JSON.stringify({ k, team, players, passes }));
   }
   // A big stdout write followed by process.exit truncates on a pipe; a file does not.
@@ -167,6 +169,23 @@ function analyse(matches, CFG) {
     R.passFit = b;
     L.push(`  fit: logit(kept) = ${b[0].toFixed(2)} + ${b[1].toFixed(2)} ln okBase + ${b[2].toFixed(2)} ln okRisk + ${b[3].toFixed(2)} ln okLate   (shipped ${CFG.passCal0} / ${CFG.passCalB} / ${CFG.passCalR} / ${CFG.passCalL})`);
   }
+  // Restarts played to a man: the same question of their own belief (CFG.passCalS*), which carries one more term, for a
+  // ball in the air (a throw, a lofted goal kick or free kick).
+  const rcs = pass.filter(e => e[9]);
+  R.restFit = null; R.restBands = [];
+  if (rcs.length) {
+    const lg = (c) => [1, Math.log(Math.max(0.01, c[0])), Math.log(Math.max(0.01, c[1])), Math.log(Math.max(0.01, c[2])), c[3] ? 1 : 0];
+    const bS = [CFG.passCalS0, CFG.passCalSB, CFG.passCalSR, CFG.passCalSL, CFG.passCalSH];
+    const belief = (c) => { const x = lg(c); return Math.min(0.985, Math.max(CFG.passFloor, 1 / (1 + Math.exp(-x.reduce((t, v, i) => t + v * bS[i], 0))))); };
+    const rows = rcs.map(e => ({ p: belief(e[9]), y: e[3], k: e[10], hi: e[9][3], d: e[4] }));
+    L.push(`\nRESTARTS PLAYED TO A MAN (n=${rows.length}): the taker's belief against what happened`);
+    for (const k of ["throw", "goalkick", "freekick"]) { const g = rows.filter(r => r.k === k);
+      if (g.length) L.push(`  ${k.padEnd(9)} n=${g.length}  belief ${mean(g.map(r => r.p)).toFixed(3)}  kept ${mean(g.map(r => r.y)).toFixed(3)}  length ${mean(g.map(r => r.d)).toFixed(1)} m  in the air ${(mean(g.map(r => r.hi)) * 100).toFixed(0)}%`); }
+    R.restBands = [[0, .5], [.5, .7], [.7, .85], [.85, .95], [.95, 1.01]].map(([lo, hi]) => { const g = rows.filter(r => r.p >= lo && r.p < hi); return { lo, hi, n: g.length, pred: mean(g.map(r => r.p)), real: mean(g.map(r => r.y)) }; });
+    L.push("  by belief: " + R.restBands.filter(b => b.n).map(b => `${b.lo}-${b.hi > 1 ? 1 : b.hi}: n=${b.n} pred ${b.pred.toFixed(2)} real ${b.real.toFixed(2)}`).join(" | "));
+    R.restFit = logitFit(rcs.map(e => lg(e[9])), rcs.map(e => e[3]));
+    L.push(`  fit: logit(kept) = ${R.restFit.map(v => v.toFixed(2)).join(" / ")}  (base, ln okBase, ln okRisk, ln okLate, in the air; shipped ${bS.join(" / ")})`);
+  }
   // Keepers: the conversion curve the model encodes, and whether it balances.
   const gks = [];
   for (const m of matches) for (const sd_ of ["home", "away"]) {
@@ -213,6 +232,23 @@ function analyse(matches, CFG) {
   }
   L.push("  better side's result by XI gap: " + Object.entries(gapB).map(([k, v]) => `${k}: ${v.length ? (mean(v) * 100).toFixed(0) : "-"}% (n=${v.length})`).join("   "));
   return { text: L.join("\n"), R };
+}
+
+// Logistic regression by Newton's method: the coefficients b with logit(P(y)) = b . x.
+function logitFit(X, y, iters = 14) {
+  const K = X[0].length; let b = new Array(K).fill(0);
+  for (let it = 0; it < iters; it++) {
+    const H = Array.from({ length: K }, () => new Array(K).fill(0)), g = new Array(K).fill(0);
+    for (let i = 0; i < X.length; i++) { const x = X[i]; let z = 0; for (let r = 0; r < K; r++) z += b[r] * x[r];
+      const p = 1 / (1 + Math.exp(-z)), w = p * (1 - p);
+      for (let r = 0; r < K; r++) { g[r] += (y[i] - p) * x[r]; for (let c = 0; c < K; c++) H[r][c] += w * x[r] * x[c]; } }
+    for (let r = 0; r < K; r++) H[r][r] += 1e-9;
+    const A = H.map((row, r) => [...row, g[r]]);
+    for (let c = 0; c < K; c++) { let pr = c; for (let r = c + 1; r < K; r++) if (Math.abs(A[r][c]) > Math.abs(A[pr][c])) pr = r; [A[c], A[pr]] = [A[pr], A[c]];
+      for (let r = 0; r < K; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= K; k++) A[r][k] -= f * A[c][k]; } }
+    b = b.map((v, r) => v + A[r][K] / A[r][r]);
+  }
+  return b;
 }
 
 // The finish, applied to raw ratings exactly as meFinalise does it, so it can be refitted offline.
@@ -290,7 +326,7 @@ subRe(/meRate\((q\d*), meSaveBonus\(shp\.xgN \?\? shp\.xg, shp\.pen\) \+ \(shp\.
 subRe(/meRate\((q\d*), meSaveBonus\(mp\.shot\.xgN \?\? mp\.shot\.xg, mp\.shot\.pen\) \+ \(mp\.shot\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([mp.shot.xgN ?? mp.shot.xg, $1, !!mp.shot.pen]), meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
 subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\? sh\.xg : xg, !!\(sh && sh\.pen\)\)\);/, "if ($1.pos === \"GK\") meRate($1, (globalThis.__gc.push([sh ? sh.xgN ?? sh.xg : xg, $1, !!(sh && sh.pen)]), -meConcedePen(sh ? sh.xgN ?? sh.xg : xg, !!(sh && sh.pen))));");
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
-sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
+sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null, pp.cr || null, pp.k || null]);\n    out.passes++;\n");
 // The rating before full time shapes it, so the finalisation can be re-fitted without replaying.
 sub("const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink", "p._r0 = p._rr ?? p.rating; p._proj = proj; p._shrink = shrink; const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink");
 // Indentation-free: the contest moved into its own function and the bundle re-indents it.
@@ -330,6 +366,7 @@ if (mode === "derive") {
   console.log("\nTHE FINISH TO SHIP, on these matches:");
   console.log(shapeTable(refinish(matches, CFG, F, gk, S)));
   if (R.passFit) console.log("  passCal0: " + R.passFit[0].toFixed(2) + ", passCalB: " + R.passFit[1].toFixed(2) + ", passCalR: " + R.passFit[2].toFixed(2) + ", passCalL: " + R.passFit[3].toFixed(2) + ",   (iterate: the chosen passes move with the belief)");
+  if (R.restFit) console.log("  passCalS0: " + R.restFit[0].toFixed(2) + ", passCalSB: " + R.restFit[1].toFixed(2) + ", passCalSR: " + R.restFit[2].toFixed(2) + ", passCalSL: " + R.restFit[3].toFixed(2) + ", passCalSH: " + R.restFit[4].toFixed(2) + ",   (restarts; iterate likewise)");
 }
 if (mode === "check") {
   const bad = [];
@@ -353,6 +390,7 @@ if (mode === "check") {
   // 0.62/0.57). Box-occupation runs pack that band with congested central passes the three-feature
   // model cannot see. A real regression still fires past 0.06.
   for (const b of R.passBands || []) if (b.n >= 500 && Math.abs(b.pred - b.real) > 0.06) bad.push(`passes believed at ${b.pred.toFixed(2)} (band ${b.lo}-${b.hi}) completed ${b.real.toFixed(2)} -- re-fit passCal*`);
+  for (const b of R.restBands || []) if (b.n >= 300 && Math.abs(b.pred - b.real) > 0.06) bad.push(`restarts believed at ${b.pred.toFixed(2)} (band ${b.lo}-${b.hi}) kept ${b.real.toFixed(2)} -- re-fit passCalS*`);
   console.log(bad.length ? "\n" + bad.map(s => "  FAIL  " + s).join("\n") : "\nall pars and the keeper balance hold");
   process.exit(bad.length ? 1 : 0);
 }
