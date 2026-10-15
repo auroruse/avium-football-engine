@@ -13,6 +13,7 @@
 import { CFG, ME_DT } from "./config";
 import { meAttrs, meBadgeFx, mePassBadge, meSpeed, meTech } from "./attributes";
 import { PITCH_L, PITCH_W, meOther } from "./geometry";
+import { meGroundSpeed } from "./ball";
 
 // First touch and close control. See ME_TILT.touch.
 export const meTouchTech = (p) => meTech(meAttrs(p).touch);
@@ -96,6 +97,19 @@ function touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L) {
   // Kept on the pitch, as a plan: where it is going to roll before he is back on it.
   const [kx, ky] = keepIn(mp.bx, mp.by, vx / Math.hypot(vx, vy), vy / Math.hypot(vx, vy), sp * CFG.touchLook + Lp);
   return [kx * sp, ky * sp];
+}
+
+// NEVER PLAYED OVER A LINE (user, 15 October 2026: "players running out of bounds with the ball fully in their control").
+// A ball he means to keep is never struck toward a line harder than the grass will stop it touchEdge inside: no quicker
+// along the normal than meGroundSpeed gives a ball rolling to rest over that distance. Braking for the line (match.ts,
+// CFG.lineStop), he played it on at the pace of the run he was giving up and it rolled out a stride or two ahead of
+// him: traced, the ball 1-2.5 m in front and still going at the line at 2-4 m/s. Applied after the error: near the
+// line he is careful, whatever his touch is like.
+function lineCap(mp, vx, vy) {
+  const cap = (d) => meGroundSpeed(Math.max(0, d - CFG.touchEdge), 0);
+  if (vx > 0) vx = Math.min(vx, cap(PITCH_L - mp.bx)); else if (vx < 0) vx = Math.max(vx, -cap(mp.bx));
+  if (vy > 0) vy = Math.min(vy, cap(PITCH_W - mp.by)); else if (vy < 0) vy = Math.max(vy, -cap(mp.by));
+  return [vx, vy];
 }
 
 // How fast he means to go with it: his carrying pace in the open, dribCloseV of it with a man on him.
@@ -223,7 +237,8 @@ export function meFirstTouch(s, rng, side, p, px, py, pvx, pvy, z, reach, uAng) 
   const eW = gauss(rng) * D * (CFG.ftW0 + CFG.ftWTech * Math.max(0, 1 - ts) ** 2);
   const sp = Math.hypot(vx, vy) * Math.max(0.2, 1 + eW);
   const a = (sp > 0.01 ? Math.atan2(vy, vx) : uAng) + eA;
-  return { ok: true, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ang: a, D };
+  const [cx, cy] = lineCap(mp, Math.cos(a) * sp, Math.sin(a) * sp);
+  return { ok: true, vx: cx, vy: cy, ang: a, D };
 }
 
 /** A DRIBBLE TOUCH, played when the ball comes back to his feet. It is aimed at WHERE HE WILL BE when
@@ -257,5 +272,6 @@ export function meDribbleTouch(s, rng, side, p, px, py, pvx, pvy) {
   const eW = gauss(rng) * D * (CFG.drW0 + CFG.drWTech * Math.max(0, 1 - ts) ** 2);
   const sp = Math.hypot(vx, vy) * Math.max(0.3, 1 + eW);
   const a = (sp > 0.01 ? Math.atan2(vy, vx) : uA) + eA;
-  return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ang: a, D };
+  const [cx, cy] = lineCap(mp, Math.cos(a) * sp, Math.sin(a) * sp);
+  return { vx: cx, vy: cy, ang: a, D };
 }

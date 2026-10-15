@@ -64,8 +64,7 @@ export function meMeetGround(sx, sy, qx, qy, qvx, qvy, ux, uy, vd) {
 
 /** A BALL IN THE AIR INTO HIS PATH, of kind `kind` (CFG.loftK): landing, or arriving at its height,
  *  `early` seconds before he gets to the spot. Over the top that is the ball dropping just in front of
- *  him so it is bouncing into his stride; a cross, with `early` negative (CFG.crossLead), arrives a beat after he gets
- *  there. Returns { ax, ay, d, t } or null. */
+ *  him so it is bouncing into his stride; a cross is met as it arrives. Returns { ax, ay, d, t } or null. */
 export function meMeetLoft(sx, sy, qx, qy, qvx, qvy, ux, uy, vd, kind, early) {
   return meet((t) => {
     const [ax, ay] = meRunAt(qx, qy, qvx, qvy, ux, uy, vd, t);
@@ -82,34 +81,47 @@ export function meMeetLoft(sx, sy, qx, qy, qvx, qvy, ux, uy, vd, kind, early) {
  *  him v0 k, k = tau (1 - e^(-t/tau)), and running he can add vmax (t - k) in any direction -- so the ground he can
  *  cover by then is a circle of that radius round the end of his drift, and tau is longer for a man turning back.
  *  Returns { x, y, z, ms, slotMs, ok } or null when no point of the flight is his. */
-export function meMeetAir(p, mp, vmax, react, ceil, headR, footR) {
+export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep) {
   const F = meBallFine(mp), m = F[0] | 0;
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v0 = Math.hypot(vx, vy);
-  for (let j = 1; j < m; j++) {
-    const o = 1 + 4 * j, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
-    if (!(z < F[o - 1]) || z > ceil) continue;             // still climbing off the boot, or over him
-    if (!onPitch(x, y, 0)) break;                           // gone out: nowhere after this is his
-    const head = z > CFG.headMinZ;
-    let r = headR;
-    if (!head) {
-      const bv = Math.hypot(x - F[o - 3], y - F[o - 2]) / Math.max(1e-6, t - F[o - 4]);
-      r = footR * (1 - Math.max(0, Math.min(1, (bv - CFG.fastDodgeV0) / (CFG.fastDodgeV1 - CFG.fastDodgeV0))) * CFG.fastDodge);
-    }
-    const tt = t - CFG.airMeetEarly;
-    if (tt <= 0) continue;
-    // Inside airArrive his last steps put him on the spot with no momentum to carry him through it (match.ts), and
-    // standing there he holds: what is left is only whether he can cover the ground.
-    const near = Math.hypot(x - p.x, y - p.y);
-    if (near <= CFG.airArrive) {
-      if (near <= vmax * tt + r * CFG.airMeetTol) return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
-      continue;
-    }
+  // Can he be within tol of (x, y) tt s from now: the circle his legs can cover round where his momentum takes him.
+  const can = (tt, x, y, tol) => {
+    if (tt <= 0) return false;
     const td = Math.min(tt, react), sx = p.x + vx * td, sy = p.y + vy * td, tr = tt - td;
     const ex = x - sx, ey = y - sy, e = Math.hypot(ex, ey);
     const cosA = v0 > 0.3 && e > 0.01 ? (vx * ex + vy * ey) / (v0 * e) : 1;
     const acc = Math.min(0.95, CFG.accel * (1 - CFG.turnPenalty * Math.max(0, -cosA)));
     const tau = -ME_DT / Math.log(1 - acc), k = tau * (1 - Math.exp(-tr / tau));
-    if (Math.hypot(x - sx - vx * k, y - sy - vy * k) - vmax * Math.max(0, tr - k) > r * CFG.airMeetTol) continue;
+    return Math.hypot(x - sx - vx * k, y - sy - vy * k) - vmax * Math.max(0, tr - k) <= tol;
+  };
+  const reachOf = (o, head) => {
+    if (head) return headR;
+    const bv = Math.hypot(F[o + 1] - F[o - 3], F[o + 2] - F[o - 2]) / Math.max(1e-6, F[o] - F[o - 4]);
+    return footR * (1 - Math.max(0, Math.min(1, (bv - CFG.fastDodgeV0) / (CFG.fastDodgeV1 - CFG.fastDodgeV0))) * CFG.fastDodge);
+  };
+  // THE POINT HE IS ALREADY GOING FOR stands while he can make it at all, margin or none: his run is timed to arrive
+  // with the ball (match.ts), and re-solved with the margin every slice it lost it and he was moved on down the flight.
+  if (keep) {
+    let kj = -1, kd = 0.6;
+    for (let j = 1; j < m; j++) { const o = 1 + 4 * j, z = F[o + 3];
+      if (!(z < F[o - 1]) || z > ceil) continue;
+      const d = Math.hypot(F[o + 1] - keep.x, F[o + 2] - keep.y); if (d < kd) { kd = d; kj = j; } }
+    if (kj > 0) { const o = 1 + 4 * kj, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
+      if (can(t, x, y, reachOf(o, z > CFG.headMinZ) * CFG.airMeetTol)) return { x, y, z, ms: t * 1000, slotMs: Math.max(1, t * 1000), ok: 1 }; }
+  }
+  for (let j = 1; j < m; j++) {
+    const o = 1 + 4 * j, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
+    if (!(z < F[o - 1]) || z > ceil) continue;             // still climbing off the boot, or over him
+    if (!onPitch(x, y, 0)) break;                           // gone out: nowhere after this is his
+    const tt = t - CFG.airMeetEarly, r = reachOf(o, z > CFG.headMinZ);
+    // Inside airArrive his last steps put him on the spot with no momentum to carry him through it (match.ts), and
+    // standing there he holds: what is left is only whether he can cover the ground.
+    const near = Math.hypot(x - p.x, y - p.y);
+    if (near <= CFG.airArrive) {
+      if (tt > 0 && near <= vmax * tt + r * CFG.airMeetTol) return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
+      continue;
+    }
+    if (!can(tt, x, y, r * CFG.airMeetTol)) continue;
     return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
   }
   return null;
