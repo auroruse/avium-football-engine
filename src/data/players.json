@@ -5893,5 +5893,11 @@
 {"id":"p5931","name":"Pendar TABANDEH","nat":"VAR","ovr":56,"born":"1915-10-25","pos":["RB"]},
 {"id":"p5932","name":"Shahyar RAKHSHAN","nat":"VAR","ovr":59,"born":"1914-12-05","pos":["CM"]},
 {"id":"p5933","name":"Peyvand FANUSI","nat":"VAR","ovr":55,"born":"1916-09-09","pos":["LW"]},
-{"id":"p5934","name":"Arta SHOAEI","nat":"VAR","ovr":60,"born":"1913-04-30","pos":["ST","RW"]}
+{"id":"p5934","name":"Arta SHOAEI","nat":"VAR","ovr":60,"born":"1913-04-30","pos":["ST","RW"]},
+{"id":"p5935","name":"Saeed LANGARI","nat":"VAR","ovr":60,"born":"1914-02-25","pos":["CB"]},
+{"id":"p5936","name":"Abdollah JAZIREI","nat":"VAR","ovr":52,"born":"1917-10-15","pos":["CB"]},
+{"id":"p5937","name":"Jafar KESHTIRAN","nat":"VAR","ovr":55,"born":"1916-09-25","pos":["LWB","LB"]},
+{"id":"p5938","name":"Akbar SOKKANI","nat":"VAR","ovr":57,"born":"1916-04-28","pos":["RWB","RB"]},
+{"id":"p5939","name":"Hassan TOUFANI","nat":"VAR","ovr":58,"born":"1915-02-27","pos":["CM"]},
+{"id":"p5940","name":"Salem AL-KHALIJI","nat":"VAR","ovr":61,"born":"1913-05-26","pos":["ST"]}
 ]
