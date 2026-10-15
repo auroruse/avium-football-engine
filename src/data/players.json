@@ -5852,5 +5852,10 @@
 {"id":"p5890","name":"Ilya KARBASI","nat":"VAR","ovr":64,"born":"1915-03-25","pos":["RB","RM"]},
 {"id":"p5891","name":"Mehrshad JAVANMARD","nat":"VAR","ovr":63,"born":"1914-08-21","pos":["LM","RM"]},
 {"id":"p5892","name":"Abolfazl KHAJAVI","nat":"VAR","ovr":59,"born":"1916-09-29","pos":["CM"]},
-{"id":"p5893","name":"Sajjad VALIZADEH","nat":"VAR","ovr":64,"born":"1913-11-12","pos":["ST"]}
+{"id":"p5893","name":"Sajjad VALIZADEH","nat":"VAR","ovr":64,"born":"1913-11-12","pos":["ST"]},
+{"id":"p5894","name":"Jalal SAYRAFI","nat":"VAR","ovr":63,"born":"1914-02-15","pos":["CB"]},
+{"id":"p5895","name":"Mazin DALLAL","nat":"VAR","ovr":60,"born":"1915-11-06","pos":["CB","RB"]},
+{"id":"p5896","name":"Raed KHAZIN","nat":"VAR","ovr":57,"born":"1917-12-09","pos":["CB"]},
+{"id":"p5897","name":"Yahya NAQID","nat":"VAR","ovr":62,"born":"1915-02-13","pos":["LWB","LM"]},
+{"id":"p5898","name":"Ghaith AL-ASHSHAR","nat":"VAR","ovr":62,"born":"1913-12-27","pos":["ST","RW"]}
 ]
