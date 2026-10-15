@@ -5875,5 +5875,11 @@
 {"id":"p5913","name":"Esmail SANDANI","nat":"VAR","ovr":59,"born":"1915-05-19","pos":["CB","RB"]},
 {"id":"p5914","name":"Nosrat TORNKAR","nat":"VAR","ovr":61,"born":"1914-12-05","pos":["CM"]},
 {"id":"p5915","name":"Jalil KOUREHCHI","nat":"VAR","ovr":57,"born":"1916-06-22","pos":["RM","LM"]},
-{"id":"p5916","name":"Soleiman MESGAR","nat":"VAR","ovr":60,"born":"1913-11-15","pos":["ST"]}
+{"id":"p5916","name":"Soleiman MESGAR","nat":"VAR","ovr":60,"born":"1913-11-15","pos":["ST"]},
+{"id":"p5917","name":"Giv ALBORZI","nat":"VAR","ovr":62,"born":"1913-10-12","pos":["CB"]},
+{"id":"p5918","name":"Hojir SABALANI","nat":"VAR","ovr":59,"born":"1916-02-16","pos":["CB"]},
+{"id":"p5919","name":"Farud DENAEI","nat":"VAR","ovr":54,"born":"1918-02-01","pos":["LWB","LB"]},
+{"id":"p5920","name":"Rohham SAHANDI","nat":"VAR","ovr":57,"born":"1916-04-30","pos":["RWB","RB"]},
+{"id":"p5921","name":"Gostaham KOHSAR","nat":"VAR","ovr":58,"born":"1914-08-02","pos":["CM","DM"]},
+{"id":"p5922","name":"Kharrad KOHPAYEH","nat":"VAR","ovr":59,"born":"1913-10-11","pos":["ST"]}
 ]
