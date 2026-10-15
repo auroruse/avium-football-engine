@@ -5835,5 +5835,11 @@
 {"id":"p5873","name":"Farnam DORNA","nat":"VAR","ovr":66,"born":"1914-08-18","pos":["RB","RM"]},
 {"id":"p5874","name":"Shayan CHAKAVAK","nat":"VAR","ovr":68,"born":"1914-02-28","pos":["LW","RW"]},
 {"id":"p5875","name":"Arvin KABOUTARI","nat":"VAR","ovr":61,"born":"1916-12-20","pos":["RW","ST"]},
-{"id":"p5876","name":"Mehrbod SIMORGHI","nat":"VAR","ovr":65,"born":"1915-08-10","pos":["ST"]}
+{"id":"p5876","name":"Mehrbod SIMORGHI","nat":"VAR","ovr":65,"born":"1915-08-10","pos":["ST"]},
+{"id":"p5877","name":"Bamdad LAJEVARDI","nat":"VAR","ovr":61,"born":"1915-09-15","pos":["LB"]},
+{"id":"p5878","name":"Farid KASHIGAR","nat":"VAR","ovr":64,"born":"1913-08-15","pos":["CB","RB"]},
+{"id":"p5879","name":"Khodarahm ZARBAFI","nat":"VAR","ovr":58,"born":"1917-05-26","pos":["CB"]},
+{"id":"p5880","name":"Taha MOZAHHEB","nat":"VAR","ovr":65,"born":"1915-09-05","pos":["DM","CM"]},
+{"id":"p5881","name":"Kamal MINAGAR","nat":"VAR","ovr":68,"born":"1914-08-31","pos":["CM","AM"]},
+{"id":"p5882","name":"Rahim MOSHABBAK","nat":"VAR","ovr":62,"born":"1917-02-25","pos":["AM","CM"]}
 ]
