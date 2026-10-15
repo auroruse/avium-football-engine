@@ -5817,5 +5817,11 @@
 {"id":"p5855","name":"Vahab MORADKHANI","nat":"VAR","ovr":64,"born":"1917-01-30","pos":["DM","CM"]},
 {"id":"p5856","name":"Behnoud ASADI","nat":"VAR","ovr":70,"born":"1914-03-10","pos":["CM","AM"]},
 {"id":"p5857","name":"Rouzbeh FARAHANI","nat":"VAR","ovr":71,"born":"1914-01-15","pos":["LW"]},
-{"id":"p5858","name":"Sorena KAMALI","nat":"VAR","ovr":65,"born":"1916-11-04","pos":["ST"]}
+{"id":"p5858","name":"Sorena KAMALI","nat":"VAR","ovr":65,"born":"1916-11-04","pos":["ST"]},
+{"id":"p5859","name":"Parham ZANGENEH","nat":"VAR","ovr":62,"born":"1916-08-23","pos":["LB"]},
+{"id":"p5860","name":"Salar GHOLAMI","nat":"VAR","ovr":67,"born":"1913-08-23","pos":["CB","RB"]},
+{"id":"p5861","name":"Dinyar ARDESHIRI","nat":"VAR","ovr":65,"born":"1915-08-22","pos":["DM","CM"]},
+{"id":"p5862","name":"Mahyar KESHTKAR","nat":"VAR","ovr":68,"born":"1914-05-01","pos":["CM","AM"]},
+{"id":"p5863","name":"Kazem ZAREI","nat":"VAR","ovr":62,"born":"1917-03-22","pos":["CM"]},
+{"id":"p5864","name":"Amin KHERADMAND","nat":"VAR","ovr":60,"born":"1917-12-02","pos":["RM","AM"]}
 ]
