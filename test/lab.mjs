@@ -238,6 +238,8 @@ export function play(E, hT, aT, seed) {
       stamHT: r4(stamHT?.[sd] ?? 0), nsub: SUB[sd].length, sub45: SUB[sd].filter(m => m < 45).length, sub60: SUB[sd].filter(m => m < 60).length,
       subT: SUB[sd].reduce((a, b) => a + b, 0),
       fouls: out.fouls[sd], yel: out.yellows?.[sd] ?? 0, red: out.reds?.[sd] ?? 0, cor: out.corners[sd],
+      // the match broke: the ball ended it nowhere (a NaN that spread from one man to every man, 15 October 2026)
+      brk: +!(Number.isFinite(mp.bx) && Number.isFinite(mp.by)),
       ...(globalThis.__anat ? { AN: { ...AN[sd], SH: Object.entries(AN[sd].SH).map(([n, e]) => [n, ...e.map(v => typeof v === "number" ? +v.toFixed(3) : v)]) } } : null),
     };
   }
