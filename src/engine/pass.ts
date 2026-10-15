@@ -9,7 +9,7 @@
 // at the pace he is going, turning and building speed at the rate his legs allow -- at the moment a
 // ball struck now gets there, weighted so it arrives running into his path.
 import { CFG, ME_DT } from "./config";
-import { meGroundSpeed, meLoftT } from "./ball";
+import { meBallFine, meGroundSpeed, meLoftT } from "./ball";
 import { PITCH_L, PITCH_W, meGroundT } from "./geometry";
 
 /** WHERE HE WILL BE, and how fast he will be going: a man at (x, y) moving (vx, vy) m/s who runs along
@@ -64,13 +64,55 @@ export function meMeetGround(sx, sy, qx, qy, qvx, qvy, ux, uy, vd) {
 
 /** A BALL IN THE AIR INTO HIS PATH, of kind `kind` (CFG.loftK): landing, or arriving at its height,
  *  `early` seconds before he gets to the spot. Over the top that is the ball dropping just in front of
- *  him so it is bouncing into his stride; a cross is met as it arrives. Returns { ax, ay, d, t } or null. */
+ *  him so it is bouncing into his stride; a cross, with `early` negative (CFG.crossLead), arrives a beat after he gets
+ *  there. Returns { ax, ay, d, t } or null. */
 export function meMeetLoft(sx, sy, qx, qy, qvx, qvy, ux, uy, vd, kind, early) {
   return meet((t) => {
     const [ax, ay] = meRunAt(qx, qy, qvx, qvy, ux, uy, vd, t);
     const d = Math.hypot(ax - sx, ay - sy);
     return { ax, ay, d, f: meLoftT(d, kind) - (t - early) };
   }, CFG.meetTMin + early, CFG.meetTMax + early);
+}
+
+/** WHERE HE MEETS A CROSS (CFG.airFineSub and the rest; match.ts sends the men attacking an open-play cross here). The
+ *  first point of the ball's flight, on its way down, where it is under `ceil` and he can be within `headR` (above
+ *  headMinZ) or `footR` (below it, shrunk for the ball's pace as reachOf shrinks it) of it, times airMeetTol,
+ *  airMeetEarly s before it gets there. He keeps doing what he was doing for the `react` s of his reading still to go,
+ *  then turns and runs at `vmax` by the law meMove moves him (meRunAt above): from velocity v0 his momentum carries
+ *  him v0 k, k = tau (1 - e^(-t/tau)), and running he can add vmax (t - k) in any direction -- so the ground he can
+ *  cover by then is a circle of that radius round the end of his drift, and tau is longer for a man turning back.
+ *  Returns { x, y, z, ms, slotMs, ok } or null when no point of the flight is his. */
+export function meMeetAir(p, mp, vmax, react, ceil, headR, footR) {
+  const F = meBallFine(mp), m = F[0] | 0;
+  const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v0 = Math.hypot(vx, vy);
+  for (let j = 1; j < m; j++) {
+    const o = 1 + 4 * j, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
+    if (!(z < F[o - 1]) || z > ceil) continue;             // still climbing off the boot, or over him
+    if (!onPitch(x, y, 0)) break;                           // gone out: nowhere after this is his
+    const head = z > CFG.headMinZ;
+    let r = headR;
+    if (!head) {
+      const bv = Math.hypot(x - F[o - 3], y - F[o - 2]) / Math.max(1e-6, t - F[o - 4]);
+      r = footR * (1 - Math.max(0, Math.min(1, (bv - CFG.fastDodgeV0) / (CFG.fastDodgeV1 - CFG.fastDodgeV0))) * CFG.fastDodge);
+    }
+    const tt = t - CFG.airMeetEarly;
+    if (tt <= 0) continue;
+    // Inside airArrive his last steps put him on the spot with no momentum to carry him through it (match.ts), and
+    // standing there he holds: what is left is only whether he can cover the ground.
+    const near = Math.hypot(x - p.x, y - p.y);
+    if (near <= CFG.airArrive) {
+      if (near <= vmax * tt + r * CFG.airMeetTol) return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
+      continue;
+    }
+    const td = Math.min(tt, react), sx = p.x + vx * td, sy = p.y + vy * td, tr = tt - td;
+    const ex = x - sx, ey = y - sy, e = Math.hypot(ex, ey);
+    const cosA = v0 > 0.3 && e > 0.01 ? (vx * ex + vy * ey) / (v0 * e) : 1;
+    const acc = Math.min(0.95, CFG.accel * (1 - CFG.turnPenalty * Math.max(0, -cosA)));
+    const tau = -ME_DT / Math.log(1 - acc), k = tau * (1 - Math.exp(-tr / tau));
+    if (Math.hypot(x - sx - vx * k, y - sy - vy * k) - vmax * Math.max(0, tr - k) > r * CFG.airMeetTol) continue;
+    return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
+  }
+  return null;
 }
 
 /** HOW HARD A BALL IS TO STRIKE, and nothing for one he has stopped. A first-time ball, or one still
