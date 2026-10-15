@@ -422,7 +422,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
         const gx6 = meGoalX(side) - dir * 6, tl = Math.hypot(gx6 - q.x, ME_HALF_W - q.y) || 1;
         ux = (gx6 - q.x) / tl; uy = (ME_HALF_W - q.y) / tl; vd = qTop * 0.6;
       }
-      const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd, "cross", 0);
+      const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd, "cross", -CFG.crossLead);
       if (o && inBox(o.ax, o.ay))
         consider(q, j, { ax: o.ax, ay: o.ay, k: "cross", high: true, kind: "cross", zEnd: CFG.crossZ,
                          tb: meLoftT(o.d, "cross"), blk: meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true) });

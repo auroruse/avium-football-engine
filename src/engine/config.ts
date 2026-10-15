@@ -2175,6 +2175,24 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ...but not the balls a side puts INTO THE BOX to be headed (match.ts boxBall/boxHead): the kinds listed here are
   // attacked in the air when they meet the man in the area, and headed at goal inside headShotR.
   boxBallK: { cross: 1, corner: 1, longthrow: 1, freekick: 1 },
+  // THE CROSS IS MET WHERE IT CAN BE HEADED (match.ts, pass.ts meMeetAir; user, 15 October 2026: "the vast majority of
+  // crosses were too fast to be threatening, whizzing past the striker in front"). Traced over six Arminia-Viridia
+  // matches, a third of all open-play crosses went past the man they were for at a height he could have met, a median
+  // 1.4 m from him against a header's half a metre: he was still running at it in 13 of those 30 (late) and had gone
+  // past the spot in 11. The intercept he was sent to was the first quarter-second slot of the forecast he could "make" on a time
+  // model that charges him rcvLag of the reading but every metre of the movement that comes with it (5 m in a fifth of
+  // a second), and a cross covers 4-5 m between two slots, so the stretch of it at head height usually fell between
+  // them. The men attacking an open-play cross now solve the meeting on the flight itself, stepped every airFineSub
+  // substeps, at the pace and turn meMove actually moves them (pass.ts meRunAt's law), after the rest of a reading that
+  // starts at the strike, and go to the first point where it can be headed -- or, failing that, met lower -- that they
+  // can reach airMeetEarly s before the ball, within airMeetTol of their reach. There the man going for it plants on the
+  // spot (inside airArrive m his last steps put him on it) and holds inside airHoldR until it arrives, where he used to
+  // run on through it. ...AND THE CROSS IS PUT WHERE HE ARRIVES crossLead s BEFORE THE BALL (mind/decide.ts), where it
+  // was put on the point of his run he reaches at the same instant: a man already sprinting had no pace left to make up
+  // a metre of error, and a cross is a metre out more often than not (median 1.1 m off its aim at head height). Set by
+  // reasoning, not measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot
+  // the ball went through untouched twice, and his side had the first touch on 61%.
+  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, crossLead: 0.2,
   // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
