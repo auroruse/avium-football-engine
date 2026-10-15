@@ -278,6 +278,30 @@ export function meBallPredict(mp) {
   }
 }
 
+// THE FLIGHT, FINELY (pass.ts meMeetAir). The forecast is a slice apart, and a cross covers four or five metres in a
+// slice: the stretch of it a man can head, between his chest and the top of his jump, lasts about a fifth of a second
+// and usually falls between two slots. Stepped from the forecast's own slot states with the same integrator, every
+// CFG.airFineSub substeps, into one flat array: F[0] the count, then [t, x, y, z] per sample, t in seconds from now.
+// Built at most once a slice, and only when somebody asks.
+const _fg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
+let _fF = null, _fMp = null, _fAt = -1, _fB = NaN, _fZ = NaN;
+export function meBallFine(mp) {
+  const S = mp._pS;
+  if (_fF && _fMp === mp && _fAt === mp.tick && Object.is(_fB, mp.bx) && Object.is(_fZ, mp.bz)) return _fF;
+  const per = Math.round(ME_DT / BALL_SUB), k = Math.max(1, CFG.airFineSub | 0), n = (PRED_SLOTS - 1) * Math.ceil(per / k);
+  const F = _fF && _fF.length === 1 + 4 * n ? _fF : (_fF = new Float64Array(1 + 4 * n));
+  let m = 0;
+  if (S) for (let s = 0; s < PRED_SLOTS - 1; s++) {
+    _pGet(_fg, S[s]);
+    for (let i = 0; i < per; i++) {
+      if (i % k === 0) { const o = 1 + 4 * m++; F[o] = (s * per + i) * BALL_SUB; F[o + 1] = _fg.bx; F[o + 2] = _fg.by; F[o + 3] = _fg.bz; }
+      stepOnce(_fg);
+    }
+  }
+  F[0] = m; _fMp = mp; _fAt = mp.tick; _fB = mp.bx; _fZ = mp.bz;
+  return F;
+}
+
 // THE PITCH THE BALL IS ACTUALLY PLAYED ON. stepOnce takes ballDrag off the full 3D velocity every
 // substep and then takes ballFric and ballFricLin off the horizontal velocity AGAIN while the ball
 // is down in the grass, so a rolling ball really decelerates by
