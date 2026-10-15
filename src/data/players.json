@@ -5911,5 +5911,11 @@
 {"id":"p5949","name":"Ezzat CHOGONDARI","nat":"VAR","ovr":55,"born":"1915-10-31","pos":["RB"]},
 {"id":"p5950","name":"Lotfollah HALVAEI","nat":"VAR","ovr":54,"born":"1916-08-22","pos":["LM","RM"]},
 {"id":"p5951","name":"Zabih ANGABINI","nat":"VAR","ovr":58,"born":"1915-01-20","pos":["CM"]},
-{"id":"p5952","name":"Hashem SOHANI","nat":"VAR","ovr":58,"born":"1914-04-21","pos":["ST"]}
+{"id":"p5952","name":"Hashem SOHANI","nat":"VAR","ovr":58,"born":"1914-04-21","pos":["ST"]},
+{"id":"p5953","name":"Khamis AL-SIYIB","nat":"VAR","ovr":56,"born":"1913-09-02","pos":["CB"]},
+{"id":"p5954","name":"Khalifa AL-DAYYIN","nat":"VAR","ovr":50,"born":"1917-11-20","pos":["CB"]},
+{"id":"p5955","name":"Humaid AL-FATTAM","nat":"VAR","ovr":53,"born":"1915-11-03","pos":["RB","LB"]},
+{"id":"p5956","name":"Eisa AL-SAMBUK","nat":"VAR","ovr":53,"born":"1917-04-15","pos":["DM"]},
+{"id":"p5957","name":"Marwan AL-TABBAB","nat":"VAR","ovr":57,"born":"1914-12-14","pos":["CM","AM"]},
+{"id":"p5958","name":"Hazza AL-RADHIF","nat":"VAR","ovr":56,"born":"1914-02-09","pos":["ST"]}
 ]
