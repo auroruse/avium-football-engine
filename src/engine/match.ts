@@ -479,6 +479,12 @@ export function meMove(s, rng) {
                    : i === scramble ? (deadBall || !onLine || meet || !coming || thruRun || airBall || looseAtk ? 0 : CFG.scrambleStop)
                    : p._closing ? CFG.closeStop : 1.3;
       if (d < stopAt) { p.vx = 0; p.vy = 0; continue; }   // arrived; stop rather than jiggle on the spot
+      // ...and a man standing exactly on a target he may not stop short of (stopAt 0) has arrived too: his heading would be
+      // nought over nought. A plant (acc 1, below) can put him on the spot to the last digit, and the next slice's target
+      // was that spot: his heading went to NaN, and the bodies pass below carried it to every man on the pitch in the same
+      // slice (traced, 15 October 2026). Exactly nought only: the man on the ball is steered to a point a boot's length
+      // behind it that can be a hair from him, and his pursuit still has to run at the ball's pace from there.
+      if (d === 0) { p.vx = 0; p.vy = 0; continue; }
       // GetLazyVelocity (elizacontroller.cpp:437-474): how hard you run depends on who you are, what
       // the score of the possession contest is, and how far you are from the action -- a striker
       // visibly jogs while his side defends, a centre-half while it attacks, and the midfield always
@@ -1949,6 +1955,10 @@ function meChase(s, out) {
   }
 }
 
+// THE PASS HE IS MEETING, kept on the man out of sight. It holds the passer (byP), who may be holding the pass he was
+// met with in turn, so as an ordinary property it made players a cycle -- two men who had played it to each other -- and
+// anything writing results out as JSON with the men in them failed, as a tournament's save did over mindLens's view.
+const meAirPp = (q, pp) => Object.defineProperty(q, "_airPp", { value: pp, writable: true, configurable: true, enumerable: false });
 export function meTick(s, rng, out) {
   const mp = s.mePos;
   if (s.brain === 2) mp._min = out.min ?? 0;          // the clock, for the second brain's coach
@@ -3459,7 +3469,23 @@ export function meTick(s, rng, out) {
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
                                CFG.headReach * (CFG.headLo + (1 - CFG.headLo) * qa.air / 99), rcv ? CFG.reach : CFG.cutReach,
                                q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null);
-          if (am) { ic = am; q._airMt = mp.tick; q._airPp = ppC; }
+          if (am) { ic = am; q._airMt = mp.tick; meAirPp(q, ppC); }
+        }
+        // ...AND THE BALL ALONG THE GROUND IS MET WHERE HE CAN REALLY GET TO IT (the passers rework, 15 October 2026).
+        // Planned on meTimeToBallMs at rcvLag, the man a ground pass was played to was credited the whole circle a defender
+        // grows across a full 700 ms reading inside the 210 ms of his own -- 2.6 m in any direction, straight back from a
+        // sprint, about 12 m/s -- so every slice he was sent to where the ball would be a quarter of a second on, could not
+        // get there, and it ran on a metre beside him or behind him to a defender -- traced over eight matches, a third of
+        // all the ground passes cut out. He solves it as a man meeting a cross does, on the law he moves by (pass.ts
+        // meMeetAir, rolling), and goes for the first point of its path he can make. Over the same eight fixtures, balls
+        // to the feet of a man sprinting when it was struck were kept 63% -> 79%, and those running on past him 14% -> 5%.
+        // A ball to feet only: one into space or through is met on his run (meMove, thruRun), which steers him itself.
+        if (!airPred && rcv && q.pos !== "GK" && ppC && ppC.side === sd && ppC.sx !== undefined && !ppC.high && !ppC.thru) {
+          const qa = meAttrs(q);
+          const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
+          const gm = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), CFG.recvAirZ, 0, CFG.reach,
+                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null, true);
+          if (gm) { ic = gm; q._airMt = mp.tick; meAirPp(q, ppC); }
         }
         q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
       }
