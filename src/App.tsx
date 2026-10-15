@@ -15521,9 +15521,9 @@ export default function App() {
     return { side, place, ovr: has ? showOvr(ovr) : null, at: has ? showOvr(at) : null, d: has ? Math.round(Number(ovr)) - Math.round(at) : posDrop(own, place) }; };
   const uxOopTag = (own, rows) => JSON.stringify({ own: posList(own), rows });
   // In a list, after the place he plays: the triangle, then the cost.
-  const uxOopMark = (ovr, own, place, cls = "") => { if (!uxOop(own, place)) return null;
+  const uxOopMark = (ovr, own, place, cls = "", style) => { if (!uxOop(own, place)) return null;
     const r = uxOopRow(ovr, own, place);
-    return (<span className={"ux-oopm" + (cls ? " " + cls : "")} data-oop={uxOopTag(own, [r])} role="img" aria-label={"Out Of Position" + (r.at ? ", Plays As " + r.at : "")}>
+    return (<span className={"ux-oopm" + (cls ? " " + cls : "")} style={style} data-oop={uxOopTag(own, [r])} role="img" aria-label={"Out Of Position" + (r.at ? ", Plays As " + r.at : "")}>
       {UX_WARN}{r.d != null && <span><UxArrow />{r.d}</span>}</span>); };
   // A MAN'S RATING ON A PITCH (src/data/positions.js, Moukden and Kirin, 11 October 2026): in one of his own positions his
   // rating; out of them the rating he plays the place at, ringed, with what the place costs him in a block of its own width
@@ -21270,7 +21270,9 @@ export default function App() {
                       {q.rc ? card("var(--ui-danger)") : null}
                       {!q.rc && q.yc ? card("var(--ui-warn)") : null}
                       {q.inj ? <span style={{ marginLeft: 4, fontSize: z.tagFs, color: "var(--ui-warn)" }}>INJ</span> : null}
-                      {played && uxOopMark(q.ovr0 ?? q.ovr ?? 70, q.own, q.inGoal ? "GK" : q.spos, "ux-oopm-xs")}
+                      {/* ...at the row's own size, centred on its line (user, 16 October 2026: "the drop 3 isn't in line with
+                          everything else"): a fixed 8px rode high beside a 9.5-11.5px name, like a footnote. */}
+                      {played && uxOopMark(q.ovr0 ?? q.ovr ?? 70, q.own, q.inGoal ? "GK" : q.spos, "ux-oopm-xs", { fontSize: z.fs })}
                     </span>
                     {val(q.goals, true)}
                     {val(q.assists, true)}

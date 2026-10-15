@@ -1600,7 +1600,8 @@ th .ux-crt { margin-left: .4em; }
 .ux-oopm { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; vertical-align: middle; color: var(--ux-loss);
   font: 700 10px/1 'JetBrains Mono', 'Fira Code', monospace; white-space: nowrap; }
 .ux-oopm.ux-oopm-xs { margin-left: 4px; gap: 1px; font-size: 8px; }
-.ux-oopm.ux-oopm-xs .ux-warn-i { width: 9px; height: 9px; }
+.ux-oopm.ux-oopm-xs .ux-warn-i { width: 1.05em; height: 1.05em; }
+.ux-oopm.ux-oopm-xs > span { display: inline-flex; align-items: center; }
 .ux-poss .ux-oopm { margin-left: 0; }
 /* A line for each side that plays him out of position (App.tsx uxOopList), on his page and his card. */
 .ux-oopl { flex: none; border-top: 1px solid var(--ux-line); }
