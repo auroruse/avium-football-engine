@@ -5793,5 +5793,11 @@
 {"id":"p5831","name":"Mahmoud FAKHRIAN","nat":"VAR","ovr":64,"born":"1917-11-02","pos":["RB","CB"]},
 {"id":"p5832","name":"Mostafa RIAHI","nat":"VAR","ovr":72,"born":"1913-06-16","pos":["CM"]},
 {"id":"p5833","name":"Keikhosrow JAMSHIDIAN","nat":"VAR","ovr":67,"born":"1916-01-08","pos":["LW"]},
-{"id":"p5834","name":"Arshia NAMDARI","nat":"VAR","ovr":73,"born":"1913-09-10","pos":["RW","ST"]}
+{"id":"p5834","name":"Arshia NAMDARI","nat":"VAR","ovr":73,"born":"1913-09-10","pos":["RW","ST"]},
+{"id":"p5835","name":"Matin GHIASVAND","nat":"VAR","ovr":65,"born":"1917-10-30","pos":["LB","LM"]},
+{"id":"p5836","name":"Babak GHAFOURI","nat":"VAR","ovr":73,"born":"1914-03-27","pos":["CB","RB"]},
+{"id":"p5837","name":"Shahrokh MAZDAPOUR","nat":"VAR","ovr":69,"born":"1915-12-16","pos":["CB"]},
+{"id":"p5838","name":"Mojtaba NASRABADI","nat":"VAR","ovr":72,"born":"1914-09-06","pos":["CM","AM"]},
+{"id":"p5839","name":"Saman HERAVI","nat":"VAR","ovr":68,"born":"1917-03-24","pos":["LW","RW"]},
+{"id":"p5840","name":"Khodadad BAHRAMI","nat":"VAR","ovr":72,"born":"1913-09-29","pos":["ST"]}
 ]
