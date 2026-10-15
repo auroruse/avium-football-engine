@@ -7,10 +7,11 @@ import fs from "node:fs";
 const eng = await import("./engine.mjs");
 
 const SRC = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
-const slice = (head) => {
+// `braced`: the definition has a body in braces, so its first top-level ";" is not the end until one has been seen.
+const slice = (head, braced = true) => {
   const i = SRC.indexOf(head);
   if (i < 0) throw new Error("not found: " + head);
-  let cur = 0, par = 0, sq = 0, j = i, seen = false;
+  let cur = 0, par = 0, sq = 0, j = i, seen = !braced;
   for (; j < SRC.length; j++) {
     const c = SRC[j];
     if (c === "{") { cur++; seen = true; }
@@ -60,7 +61,9 @@ const mkImport = (state) => {
     lmMatch: null,
   };
   const names = Object.keys(env);
-  const body = slice("const importLiveToMatch = (target, result) => {") + "\nreturn importLiveToMatch;";
+  // ...and the one-leg final it asks about (bdf712f), sliced with it so the rule is the shipped one too.
+  const body = slice("const tOneLegFinal = (ref) =>", false) + "\n"
+             + slice("const importLiveToMatch = (target, result) => {") + "\nreturn importLiveToMatch;";
   return new Function(...names, body)(...names.map(k => env[k]));
 };
 
