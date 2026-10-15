@@ -5829,5 +5829,11 @@
 {"id":"p5867","name":"Muath AL-GHAMDI","nat":"VAR","ovr":65,"born":"1913-10-14","pos":["CM","AM"]},
 {"id":"p5868","name":"Anas AL-SHAHRANI","nat":"VAR","ovr":60,"born":"1917-12-17","pos":["RM","LM"]},
 {"id":"p5869","name":"Musab AL-SUWAYLIM","nat":"VAR","ovr":61,"born":"1917-04-21","pos":["RW"]},
-{"id":"p5870","name":"Hatem AL-KHAIBARI","nat":"VAR","ovr":66,"born":"1913-08-13","pos":["ST","LW"]}
+{"id":"p5870","name":"Hatem AL-KHAIBARI","nat":"VAR","ovr":66,"born":"1913-08-13","pos":["ST","LW"]},
+{"id":"p5871","name":"Sepanta TIHU","nat":"VAR","ovr":60,"born":"1917-10-11","pos":["LB"]},
+{"id":"p5872","name":"Pouyan GHOGHNOUS","nat":"VAR","ovr":63,"born":"1915-06-21","pos":["CB"]},
+{"id":"p5873","name":"Farnam DORNA","nat":"VAR","ovr":66,"born":"1914-08-18","pos":["RB","RM"]},
+{"id":"p5874","name":"Shayan CHAKAVAK","nat":"VAR","ovr":68,"born":"1914-02-28","pos":["LW","RW"]},
+{"id":"p5875","name":"Arvin KABOUTARI","nat":"VAR","ovr":61,"born":"1916-12-20","pos":["RW","ST"]},
+{"id":"p5876","name":"Mehrbod SIMORGHI","nat":"VAR","ovr":65,"born":"1915-08-10","pos":["ST"]}
 ]
