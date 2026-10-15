@@ -5887,5 +5887,11 @@
 {"id":"p5925","name":"Rayhan BIRUNI","nat":"VAR","ovr":57,"born":"1915-06-23","pos":["RB","LB"]},
 {"id":"p5926","name":"Ali FAZELI","nat":"VAR","ovr":60,"born":"1915-01-16","pos":["CM","AM"]},
 {"id":"p5927","name":"Nami NIKANDISH","nat":"VAR","ovr":56,"born":"1917-02-05","pos":["RW","LW"]},
-{"id":"p5928","name":"Adib HAKIMI","nat":"VAR","ovr":62,"born":"1913-05-16","pos":["ST"]}
+{"id":"p5928","name":"Adib HAKIMI","nat":"VAR","ovr":62,"born":"1913-05-16","pos":["ST"]},
+{"id":"p5929","name":"Barsam AFROOKHTEH","nat":"VAR","ovr":53,"born":"1917-11-09","pos":["LB"]},
+{"id":"p5930","name":"Barbod KAHROBAEI","nat":"VAR","ovr":59,"born":"1915-03-19","pos":["CB"]},
+{"id":"p5931","name":"Pendar TABANDEH","nat":"VAR","ovr":56,"born":"1915-10-25","pos":["RB"]},
+{"id":"p5932","name":"Shahyar RAKHSHAN","nat":"VAR","ovr":59,"born":"1914-12-05","pos":["CM"]},
+{"id":"p5933","name":"Peyvand FANUSI","nat":"VAR","ovr":55,"born":"1916-09-09","pos":["LW"]},
+{"id":"p5934","name":"Arta SHOAEI","nat":"VAR","ovr":60,"born":"1913-04-30","pos":["ST","RW"]}
 ]
