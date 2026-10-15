@@ -6,7 +6,7 @@ import { meChaseStyle, meSetStyle, meShapeFor, meTenMenStyle } from "./manager";
 import { ME_DEF_FORM, formAtkW, pitchSlots, sposFor } from "./formations";
 import { POS_ROLE, ovrAt, ownFor, posDrop } from "../data/positions.js";
 import { meHungarian } from "./assignment";
-import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meHeadV, meKickBall, meKnock, meShootBall } from "./ball";
+import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallAt, meBallPredict, meBallRun, meBallSlice, meHeadV, meKickBall, meKnock, meShootBall } from "./ball";
 import { meMeetAir } from "./pass";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
 import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
@@ -542,6 +542,10 @@ export function meMove(s, rng) {
       // THE CORNER TAKER HURRIES to the flag, flat out until he is nearly there: with more corners a
       // match the walk was dead time.
       if (mp.sp && mp.sp.kind === "corner" && side === mp.sp.side && i === mp.sp.ti) vCap = sp * (d > 2 ? 1 : 0.5);
+      // A MAN GOING FOR THE OTHER SIDE'S PASS RACES IT. It is a race against the ball, not the receiver: paced to arrive on
+      // schedule against the man it was played to, he jogged to its destination while it went past nearer points he
+      // could have reached.
+      if (mp.passPending && mp.passPending.side !== side) budget = 0;
       if (i === scramble && !gkShot && budget > 0) {
         // Pace against the CONTEST, not the ball's clock: having 200 ms in hand on the ball means
         // nothing if the striker you are racing arrives first. This is why every through ball was
@@ -580,6 +584,10 @@ export function meMove(s, rng) {
           vCap = Math.min(vCap, bvG + CFG.gatherOver);
       }
       if (meet) vCap = Math.min(vCap, meet);
+      // A RUN ONTO A BALL INTO SPACE IS TIMED TO IT (user, 15 October 2026: passes "behind the receiver", "understriking").
+      // Flat out he got to the aim of a ball into space a median half a second before it and was two metres past it when
+      // it came. No quicker than gets him to the aim when the ball itself passes it, never under runPaceMin of his pace.
+      if (thruRun) { const tB = meBallAt(mp, ppT.ax, ppT.ay); if (tB > 0) vCap = Math.min(vCap, Math.max(CFG.runPaceMin * sp, d / Math.max(ME_DT, tB))); }
       if (!must) {
         const fInv = Math.max(0, Math.min(1, (p.stamina ?? 100) / 100));
         const start = CFG.lazyStart * (fInv * 0.8 + 0.2), end = CFG.lazyEnd * (fInv * 0.5 + 0.5);
@@ -666,6 +674,15 @@ export function meMove(s, rng) {
         let dvx = mp.bvx + ux * close, dvy = mp.bvy + uy * close;
         const dm = Math.hypot(dvx, dvy);
         if (dm > sp) { dvx *= sp / dm; dvy *= sp / dm; }   // his legs are the only limit
+        // ...and the line coming at him (CFG.lineStop): no quicker toward it than he can stop lineStop inside it.
+        // Along it he runs as he likes; toward the goal he is attacking, between the posts, he is shooting, not stopping.
+        {
+          const cap = (dl) => Math.max(0, dl - CFG.lineStop) / CFG.lineT;
+          if (dvy > 0) dvy = Math.min(dvy, cap(PITCH_W - p.y)); else if (dvy < 0) dvy = Math.max(dvy, -cap(p.y));
+          const gA = meGoalX(side), mouth = Math.abs(p.y - ME_HALF_W) < GOAL_HALF_W + 1;
+          if (dvx > 0 && !(mouth && gA > PITCH_L / 2)) dvx = Math.min(dvx, cap(PITCH_L - p.x));
+          else if (dvx < 0 && !(mouth && gA < PITCH_L / 2)) dvx = Math.max(dvx, -cap(p.x));
+        }
         wx = dvx * ME_DT; wy = dvy * ME_DT;
       }
       // Nobody stands on a team-mate. (The second brain spaces its men itself, so it only keeps them off
@@ -3386,6 +3403,15 @@ export function meTick(s, rng, out) {
   // passer priced it with (mePassRisk), because the whole pass decision is calibrated against that race. Not keyed on
   // mp.flight, which stays set on a deflected ball: two loose balls in three still carried it.
   const seenMs = mp._pChg != null && !mp.passPending ? Math.max(0, mp.tick - mp._pChg) * ME_DT * 1000 : 0;
+  // ...AND THE OTHER SIDE READS A PASS ONCE TOO (user, 15 October 2026: "Defenders will slowly back towards the ball's
+  // destination instead of just intercepting it"). Charged the whole reading afresh every slice of its flight, every
+  // point of the pass within the next 0.7 s was always out of a defender's reach, so the intercept sent him further down
+  // it, toward where it ends up, and he backed off with it. Traced over four Arminia-Viridia matches: on a third of the
+  // other side's ground passes the man sent after it could have been on its path at least 0.4 s before the point he was
+  // sent to, a quarter-second's reading and his own legs allowed, and his side won 20 of those 147. The pass decision
+  // prices his race from the strike with that reading paid once (mePassRisk), so this is the race it already believes
+  // in. Counted from the strike, the flight's first slice included; the man it is played to keeps his own rcvLag.
+  const seenD = mp.passPending ? ((mp.passPending.t ?? 0) + 1) * ME_DT * 1000 : 0;
   const airPred = mp.flight && mp.pred ? mp.pred.some(z => z[2] > CFG.recvAirZ) : false;
   for (const sd of ME_SIDES) {
     let bi = -1, bms = Infinity;
@@ -3402,7 +3428,7 @@ export function meTick(s, rng, out) {
       // about eleven times a match. He pays rcvLag of it.
       else {
         const rcv = mp.flight && mp.fside === sd && mp.fj === i, lagM = rcv ? CFG.rcvLag : 1;
-        let ic = meIntercept(q, mp, vmax, undefined, lagM, seenMs);
+        let ic = meIntercept(q, mp, vmax, undefined, lagM, mp.passPending && mp.passPending.side !== sd ? seenD : seenMs);
         // THE HIGH BALL IS TAKEN WHERE IT COMES DOWN (user, 11 October 2026: "the receiver sometimes doesn't adjust
         // correctly and just completely fails to touch it, even when not under pressure"). He was sent to the first
         // point of the flight under his head, and the ground-ball meeting below then walked him a metre or two back
@@ -3431,8 +3457,9 @@ export function meTick(s, rng, out) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
-                               CFG.headReach * (CFG.headLo + (1 - CFG.headLo) * qa.air / 99), rcv ? CFG.reach : CFG.cutReach);
-          if (am) { ic = am; q._airMt = mp.tick; }
+                               CFG.headReach * (CFG.headLo + (1 - CFG.headLo) * qa.air / 99), rcv ? CFG.reach : CFG.cutReach,
+                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null);
+          if (am) { ic = am; q._airMt = mp.tick; q._airPp = ppC; }
         }
         q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
       }
