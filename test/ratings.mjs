@@ -36,12 +36,18 @@ if (process.argv[2] === "--worker") {
   const [, , , engPath, start, step, N, seedBase] = process.argv;
   const eng = await import(engPath);
   if (process.env.CFG) Object.assign(eng.CFG, JSON.parse(process.env.CFG));
-  const pool = eng.PRESET_CATALOG.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two");
-  const P = pool.length;
+  // RATINGS_POOL=mix plays every senior league and the national sides, each fixture inside one of them, where the app's
+  // ratings are actually earned; the default is League One and Two together, as the calibration was always fitted.
+  const MIX = process.env.RATINGS_POOL === "mix";
+  const OUTS = new Set(["All-Nichirin Collegiate Championship", "Frederikka Cup", "Kullanmaan Cup", "Miscellaneous Aviumite"]);
+  const leagues = MIX ? [...new Set(eng.PRESET_CATALOG.map(t => t.league))].filter(l => l && !OUTS.has(l))
+                      .map(l => eng.PRESET_CATALOG.filter(t => t.league === l)).filter(g => g.length >= 2)
+                      : [eng.PRESET_CATALOG.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two")];
   globalThis.__sv = []; globalThis.__gc = []; globalThis.__rv = []; globalThis.__pp = [];
   const lines = [];
   for (let k = +start; k < +N; k += +step) {
-    const a = pool[k % P], b = pool[(k * 7 + 3) % P];
+    const pool = leagues[k % leagues.length], P = pool.length, kk = Math.floor(k / leagues.length);
+    const a = pool[kk % P], b = pool[(kk * 7 + 3) % P];
     if (a === b) continue;
     globalThis.__sv.length = 0; globalThis.__gc.length = 0; globalThis.__rv.length = 0; globalThis.__pp.length = 0;
     const { s, out } = eng.runPositionalMatch(a, b, +seedBase + k * 7919);
@@ -71,7 +77,8 @@ if (process.argv[2] === "--worker") {
       for (const p of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) {
         if (!p || p.rating == null) continue;
         const frac = Math.max(0, Math.min(1, ((p._offAt ?? total) - (p._onAt ?? 0)) / total));
-        players.push({ sd, pos: p.pos, ovr: p.ovr0 ?? p.ovr, r: p.rating, frac,
+        players.push({ sd, pos: p.pos, ovr: p.ovr0 ?? p.ovr, r: p.rating, frac, nm: p.name, club: (sd === "home" ? a : b).code,
+          sub: (p._onAt ?? 0) > 0 ? 1 : 0, errs: p.errs || 0, og: p.ownGoals || 0,
           g: p.goals || 0, a: p.assists || 0, passOk: p.passOk || 0, passFail: p.passFail || 0,
           prog: p.prog || 0, cc: p.cc || 0, def: p.defActs || 0, sv: p.saves || 0,
           duelWon: p.duelWon || 0, duelLost: p.duelLost || 0, drib: p.dribbles || 0,
@@ -270,7 +277,10 @@ function shapeTable(rows) {
 // ---------------------------------------------------------------- parent
 // On the cloud lab (LAB_TEST=ratings.mjs) the mode comes in as RATINGS_MODE and N as RATINGS_N, and only the first runner
 // plays it: this harness does not split itself, so the other nineteen leave at once.
-if (/^[1-9]\d*\/\d+$/.test(process.env.SHARD || "")) process.exit(0);
+// ...unless RATINGS_SPLIT is set: then every runner plays its share of the fixtures (SHARD=i/n) and prints them as a DUMP,
+// one match a line, for LOAD= to read back merged on the Mac.
+const SPLIT = process.env.RATINGS_SPLIT ? (process.env.SHARD || "").match(/^(\d+)\/(\d+)$/) : null;
+if (!SPLIT && /^[1-9]\d*\/\d+$/.test(process.env.SHARD || "")) process.exit(0);
 const mode = ["check", "derive"].includes(process.argv[2]) ? process.argv[2]
            : ["check", "derive"].includes(process.env.RATINGS_MODE) ? process.env.RATINGS_MODE : "run";
 const argN = mode === "run" ? process.argv[2] : process.argv[3], argW = mode === "run" ? process.argv[3] : process.argv[4];
@@ -304,12 +314,14 @@ const t0 = Date.now();
 // LOAD=path reads a DUMP back instead of playing, to refit on matches already played.
 const outs = process.env.LOAD ? [fs.readFileSync(process.env.LOAD, "utf8")] : await Promise.all(Array.from({ length: W }, (_, w) => new Promise((res, rej) => {
   const of = path.join(os.tmpdir(), `avium-ratings-${process.pid}-w${w}.jsonl`);
-  const ch = fork(fileURLToPath(import.meta.url), ["--worker", engPath, String(w), String(W), String(N), String(SEED)],
+  const ch = fork(fileURLToPath(import.meta.url), ["--worker", engPath, String(SPLIT ? +SPLIT[1] + +SPLIT[2] * w : w),
+                                                     String(SPLIT ? +SPLIT[2] * W : W), String(N), String(SEED)],
     { stdio: ["ignore", "inherit", "inherit", "ipc"], env: { ...env, OUT_FILE: of } });
   ch.on("exit", c => { if (c !== 0) return rej(new Error("worker " + w + " exit " + c));
     const txt = fs.readFileSync(of, "utf8"); fs.unlinkSync(of); res(txt); });
 })));
 const matches = outs.flatMap(b => b.split("\n").filter(Boolean).map(l => JSON.parse(l))).sort((a, b) => a.k - b.k);
+if (SPLIT) { process.stdout.write(matches.map(m => JSON.stringify({ k: m.k, team: m.team, players: m.players })).join("\n") + "\n"); process.exit(0); }
 // DUMP=path keeps every match's teams and players for a distribution read outside this script.
 if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, matches.map(m => JSON.stringify({ k: m.k, team: m.team, players: m.players })).join("\n") + "\n");
 console.log(`${matches.length} matches in ${((Date.now() - t0) / 1000).toFixed(0)}s on ${W} workers${env.CFG ? "   CFG " + env.CFG : ""}\n`);
