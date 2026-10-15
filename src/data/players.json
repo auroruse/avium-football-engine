@@ -5857,5 +5857,11 @@
 {"id":"p5895","name":"Mazin DALLAL","nat":"VAR","ovr":60,"born":"1915-11-06","pos":["CB","RB"]},
 {"id":"p5896","name":"Raed KHAZIN","nat":"VAR","ovr":57,"born":"1917-12-09","pos":["CB"]},
 {"id":"p5897","name":"Yahya NAQID","nat":"VAR","ovr":62,"born":"1915-02-13","pos":["LWB","LM"]},
-{"id":"p5898","name":"Ghaith AL-ASHSHAR","nat":"VAR","ovr":62,"born":"1913-12-27","pos":["ST","RW"]}
+{"id":"p5898","name":"Ghaith AL-ASHSHAR","nat":"VAR","ovr":62,"born":"1913-12-27","pos":["ST","RW"]},
+{"id":"p5899","name":"Yasin RUTABI","nat":"VAR","ovr":64,"born":"1913-12-01","pos":["CB"]},
+{"id":"p5900","name":"Hirad CHESHMEHI","nat":"VAR","ovr":57,"born":"1917-05-25","pos":["CB"]},
+{"id":"p5901","name":"Aref QANATI","nat":"VAR","ovr":60,"born":"1916-02-25","pos":["RB","LB"]},
+{"id":"p5902","name":"Taher BIABANI","nat":"VAR","ovr":58,"born":"1916-07-02","pos":["DM"]},
+{"id":"p5903","name":"Arad SAHRANESHIN","nat":"VAR","ovr":63,"born":"1915-04-01","pos":["CM","LM"]},
+{"id":"p5904","name":"Shahab ABBASI","nat":"VAR","ovr":62,"born":"1913-12-08","pos":["ST","RW"]}
 ]
