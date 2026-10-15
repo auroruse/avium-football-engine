@@ -5787,5 +5787,11 @@
 {"id":"p5825","name":"Keisuke MIZUCHI","nat":"NCH","ovr":72,"born":"1916-08-29","grad":1938,"pos":["AM"]},
 {"id":"p5826","name":"Shinnosuke SHIINA","nat":"NCH","ovr":70,"born":"1916-07-04","grad":1938,"pos":["ST"]},
 {"id":"p5827","name":"Jori SOMMERKOSKI","nat":"KAR","ovr":68,"born":"1914-11-27","grad":1936,"pos":["RW","ST"]},
-{"id":"p5828","name":"Charlie KIRIN","nat":"NCH","ovr":67,"born":"1918-11-30","pos":["CM","AM"]}
+{"id":"p5828","name":"Charlie KIRIN","nat":"NCH","ovr":67,"born":"1918-11-30","pos":["CM","AM"]},
+{"id":"p5829","name":"Kiarash NIKPOUR","nat":"VAR","ovr":68,"born":"1917-04-14","pos":["LB"]},
+{"id":"p5830","name":"Mehraban HIRBOD","nat":"VAR","ovr":72,"born":"1914-11-07","pos":["CB","DM"]},
+{"id":"p5831","name":"Mahmoud FAKHRIAN","nat":"VAR","ovr":64,"born":"1917-11-02","pos":["RB","CB"]},
+{"id":"p5832","name":"Mostafa RIAHI","nat":"VAR","ovr":72,"born":"1913-06-16","pos":["CM"]},
+{"id":"p5833","name":"Keikhosrow JAMSHIDIAN","nat":"VAR","ovr":67,"born":"1916-01-08","pos":["LW"]},
+{"id":"p5834","name":"Arshia NAMDARI","nat":"VAR","ovr":73,"born":"1913-09-10","pos":["RW","ST"]}
 ]
