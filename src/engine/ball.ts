@@ -137,6 +137,16 @@ function hitBodies(b, players, ctrl, skip, f) {
       // line re-pinned it to his back every substep. Measured, the ball was riding on a running
       // player for 28.6% of all on-ball slices, in stretches of up to three seconds. That is the
       // moonwalk, and this is the half of it that had nothing to do with how he was running.
+      // ...BUT NEVER OVER A LINE. A man arriving at the touchline with it under his feet stops it there with his sole;
+      // put in front of him along his run, it went out with him (CFG.lineStop). Along the line instead, and in a
+      // corner, where that is no good either, into the pitch.
+      const ex = qx + chx * R, ey = qy + chy * R, mL = CFG.ballR;
+      const outX = ex < mL || ex > PITCH_L - mL, outY = ey < mL || ey > PITCH_W - mL;
+      if (outX || outY) {
+        let ax = outX ? 0 : chx, ay = outY ? 0 : chy, al = Math.hypot(ax, ay);
+        if (al < 0.2) { ax = PITCH_L / 2 - qx; ay = PITCH_W / 2 - qy; al = Math.hypot(ax, ay) || 1; }
+        chx = ax / al; chy = ay / al;
+      }
       b.bx = qx + chx * R; b.by = qy + chy * R;
       continue;
     }
@@ -300,6 +310,13 @@ export function meBallFine(mp) {
   }
   F[0] = m; _fMp = mp; _fAt = mp.tick; _fB = mp.bx; _fZ = mp.bz;
   return F;
+}
+// When, in seconds from now, the ball as it is going passes nearest (x, y): for timing a run onto it (match.ts).
+export function meBallAt(mp, x, y) {
+  const F = meBallFine(mp), m = F[0] | 0;
+  let bt = -1, bd = Infinity;
+  for (let j = 0; j < m; j++) { const o = 1 + 4 * j, d = Math.hypot(F[o + 1] - x, F[o + 2] - y); if (d < bd) { bd = d; bt = F[o]; } }
+  return bt;
 }
 
 // THE PITCH THE BALL IS ACTUALLY PLAYED ON. stepOnce takes ballDrag off the full 3D velocity every

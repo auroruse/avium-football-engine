@@ -496,7 +496,10 @@ foulAggr: 0.25,
   // belief still four points pessimistic where most passes live -- and shipping it made passing
   // braver and scoring rise from 2.73 to 3.01 a match. Passing is rebuilt next and refits then; until
   // it is, the slight caution holds the scorelines.
-  passCal0: 2.32, passCalB: 1.30, passCalR: 1.32, passCalL: 13.78,
+  // Refit 15 Oct 2026 (400 matches, cloud run 38766807350) once defenders read a pass once from the strike (match.ts,
+  // seenD): the belief ran ten points optimistic where most passes live (0.79 believed, 0.67 kept) and completion fell
+  // 81.6% -> 75.5%. L keeps its shipped figure: fitted on the few dozen late passes it swung to 0.29.
+  passCal0: 1.37, passCalB: 0.72, passCalR: 0.80, passCalL: 13.78,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -1683,7 +1686,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.78, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.79, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1712,8 +1715,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 15 Oct 2026 for crosses met on the flight and the header made a collision, on 800 matches pooled from the
   // derive (cloud run 38748626857) and its check on fresh seeds (38749814702): shots of 0.1-0.3 went in more often,
   // headers among them, and keepers had 9% of their full matches at 6.0 or below against 6%. The derive alone put the
-  // 0.3-0.4 band at 0.90 and its check found 0.79.
-  gkExp: [[0.05, 0.05], [0.10, 0.11], [0.20, 0.28], [0.30, 0.65], [0.40, 0.85], [0.60, 0.88], [1.01, 0.89]],
+  // 0.3-0.4 band at 0.90 and its check found 0.79. Pooled again with the derive after defenders read a pass once
+  // (38767912910, 1,200 matches in all).
+  gkExp: [[0.05, 0.05], [0.10, 0.11], [0.20, 0.27], [0.30, 0.65], [0.40, 0.87], [0.60, 0.88], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1817,12 +1821,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 12 Oct 2026 (800 matches) with gkExp above, and again that afternoon (1,200 matches) with it.
   // Re-derived 15 Oct 2026 (400 matches, cloud run 38748626857) with gkExp, for crosses met on the flight and the header
   // made a collision: forwards had drifted to a 7.06 mean with 12% of full matches at 8.0+ (6.99 before either change).
+  // ...and again the same day (400 matches, 38767912910) once defenders read a pass once (match.ts, seenD).
   rateFin: {
-    GK:  { mid: 0.510, up: 1.215, dn: 0.642, tail: 0.814 },
-    DEF: { mid: 0.775, up: 1.099, dn: 0.985, tail: 1.061 },
-    MID: { mid: 0.709, up: 0.794, dn: 1.192, tail: 1.018 },
-    FWD: { mid: 0.897, up: 0.766, dn: 0.977, tail: 1.571 },
+    GK:  { mid: 0.438, up: 1.215, dn: 0.673, tail: 0.954 },
+    DEF: { mid: 0.811, up: 0.984, dn: 0.931, tail: 1.189 },
+    MID: { mid: 0.658, up: 0.773, dn: 1.243, tail: 1.047 },
+    FWD: { mid: 0.896, up: 0.719, dn: 0.943, tail: 1.497 },
   },
+
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
@@ -1942,6 +1948,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and 6 is where the regression turns over: it takes pass completion 74% -> 79% and block depth
   // under siege 15.2 -> 18.8 m, both into range, where 3 leaves both short.
   dribEdge: 6, dribEdgeM: 1.0,
+  // ...AND HIS LEGS SEE IT TOO (match.ts meMove; user, 15 October 2026: "players running out of bounds with the ball
+  // fully in their control. Realistically, even bad players would have more control of it"). Turning the heading was
+  // never the whole of it: traced over four Arminia-Viridia matches, 17 of 122 balls out came off a man who still had
+  // it, the ball half a metre in front of him, his heading already turned off the line in 14 of them and his body still
+  // going at it at 4-6 m/s -- at seven he needs over two metres to stop -- and the ball under his feet is put in front of
+  // him along his run (ball.ts hitBodies), so he carried it over himself. The man on the ball now slows for a line he
+  // is running at as a footballer does: no quicker toward it than its distance less lineStop, over lineT s -- the goal
+  // mouth he is attacking excepted. His legs shed 42% of the difference a slice (meMove), so a braking curve set to stop
+  // him at 1.4 m let a man arriving at seven still put it out (traced: 17 -> 5); worked through that law, this one stops
+  // him 0.8 m inside from 8 m/s and 1.2 m from 3. Set by reasoning, not measured.
+  lineStop: 1.4, lineT: 1.0,
   // Below this much of "the ball is the way I am facing" he has overrun it, and recovering it is the
   // whole of his next action. -0.2 is about a hundred degrees off his line.
   dribBehind: -0.2,
@@ -2197,13 +2214,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // starts at the strike, and go to the first point where it can be headed -- or, failing that, met lower -- that they
   // can reach airMeetEarly s before the ball, within airMeetTol of their reach. There the man going for it plants on the
   // spot (inside airArrive m his last steps put him on it) and holds inside airHoldR until it arrives, where he used to
-  // run on through it. ...AND THE CROSS IS PUT WHERE HE ARRIVES crossLead s BEFORE THE BALL (mind/decide.ts), where it
-  // was put on the point of his run he reaches at the same instant: a man already sprinting had no pace left to make up
-  // a metre of error, and a cross is a metre out more often than not (median 1.1 m off its aim at head height). Set by
-  // reasoning, not measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot
-  // the ball went through untouched twice, and his side had the first touch on 61%.
-  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, crossLead: 0.2,
-  // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
+  // run on through it; the point he is already going for is kept while he can still make it. Set by reasoning, not
+  // measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot the ball went
+  // through untouched twice, and his side had the first touch on 61%.
+  // A cross used to be put where he would arrive a beat before it (crossLead 0.2, 15 October 2026, the same morning):
+  // it landed behind 40% of the men it was for where it had been 26%, because most of them were still running -- a
+  // cross goes in front of a runner -- and the user saw "passing behind the receiver". It is put where he will be.
+  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, runPaceMin: 0.4,
+  // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him -- timed
+  // to the ball (match.ts meMove): no quicker than gets him to the aim when it does, never under runPaceMin of his pace.
+  // Flat out, traced over the same four matches, he got to the aim of a ball into space a median 0.5 s before it and
+  // stood 2 m past it when it came, three in four of them over a metre: the pass looked under-hit and went behind him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
   // before the dribbler does (match.ts).
