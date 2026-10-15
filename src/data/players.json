@@ -5899,5 +5899,11 @@
 {"id":"p5937","name":"Jafar KESHTIRAN","nat":"VAR","ovr":55,"born":"1916-09-25","pos":["LWB","LB"]},
 {"id":"p5938","name":"Akbar SOKKANI","nat":"VAR","ovr":57,"born":"1916-04-28","pos":["RWB","RB"]},
 {"id":"p5939","name":"Hassan TOUFANI","nat":"VAR","ovr":58,"born":"1915-02-27","pos":["CM"]},
-{"id":"p5940","name":"Salem AL-KHALIJI","nat":"VAR","ovr":61,"born":"1913-05-26","pos":["ST"]}
+{"id":"p5940","name":"Salem AL-KHALIJI","nat":"VAR","ovr":61,"born":"1913-05-26","pos":["ST"]},
+{"id":"p5941","name":"Mazen AL-MARSA","nat":"VAR","ovr":54,"born":"1918-03-18","pos":["LB"]},
+{"id":"p5942","name":"Khalil AL-MALLAH","nat":"VAR","ovr":60,"born":"1913-07-10","pos":["CB"]},
+{"id":"p5943","name":"Ezra GABBAY","nat":"VAR","ovr":57,"born":"1915-11-29","pos":["RB","CB"]},
+{"id":"p5944","name":"Nissim SHEMTOV","nat":"VAR","ovr":57,"born":"1915-03-26","pos":["CM"]},
+{"id":"p5945","name":"Sami AL-MURJAN","nat":"VAR","ovr":53,"born":"1917-02-10","pos":["RM","LM"]},
+{"id":"p5946","name":"Adnan AL-MAWJ","nat":"VAR","ovr":57,"born":"1914-01-22","pos":["ST"]}
 ]
