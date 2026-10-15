@@ -1646,6 +1646,15 @@ th .ux-crt { margin-left: .4em; }
    position, the side he leaves or joins and his rating; any other change; and who it waits for, as their avatars. */
 .ux-rq { padding: 12px; }
 .ux-rq + .ux-rq { border-top: 1px solid var(--ux-line); }
+/* New Records' tick boxes and Accept Selected: the tick sits left of each request, the header carries Select All and the button. */
+.ux-rq-bulk { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.ux-rq-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ux-text-2); }
+.ux-rq-all:hover:not(:disabled) { color: var(--ux-text); }
+.ux-rq-all:focus-visible { outline: 2px solid var(--ux-accent-ink); outline-offset: 2px; border-radius: 3px; }
+.ux-rq-pick { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: start; }
+.ux-rq-pick + .ux-rq-pick { border-top: 1px solid var(--ux-line); }
+.ux-rq-pick > .ux-chkbtn { margin: 17px 0 0 12px; }
+.ux-rq-pick > .ux-rq { padding-left: 8px; }
 .ux-rq-h { display: flex; align-items: center; gap: 10px; min-height: 32px; }
 .ux-rq-crest { flex: none; width: 32px; display: grid; place-items: center; }
 .ux-rq-t { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }

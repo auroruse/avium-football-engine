@@ -8693,6 +8693,8 @@ export default function App() {
   const [reqBusy, setReqBusy] = useState(null);                 // the request whose answer is on its way
   const [reqArm, setReqArm] = useState(null);                   // "<id>:decline" or "<id>:withdraw", the second step
   const [reqMsg, setReqMsg] = useState({});                     // what the server said, by request
+  const [reqSel, setReqSel] = useState(() => new Set());        // New Records ticked for Accept Selected
+  const [reqRun, setReqRun] = useState(null);                   // Accept Selected under way: { done, n }
   const loadRequests = useCallback(() => fetch(`${REGISTRY}/requests`).then(r => (r.ok ? r.json() : null))
     .then(rs => { if (Array.isArray(rs)) setRequests(rs); }).catch(() => {}), []);
   useEffect(() => {
@@ -8708,6 +8710,8 @@ export default function App() {
   // The cart, the player or team in an edit dialog, and saving. The cart is laid over everything at load; a change made
   // now rebuilds the teams it touches exactly as the load builds them, so nothing waits for a reload.
   const [recBase, setRecBase] = useState(RECORDS_BASE);       // the records as main has them, as far as this page knows
+  // ...and the latest of them for an answer landing inside a run of them (Accept Selected): each lands on the one before.
+  const recBaseRef = useRef(recBase); recBaseRef.current = recBase;
   const [draft, setDraft] = useState(() => readPatch(DRAFT_KEY) || { v: 1, players: {} });
   const [draftOpen, setDraftOpen] = useState(false);          // the cart: review and save
   const [saveState, setSaveState] = useState(null);           // { busy } | { ok, sha, applied, asked } | { err } | { errors }
@@ -8832,12 +8836,13 @@ export default function App() {
   // What went live is main's now: the base moves, and it stays laid under the cart in this browser until a build carries
   // it (see RECORDS_BASE). Returns the new base.
   const landed = (apply) => {
-    if (!apply) return recBase;
+    const base = recBaseRef.current;
+    if (!apply) return base;
     let pend = readPatch(PENDING_KEY);
-    for (const c of draftChanges(recBase, apply)) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
+    for (const c of draftChanges(base, apply)) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
     try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify({ ...pend, at: Date.now() })); } catch {}
-    const next = applyDraft(recBase, apply);
-    setRecBase(next);
+    const next = applyDraft(base, apply);
+    recBaseRef.current = next; setRecBase(next);
     return next;
   };
   const authed = (path, body) => fetch(`${REGISTRY}${path}`, { method: "POST", body: JSON.stringify(body),
@@ -12970,13 +12975,43 @@ export default function App() {
   const renderEdRequests = () => {
     const isNew = (r) => r.kind === "new", mineNow = reqMine.filter(r => r.kind !== "deal");
     const forMe = reqFor.filter(r => !reqMine.includes(r) && r.kind !== "deal" && !(overseer && isNew(r))), newRecs = overseer ? reqFor.filter(r => isNew(r) && !reqMine.includes(r)) : [];
-    const col = (title, list) => uxPanel(title, <b className="ux-drop-n" style={mono}>{list.length}</b>,
-      <div className="ux-drop-body">{list.length ? list.map(r => uxReqBlock(r, reqMine.includes(r))) : <div className="ux-empty">None</div>}</div>, true);
+    const col = (title, list, ctl, row) => uxPanel(title, ctl || <b className="ux-drop-n" style={mono}>{list.length}</b>,
+      <div className="ux-drop-body">{list.length ? list.map(r => (row ? row(r) : uxReqBlock(r, reqMine.includes(r)))) : <div className="ux-empty">None</div>}</div>, true);
+    // ACCEPT SELECTED (Moukden and Kirin, 15 October 2026: "I need to be able to bulk-accept requests"; tick boxes, New Records
+    // only). Each ticked request is answered as its own Approve would answer it, one after another; one the registry refuses
+    // keeps its tick and shows why, and the rest go on.
+    const pickable = newRecs.filter(r => !r.declined), picked = pickable.filter(r => reqSel.has(r.id));
+    const allOn = pickable.length > 0 && picked.length === pickable.length;
+    const flip = (id) => setReqSel(o => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const acceptSel = async () => {
+      if (!picked.length || reqRun) return;
+      setReqRun({ done: 0, n: picked.length });
+      for (const r of picked) {
+        const ok = await settle(r, "accept");
+        if (ok) setReqSel(o => { const n = new Set(o); n.delete(r.id); return n; });
+        setReqRun(x => x && { ...x, done: x.done + 1 });
+      }
+      setReqRun(null);
+    };
+    const newCtl = (<>
+      <b className="ux-drop-n" style={mono}>{newRecs.length}</b>
+      {pickable.length > 0 && <span className="ux-rq-bulk">
+        <button type="button" role="checkbox" aria-checked={allOn ? "true" : picked.length ? "mixed" : "false"} className="ux-btnreset ux-rq-all"
+          disabled={!!reqRun} onClick={() => setReqSel(allOn ? new Set() : new Set(pickable.map(r => r.id)))}>{uxCheck(allOn, picked.length > 0)}Select All</button>
+        <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!picked.length || !!reqRun || !!reqBusy} onClick={acceptSel}>
+          {reqRun ? `Accepting ${Math.min(reqRun.done + 1, reqRun.n)} Of ${reqRun.n}` : picked.length ? `Accept ${picked.length} Selected` : "Accept Selected"}</button>
+      </span>}</>);
+    const newRow = (r) => (
+      <div key={r.id} className="ux-rq-pick">
+        <button type="button" role="checkbox" aria-checked={reqSel.has(r.id)} aria-label="Select For Accept Selected" className="ux-btnreset ux-chkbtn"
+          disabled={!!reqRun || !!r.declined} onClick={() => flip(r.id)}>{uxCheck(reqSel.has(r.id))}</button>
+        {uxReqBlock(r, false)}
+      </div>);
     return (
       <div className="ux-body ux-ed-req">
         {col("For You", forMe)}
         {col("Yours", mineNow)}
-        {overseer && col("New Records", newRecs)}
+        {overseer && col("New Records", newRecs, newCtl, newRow)}
       </div>);
   };
 
