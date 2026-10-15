@@ -1942,6 +1942,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and 6 is where the regression turns over: it takes pass completion 74% -> 79% and block depth
   // under siege 15.2 -> 18.8 m, both into range, where 3 leaves both short.
   dribEdge: 6, dribEdgeM: 1.0,
+  // ...AND HIS LEGS SEE IT TOO (match.ts meMove; user, 15 October 2026: "players running out of bounds with the ball
+  // fully in their control. Realistically, even bad players would have more control of it"). Turning the heading was
+  // never the whole of it: traced over four Arminia-Viridia matches, 17 of 122 balls out came off a man who still had
+  // it, the ball half a metre in front of him, his heading already turned off the line in 14 of them and his body still
+  // going at it at 4-6 m/s -- at seven he needs over two metres to stop -- and the ball under his feet is put in front of
+  // him along his run (ball.ts hitBodies), so he carried it over himself. The man on the ball now slows for a line he
+  // is running at as a footballer does: no quicker toward it than its distance less lineStop, over lineT s -- the goal
+  // mouth he is attacking excepted. His legs shed 42% of the difference a slice (meMove), so a braking curve set to stop
+  // him at 1.4 m let a man arriving at seven still put it out (traced: 17 -> 5); worked through that law, this one stops
+  // him 0.8 m inside from 8 m/s and 1.2 m from 3. Set by reasoning, not measured.
+  lineStop: 1.4, lineT: 1.0,
   // Below this much of "the ball is the way I am facing" he has overrun it, and recovering it is the
   // whole of his next action. -0.2 is about a hundred degrees off his line.
   dribBehind: -0.2,
@@ -2197,13 +2208,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // starts at the strike, and go to the first point where it can be headed -- or, failing that, met lower -- that they
   // can reach airMeetEarly s before the ball, within airMeetTol of their reach. There the man going for it plants on the
   // spot (inside airArrive m his last steps put him on it) and holds inside airHoldR until it arrives, where he used to
-  // run on through it. ...AND THE CROSS IS PUT WHERE HE ARRIVES crossLead s BEFORE THE BALL (mind/decide.ts), where it
-  // was put on the point of his run he reaches at the same instant: a man already sprinting had no pace left to make up
-  // a metre of error, and a cross is a metre out more often than not (median 1.1 m off its aim at head height). Set by
-  // reasoning, not measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot
-  // the ball went through untouched twice, and his side had the first touch on 61%.
-  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, crossLead: 0.2,
-  // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
+  // run on through it; the point he is already going for is kept while he can still make it. Set by reasoning, not
+  // measured. Traced after, the same six fixtures: of 49 crosses met by a man planted on a solved spot the ball went
+  // through untouched twice, and his side had the first touch on 61%.
+  // A cross used to be put where he would arrive a beat before it (crossLead 0.2, 15 October 2026, the same morning):
+  // it landed behind 40% of the men it was for where it had been 26%, because most of them were still running -- a
+  // cross goes in front of a runner -- and the user saw "passing behind the receiver". It is put where he will be.
+  airFineSub: 3, airMeetEarly: 0.1, airMeetTol: 0.75, airArrive: 2.0, airHoldR: 0.25, runPaceMin: 0.4,
+  // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him -- timed
+  // to the ball (match.ts meMove): no quicker than gets him to the aim when it does, never under runPaceMin of his pace.
+  // Flat out, traced over the same four matches, he got to the aim of a ball into space a median 0.5 s before it and
+  // stood 2 m past it when it came, three in four of them over a metre: the pass looked under-hit and went behind him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
   // before the dribbler does (match.ts).
