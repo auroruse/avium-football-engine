@@ -1,1 +1,1869 @@
-[]
+[
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "b5ceee77",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0285",
+   "men": [
+    {
+     "name": "Kiarash NIKPOUR",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-04-14",
+     "ovr": 68
+    },
+    {
+     "name": "Mehraban HIRBOD",
+     "pos": [
+      "CB",
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1914-11-07",
+     "ovr": 72
+    },
+    {
+     "name": "Mahmoud FAKHRIAN",
+     "pos": [
+      "RB",
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-11-02",
+     "ovr": 64
+    },
+    {
+     "name": "Mostafa RIAHI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1913-06-16",
+     "ovr": 72
+    },
+    {
+     "name": "Keikhosrow JAMSHIDIAN",
+     "pos": [
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1916-01-08",
+     "ovr": 67
+    },
+    {
+     "name": "Arshia NAMDARI",
+     "pos": [
+      "RW",
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-09-10",
+     "ovr": 73
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "2e7148c4",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0283",
+   "men": [
+    {
+     "name": "Matin GHIASVAND",
+     "pos": [
+      "LB",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1917-10-30",
+     "ovr": 65
+    },
+    {
+     "name": "Babak GHAFOURI",
+     "pos": [
+      "CB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1914-03-27",
+     "ovr": 73
+    },
+    {
+     "name": "Shahrokh MAZDAPOUR",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-12-16",
+     "ovr": 69
+    },
+    {
+     "name": "Mojtaba NASRABADI",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1914-09-06",
+     "ovr": 72
+    },
+    {
+     "name": "Saman HERAVI",
+     "pos": [
+      "LW",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1917-03-24",
+     "ovr": 68
+    },
+    {
+     "name": "Khodadad BAHRAMI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-09-29",
+     "ovr": 72
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "c3eaeb8b",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0284",
+   "men": [
+    {
+     "name": "Talal AL-HAJRI",
+     "pos": [
+      "LB",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1916-12-02",
+     "ovr": 66
+    },
+    {
+     "name": "Rakan AL-JUHANI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1914-07-18",
+     "ovr": 71
+    },
+    {
+     "name": "Hussam ASMARI",
+     "pos": [
+      "DM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1912-08-15",
+     "ovr": 70
+    },
+    {
+     "name": "Thamer AL-BALAWI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1916-01-07",
+     "ovr": 67
+    },
+    {
+     "name": "Abdulaziz AL-THUNAYAN",
+     "pos": [
+      "RM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1918-01-19",
+     "ovr": 63
+    },
+    {
+     "name": "Meshari RUWAILI",
+     "pos": [
+      "AM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1913-11-19",
+     "ovr": 74
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "e9f2fd1f",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "5 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "5 New Players",
+   "side": "t0287",
+   "men": [
+    {
+     "name": "Masoud EBRAHIMI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1918-04-19",
+     "ovr": 63
+    },
+    {
+     "name": "Pejman VAFAEI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-07-11",
+     "ovr": 71
+    },
+    {
+     "name": "Shapour AZARGOSHASB",
+     "pos": [
+      "RB",
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-06-02",
+     "ovr": 67
+    },
+    {
+     "name": "Mehdi JAHROMI",
+     "pos": [
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1916-11-14",
+     "ovr": 66
+    },
+    {
+     "name": "Behrang TABATABAEI",
+     "pos": [
+      "ST",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1913-12-06",
+     "ovr": 72
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "28fe604b",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "7 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "7 New Players",
+   "side": "t0286",
+   "men": [
+    {
+     "name": "Kiavash ANSARI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-11-22",
+     "ovr": 62
+    },
+    {
+     "name": "Jamasp BASTANI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-10-30",
+     "ovr": 66
+    },
+    {
+     "name": "Hadi MOHTASHAM",
+     "pos": [
+      "RB",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1915-03-04",
+     "ovr": 70
+    },
+    {
+     "name": "Vahab MORADKHANI",
+     "pos": [
+      "DM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1917-01-30",
+     "ovr": 64
+    },
+    {
+     "name": "Behnoud ASADI",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1914-03-10",
+     "ovr": 70
+    },
+    {
+     "name": "Rouzbeh FARAHANI",
+     "pos": [
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1914-01-15",
+     "ovr": 71
+    },
+    {
+     "name": "Sorena KAMALI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1916-11-04",
+     "ovr": 65
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "c7926c44",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0288",
+   "men": [
+    {
+     "name": "Parham ZANGENEH",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1916-08-23",
+     "ovr": 62
+    },
+    {
+     "name": "Salar GHOLAMI",
+     "pos": [
+      "CB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1913-08-23",
+     "ovr": 67
+    },
+    {
+     "name": "Dinyar ARDESHIRI",
+     "pos": [
+      "DM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-08-22",
+     "ovr": 65
+    },
+    {
+     "name": "Mahyar KESHTKAR",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1914-05-01",
+     "ovr": 68
+    },
+    {
+     "name": "Kazem ZAREI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1917-03-22",
+     "ovr": 62
+    },
+    {
+     "name": "Amin KHERADMAND",
+     "pos": [
+      "RM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1917-12-02",
+     "ovr": 60
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "53b1a7ac",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0289",
+   "men": [
+    {
+     "name": "Nawaf MUTAIRI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1914-12-12",
+     "ovr": 64
+    },
+    {
+     "name": "Bassam ZUBAIDI",
+     "pos": [
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1915-12-24",
+     "ovr": 62
+    },
+    {
+     "name": "Muath AL-GHAMDI",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1913-10-14",
+     "ovr": 65
+    },
+    {
+     "name": "Anas AL-SHAHRANI",
+     "pos": [
+      "RM",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1917-12-17",
+     "ovr": 60
+    },
+    {
+     "name": "Musab AL-SUWAYLIM",
+     "pos": [
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1917-04-21",
+     "ovr": 61
+    },
+    {
+     "name": "Hatem AL-KHAIBARI",
+     "pos": [
+      "ST",
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1913-08-13",
+     "ovr": 66
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "ef1c2df9",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0292",
+   "men": [
+    {
+     "name": "Sepanta TIHU",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-10-11",
+     "ovr": 60
+    },
+    {
+     "name": "Pouyan GHOGHNOUS",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-06-21",
+     "ovr": 63
+    },
+    {
+     "name": "Farnam DORNA",
+     "pos": [
+      "RB",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1914-08-18",
+     "ovr": 66
+    },
+    {
+     "name": "Shayan CHAKAVAK",
+     "pos": [
+      "LW",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1914-02-28",
+     "ovr": 68
+    },
+    {
+     "name": "Arvin KABOUTARI",
+     "pos": [
+      "RW",
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1916-12-20",
+     "ovr": 61
+    },
+    {
+     "name": "Mehrbod SIMORGHI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1915-08-10",
+     "ovr": 65
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "7784a676",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0290",
+   "men": [
+    {
+     "name": "Bamdad LAJEVARDI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1915-09-15",
+     "ovr": 61
+    },
+    {
+     "name": "Farid KASHIGAR",
+     "pos": [
+      "CB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1913-08-15",
+     "ovr": 64
+    },
+    {
+     "name": "Khodarahm ZARBAFI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-05-26",
+     "ovr": 58
+    },
+    {
+     "name": "Taha MOZAHHEB",
+     "pos": [
+      "DM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-09-05",
+     "ovr": 65
+    },
+    {
+     "name": "Kamal MINAGAR",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1914-08-31",
+     "ovr": 68
+    },
+    {
+     "name": "Rahim MOSHABBAK",
+     "pos": [
+      "AM",
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1917-02-25",
+     "ovr": 62
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "654d4fae",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "5 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "5 New Players",
+   "side": "t0293",
+   "men": [
+    {
+     "name": "Vahman PISHDADI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-07-18",
+     "ovr": 66
+    },
+    {
+     "name": "Ormazd ASHKANI",
+     "pos": [
+      "RB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-01-03",
+     "ovr": 62
+    },
+    {
+     "name": "Kiumars HAKHAMANESHI",
+     "pos": [
+      "CM",
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1913-09-30",
+     "ovr": 65
+    },
+    {
+     "name": "Tishtar MOBEDI",
+     "pos": [
+      "CM",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1915-11-22",
+     "ovr": 61
+    },
+    {
+     "name": "Pashang DASTOURI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1914-06-11",
+     "ovr": 67
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "7e822a7f",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0291",
+   "men": [
+    {
+     "name": "Zarir NOWRUZI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-06-27",
+     "ovr": 57
+    },
+    {
+     "name": "Masih TORABI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-06-17",
+     "ovr": 60
+    },
+    {
+     "name": "Ilya KARBASI",
+     "pos": [
+      "RB",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1915-03-25",
+     "ovr": 64
+    },
+    {
+     "name": "Mehrshad JAVANMARD",
+     "pos": [
+      "LM",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1914-08-21",
+     "ovr": 63
+    },
+    {
+     "name": "Abolfazl KHAJAVI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1916-09-29",
+     "ovr": 59
+    },
+    {
+     "name": "Sajjad VALIZADEH",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-11-12",
+     "ovr": 64
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "ad3b8346",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "5 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "5 New Players",
+   "side": "t0294",
+   "men": [
+    {
+     "name": "Jalal SAYRAFI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1914-02-15",
+     "ovr": 63
+    },
+    {
+     "name": "Mazin DALLAL",
+     "pos": [
+      "CB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1915-11-06",
+     "ovr": 60
+    },
+    {
+     "name": "Raed KHAZIN",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-12-09",
+     "ovr": 57
+    },
+    {
+     "name": "Yahya NAQID",
+     "pos": [
+      "LWB",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1915-02-13",
+     "ovr": 62
+    },
+    {
+     "name": "Ghaith AL-ASHSHAR",
+     "pos": [
+      "ST",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1913-12-27",
+     "ovr": 62
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "7488e5a4",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0295",
+   "men": [
+    {
+     "name": "Yasin RUTABI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-12-01",
+     "ovr": 64
+    },
+    {
+     "name": "Hirad CHESHMEHI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-05-25",
+     "ovr": 57
+    },
+    {
+     "name": "Aref QANATI",
+     "pos": [
+      "RB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1916-02-25",
+     "ovr": 60
+    },
+    {
+     "name": "Taher BIABANI",
+     "pos": [
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1916-07-02",
+     "ovr": 58
+    },
+    {
+     "name": "Arad SAHRANESHIN",
+     "pos": [
+      "CM",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1915-04-01",
+     "ovr": 63
+    },
+    {
+     "name": "Shahab ABBASI",
+     "pos": [
+      "ST",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1913-12-08",
+     "ovr": 62
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "759b30e0",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0296",
+   "men": [
+    {
+     "name": "Younes ISTGAHI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1918-03-14",
+     "ovr": 56
+    },
+    {
+     "name": "Morteza RAHSAZ",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-08-15",
+     "ovr": 63
+    },
+    {
+     "name": "Heydar CHAPAR",
+     "pos": [
+      "RB",
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-06-28",
+     "ovr": 59
+    },
+    {
+     "name": "Habib RAHYAB",
+     "pos": [
+      "CM",
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1914-12-29",
+     "ovr": 60
+    },
+    {
+     "name": "Zia RAHDAR",
+     "pos": [
+      "LW",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1916-11-02",
+     "ovr": 55
+    },
+    {
+     "name": "Teymour MOSAFER",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-06-16",
+     "ovr": 60
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "ec83adb9",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0298",
+   "men": [
+    {
+     "name": "Safar CHAKOSHI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-08-05",
+     "ovr": 56
+    },
+    {
+     "name": "Ghasem RIKHTEGAR",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-11-25",
+     "ovr": 63
+    },
+    {
+     "name": "Esmail SANDANI",
+     "pos": [
+      "CB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1915-05-19",
+     "ovr": 59
+    },
+    {
+     "name": "Nosrat TORNKAR",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1914-12-05",
+     "ovr": 61
+    },
+    {
+     "name": "Jalil KOUREHCHI",
+     "pos": [
+      "RM",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1916-06-22",
+     "ovr": 57
+    },
+    {
+     "name": "Soleiman MESGAR",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-11-15",
+     "ovr": 60
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "5ef6d1c8",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0299",
+   "men": [
+    {
+     "name": "Giv ALBORZI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-10-12",
+     "ovr": 62
+    },
+    {
+     "name": "Hojir SABALANI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1916-02-16",
+     "ovr": 59
+    },
+    {
+     "name": "Farud DENAEI",
+     "pos": [
+      "LWB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1918-02-01",
+     "ovr": 54
+    },
+    {
+     "name": "Rohham SAHANDI",
+     "pos": [
+      "RWB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1916-04-30",
+     "ovr": 57
+    },
+    {
+     "name": "Gostaham KOHSAR",
+     "pos": [
+      "CM",
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1914-08-02",
+     "ovr": 58
+    },
+    {
+     "name": "Kharrad KOHPAYEH",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-10-11",
+     "ovr": 59
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "b87cbb71",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0297",
+   "men": [
+    {
+     "name": "Kamyab FARHIKHTEH",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-08-16",
+     "ovr": 61
+    },
+    {
+     "name": "Hamoun DABIRI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-06-07",
+     "ovr": 53
+    },
+    {
+     "name": "Rayhan BIRUNI",
+     "pos": [
+      "RB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1915-06-23",
+     "ovr": 57
+    },
+    {
+     "name": "Ali FAZELI",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1915-01-16",
+     "ovr": 60
+    },
+    {
+     "name": "Nami NIKANDISH",
+     "pos": [
+      "RW",
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1917-02-05",
+     "ovr": 56
+    },
+    {
+     "name": "Adib HAKIMI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-05-16",
+     "ovr": 62
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "c4610ea6",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0300",
+   "men": [
+    {
+     "name": "Barsam AFROOKHTEH",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1917-11-09",
+     "ovr": 53
+    },
+    {
+     "name": "Barbod KAHROBAEI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-03-19",
+     "ovr": 59
+    },
+    {
+     "name": "Pendar TABANDEH",
+     "pos": [
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1915-10-25",
+     "ovr": 56
+    },
+    {
+     "name": "Shahyar RAKHSHAN",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1914-12-05",
+     "ovr": 59
+    },
+    {
+     "name": "Peyvand FANUSI",
+     "pos": [
+      "LW"
+     ],
+     "nat": "VAR",
+     "born": "1916-09-09",
+     "ovr": 55
+    },
+    {
+     "name": "Arta SHOAEI",
+     "pos": [
+      "ST",
+      "RW"
+     ],
+     "nat": "VAR",
+     "born": "1913-04-30",
+     "ovr": 60
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "961bb51f",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0301",
+   "men": [
+    {
+     "name": "Saeed LANGARI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1914-02-25",
+     "ovr": 60
+    },
+    {
+     "name": "Abdollah JAZIREI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-10-15",
+     "ovr": 52
+    },
+    {
+     "name": "Jafar KESHTIRAN",
+     "pos": [
+      "LWB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1916-09-25",
+     "ovr": 55
+    },
+    {
+     "name": "Akbar SOKKANI",
+     "pos": [
+      "RWB",
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1916-04-28",
+     "ovr": 57
+    },
+    {
+     "name": "Hassan TOUFANI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-02-27",
+     "ovr": 58
+    },
+    {
+     "name": "Salem AL-KHALIJI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-05-26",
+     "ovr": 61
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "9b873662",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0302",
+   "men": [
+    {
+     "name": "Mazen AL-MARSA",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1918-03-18",
+     "ovr": 54
+    },
+    {
+     "name": "Khalil AL-MALLAH",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-07-10",
+     "ovr": 60
+    },
+    {
+     "name": "Ezra GABBAY",
+     "pos": [
+      "RB",
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-11-29",
+     "ovr": 57
+    },
+    {
+     "name": "Nissim SHEMTOV",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-03-26",
+     "ovr": 57
+    },
+    {
+     "name": "Sami AL-MURJAN",
+     "pos": [
+      "RM",
+      "LM"
+     ],
+     "nat": "VAR",
+     "born": "1917-02-10",
+     "ovr": 53
+    },
+    {
+     "name": "Adnan AL-MAWJ",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1914-01-22",
+     "ovr": 57
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "b73e199a",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0303",
+   "men": [
+    {
+     "name": "Nasrollah SHIRINI",
+     "pos": [
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1918-02-15",
+     "ovr": 52
+    },
+    {
+     "name": "Ghodrat NISHAKAR",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-05-09",
+     "ovr": 58
+    },
+    {
+     "name": "Ezzat CHOGONDARI",
+     "pos": [
+      "RB"
+     ],
+     "nat": "VAR",
+     "born": "1915-10-31",
+     "ovr": 55
+    },
+    {
+     "name": "Lotfollah HALVAEI",
+     "pos": [
+      "LM",
+      "RM"
+     ],
+     "nat": "VAR",
+     "born": "1916-08-22",
+     "ovr": 54
+    },
+    {
+     "name": "Zabih ANGABINI",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-01-20",
+     "ovr": 58
+    },
+    {
+     "name": "Hashem SOHANI",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1914-04-21",
+     "ovr": 58
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "75edfcca",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0304",
+   "men": [
+    {
+     "name": "Khamis AL-SIYIB",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-09-02",
+     "ovr": 56
+    },
+    {
+     "name": "Khalifa AL-DAYYIN",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1917-11-20",
+     "ovr": 50
+    },
+    {
+     "name": "Humaid AL-FATTAM",
+     "pos": [
+      "RB",
+      "LB"
+     ],
+     "nat": "VAR",
+     "born": "1915-11-03",
+     "ovr": 53
+    },
+    {
+     "name": "Eisa AL-SAMBUK",
+     "pos": [
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1917-04-15",
+     "ovr": 53
+    },
+    {
+     "name": "Marwan AL-TABBAB",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "nat": "VAR",
+     "born": "1914-12-14",
+     "ovr": 57
+    },
+    {
+     "name": "Hazza AL-RADHIF",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1914-02-09",
+     "ovr": 56
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "ee35876d",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0305",
+   "men": [
+    {
+     "name": "Mahan SAHHAFI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-11-24",
+     "ovr": 56
+    },
+    {
+     "name": "Sadegh QESSEHGOU",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1918-02-19",
+     "ovr": 48
+    },
+    {
+     "name": "Faraz VARAGHI",
+     "pos": [
+      "LWB"
+     ],
+     "nat": "VAR",
+     "born": "1917-03-21",
+     "ovr": 51
+    },
+    {
+     "name": "Javad JELDSAZ",
+     "pos": [
+      "RWB"
+     ],
+     "nat": "VAR",
+     "born": "1916-02-09",
+     "ovr": 53
+    },
+    {
+     "name": "Hafez GHAZALSARA",
+     "pos": [
+      "CM"
+     ],
+     "nat": "VAR",
+     "born": "1915-01-13",
+     "ovr": 55
+    },
+    {
+     "name": "Saadi KETABDAR",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1913-10-01",
+     "ovr": 55
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "GeneralVarah",
+  "at": "2026-10-15T18:36:18.722Z",
+  "approved": [],
+  "id": "ed69c7cd",
+  "kind": "new",
+  "what": "batch",
+  "teamName": "6 New Players",
+  "rec": {
+   "what": "batch",
+   "name": "6 New Players",
+   "side": "t0306",
+   "men": [
+    {
+     "name": "Majd AL-RAHHAL",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1913-10-12",
+     "ovr": 56
+    },
+    {
+     "name": "Atiq AL-SAHRAWI",
+     "pos": [
+      "CB"
+     ],
+     "nat": "VAR",
+     "born": "1915-07-18",
+     "ovr": 53
+    },
+    {
+     "name": "Dhafer AL-ZAD",
+     "pos": [
+      "LWB"
+     ],
+     "nat": "VAR",
+     "born": "1917-11-12",
+     "ovr": 48
+    },
+    {
+     "name": "Shafi AL-RAKIB",
+     "pos": [
+      "RWB"
+     ],
+     "nat": "VAR",
+     "born": "1917-04-23",
+     "ovr": 50
+    },
+    {
+     "name": "Ahmad IBN FADLAN",
+     "pos": [
+      "CM",
+      "DM"
+     ],
+     "nat": "VAR",
+     "born": "1913-09-08",
+     "ovr": 52
+    },
+    {
+     "name": "Shaddad AL-KATHIB",
+     "pos": [
+      "ST"
+     ],
+     "nat": "VAR",
+     "born": "1915-04-12",
+     "ovr": 54
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ }
+]
