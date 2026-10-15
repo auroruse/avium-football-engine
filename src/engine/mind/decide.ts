@@ -676,3 +676,83 @@ export function mindTouchAngle(s, side, i) {
   const off = Math.atan2(Math.sin(want - atk), Math.cos(want - atk));
   return atk + clamp(off, -1.6, 1.6) * 0.6;
 }
+
+// THE RESTART, PRICED AS A PASS (user, 16 October 2026, the Nations League final: throw-ins and goal kicks "don't account
+// for opponents between the ball and receivers at all"; Nichirin's keeper rolled one to Askurias's striker for a goal).
+// setpiece.ts chose who a throw, a goal kick or a deep free kick went to by how near he stood and how far his nearest
+// opponent was from him, and by nothing else: a man in the lane counted for nothing, and neither did a presser bearing
+// down on the receiver while the ball travelled. Priced afterwards on twelve traced finals, a third of the throws and over
+// a quarter of the deep free kicks went where the open-play passer would have seen them cut out (mePassRisk 0.3 and over).
+// The taker now prices every team-mate the way a passer does in open play -- the race to the ball's path, the receiver's
+// own race to it, the lane and the body in it, the man on the receiver, the calibrated belief (passCal*) -- worth what that
+// passer would score it: where it puts the ball, and his side's goal kick instruction, against what losing it there costs.
+// At a dead ball he has had time to look, so he reads the true pitch, and misjudges it only as much as his reading of the
+// game allows (judgeErr), as in open play. The ball is the one meSPTake strikes: a throw is thrown (loftK.throw, arriving at
+// gkThrowZ); a goal kick goes along the ground to a man inside loftD unless the side kicks long, in the air past it and as
+// far as a keeper's punt carries in open play (65 m); a deep free kick along the ground inside 24 m, as far as spMaxBall.
+// Returns the option he plays, or null when nobody can be reached. `sp` is the restart itself: meSPTake has cleared
+// mp.sp by the time it asks.
+export function mindRestart(s, sp, onOpt) {
+  const side = sp?.side, ti = sp?.ti, kind = sp?.kind, ps = s.players[side], p = ps?.[ti];
+  if (!sp || !p) return null;
+  const a = meAttrs(p), dir = meDir(side), mind = meMind(p);
+  const st = s.strategy?.[side] || {};
+  const here = meVal(side, sp.x, sp.y), passTech = meTech(a.pass);
+  const longGK = kind === "goalkick" && (st.gkDist || 0) > 0;
+  const maxD = kind === "throw" ? CFG.throwMax : kind === "goalkick" ? 65 : CFG.spMaxBall;
+  const miss = CFG.judgeErr * (1 - mind);
+  const me = mindIx(side, ti), seed = sp.seed | 0;
+  const ball = (d) => kind === "throw" ? { high: true, lk: "throw", zEnd: CFG.gkThrowZ }
+    : kind === "goalkick" ? { high: longGK || d > CFG.loftD, lk: "loft", zEnd: undefined }
+    : { high: d > 24, lk: "loft", zEnd: undefined };
+  const tOf = (b, d) => b.high ? meLoftT(d, b.lk) : meGroundT(d, d);
+  let best = null;
+  for (let j = 0; j < ps.length; j++) {
+    const q = ps[j];
+    if (j === ti || !q || q.off || q.pos === "GK") continue;
+    const d0 = Math.hypot(q.x - sp.x, q.y - sp.y);
+    if (d0 > maxD + CFG.feetLeadMax) continue;
+    // A man on the move is led, as a ball to feet leads him in open play.
+    let ax = q.x, ay = q.y;
+    const qvx = (q.vx || 0) / ME_DT, qvy = (q.vy || 0) / ME_DT, qsp = Math.hypot(qvx, qvy);
+    if (qsp > CFG.feetMoveV) {
+      const l0 = Math.min(CFG.feetLeadMax, qsp * tOf(ball(d0), d0) * CFG.feetLeadFrac);
+      ax = q.x + qvx / qsp * l0; ay = q.y + qvy / qsp * l0;
+    }
+    ax = clamp(ax, 1, PITCH_L - 1); ay = clamp(ay, 1, PITCH_W - 1);
+    const d = Math.hypot(ax - sp.x, ay - sp.y);
+    if (d < 3 || d > maxD) continue;
+    // Never level with or behind the ball at a goal kick: that is a pass struck at his own net.
+    if (kind === "goalkick" && (ax - sp.x) * dir < 3) continue;
+    const b = ball(d), tb = tOf(b, d);
+    const blk = meLaneBlock(s, side, sp.x, sp.y, ax, ay, b.high);
+    const kn = b.high ? (CFG.kindNoise[b.lk] ?? 1) : 1, t0 = passTech + mePassBadge(p, b.high ? "long" : "feet", d, b.high);
+    const tech = kn === 1 ? t0 : clamp(1 - kn * (1 - t0) - (kn - 1) * CFG.passNoiseDeg / CFG.passNoiseSkill, 0, 1);
+    const fxQ = meBadgeFx(q), rPress = mePressure(s, side, ax, ay);
+    const okBase = (CFG.passBase - d * CFG.passDistK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + tech * CFG.passSkillW)
+      / (1 + rPress * (b.high ? CFG.recvPressHigh : CFG.recvPress) * (1 - (fxQ.recvPress ?? 0)))
+      * (CFG.rcvPosLo + meTech(meAttrs(q).position) * CFG.rcvPosW);
+    const risk = mePassRisk(s, side, sp.x, sp.y, ax, ay, b.high ? d / tb : 0, b.high, undefined,
+                            b.high ? { T: tb, z1: b.zEnd ?? CFG.ballR } : null) * (b.high ? CFG.riskHigh : 1);
+    const okRisk = 1 - risk * CFG.riskW;
+    const late = meTimeToBallMs(q, ax, ay, meSpeed(meAttrs(q), q.stamina), CFG.rcvLag) - tb * 1000;
+    const okLate = late > CFG.rcvLateMs ? 1 - Math.min(1, (late - CFG.rcvLateMs) / CFG.riskSpanMs) * CFG.riskW : 1;
+    const blkR = blockRisk(s, side, sp.x, sp.y, ax, ay, b.high) * MT.blockK;
+    let ok = 1 / (1 + Math.exp(-(CFG.passCalS0 + CFG.passCalSB * Math.log(Math.max(0.01, okBase))
+                                 + CFG.passCalSR * Math.log(Math.max(0.01, okRisk * (1 - blkR)))
+                                 + CFG.passCalSL * Math.log(Math.max(0.01, okLate)) + (b.high ? CFG.passCalSH : 0)
+                                 + (okRisk * (1 - blkR) < 0.999 ? CFG.passCalSC : 0))));
+    ok = clamp(ok, CFG.passFloor, 0.985);
+    const vAim = meVal(side, ax, ay), fwd = (ax - sp.x) * dir;
+    let val = vAim + CFG.keep + fwd * CFG.fwdPull;
+    // The goal kick instruction, as it prices the keeper's ball in open play.
+    if (kind === "goalkick") val += (d > CFG.gkLongD ? 1 : -1) * (st.gkDist || 0) * CFG.gkDistW;
+    const giveUp = Math.max(0, here - vAim) * CFG.surrender;
+    const sc0 = ok * (val - giveUp) - (1 - ok) * CFG.loss * (0.35 + meDanger(meOther(side), ax, ay));
+    const sc = sc0 + tri(me, seed, 5000 + j, 0) * miss;
+    if (onOpt) onOpt({ j, d, high: b.high, okBase, okRisk, okLate, ok, risk, val, giveUp, danger: meDanger(meOther(side), ax, ay), sc0, sc });
+    if (!best || sc > best.sc) best = { j, ax, ay, high: b.high, lk: b.lk, zEnd: b.zEnd, d, risk, ok, sc, sc0,
+                                        cr: [okBase, okRisk * (1 - blkR), okLate, b.high ? 1 : 0] };
+  }
+  return best;
+}
