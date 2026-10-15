@@ -6563,6 +6563,9 @@ export default function App() {
       : null;
     st.matchUrg = tn ? tn.matchUrg : { home: 0, away: 0 };
     st.teamForm = { home: 0, away: 0 };
+    // A tie that must be settled (its coaches keep a change for extra time when it is level late), and a match that takes
+    // a real interval: the coaches' break is the second half's kickoff (meCoachSubs, mp._htk below).
+    st.needWin = !!(tn ? tn.needWin : lmForce); st.interval = true;
     st.possession = "home";
     // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
     // the twenty-two actually line up, and which of the forward men rolls it. Without it every match
@@ -6786,6 +6789,7 @@ export default function App() {
     const b = m.brk, st = m.s; if (!b) return;
     if (b.kind !== "ft") {
       const ko = meOther(st.possession);
+      if (b.kind === "ht") st.mePos._htk = 1;          // the coaches' break is this kickoff (meCoachSubs)
       st.mePos.bx = PITCH_L / 2; st.mePos.by = ME_HALF_W;
       st.mePos.bvx = 0; st.mePos.bvy = 0; st.mePos.bvz = 0;
       st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
@@ -6855,6 +6859,7 @@ export default function App() {
         // rolled to. The third, the kickoff shape, was the reason they never quite walked to the
         // right marks in the first place.
         const ko = meOther(st.possession);
+        if (b.kind === "ht") st.mePos._htk = 1;          // the coaches' break is this kickoff (meCoachSubs)
         st.mePos.bx = PITCH_L / 2; st.mePos.by = ME_HALF_W;
         st.mePos.bvx = 0; st.mePos.bvy = 0; st.mePos.bvz = 0;
         st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
@@ -6890,27 +6895,23 @@ export default function App() {
       if (b.kind === "ft") meStop();
     }
   };
-  // SUBSTITUTIONS, WALKED. meSub swaps the two men in the same instant: the one coming off vanishes
-  // from the pitch and the one coming on appears standing exactly where he stood. Both are true of
-  // the state and neither is true of football.
-  //
-  // Nothing is paired up here, deliberately. meSub has already put the incoming man on the outgoing
-  // man's spot, so each walk is independent: he goes back to the touchline and comes in again to the
-  // place he was given, while the man he replaced leaves from where the whistle found him. Two subs
-  // in the same stoppage therefore need no matching at all, which is the part that would otherwise
-  // go wrong -- both are stamped with the same tick and the squad is ordered by shirt, not by who
-  // was swapped first.
-  const ME_SUB = { step: 1.05, line: 70.8, park: -6, gone: 69.4, max: 48 };
+  // SUBSTITUTIONS, WALKED. The man coming on is the engine's (user, 16 October 2026: subs "move VERY quickly to places as
+  // if they're being dragged to their zone"): meSub puts him on the halfway line on the benches' side and he runs to his
+  // place under the engine's own legs, while the restart waits for him (setpiece.ts meSPReady). This used to draw a walk
+  // from the touchline on top of the engine moving him to his mark -- two pulls on one man, his own velocity pinned at
+  // nought while the walk dragged him -- and play went on without him. All that is left to draw is the man going off, who
+  // is no longer in s.players: he leaves by the nearest point of the touchline, as the law has him, at a walk.
+  const ME_SUB = { step: 0.55, line: 70.8, park: -6, gone: 69.4, max: 48 };
   const meSubScan = (m) => {
     const s = m.s, tick = s.mePos.tick;
     m.subSeen = m.subSeen || { home: 0, away: 0 };
-    const A = (m.subAnim = m.subAnim || { off: [], on: [] });
+    const A = (m.subAnim = m.subAnim || { off: [] });
     for (const sd of ["home", "away"]) {
-      const dir = sd === "home" ? -1 : 1;
       const arr = s.subbedOff?.[sd] || [];
       for (let k = m.subSeen[sd]; k < arr.length; k++) {
         const p = arr[k];
-        A.off.push({ p, sd, t: 0, ex: 52.5 + dir * (2.5 + 3 * (A.off.length % 3)) });
+        // Straight off at the nearer touchline; on the benches' side he walks out to the dugout row.
+        A.off.push({ p, sd, t: 0, ex: p.x, park: p.y < ME_HALF_W ? 1 : 0 });
       }
       m.subSeen[sd] = arr.length;
       // A MAN SENT OFF WALKS TOO. He is not in s.subbedOff -- only meSub writes that -- so the
@@ -6925,74 +6926,35 @@ export default function App() {
         p.x = p._offX; p.y = p._offY; p._px = p.x; p._py = p.y;
         A.off.push({ p, sd, t: 0, ex: p.x, park: 1 });
       }
+      // The man coming on steps on from the dugout row to the halfway line: the renderer tweens _px -> x, and a bench man's
+      // last drawn position is wherever he sat, or nowhere.
       for (const p of s.players[sd]) {
         if (p._onAt !== tick || p._subWalk) continue;
-        p._subWalk = 1;
-        const ex = 52.5 + dir * (2.5 + 3 * (A.on.length % 3));
-        // t STARTS AT ZERO OR THE CAP BELOW IS DEAD. Left undefined, w.t++ is NaN and every
-        // `w.t > ME_SUB.max` is false forever: the walk never gave up, and because an unfinished
-        // walk pins his velocity each tick, a man the restart was waiting on could never reach
-        // the spot. Play stopped and the clock ran on.
-        A.on.push({ p, sd, t: 0, tx: p.x, ty: p.y });
-        p.x = ex; p.y = ME_SUB.line;              // he starts at the touchline, not at his mark
-        // ...AND HE IS DRAWN THERE FROM THE FIRST FRAME. The renderer tweens _px -> x, and meSub
-        // had already put him on the man he replaced, so the opening frame slid him from that mark
-        // out to the touchline before he walked back in. Reading as a teleport was exactly right:
-        // it was one frame of travel across half the pitch.
-        p._px = ex; p._py = ME_SUB.line;
+        p._subWalk = 1; p._px = p.x; p._py = ME_SUB.line;
       }
     }
   };
   const meSubStep = (m) => {
-    const A = m.subAnim; if (!A || (!A.off.length && !A.on.length)) return;
+    const A = m.subAnim; if (!A || !A.off.length) return;
     const toward = (p, tx, ty, step) => {
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
       if (d > 0.05) { const k = Math.min(d, step) / d; p.x += dx * k; p.y += dy * k; }
       return d <= 0.05;
     };
-    // NOBODY IS STILL WALKING AT 48. A flat 1.05 m a slice covers 50 m and the pitch is 68 wide, so
-    // a man leaving from the far touchline ran out of slices and had to be snapped the rest of the
-    // way -- and while he walked he was on the pitch, in the way. Jogging pace is the floor; whoever
-    // has further to go than the slices left simply goes quicker, which is what a player being
-    // waved off actually does.
+    // NOBODY IS STILL WALKING AT 48. Walking pace is the floor; whoever has further to go than the slices left simply goes
+    // quicker, which is what a player being waved off actually does.
     const paceFor = (p, tx, ty, t) =>
       Math.max(ME_SUB.step, Math.hypot(tx - p.x, ty - p.y) / Math.max(1, ME_SUB.max - t));
     // The man walking off is not in s.players, so nothing else moves him -- which also means nothing
     // else maintains the position the renderer interpolates FROM. He needs it set here or he smears.
     for (const w of A.off) {
       w.t++; w.p._px = w.p.x; w.p._py = w.p.y;
-      // A substitute walks off the bottom and out of the way; a sent-off man leaves by the side the
-      // engine parks him on, rather than crossing the pitch to the other one and snapping back.
       const ty = w.park ? ME_SUB.park : ME_SUB.line;
       toward(w.p, w.ex, ty, paceFor(w.p, w.ex, ty, w.t));
       const gone = w.park ? w.p.y < ME_SUB.park + 1.4 : w.p.y > ME_SUB.gone;
       if (gone || w.t >= ME_SUB.max) { w.p.y = ty; w.p._py = ty; w.p._px = w.p.x; w.done = 1; }
     }
-    // THE MAN COMING ON IS ALREADY THE ENGINE'S, and that is what broke this. He sits in s.players,
-    // so meTick moves him every tick toward whatever mark the set piece has given him -- while this
-    // dragged him toward the spot he was standing on at the instant of the swap. Two different
-    // destinations, one player, every tick: he never arrived at either, the walk never finished, and
-    // because an unfinished walk pinned his velocity at zero he stayed broken for the rest of the
-    // match. That is the stutter.
-    // Fixed twice over. Follow the engine's OWN target when it has published one, so both are pulling
-    // the same way and the walk converges; and cap it regardless, because a walk that cannot finish
-    // has to end anyway. After the cap he is simply the engine's, which is what he always was.
-    // _px is deliberately NOT touched here: meTick already set it before it moved him, and resetting
-    // it would throw away that half of the frame and show up as judder.
-    for (const w of A.on) {
-      w.t++;
-      const tx = w.p._tx ?? w.tx, ty = w.p._ty ?? w.ty;
-      const there = toward(w.p, tx, ty, paceFor(w.p, tx, ty, w.t));
-      if (!there) { w.p.vx = 0; w.p.vy = 0; }
-      if (there || w.t >= ME_SUB.max) w.done = 1;
-    }
     A.off = A.off.filter(w => !w.done);
-    A.on = A.on.filter(w => !w.done);
-    // NOTE: play no longer waits for the man to be off. Two attempts at that -- a flag in
-    // meSPReady, then pushing the restart's own minimum -- both delayed restarts in ways that
-    // showed up as penalties hanging. The walk is cosmetic; a restart that fires on time is not.
-    // If it goes back in, it belongs in the engine beside meSPReady's own timing, not bolted on
-    // from a loop that returns early on goals, intervals and shootouts.
   };
   // THE SHOOTOUT, WATCHED. meShootout resolves every kick inside one call, which is right for a
   // tournament and useless on screen: by the time control came back the thing had happened. The
@@ -7394,7 +7356,7 @@ export default function App() {
         // WHERE THE EXTRA-TIME CLOCK STARTS. The scoreboard runs off the tick counter, and the
         // counter does not reset -- so a match that ran to 94:00 of stoppage began extra time at
         // 94:00. Recording the tick it began on lets the clock be re-based to a flat 90:00.
-        m.et = 1; m.etAt = m.t; m.etAdd0 = meAdded(m.s); m.brk = { t: 0, kind: "et" };
+        m.et = 1; m.etAt = m.t; m.etAdd0 = meAdded(m.s); m.brk = { t: 0, kind: "et" }; m.s.mePos._et = 1;
       } else {
         // WATCHED, OR RESOLVED. Sim to end wants the number and meShootout still hands it over in
         // one call; a match somebody is actually watching gets the phase instead, and full time is
