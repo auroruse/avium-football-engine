@@ -5846,5 +5846,11 @@
 {"id":"p5884","name":"Ormazd ASHKANI","nat":"VAR","ovr":62,"born":"1917-01-03","pos":["RB","LB"]},
 {"id":"p5885","name":"Kiumars HAKHAMANESHI","nat":"VAR","ovr":65,"born":"1913-09-30","pos":["CM","DM"]},
 {"id":"p5886","name":"Tishtar MOBEDI","nat":"VAR","ovr":61,"born":"1915-11-22","pos":["CM","RM"]},
-{"id":"p5887","name":"Pashang DASTOURI","nat":"VAR","ovr":67,"born":"1914-06-11","pos":["ST"]}
+{"id":"p5887","name":"Pashang DASTOURI","nat":"VAR","ovr":67,"born":"1914-06-11","pos":["ST"]},
+{"id":"p5888","name":"Zarir NOWRUZI","nat":"VAR","ovr":57,"born":"1917-06-27","pos":["LB"]},
+{"id":"p5889","name":"Masih TORABI","nat":"VAR","ovr":60,"born":"1915-06-17","pos":["CB"]},
+{"id":"p5890","name":"Ilya KARBASI","nat":"VAR","ovr":64,"born":"1915-03-25","pos":["RB","RM"]},
+{"id":"p5891","name":"Mehrshad JAVANMARD","nat":"VAR","ovr":63,"born":"1914-08-21","pos":["LM","RM"]},
+{"id":"p5892","name":"Abolfazl KHAJAVI","nat":"VAR","ovr":59,"born":"1916-09-29","pos":["CM"]},
+{"id":"p5893","name":"Sajjad VALIZADEH","nat":"VAR","ovr":64,"born":"1913-11-12","pos":["ST"]}
 ]
