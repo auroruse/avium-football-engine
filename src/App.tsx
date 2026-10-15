@@ -1858,6 +1858,63 @@ const inlineVars = (svg) => {
   const cs = getComputedStyle(document.querySelector(".app-root") || document.documentElement);
   return svg.replace(/var\(--[\w-]+\)/g, (m) => cs.getPropertyValue(m.slice(4, -1)).trim() || m);
 };
+// THE BRACKET AS A PICTURE (Moukden and Kirin, 15 October 2026: "Can the bracket export be a png instead of a svg"). The SVG
+// is drawn onto a canvas and saved as a PNG. An SVG drawn as an image cannot reach the page's web fonts, so every @font-face
+// the page holds for a family it names is fetched and written into it first, and one that cannot be fetched falls back down
+// the stack as it would on a page without it. Twice the size for sharp text, held under sixteen million pixels, which is
+// the most a Safari canvas will draw.
+const svgFontFaces = async (families) => {
+  const want = new Set(families.map(f => f.trim().replace(/^['"]|['"]$/g, "").toLowerCase()));
+  const faces = [];
+  const walk = async (sheet) => {
+    let rules;
+    try { rules = sheet.cssRules; }
+    catch { if (sheet.href) try { for (const m of (await (await fetch(sheet.href)).text()).matchAll(/@font-face\s*{[^}]*}/g)) faces.push([m[0], sheet.href]); } catch {}
+            return; }
+    for (const r of rules) {
+      if (r instanceof CSSImportRule && r.styleSheet) await walk(r.styleSheet);
+      else if (r instanceof CSSFontFaceRule) faces.push([r.cssText, sheet.href || location.href]);
+    }
+  };
+  for (const sh of [...document.styleSheets]) await walk(sh);
+  let css = "";
+  for (const [block, base] of faces) {
+    const fam = (block.match(/font-family\s*:\s*([^;}]+)/i)?.[1] || "").trim().replace(/^['"]|['"]$/g, "").toLowerCase();
+    if (!want.has(fam)) continue;
+    const urls = [...block.matchAll(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g)].map(m => m[1]);
+    const u = urls.find(x => /woff2/i.test(x)) || urls[0];
+    if (!u) continue;
+    try {
+      const blob = await (await fetch(new URL(u, base))).blob();
+      const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+      css += block.replace(/src\s*:[^;}]+;?/i, `src:url(${data});`);
+    } catch {}
+  }
+  return css;
+};
+const downloadSvgPng = async (svg, name, families) => {
+  const css = await svgFontFaces(families).catch(() => "");
+  const s = css ? svg.replace(/(<svg[^>]*>)/, `$1<defs><style>${css}</style></defs>`) : svg;
+  const w = +(svg.match(/width="([\d.]+)"/)?.[1] || 0), h = +(svg.match(/height="([\d.]+)"/)?.[1] || 0);
+  if (!w || !h) return;
+  const src = URL.createObjectURL(new Blob([s], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = src; });
+    await new Promise(res => setTimeout(res, 120));            // an embedded font can still be settling when the image loads
+    const k = Math.min(2, Math.sqrt(16e6 / (w * h))), c = document.createElement("canvas");
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const g = c.getContext("2d"), bg = svg.match(/<svg[^>]*style="background:([^";]+)/)?.[1];
+    g.scale(k, k);
+    if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
+    g.drawImage(img, 0, 0, w, h);
+    const png = await new Promise(res => c.toBlob(res, "image/png"));
+    if (!png) return;
+    const a = document.createElement("a"), href = URL.createObjectURL(png);
+    a.href = href; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(href); }, 100);
+  } finally { URL.revokeObjectURL(src); }
+};
 
 function chromeExportColors(uiTheme) {
   if (uiTheme === "1933nch") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
@@ -7693,7 +7750,7 @@ export default function App() {
   const [goalFlash, setGoalFlash] = useState(null);
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
-    // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
+    // Drawn as a standalone .svg image and saved as a PNG (downloadSvgPng), outside the app's DOM,
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
     const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
@@ -7834,14 +7891,7 @@ export default function App() {
     if (prevR) lines(prevR, cx, prevRN, "right");
     s+='</svg>';
     s = inlineVars(s);
-    const blob = new Blob([s], {type: "image/svg+xml"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bracket.svg";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    downloadSvgPng(s, "bracket.png", [...fontStack.split(","), "JetBrains Mono"]);
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
@@ -8006,12 +8056,7 @@ export default function App() {
     renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, (m, ri) => ri === 0 ? _xd(m) : m.bye, true);
     s += '</svg>';
     s = inlineVars(s);
-    const blob = new Blob([s], {type: "image/svg+xml"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "de-bracket.svg";
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    downloadSvgPng(s, "de-bracket.png", [...fontStack.split(","), "JetBrains Mono"]);
   };
 
   // ─── TOURNAMENT ───
@@ -18169,7 +18214,7 @@ export default function App() {
       if (next) out.push(btn("r", "Sim Round", next), btn("a", "Sim All", () => tScorinateKO(-1, -1, 0)));
     }
     const items = [["Season File (.md)", tExportSeasonMd], ["Player Stats (.tsv)", tExportStatsTsv],
-      ...(tKO ? [["Bracket (.svg)", tKO.losers ? exportDEBracket : exportBracket]] : [])];
+      ...(tKO ? [["Bracket (.png)", tKO.losers ? exportDEBracket : exportBracket]] : [])];
     return (<>
       {out}
       <div className="ux-menu-wrap">
