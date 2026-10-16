@@ -101,6 +101,13 @@ export const SP = {
   // many of them, and how close they get. spCelebOut/In place the corner he runs to.
   spCelebT: 18, spCelebR: 30, spCelebN: 4, spCelebGap: 2.2, spCelebOut: 7, spCelebIn: 5,
   spCelebRun: 14,
+  // ...and how it fits the goal (match.ts, at the goal; setpiece.ts meSPShape). A goal from celebLateMin, or in extra
+  // time, that levels it or puts a side one up is "big": celebBigT times as long, a run of up to celebBigRun metres, the
+  // whole side to him and packed in at celebBigGap. One that puts a side three up is a handshake: celebRoutT of the time,
+  // celebRoutRun metres, celebRoutN men. He runs to his own bench only from within celebBenchD of it. The side that
+  // conceded walks, at celebSlump of its pace, until it is over.
+  celebLateMin: 80, celebBigT: 1.8, celebBigRun: 32, celebBigGap: 1.3, celebRoutT: 0.45, celebRoutRun: 5, celebRoutN: 2,
+  celebBenchD: 42, celebSlump: 0.3,
   spTol: 2.6, spTakerTol: 0.7, spReadyFrac: 0.62,
   // A kickoff is the one restart where the WHOLE pitch has to be set -- twenty-two men back in their
   // own halves, some of them sixty metres away. Sharing the ordinary eight-second cap meant it timed
@@ -126,6 +133,23 @@ export const SP = {
   // out to 27 m and sends the box's corner (10) and anything wider in as a cross.
   spShootRange: 27, spShootAng: 12,
   spWall: 4, spWallDist: 9.15,
+  // THE WALL IS A DECISION (user, 16 October 2026: "more natural positioning during all set pieces"). How many men go in
+  // it came from a coin (spWall plus the routine), and a free kick just outside shooting range had none at all. Now by
+  // where it is: spWallBy[k] men inside spWallD[k] metres of the goal, one fewer from a tight angle (under spWallAng
+  // degrees between the posts) and none from wider than the box's edge at that range; lined up from the near post in.
+  spWallD: [21, 25.5, 30, 35], spWallBy: [5, 4, 3, 2], spWallAng: 14,
+  // THE PENALTY LINE-UP. Everyone else waits on the edge of the area beside the D, side by side with a man of the other
+  // side, the defender on the inside, spPenGap metres apart -- where the rebound is fought for -- and a side's rest
+  // defence (spPenBackN men) and the other side's spPenUpN forwards wait near halfway. It was one bunched line ten metres
+  // behind the spot, the two sides standing on each other, walked out of the box by the referee at nine metres a second.
+  spPenGap: 1.15, spPenBackN: 2, spPenUpN: 1,
+  // A DEAD BALL IS WALKED TO. Everybody sprinted to every restart's mark, the length of the pitch to a kickoff included.
+  // Not playing it quickly, a man goes at spWalkFar of his pace from beyond spWalkFarD of his mark and spWalkNear inside
+  // it, until the restart has used spWalkHurry of its patience; the man on the ball, the keepers and a throw are exempt.
+  spWalkFar: 0.62, spWalkFarD: 12, spWalkNear: 0.42, spWalkHurry: 0.6,
+  // THE KICKOFF SHAPE. Each man stands at koDepth0 of halfway's distance from his own goal plus the rest of it in
+  // proportion to his formation depth, so the back line waits about fifteen metres behind halfway, not on its own box.
+  koDepth0: 0.62,
   // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
   // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
   // and are not in here. Enforced on the TARGETS, so they walk back rather than being teleported.
@@ -1431,7 +1455,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // A pass to FEET still leads a moving man: above feetMoveV he is led by his own pace across the
   // flight, at feetLeadFrac of the solve and never more than feetLeadMax metres -- enough that he
   // runs onto it, short of the through ball that mode 1 exists to be.
-  feetMoveV: 1.2, feetLeadFrac: 0.55, feetLeadMax: 4.5,
+  // ...and ACROSS the line of the pass he is led by all of it, up to feetLeadAcross (pass.ts meLeadFeet): a ball that
+  // reaches his line after he has crossed it is behind him. A lofted ball to him is led for its own flight (meMeetLoft).
+  feetMoveV: 1.2, feetLeadFrac: 0.55, feetLeadMax: 4.5, feetLeadAcross: 9,
   // ...and space is only space if there is pitch around it. Within edgeMin of a touchline the room
   // bonus is worth edgeLo of itself, whole again edgeFull metres infield.
   edgeMin: 3.5, edgeFull: 13, edgeLo: 0.25,
@@ -1606,6 +1632,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // MEETING THE BALL. The man it is played to stopped dead a stride short and let it come; he now
   // walks into it at recvMeetV, quicker by recvMeetPress with a man on him.
   recvMeetV: 1.5, recvMeetPress: 1.0,
+  // A ball to his feet he cannot make in time is still his to stretch for (pass.ts meMeetAir): the point of its path
+  // inside recvStretchT s he comes nearest to, if that is within recvStretch m beyond his reach.
+  recvStretch: 2.5, recvStretchT: 1.5,
+  // TEMPORARY, for the 16 October A/B: each of the pass changes on its own switch.
+  abLeadAcross: 1, abLoftLead: 1, abLongAir: 1, abDefAir: 1,
   // ...and plans his route to it with rcvLag of the reaction time a defender reading the pass is given.
   rcvLag: 0.3,
   // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
@@ -2977,6 +3008,9 @@ gkDiveV: 2.9,
   // With the same read that produced 28% saves and 63% scored, against a real shootout's 19 and 73.
   // Swept over ~400 kicks a cell: skill 0.25 -> 63.0%, 0.16 -> 66.5%, 0.10 -> 68.3%, 0.05 -> 72.7%.
   spPenReadPk: 0.10, spPenReadSkillPk: 0.05,
+  // The manager's order for a shootout's five (match.ts mePkInit): the best taker kept for the fifth kick this often,
+  // first with the second best last this often, best first the rest.
+  pkBestLast: 0.45, pkBestBoth: 0.2,
   // A shootout kick is walked up to and struck; it does not need the full pre-kick an open-play
   // penalty gets, and at 470 each one cost about thirty-six seconds of real time before anyone
   // touched the ball. Shorter here only -- in-match penalties keep their ceremony.
