@@ -47,7 +47,7 @@ import participantsTSV from "./participants.tsv?raw";
 import { toBlob } from "html-to-image";
 import { shotBlob, shotWarm } from "./shot.js";
 import { DOCS, TRAIT_DOC, POS_NAME } from "./docs.js";
-import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch, meCelebT } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim/core";
@@ -6934,6 +6934,30 @@ export default function App() {
       }
     }
   };
+  // THE BENCH COMES ON (user, 16 October 2026: celebrations "fit the moment"). A late equaliser or winner (the engine's
+  // "big" celebration, setpiece.ts) and the substitutes run from the dugout to the pile at the corner, stay while it lasts,
+  // and walk back. They are drawn, not played: the engine has no men on the pitch beyond its twenty-two.
+  const ME_BENCH = { run: 1.6, walk: 0.9, n: 6, ring: 3.2 };
+  const meBenchStep = (m) => {
+    const sp = m.s.mePos.sp, c = sp?.celeb;
+    if (c && c.kind === "big" && c.rx != null && (!m.benchCel || m.benchCel.c !== c)) {
+      const sd = c.side, dx = sd === "home" ? -1 : 1, bench = (m.s.bench?.[sd] || []).slice(0, ME_BENCH.n);
+      m.benchCel = { c, sd, figs: bench.map((p, k) => {
+        const hx = PITCH_L / 2 + dx * (6 + k * 1.3), a = k * 1.9 + 0.7;
+        return { f: { ...p, x: hx, y: ME_SUB.line, _px: hx, _py: ME_SUB.line }, hx,
+                 tx: c.rx + Math.cos(a) * ME_BENCH.ring, ty: Math.max(1, Math.min(67, c.ry + Math.sin(a) * ME_BENCH.ring)) }; }) };
+    }
+    const B = m.benchCel; if (!B) return;
+    const back = !sp || !sp.celeb || sp.celeb !== B.c || sp.t >= meCelebT(B.c);
+    let left = 0;
+    for (const g of B.figs) {
+      const f = g.f; f._px = f.x; f._py = f.y;
+      const tx = back ? g.hx : g.tx, ty = back ? ME_SUB.line : g.ty;
+      const ddx = tx - f.x, ddy = ty - f.y, d = Math.hypot(ddx, ddy), st = back ? ME_BENCH.walk : ME_BENCH.run;
+      if (d > 0.05) { const k = Math.min(d, st) / d; f.x += ddx * k; f.y += ddy * k; left++; }
+    }
+    if (back && !left) m.benchCel = null;
+  };
   const meSubStep = (m) => {
     const A = m.subAnim; if (!A || !A.off.length) return;
     const toward = (p, tx, ty, step) => {
@@ -6966,7 +6990,7 @@ export default function App() {
   // pace is metres a slice: 0.66 is a purposeful walk with the ball, pass is a rolled ball.
   // carryMax and backMax are failsafes, not deadlines -- both phases end on arrival.
   const ME_PK = { gather: 64, settle: 8, hold: 14, back: 22, backMax: 45, carryMax: 110,
-                  steps: 9, pace: 0.66, pass: 3.0 };
+                  steps: 9, pace: 0.66, pass: 3.0, win: 64, winRun: 1.7 };
   const mePkPin = (m) => {
     // Nobody but the taker and the two keepers moves. The set piece would otherwise send all twenty
     // trooping toward the penalty arc, which is what a penalty in open play looks like and is not
@@ -7050,6 +7074,18 @@ export default function App() {
     mePkPin(m);
     mePkSnap(s);
     p.phase = "kick"; p.t = 0;
+  };
+  const mePkWinStart = (m) => {
+    const p = m.pk, res = mePkResult(p.st), sd = res.winner;
+    if (!sd) { mePkFinish(m); return; }
+    const last = p.last, ps = m.s.players[sd];
+    const hero = last && last.side === sd && last.scored ? p.taker : ps.find(q => q && !q.off && q.pos === "GK");
+    // Toward their own end's corner of the stand: the goal the shootout was taken at, out wide.
+    const gx = meGoalX(last?.side ?? sd), hx = gx - meDir(last?.side ?? sd) * 8, hy = (hero?.y ?? ME_HALF_W) < ME_HALF_W ? 6 : PITCH_W - 6;
+    const at = new Map(); let k = 0;
+    for (const q of ps) if (q && !q.off && q !== hero) { const a = k * 2.3, r = 1.3 + Math.floor(k / 6) * 1.1; at.set(q, { x: Math.cos(a) * r, y: Math.sin(a) * r }); k++; }
+    mePkSnap(m.s);
+    p.win = { sd, hero, hx, hy, at }; p.phase = "win"; p.t = 0;
   };
   const mePkFinish = (m) => {
     m.pens = mePkResult(m.pk.st); m.pk = null;
@@ -7168,7 +7204,24 @@ export default function App() {
       mePkPin(m);
       if (p.t < ME_PK.settle) return;
       mePkSnap(m.s);
+      // DECIDED: the winners go to whoever won it (user, 16 October 2026: "a celebration at the end, then the full-time
+      // screen"). The man who scored the last kick, or their keeper if it was the other side's miss that settled it.
+      if (!mePkNext(p.st, 40)) { mePkWinStart(m); return; }
       p.phase = "hold"; p.t = 0; return;
+    }
+    // THE WINNERS RUN. Off the halfway line, every one of them, to the hero, who sets off toward their own supporters
+    // behind the goal; the losers stay where they stood. Then the full-time screen.
+    if (p.phase === "win") {
+      p.t++;
+      const W = p.win, hero = W.hero;
+      if (hero && !hero.off) mePkWalk(hero, W.hx, W.hy, 999, ME_PK.winRun * 0.7);
+      for (const q of m.s.players[W.sd]) {
+        if (!q || q.off || q === hero) continue;
+        const at = W.at.get(q); if (at) mePkWalk(q, (hero?.x ?? W.hx) + at.x, (hero?.y ?? W.hy) + at.y, 999, ME_PK.winRun);
+      }
+      for (const w of p.wait) if (w.q && !m.s.players[W.sd].includes(w.q)) { w.q.x = w.x; w.q.y = w.y; w.q.vx = 0; w.q.vy = 0; }
+      if (p.t < ME_PK.win) return;
+      mePkFinish(m); return;
     }
     // HELD ON THE RESULT, and nobody stands still for it: the scorer turns for his own half, and
     // the keeper goes straight for the ball -- into the net if that is where it finished -- so the
@@ -7315,7 +7368,7 @@ export default function App() {
       m.out.add = etOn ? meAddedMin(m.t, m.etAt, ME_ET_TICKS)
                 : meAddedMin(m.t, h2At ?? 0, ME_MATCH_TICKS >> 1);
       meTick(m.s, m.rng, m.out); m.t++; drain(); meMomTick(m);
-      if (!m.fast) { meSubScan(m); meSubStep(m); }
+      if (!m.fast) { meSubScan(m); meSubStep(m); meBenchStep(m); }
       m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
       // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
       // disagree with itself. Breaks out of the slice loop so the freeze lands on the instant it went
@@ -7362,7 +7415,7 @@ export default function App() {
         // one call; a match somebody is actually watching gets the phase instead, and full time is
         // not declared until the kicks are done.
         if (m.needWin && level && !m.fast) {
-          m.pk = { st: mePkInit(m.s), phase: "gather", t: 0, side: null, wait: [], last: null };
+          m.pk = { st: mePkInit(m.s, m.rng), phase: "gather", t: 0, side: null, wait: [], last: null };
           mePkSlots(m);
           mePkSnap(m.s);
           setMeFrame(f => f + 1);
@@ -20812,6 +20865,8 @@ export default function App() {
     {/* THE MAN COMING OFF. meSub has already moved him into s.subbedOff, which the pitch has never
         drawn -- so without this he simply blinks out of existence at the moment of the change. */}
     {m?.subAnim?.off.map((w, i) => dot(w.p, w.sd === "home" ? hPitchClr : aPitchClr, "sub" + i, false))}
+    {/* THE BENCH, running on for a late goal (meBenchStep). */}
+    {m?.benchCel?.figs.map((g, i) => dot(g.f, m.benchCel.sd === "home" ? hPitchClr : aPitchClr, "bc" + i, false))}
     {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
         it sits in pitch coordinates and scales with the pitch for free, at any window size. The
         match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
@@ -21643,6 +21698,9 @@ export default function App() {
             };
             const bugTags = [];
             if (pkDone) bugTags.push(<span key="pk" className="ux-bug-tag">{pkSc.home}–{pkSc.away} Pens</span>);
+            // Who won the toss, until the first kick is taken.
+            if (pkLive && m.pk.st.toss && !kicks.length) { const tt = m.pk.st.toss === "home" ? m.hT : m.aT;
+              bugTags.push(<span key="toss" className="ux-bug-tag">{tt?.code || tt?.name} Won The Toss</span>); }
             else if (m.et && !pkLive) bugTags.push(<span key="et" className="ux-bug-tag">{m.ftDone ? "AET" : "Extra Time"}</span>);
             if (m.tourn?.agg || m.agg) { const ag = m.tourn?.agg || m.agg; bugTags.push(<span key="agg" className="ux-bug-tag">Agg {out.goals.home + ag[0]}–{out.goals.away + ag[1]}</span>); }
             const scorebug = (

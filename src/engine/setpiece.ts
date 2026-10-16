@@ -28,6 +28,17 @@ export function meFkAtGoal(gx, x, y) {
   return ang * 180 / Math.PI >= CFG.spShootAng;
 }
 
+/** How many men the defending side puts in a wall for a free kick at (x, y) toward the goal at gx (CFG.spWallD). */
+export function meFkWallN(gx, x, y) {
+  const dx = Math.abs(gx - x), d = Math.hypot(dx, ME_HALF_W - y);
+  let k = CFG.spWallD.findIndex(r => d < r);
+  if (k < 0 || Math.abs(y - ME_HALF_W) > CFG.boxHalfW + 2) return 0;
+  let n = CFG.spWallBy[k];
+  const ang = Math.abs(Math.atan2(ME_HALF_W + GOAL_HALF_W - y, dx) - Math.atan2(ME_HALF_W - GOAL_HALF_W - y, dx)) * 180 / Math.PI;
+  if (ang < CFG.spWallAng) n--;
+  return n >= 2 ? n : 0;
+}
+
 // Which foot he kicks with, from where he plays. Left only if he is clearly a left-sided player.
 export const meFoot = (p) => ((p._bw0 ?? ME_HALF_W) < ME_HALF_W - CFG.spLeftOf ? -1 : 1);
 
@@ -214,6 +225,12 @@ export function meSPBegin(s, kind, side, out) {
   meSPFetch(mp);
 }
 
+/** How long a goal's celebration lasts, in slices (CFG.spCelebT and the kinds in config). */
+export const meCelebT = (c) => Math.round(CFG.spCelebT * (c?.kind === "big" ? CFG.celebBigT : c?.kind === "rout" ? CFG.celebRoutT : 1));
+
+// How far from his own goal a man waits for a kickoff (CFG.koDepth0), by his depth in the formation (_bd0, to about 95).
+const koDepth = (bd) => Math.min(PITCH_L / 2 - 1.5, PITCH_L / 2 * (CFG.koDepth0 + (1 - CFG.koDepth0) * Math.min(1, (bd ?? 40) / 95)));
+
 /** Every player's target, for as long as the set piece lasts. */
 export function meSPShape(s) {
   const mp = s.mePos, sp = mp.sp; if (!sp) return;
@@ -237,9 +254,10 @@ export function meSPShape(s) {
   // anywhere: the scorer runs off toward the corner at the end he scored at and whoever was near
   // him goes with him. The side that CONCEDED takes the kickoff, so the taker is never one of them
   // and nothing about the restart itself is held up beyond the time it takes them to come back.
-  if (sp.celeb && sp.t < CFG.spCelebT) {
+  if (sp.celeb && sp.t < meCelebT(sp.celeb)) {
     const cu = s.players[sp.celeb.side] || [];
     const sc = cu[sp.celeb.i] || cu.find(p => p.pos !== "GK" && !p.off);
+    const big = sp.celeb.kind === "big", rout = sp.celeb.kind === "rout";
     if (sc && !sc.off) {
       // A CAPPED RUN, resolved once. Sending him to the corner flag itself made a goal cost 105.8
       // displayed seconds against a real 45-60, and almost none of that was the celebration: it was
@@ -248,22 +266,25 @@ export function meSPShape(s) {
       // first slice because his own position is the origin and it moves the moment he sets off.
       if (sp.celeb.rx == null) {
         const dx2 = sp.celeb.x - sc.x, dy2 = sp.celeb.y - sc.y, dl = Math.hypot(dx2, dy2) || 1;
-        const run = Math.min(dl, CFG.spCelebRun);
+        const run = Math.min(dl, big ? CFG.celebBigRun : rout ? CFG.celebRoutRun : sp.celeb.style === "bench" ? CFG.celebBenchD : CFG.spCelebRun);
         sp.celeb.rx = sc.x + dx2 / dl * run; sp.celeb.ry = sc.y + dy2 / dl * run;
       }
       sc._tx = clampX(sp.celeb.rx); sc._ty = clampY(sp.celeb.ry);
       sc._spSet = true; sc._closing = true; sc._celeb = true;
       // Whoever can get to him. Not the whole side sprinting the length of the pitch -- the men who
       // were already up there, fanned around him rather than stacked on the same square metre.
+      // A big one is everybody, packed in on him.
       const near = cu.map((p, i) => [i, Math.hypot(p.x - sc.x, p.y - sc.y)])
-                     .filter(([i, d]) => cu[i] !== sc && !cu[i].off && cu[i].pos !== "GK" && d < CFG.spCelebR)
-                     .sort((a, b) => a[1] - b[1]).slice(0, CFG.spCelebN);
+                     .filter(([i, d]) => cu[i] !== sc && !cu[i].off && cu[i].pos !== "GK" && (big || d < CFG.spCelebR))
+                     .sort((a, b) => a[1] - b[1]).slice(0, big ? 10 : rout ? CFG.celebRoutN : CFG.spCelebN);
+      const gap = big ? CFG.celebBigGap : CFG.spCelebGap;
       near.forEach(([i], k) => {
-        const p = cu[i], a2 = k * 2.1 + spRnd(sp, 90 + k);
-        p._tx = clampX(sp.celeb.rx + Math.cos(a2) * CFG.spCelebGap);
-        p._ty = clampY(sp.celeb.ry + Math.sin(a2) * CFG.spCelebGap);
+        const p = cu[i], a2 = k * 2.1 + spRnd(sp, 90 + k), rr = gap * (1 + Math.floor(k / 5) * 0.8);
+        p._tx = clampX(sp.celeb.rx + Math.cos(a2) * rr);
+        p._ty = clampY(sp.celeb.ry + Math.sin(a2) * rr);
         p._spSet = true; p._closing = true; p._celeb = true;
       });
+
     }
   }
 
@@ -304,13 +325,44 @@ export function meSPShape(s) {
       taker._ty = clampY(sp.y);
       taker._spSet = true; taker._closing = true;
     }
-    let k = 0;
+    // WHERE EVERYONE WAITS, decided once (CFG.spPenGap and the rest): the deepest of the side taking it near halfway, the
+    // other side's front men with them, and everyone else in pairs on the edge of the area either side of the D, the
+    // defender of each pair on the inside, one of the takers' side on the D itself for the ball that comes out.
+    if (!sp.penAt) {
+      sp.penAt = {};
+      const key = (q) => (us.includes(q) ? "h" : "a") + (us.includes(q) ? us : them).indexOf(q);
+      const put = (q, xy) => { sp.penAt[key(q)] = xy; };
+      const out = (ps) => ps.filter(q => q && !q.off && q.pos !== "GK" && q !== taker);
+      const atk = out(us).sort((a, b) => (a._bd0 ?? 40) - (b._bd0 ?? 40)), def = out(them).sort((a, b) => (b._bd0 ?? 40) - (a._bd0 ?? 40));
+      const back = atk.splice(0, Math.min(CFG.spPenBackN, Math.max(0, atk.length - 3)));
+      const up = def.splice(0, Math.min(CFG.spPenUpN, Math.max(0, def.length - 3)));
+      back.forEach((q, n) => put(q, [PITCH_L / 2 + dir * 7, ME_HALF_W + (n - (back.length - 1) / 2) * 12 + spJ(sp, 120 + n)]));
+      up.forEach((q, n) => put(q, [PITCH_L / 2 + dir * 3, ME_HALF_W + (n - (up.length - 1) / 2) * 10 - 4 + spJ(sp, 130 + n)]));
+      // The D: the best striker of a ball left, for the one that comes out.
+      if (atk.length > 2) { let bi = 0; atk.forEach((q, n) => { if (meAttrs(q).shoot > meAttrs(atk[bi]).shoot) bi = n; });
+        const [dq] = atk.splice(bi, 1); put(dq, [gx - dir * (11 + 10.4), ME_HALF_W + spJ(sp, 140)]); }
+      // Pairs either side of the D, nearest the spot first, a second rank two metres back once a side's edge is full.
+      const g = CFG.spPenGap, slotsFor = (n) => { const r = [];
+        for (let k = 0; r.length < n; k++) { const sgn = k % 2 ? 1 : -1, rank = Math.floor(k / 2), row = Math.floor(rank / 5), col = rank % 5;
+          const y0 = 8.2 + row * 0.6 + col * (2 * g + 0.5), ex = gx - dir * (17.2 + row * 2);
+          r.push([[ex, ME_HALF_W + sgn * y0], [ex, ME_HALF_W + sgn * (y0 + g)]]); } return r; };
+      const P = slotsFor(Math.max(atk.length, def.length));
+      // Each man to the pair nearest where he stands, so nobody crosses the box to his place.
+      const used = new Set(), placeIn = (list, inner) => { for (const q of list) { let bi = -1, bd = Infinity;
+          for (let k = 0; k < P.length; k++) { if (used.has(k + (inner ? 0 : 1000))) continue;
+            const [x0, y0] = P[k][inner ? 0 : 1], dd = Math.hypot(q.x - x0, q.y - y0); if (dd < bd) { bd = dd; bi = k; } }
+          if (bi < 0) continue; used.add(bi + (inner ? 0 : 1000));
+          const [x0, y0] = P[bi][inner ? 0 : 1]; put(q, [x0 - dir * Math.abs(spJ(sp, 150 + bi + (inner ? 0 : 50))) * 0.7, y0 + spJ(sp, 200 + bi) * 0.2]); } };
+      placeIn(def, true); placeIn(atk, false);
+    }
     for (const sd of ME_SIDES) for (const p of s.players[sd]) {
       // EVERYONE is claimed, _spSet or not. A penalty won at a corner arrives with half the box
       // still carrying the corner's _spSet flags, and honouring them left those men standing on
       // the goal line through the kick. Only the taker and the defending keeper keep the spots
       // this branch just gave them.
       if (p.off || p === taker || p === gkD) continue;
+      // A SHOOTOUT's other eighteen wait in the centre circle (match.ts mePkLineUp) and stay there.
+      if (mp._pk) { p._tx = p.x; p._ty = p.y; p._spSet = true; continue; }
       // THE OTHER KEEPER STAYS AT HIS OWN END. This loop runs over BOTH sides and only the defending
       // goalkeeper had been marked _spSet already, so the attacking side's keeper fell through into
       // the arc of men around the box and trotted seventy metres up the pitch for a penalty.
@@ -322,23 +374,23 @@ export function meSPShape(s) {
       // the one intruder left in a sixteen-penalty sweep was a forward still running the move the
       // foul interrupted. The run is cancelled with the whistle.
       p._run = null; p._runT = 0; p._cool = 0;
-      const ang = -1.1 + (k++ % 10) * 0.24;
-      p._tx = clampX(sp.x - dir * (CFG.spPenBack + Math.cos(ang) * 2));
-      p._ty = clampY(ME_HALF_W + Math.sin(ang) * CFG.spPenSpread);
+      const at = sp.penAt[(sd === side ? "h" : "a") + s.players[sd].indexOf(p)] || [sp.x - dir * CFG.spPenBack, ME_HALF_W];
+      p._tx = clampX(at[0]); p._ty = clampY(at[1]);
       p._spSet = true; p._closing = true;
       // ...and anyone still inside the area is WALKED out by the referee, not asked. The pair
       // involved in the foul freeze where the whistle caught them -- the fouled man down, the
       // fouler over him -- and the ordinary mover never shifts them, so the kick used to go with
       // both of them on the goal line. Direct displacement cannot be refused by whatever froze
       // them, and at a stride a slice they clear the box well inside the referee's patience.
+      // ...only the two the whistle froze, and at a walk: everyone else walks out of it himself.
       const _inArea = Math.abs(p.x - gx) < 17 && Math.abs(p.y - ME_HALF_W) < 20.8;
-      if (_inArea || Math.hypot(p.x - sp.x, p.y - sp.y) < 10.5) {
+      if ((_inArea || Math.hypot(p.x - sp.x, p.y - sp.y) < 10.5) && Math.hypot(p.vx || 0, p.vy || 0) < 0.02 && sp.t > 2) {
         let _dx = p._tx - p.x, _dy = p._ty - p.y, _dd = Math.hypot(_dx, _dy);
         // Two men frozen on the SAME point -- the fouler standing over the man he fouled -- have
         // the same target and the same zero-length vector, so neither could be walked anywhere.
         // Push them straight out of the area instead, and fan them apart on the way.
-        if (_dd < 0.05) { _dx = -dir * 1; _dy = (p.y < ME_HALF_W ? -1 : 1) * 0.4 + k * 0.01; _dd = Math.hypot(_dx, _dy); }
-        const _st = Math.min(_dd, 2.2);
+        if (_dd < 0.05) { _dx = -dir * 1; _dy = (p.y < ME_HALF_W ? -1 : 1) * 0.4 + (sd === sp.side ? 0.01 : -0.01); _dd = Math.hypot(_dx, _dy); }
+        const _st = Math.min(_dd, 0.45);
         p.x += _dx / _dd * _st; p.y += _dy / _dd * _st;
         p.vx = 0; p.vy = 0;
       }
@@ -467,7 +519,8 @@ export function meSPShape(s) {
     // floor-speed ball struck goalward at a man standing on his own six-yard line. Nobody stands
     // goal-side of a goal kick; the leftovers hold at least gkShapeMin, which is where a back four
     // actually receives one.
-    const base = shape
+    const base = sp.kind === "kickoff" ? own + dir * koDepth(p._bd0)
+      : shape
       ? own + dir * Math.max(sp.kind === "goalkick" ? CFG.gkShapeMin : 0,
                              (p._bd0 ?? 40) * 0.5
                              + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
@@ -500,16 +553,19 @@ export function meSPShape(s) {
     // Both posts covered, the near one only, or neither and everybody picks a man up instead.
     if (sp.v !== 2) dtake(gx - dir * 0.8, ME_HALF_W + nearSide * 3.4);
     if (sp.v === 0) dtake(gx - dir * 0.8, ME_HALF_W - nearSide * 3.4);
-  } else if (sp.kind === "freekick" && meFkAtGoal(gx, sp.x, sp.y)) {
-    // A WALL, on the line between the ball and the goal, ten yards off it. Three, four or five men
-    // in it: how many you put in a wall is a decision, and it was the same four every time.
-    const wall = Math.max(2, CFG.spWall + sp.v - 1);
-    const wx = sp.x + (gx - sp.x) * 0, wy = sp.y;
-    const bx2 = gx - sp.x, by2 = ME_HALF_W - sp.y, bl = Math.hypot(bx2, by2) || 1;
-    const px = -by2 / bl, py = bx2 / bl;
+  } else if (sp.kind === "freekick" && !sp.quick && meFkWallN(gx, sp.x, sp.y)) {
+    // A WALL, ten yards off the ball, as many men as where it is calls for (meFkWallN). The end man stands on the line to
+    // just outside the near post and the rest build in toward the middle: the wall takes the near side, the keeper the far.
+    // From the middle it is centred on the goal.
+    const wall = meFkWallN(gx, sp.x, sp.y), dy0 = sp.y - ME_HALF_W, sgn = Math.abs(dy0) < 1.5 ? 0 : Math.sign(dy0);
+    const ayW = ME_HALF_W + sgn * (GOAL_HALF_W + 0.4);
+    const bx2 = gx - sp.x, by2 = ayW - sp.y, bl = Math.hypot(bx2, by2) || 1, ux = bx2 / bl, uy = by2 / bl;
+    // the perpendicular pointing toward the middle of the goal
+    let px = -uy, py = ux;
+    if (sgn && (px * 0 + py * (ME_HALF_W - ayW)) < 0) { px = -px; py = -py; }
     for (let w = 0; w < wall; w++) {
-      const off = (w - (wall - 1) / 2) * 0.6;
-      dtake(wx + bx2 / bl * CFG.spWallDist + px * off, wy + by2 / bl * CFG.spWallDist + py * off);
+      const off = sgn ? w * 0.6 : (w - (wall - 1) / 2) * 0.6;
+      dtake(sp.x + ux * CFG.spWallDist + px * off, sp.y + uy * CFG.spWallDist + py * off);
     }
   }
   // Everyone else picks up whoever is standing in a dangerous place, goal-side of him.
@@ -550,7 +606,10 @@ export function meSPShape(s) {
     // pulse. The block holds spDropBack goal-side of the ball wherever the ball is; a kick in
     // shooting range still gets the old deep line, because there dLine wins the max().
     let base;
-    if (sp.kind === "kickoff") base = gx - dir * (p._bd0 ?? 40) * 0.5;
+    // The side waiting for a kickoff keeps out of the circle by standing off it: its central men ten metres back, only
+    // the wide men up to halfway, instead of every forward and midfielder ringing the circle's edge.
+    if (sp.kind === "kickoff") base = gx - dir * Math.min(koDepth(p._bd0),
+      PITCH_L / 2 - (Math.abs((p._bw0 ?? ME_HALF_W) - ME_HALF_W) < 12 ? 10.2 : 3));
     else if (sp.kind === "goalkick")
       base = gx - dir * Math.min(PITCH_L - 17.5, (p._bd0 ?? 40) * CFG.spGkDefScale);
     else {
