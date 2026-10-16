@@ -62,6 +62,27 @@ export function meMeetGround(sx, sy, qx, qy, qvx, qvy, ux, uy, vd) {
   }, CFG.meetTMin, CFG.meetTMax);
 }
 
+/** A BALL TO THE FEET OF A MAN ON THE MOVE, from (sx, sy) to a man at (qx, qy) moving (qvx, qvy) m/s, rolled at the
+ *  ordinary weight. ACROSS the line of the pass he is led by all of his run over the flight: a ball that reaches his line
+ *  after he has crossed it is behind him, and nothing he can do gets him back to it. ALONG the line he is led by
+ *  feetLeadFrac of it (feetLeadMax at most), so he runs onto it rather than away from it. It was feetLeadFrac of the
+ *  whole run, both ways, never more than 4.5 m: traced in Askurias v Nichirin (16 October 2026), a ball to a man
+ *  sprinting was led 4.5 m where his run over the flight was 6.3, and one in six was played behind him. */
+export function meLeadFeet(sx, sy, qx, qy, qvx, qvy) {
+  let fx = qx, fy = qy;
+  const v = Math.hypot(qvx, qvy);
+  if (v <= CFG.feetMoveV) return [fx, fy];
+  for (let it = 0; it < 3; it++) {
+    const dx = fx - sx, dy = fy - sy, d = Math.hypot(dx, dy) || 0.1, nx = dx / d, ny = dy / d;
+    const t = meGroundT(d, d), par = qvx * nx + qvy * ny;
+    const cx = (qvx - par * nx) * t, cy = (qvy - par * ny) * t, cl = Math.hypot(cx, cy);
+    const ck = cl > CFG.feetLeadAcross ? CFG.feetLeadAcross / cl : 1;
+    const al = Math.sign(par) * Math.min(CFG.feetLeadMax, Math.abs(par) * t * CFG.feetLeadFrac);
+    fx = qx + cx * ck + nx * al; fy = qy + cy * ck + ny * al;
+  }
+  return [Math.max(1, Math.min(PITCH_L - 1, fx)), Math.max(1, Math.min(PITCH_W - 1, fy))];
+}
+
 /** A BALL IN THE AIR INTO HIS PATH, of kind `kind` (CFG.loftK): landing, or arriving at its height,
  *  `early` seconds before he gets to the spot. Over the top that is the ball dropping just in front of
  *  him so it is bouncing into his stride; a cross is met as it arrives. Returns { ax, ay, d, t } or null. */
@@ -83,19 +104,21 @@ export function meMeetLoft(sx, sy, qx, qy, qvx, qvy, ux, uy, vd, kind, early) {
  *  `roll`: the ball is along the ground, so every point of its path under `ceil` is his to meet, coming down or not --
  *  the man a ground pass is played to (match.ts), on the same law.
  *  Returns { x, y, z, ms, slotMs, ok } or null when no point of the flight is his. */
-export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep, roll) {
+export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep, roll, stretch = 0) {
   const F = meBallFine(mp), m = F[0] | 0;
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v0 = Math.hypot(vx, vy);
   // Can he be within tol of (x, y) tt s from now: the circle his legs can cover round where his momentum takes him.
-  const can = (tt, x, y, tol) => {
-    if (tt <= 0) return false;
+  // How far short of (x, y) he is tt s from now: what is left of the distance once his legs have covered what they can.
+  const short = (tt, x, y) => {
+    if (tt <= 0) return Infinity;
     const td = Math.min(tt, react), sx = p.x + vx * td, sy = p.y + vy * td, tr = tt - td;
     const ex = x - sx, ey = y - sy, e = Math.hypot(ex, ey);
     const cosA = v0 > 0.3 && e > 0.01 ? (vx * ex + vy * ey) / (v0 * e) : 1;
     const acc = Math.min(0.95, CFG.accel * (1 - CFG.turnPenalty * Math.max(0, -cosA)));
     const tau = -ME_DT / Math.log(1 - acc), k = tau * (1 - Math.exp(-tr / tau));
-    return Math.hypot(x - sx - vx * k, y - sy - vy * k) - vmax * Math.max(0, tr - k) <= tol;
+    return Math.hypot(x - sx - vx * k, y - sy - vy * k) - vmax * Math.max(0, tr - k);
   };
+  const can = (tt, x, y, tol) => short(tt, x, y) <= tol;
   const reachOf = (o, head) => {
     if (head) return headR;
     const bv = Math.hypot(F[o + 1] - F[o - 3], F[o + 2] - F[o - 2]) / Math.max(1e-6, F[o] - F[o - 4]);
@@ -111,11 +134,13 @@ export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep, roll) {
     if (kj > 0) { const o = 1 + 4 * kj, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
       if (can(t, x, y, reachOf(o, z > CFG.headMinZ) * CFG.airMeetTol)) return { x, y, z, ms: t * 1000, slotMs: Math.max(1, t * 1000), ok: 1 }; }
   }
+  let bj = -1, bs = stretch;
   for (let j = 1; j < m; j++) {
     const o = 1 + 4 * j, t = F[o], x = F[o + 1], y = F[o + 2], z = F[o + 3];
     if ((!roll && !(z < F[o - 1])) || z > ceil) continue;  // still climbing off the boot, or over him
     if (!onPitch(x, y, 0)) break;                           // gone out: nowhere after this is his
     const tt = t - CFG.airMeetEarly, r = reachOf(o, z > CFG.headMinZ);
+    if (stretch > 0 && t <= CFG.recvStretchT) { const sh = short(t, x, y) - r; if (sh < bs) { bs = sh; bj = j; } }
     // Inside airArrive his last steps put him on the spot with no momentum to carry him through it (match.ts), and
     // standing there he holds: what is left is only whether he can cover the ground.
     const near = Math.hypot(x - p.x, y - p.y);
@@ -126,6 +151,13 @@ export function meMeetAir(p, mp, vmax, react, ceil, headR, footR, keep, roll) {
     if (!can(tt, x, y, r * CFG.airMeetTol)) continue;
     return { x, y, z, ms: tt * 1000, slotMs: Math.max(1, t * 1000), ok: 1 };
   }
+  // NOWHERE HE CAN MAKE IN TIME is not a reason to give the ball up. `stretch`: the man it is played to goes for the point
+  // of its path he comes nearest to making, inside recvStretchT, if he is within stretch metres of it beyond his reach --
+  // he checks back and stretches for it. He used to be handed the far end of the path instead (meIntercept), and the
+  // ball went past him a metre behind while he ran twenty metres after where it would end up (traced, 16 October 2026:
+  // half the ground passes lost within two metres of their man).
+  if (bj > 0) { const o = 1 + 4 * bj, t = F[o];
+    return { x: F[o + 1], y: F[o + 2], z: F[o + 3], ms: Math.max(0, t - CFG.airMeetEarly) * 1000, slotMs: Math.max(1, t * 1000), ok: 1 }; }
   return null;
 }
 
