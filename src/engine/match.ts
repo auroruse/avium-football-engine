@@ -11,7 +11,7 @@ import { meMeetAir } from "./pass";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
 import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
-import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
+import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake, meCelebT } from "./setpiece";
 import { meXgCal, meDecide, meShotP, meShotSit, meWindUp } from "./decide";
 import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindRestart, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meCtrl, meDanger, meDir, meGoalX, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
@@ -624,6 +624,17 @@ export function meMove(s, rng) {
       if (s.brain === 2 && !mp.sp && p._eff != null && i !== scramble && !onBall && p.pos !== "GK") {
         vCap = sp * p._eff;
         if (d < MT.easeD) vCap = Math.min(vCap, sp * Math.max(MT.easeMin, d / MT.easeD) * Math.max(0.55, p._eff));
+      }
+      // A DEAD BALL IS WALKED TO (user, 16 October 2026: "more natural positioning during all set pieces"). Everyone
+      // sprinted to every restart's mark -- the length of the pitch back for a kickoff, the box at a corner -- which is the
+      // "dragged to their zone" look. Not taken quickly, a man jogs (CFG.spWalk*) until the restart has used spWalkHurry of
+      // its patience; the taker, the keepers, a man celebrating and anybody at a throw-in, which is played on, are exempt.
+      if (mp.sp && !mp.sp.quick && !mp.sp.run && mp.sp.kind !== "throw" && p.pos !== "GK" && !p._celeb && !onBall
+          && !(side === mp.sp.side && i === mp.sp.ti)) {
+        const capW = mp.sp.kind === "kickoff" ? CFG.spKickoffMaxT : (mp.sp.maxT ?? CFG.spMaxTBy[mp.sp.kind] ?? CFG.spMaxT);
+        if (mp.sp.t < capW * CFG.spWalkHurry) vCap = Math.min(vCap, sp * (d > CFG.spWalkFarD ? CFG.spWalkFar : CFG.spWalkNear));
+        // ...and the side that has just conceded walks back with its head down while the other side celebrates.
+        if (mp.sp.celeb && side !== mp.sp.celeb.side && mp.sp.t < meCelebT(mp.sp.celeb)) vCap = Math.min(vCap, sp * CFG.celebSlump);
       }
       // Everyone else eases into their target so they do not skid past it. The man on the ball must
       // NOT: his target is the ball, the ball is about a metre away, and clamping his stride to that
@@ -1695,17 +1706,30 @@ export function meKeeperCrisis(s, side, out) {
 // THE ROTA. Five different men, best takers first, and if it goes the distance everybody kicks
 // before anybody kicks twice -- the keeper going last of all, which is the law's own order of
 // desperation. Built once from whoever is still on the pitch at the whistle.
-export function mePkInit(s) {
-  const rota = {};
+// THE CEREMONY (user, 16 October 2026): a coin toss for who kicks first, and the MANAGER'S ORDER for the five. The same
+// five best strikers of a ball take them, but not always best first: most often the best is kept for the fifth, the one
+// that tends to decide it (CFG.pkBestLast); sometimes he goes first and the second best last (pkBestBoth); otherwise best
+// first. Without an rng (an old caller) it is the old rota: best first, home first.
+export function mePkInit(s, rng) {
+  const rota = {}, plan = {};
   for (const sd of ME_SIDES) {
     const ps = s.players[sd];
     const idx = ps.map((q, i) => i).filter(i => !ps[i].off);
     idx.sort((a, b) => (ps[a].pos === "GK") - (ps[b].pos === "GK")
                      || meAttrs(ps[b]).shoot - meAttrs(ps[a]).shoot);
-    rota[sd] = idx;
+    const out = idx.filter(i => ps[i].pos !== "GK");
+    plan[sd] = "best first";
+    if (rng && out.length >= 5) {
+      const [b1, b2, b3, b4, b5] = out, r = rng.u();
+      const five = r < CFG.pkBestLast ? (plan[sd] = "best last", [b2, b3, b4, b5, b1])
+                 : r < CFG.pkBestLast + CFG.pkBestBoth ? (plan[sd] = "first and last", [b1, b3, b4, b5, b2])
+                 : [b1, b2, b3, b4, b5];
+      rota[sd] = [...five, ...idx.filter(i => !five.includes(i))];
+    } else rota[sd] = idx;
   }
+  const first = rng && rng.u() < 0.5 ? "away" : "home";
   return { sc: { home: 0, away: 0 }, taken: { home: 0, away: 0 },
-           order: ["home", "away"], rota, k: 0 };
+           order: [first, meOther(first)], toss: first, plan, rota, k: 0 };
 }
 
 // Whose turn it is, or null once the shootout is decided.
@@ -1857,7 +1881,7 @@ export function mePkResult(pk) {
 }
 
 export function meShootout(s, rng, out, maxKicks) {
-  const pk = mePkInit(s);
+  const pk = mePkInit(s, rng);
   for (;;) {
     const side = mePkNext(pk, maxKicks);
     if (!side) break;
@@ -2517,10 +2541,24 @@ export function meTick(s, rng, out) {
         meDead(s, "kickoff", cross.conceding, 190, out);
         // Where he runs. The corner at the end he has just scored at, on the side he finished from,
         // which is near enough to where a footballer actually goes. meSPShape does the rest.
-        if (mp.sp && gi >= 0)
-          mp.sp.celeb = { side: scorer, i: gi,
-                          x: meGoalX(scorer) - meDir(scorer) * CFG.spCelebOut,
-                          y: cross.y < ME_HALF_W ? CFG.spCelebIn : PITCH_W - CFG.spCelebIn };
+        // WHAT KIND OF GOAL IT WAS (user, 16 October 2026: celebrations "fit the moment"). A late equaliser or winner
+        // ("big", from celebLateMin or in extra time) brings the whole side and the bench to him; a goal that puts a side
+        // three up ("rout") is a handshake and a jog back; anything else is his run and whoever is near. Where he runs is
+        // his choice: the corner flag, the crowd behind the nearest touchline, or his own bench if it is near enough.
+        if (mp.sp && gi >= 0) {
+          const gF = mp.goals?.[scorer] ?? out.goals?.[scorer] ?? 0, gA = mp.goals?.[cross.conceding] ?? out.goals?.[cross.conceding] ?? 0;
+          const gd = gF - gA, late = (mp._min ?? meMinute(mp.tick)) >= CFG.celebLateMin || !!mp._et;
+          const kind = late && (gd === 0 || gd === 1) ? "big" : gd >= 3 ? "rout" : "plain";
+          const sc = s.players[scorer][gi], dir = meDir(scorer), gx = meGoalX(scorer);
+          const benchX = PITCH_L / 2 + (scorer === "home" ? -1 : 1) * CFG.subEnterX * 2;
+          const r = ((mp.tick * 2654435761) >>> 0) / 4294967296;
+          let style = r < 0.5 ? "corner" : r < 0.82 ? "crowd" : "bench";
+          if (style === "bench" && Math.hypot(sc.x - benchX, sc.y - PITCH_W) > CFG.celebBenchD) style = "corner";
+          const [cx, cy] = style === "bench" ? [benchX, PITCH_W - 1.2]
+            : style === "crowd" ? [gx - dir * Math.min(30, Math.max(6, Math.abs(gx - sc.x))), sc.y < ME_HALF_W ? 0.8 : PITCH_W - 0.8]
+            : [gx - dir * CFG.spCelebOut, cross.y < ME_HALF_W ? CFG.spCelebIn : PITCH_W - CFG.spCelebIn];
+          mp.sp.celeb = { side: scorer, i: gi, x: cx, y: cy, kind, style };
+        }
         return;
       }
       if (cross.kind === "woodwork") {
@@ -3540,7 +3578,9 @@ export function meTick(s, rng, out) {
         const ppC = mp.passPending;
         // ...AND A THROW, OR A RESTART PLAYED IN THE AIR TO A MAN (mindRestart, ppC.pr), by the man it is played to: one throw
         // in six ran past its man on the old reach model (traced, 16 October 2026).
-        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || (ppC.pr && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
+        // ...AND A LONG BALL OR A SWITCH, by the man it is played to: on the old reach model he chased where it would be a
+        // quarter of a second on, and a quarter of them came down behind him (traced, 16 October 2026).
+        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || ((ppC.pr || (CFG.abLongAir && (ppC.k === "long" || ppC.k === "switch"))) && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
@@ -3562,7 +3602,7 @@ export function meTick(s, rng, out) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const gm = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), CFG.recvAirZ, 0, CFG.reach,
-                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null, true);
+                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null, true, CFG.recvStretch);
           if (gm) { ic = gm; q._airMt = mp.tick; meAirPp(q, ppC); }
         }
         q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
