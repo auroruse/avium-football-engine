@@ -604,6 +604,8 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   if (matchUrg) st.matchUrg = matchUrg;
   if (teamForm) st.teamForm = teamForm;
   if (aggLead) st.aggLead = aggLead;
+  // A tie that has to be settled tonight: its coaches keep a change for extra time when it is level late (meCoachSubs).
+  st.needWin = !!forceResult;
   st.possession = "home";
   // RNG.next() returns a FLOAT in [0,1). `float >>> 0` is always 0, and `0 || 7` is 7 -- so every
   // jobbed sim played from seed 7 and a knockout tie produced the same score on every re-run.
@@ -626,6 +628,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   // kicks. meShootout drives itself to a conclusion in one call.
   if (forceResult && ftH === ftA) {
     const etLen = Math.round(ME_MATCH_TICKS / 3), etAt = st.mePos.tick, etAdd0 = meAdded(st);
+    st.mePos._et = 1;                                     // the coaches' extra window (meCoachSubs)
     for (let t = 0; t < etLen + Math.max(0, meAdded(st) - etAdd0); t++) {
       out.min = 90 + Math.min(30, Math.floor(t / (ME_MATCH_TICKS / 90)));
       out.add = Math.max(0, Math.floor((t - etLen) / ME_MATCH_TICKS * 90));

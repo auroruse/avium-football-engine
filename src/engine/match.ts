@@ -13,7 +13,7 @@ import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meXgCal, meDecide, meShotP, meShotSit, meWindUp } from "./decide";
-import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
+import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindRestart, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meCtrl, meDanger, meDir, meGoalX, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
@@ -976,7 +976,9 @@ export const meGkExp = (xg, pen) => {
   for (const [hi, e] of T) if (x < hi) return e;
   return T[T.length - 1][1];
 };
-export const meSaveBonus = (xg, pen) => CFG.rateSave * meGkExp(xg, pen);
+// ...and every save is worth rateSaveVol on top, as it is in SofaScore's own ratings (16 October 2026): a keeper there gains
+// about a quarter of a point a save whatever it was, so six saves read 8.1 where goals prevented alone had them at 7.4.
+export const meSaveBonus = (xg, pen) => CFG.rateSave * meGkExp(xg, pen) + CFG.rateSaveVol;
 export const meConcedePen = (xg, pen) => CFG.rateSave * (1 - meGkExp(xg, pen));
 // The running total is kept unclamped in _rr and only the shown rating is held to [3, 10]: clamped
 // on the way, a brace with three assists and a goal on a tidy afternoon both arrived at full time as
@@ -1045,7 +1047,16 @@ export function meFinalise(s) {
       // the same share at 9.0 or better -- and rateBend is how late it bends, which is what makes a
       // 10.0 possible but historic.
       const f = CFG.rateFin[p.pos] ?? CFG.rateFin.MID;
-      const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink - f.mid * shrink;
+      // THE RESULT (16 October 2026, rebuilt on SofaScore's own ratings): a side's win or draw is worth a little to every
+      // man who played in it, by his share of the match, as it is in SofaScore's -- a keeper and a forward most, a
+      // midfielder least -- over and above the goals and the goals against that already moved him. Without it a win and a
+      // defeat were 0.38 apart for a full ninety against SofaScore's 0.61.
+      const gF = s.mePos.goals?.[sd] ?? 0, gA = s.mePos.goals?.[meOther(sd)] ?? 0;
+      const rawR = (p._rr ?? p.rating) + (gF >= gA ? (CFG.rateResult[p.pos]?.[gF > gA ? 0 : 1] ?? 0) * frac : 0);
+      // ...AND AGAINST AN ORDINARY AFTERNOON OF HIS OWN LENGTH. `mid` is an ordinary ninety, and a cameo was set against
+      // all of it scaled by the shrink while his projection stopped at rateProjMax: an ordinary twenty minutes off the bench
+      // read 6.40 against SofaScore's 6.61. A red card is still set against the whole ninety: his minutes are the punishment.
+      const z = p.rc ? rawR - 6.5 - f.mid : (rawR - 6.5 - f.mid * frac) * proj * shrink;
       const rTop = 6.5 + z * (z >= 0 ? f.up : f.dn) + (CFG.ratePar - 6.5) * shrink, KNEE = CFG.rateKnee;
       const S = CFG.rateBend, rSoft = rTop > KNEE ? KNEE + f.tail * S * Math.log(1 + (rTop - KNEE) / S) : rTop;
       p.rating = Math.max(3, Math.min(10, +(rSoft.toFixed(2))));
@@ -1062,8 +1073,9 @@ export function meDead(s, kind, side, ticks, out) {
   // sets the MINIMUM before anyone can take it.
   const mp = s.mePos;
   meSPBegin(s, kind, side, out);
-  mp.sp.minT = mp.sp.quick ? CFG.spMinT
-             : Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  // minT0 is what it would wait as an ordinary restart, kept for one played quickly that turns out not to be on (meTick).
+  mp.sp.minT0 = Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  mp.sp.minT = mp.sp.quick ? CFG.spMinT : mp.sp.minT0;
   // The ball has to be on the spot before anybody can strike it. minT is only known here, after
   // meSPBegin has already sized the fetch, so this is where the two are reconciled.
   mp.sp.ft = Math.min(mp.sp.ft, mp.sp.minT);
@@ -1408,8 +1420,16 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   const gone = ps[outIdx], inn = bench && bench[benchIdx];
   if (!gone || !inn) return false;
   // He takes over the outgoing man's place in the shape, not a fresh one off the formation.
-  for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
+  for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty"])
     inn[k] = gone[k];
+  // ...BUT HE COMES ON AT THE HALFWAY LINE AND RUNS TO IT (user, 16 October 2026: "subs position weirdly after coming on
+  // and sometimes move VERY quickly to places as if they're being dragged to their zone", and "Askurias didn't wait for
+  // Nichirin's subs to get into position before taking a free kick"). He used to appear on the spot the man he replaced
+  // stood on, and the Live Match drew a walk from the touchline on top of the engine moving him to his mark: two pulls on
+  // one man, and his own legs pinned still while the walk dragged him. The law has him enter at halfway on the benches'
+  // side once the other man is off; he runs to his place like anybody else, and the restart waits for him (meSPReady).
+  // The benches sit on the far touchline (y = PITCH_W), the home one short of halfway, as the Live Match draws them.
+  inn.x = PITCH_L / 2 + (side === "home" ? -1 : 1) * CFG.subEnterX; inn.y = PITCH_W - CFG.subEnterIn;
   // A man with positions of his own takes the outgoing man's slot as well as his place in the shape, and plays it on
   // his own position's skills where it is not one of his (src/engine/attributes.ts). A keeper keeps his.
   if (inn.own?.length && !meIsKeeper(inn) && gone.pos !== "GK") { inn.spos = gone.spos; inn.pos = gone.pos; inn.atkW = gone.atkW; }
@@ -1423,6 +1443,9 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   // Minutes played, for the shrink in meFinalise. Without it a substitute who came on for the last
   // five and touched nothing is rated as confidently as a man who played the whole match.
   gone._offAt = s.mePos.tick; inn._onAt = s.mePos.tick;
+  // A change is not a quick restart: the referee holds play for it.
+  const sp0 = s.mePos.sp;
+  if (sp0 && sp0.quick) { sp0.quick = 0; sp0.minT = Math.max(sp0.minT ?? 0, sp0.minT0 ?? 0); }
   ps[outIdx] = inn; bench[benchIdx] = null;
   s.subs = s.subs || { home: 0, away: 0 }; s.subs[side]++;
   (s.subbedOff = s.subbedOff || { home: [], away: [] })[side].push(gone);
@@ -1483,32 +1506,49 @@ export function meAutoSubs(s, side, out) {
 
 // THE SECOND BRAIN'S BENCH (user, 11 October 2026: "Why the hell are subs so early?"). The rebuild of 2 October let a
 // better manager change sooner and on a higher line, from tick 1700 (35 minutes) on: a pressing side, tiring first, had
-// made its five changes before half time. Now an injury is replaced at once, and for tired legs the clock decides how
-// tired. Before the hour only legs that are gone (subEarly; a knock or a booking still counts against a man); from the
-// hour the usual line, a few points higher for a manager who reads the game, so he acts a few minutes sooner but never
-// before it. Changes come the way the law has them: at most three stoppages in the ninety (one more in extra time), the
-// break not counted, each taking its share of the changes left, and a manager gives one window time to tell before he
-// opens the next (subWinGap). Chasing late he sends on the most attacking man who can play the position, protecting a
-// lead the most defensive. The answers were the user's: stamina only, managers read the game better, three windows.
+// made its five changes before half time. Now an injury is replaced at once, and changes come the way the law has them:
+// at most three stoppages in the ninety (one more in extra time), the break not counted, and a manager gives one window
+// time to tell before he opens the next (subWinGap). Chasing late he sends on the most attacking man who can play the
+// position, protecting a lead the most defensive. The answers were the user's: stamina only, managers read the game
+// better, three windows.
 // ...WHO CAN PLAY THE POSITION, AND ONLY HIM (user, 14 October 2026: "Why do coaches sub people in out of position so
-// much?"). The game outbid the position: chasing, a forward on the bench was worth up to six points more and a defender
-// four less, more than playing out of position costs, and the man coming on takes the place of the man going off, so
-// "fresh legs further forward" put a striker at centre-back. A change for tired legs is now a man who plays the place at
-// no cost, the best of them at it with his own position first, and the game only chooses between those: chasing, the
-// more attacking, seeing it out, the more defensive, as far as his manager reads it. Nobody who can play it, and the
-// tired man stays on. A man who cannot continue is still replaced whatever the bench holds, by the nearest fit. And the
-// game now decides whose legs are freshened first the other way round, up front when chasing and at the back when
-// seeing it out: giving up a defender first only ever made sense while a forward could come on in his place.
+// much?"). A change for tired legs is a man who plays the place at no cost, the best of them at it with his own position
+// first, and the game only chooses between those: chasing, the more attacking, seeing it out, the more defensive, as far
+// as his manager reads it. Nobody who can play it, and the tired man stays on. A man who cannot continue is still
+// replaced whatever the bench holds, by the nearest fit. Chasing, the legs up front are freshened first; seeing it out,
+// the ones at the back.
+// ...AND THE COACH WEIGHS THE CHANGE (user, 16 October 2026, after the Nations League final: Higashiyama, Itoshi and
+// Erdene off at half time and Kishima and Fujise at 31 minutes, four of them among the best players on the pitch --
+// "SURELY in a FINAL you'd keep them on for longer?", then "If the early sub thing is stamina's fault then make the coach
+// plan smarter"). It was the legs: a tournament carries stamina from one match to the next, Nichirin had come through the
+// losers' bracket pressing, their front men started the final on about 86 and stood near 55 by half time -- and under 55
+// this took anybody off before the hour, whoever was on the bench, the most tired first. Traced on twelve finals, every
+// one of Nichirin's five changes fell between 29 and 54 minutes. The coach now weighs each change: how much better the
+// man coming on would play the place than the tired man is playing it now. A man is worth his rating at the place less
+// a few hundredths of a point for every point of stamina he is down -- what tired legs cost a side in this engine,
+// measured (test/specs/fatigue.mjs), more of a good man's rating than a modest one's (CFG.subLegsW) -- so the change is
+// worth
+//     subLegsW(his rating) * (his stamina deficit - the replacement's) - (his rating at the place - the replacement's)
+// and a change is made when it is worth more than -subTolerance, the ones worth most first, each window taking its share
+// of what is left: a manager will give up a couple of points of quality for fresh legs, as real ones do with five changes
+// to make (four a match, the first near the hour), but not the gap between a star and his reserve. Priced at nought,
+// League One sides made 2.6 changes a match and League Two fewer: tired legs cost less there than a point of rating.
+// A man far better than his bench is worth keeping until his legs are a long way gone, so the stars go last if at all.
+// Before the hour a man still comes off only when his legs are gone, now meaning that his press has run out altogether
+// (pressLegs) rather than 55. A knock, a booking, and being the man the game wants freshened first count against him as
+// before, and a manager who reads the game sees it a few points sooner. In a match that has to have a winner and is level
+// from the 70th minute, one change is kept for extra time.
 export function meCoachSubs(s, side, out) {
   const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
   s.subs = s.subs || { home: 0, away: 0 };
   const bench = s.bench?.[side]; if (!bench) return;
-  const mp = s.mePos, min = meMinute(mp.tick), et = mp.tick >= ME_MATCH_TICKS;
+  // The clock the match is showing (mp._min, the second brain's), and whether this is extra time: a tick count past ninety
+  // minutes is still normal time while the board's added minutes are played.
+  const mp = s.mePos, min = mp._min ?? meMinute(mp.tick), et = !!mp._et || min > 90;
   const g = Math.max(0, Math.min(1, ((s.mgmt?.[side] ?? ME_MGR.mgmtDef) - 40) / 50));
   const lead = (mp.goals?.[side] ?? 0) - (mp.goals?.[meOther(side)] ?? 0);
   const late = et || min >= CFG.subLateMin;
   const want = late && lead < 0 ? 1 : late && lead > 0 ? -1 : 0;     // chase, protect, or neither
-  const line = late ? CFG.subStamina + (g - 0.5) * CFG.subReadPts : CFG.subEarly;
   // The best man on the bench who plays the place at no cost, and of those the kind the game wants as much as the coach
   // can read it: three points a line up the pitch chasing, down it seeing it out (his line from the position he plays
   // the place from). Only a forced change takes a man who does not fit, and then the best at the place.
@@ -1534,31 +1574,51 @@ export function meCoachSubs(s, side, out) {
     if (bi >= 0) meSub(s, side, i, bi, out);
   }
   if (s.subs[side] >= cap) return;
-  // THE WINDOWS. The break is the first stoppage of the second half, once, and takes none of them.
+  // THE WINDOWS. The break takes none of them: in the Live Match it is the kickoff after a real interval (App.tsx sets
+  // mp._htk), and in a simulated match, which plays straight through, the first stoppage from the 45th minute.
   const W = ((s.subWin = s.subWin || {})[side] = s.subWin[side] || { used: 0, at: -Infinity, ht: false });
-  const brk = !W.ht && !et && min >= 45 && min < 47;
-  if (!et && min >= 45) W.ht = true;
+  const brk = !W.ht && !et && (s.interval ? mp._htk === 1 && mp.sp?.kind === "kickoff" : min >= 45 && min < 47);
+  if (brk || (!s.interval && !et && min >= 47) || (s.interval && mp._htk && mp.sp?.kind !== "kickoff")) W.ht = true;
   const windows = CFG.subWindows + (et ? 1 : 0);
   if (!brk && (W.used >= windows || mp.tick - W.at < CFG.subWinGap * ME_MATCH_TICKS / 90)) return;
-  // How tired each man is to his manager: a knock and a booking count against him, and the game he is in decides whose
-  // legs he freshens first -- chasing, the men up front; protecting, the men who hold the back.
+  // One change kept for extra time in a tie that must be settled and is level late on (on aggregate over two legs).
+  const keep = s.needWin && !et && min >= 70 && lead + (s.aggLead?.[side] ?? 0) === 0 ? 1 : 0;
   const first = (q) => (want > 0 ? q.pos === "FWD" : want < 0 && q.pos !== "GK" && (q._role2?.rest ?? 0) >= 0.7);
-  const tired = [];
+  const rateAt = (p, place) => (p.own?.length && place ? ovrAt(p.ovr ?? 65, p.own, place) : (p.ovr ?? 65));
+  // What the change is worth now, in rating points, and who would come on; nothing when nobody fits or it is worth nothing.
+  const worthOf = (q) => {
+    const bi = benchFor(q, false); if (bi < 0) return null;
+    const b = bench[bi];
+    // His legs as his manager reads them (a knock is in the legs too), and then what else counts against him: a booking,
+    // and being the man the game wants freshened first. Before the hour only the legs decide whether he can come off.
+    const legs = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0) - (g - 0.5) * CFG.subReadPts;
+    if (!late && legs >= CFG.pressLegs) return null;                                  // before the hour: legs gone only
+    const se = legs - ((q.yc || 0) ? CFG.subBooked : 0) - (first(q) ? 8 * g : 0);
+    const rq = rateAt(q, q.spos), W0 = CFG.subLegsW, k = W0.findIndex(e => e[0] > rq);
+    const w = k < 0 ? W0[W0.length - 1][1] : k === 0 ? W0[0][1]
+            : W0[k - 1][1] + (W0[k][1] - W0[k - 1][1]) * (rq - W0[k - 1][0]) / (W0[k][0] - W0[k - 1][0]);
+    const v = w * ((100 - se) - (100 - (b.stamina ?? 100))) - (rq - rateAt(b, q.spos));
+    return v > -CFG.subTolerance ? { bi, v } : null;
+  };
+  const want0 = [];
   for (const q of s.players[side]) {
-    if (!q || q.off) continue;
-    let t = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0) - ((q.yc || 0) ? CFG.subBooked : 0);
-    if (first(q)) t -= 8 * g;
-    if (t < line) tired.push([t, q]);
+    // Not a man who came on himself: his legs are fresh by the minute, and a coach changes his own change only for a reason
+    // this does not see (a reshuffle after a red card, a tactical mistake). Priced on his legs alone, an 81 who came on at
+    // the hour was swapped for another 81 at 79 minutes because he had dropped to 90.
+    if (!q || q.off || q.pos === "GK" || q._onAt != null) continue;
+    const w0 = worthOf(q);
+    if (w0) want0.push([w0.v, q]);
   }
-  if (!tired.length) return;
-  tired.sort((x, y) => x[0] - y[0]);
+  if (!want0.length) return;
+  want0.sort((x, y) => y[0] - x[0]);
   // Its share of the changes left: five in three windows go two, two and one.
-  const share = Math.ceil((cap - s.subs[side]) / Math.max(1, windows - W.used + (brk ? 1 : 0)));
+  const share = Math.ceil(Math.max(0, cap - keep - s.subs[side]) / Math.max(1, windows - W.used + (brk ? 1 : 0)));
   let made = 0;
-  for (const [, q] of tired) {
-    if (made >= share || s.subs[side] >= cap) break;
-    const i = s.players[side].indexOf(q), bi = benchFor(q, false);
-    if (i < 0 || bi < 0 || !meSub(s, side, i, bi, out)) continue;
+  for (const [, q] of want0) {
+    if (made >= share || s.subs[side] >= cap - keep) break;
+    // Asked again at the moment: the man priced as his replacement may have just gone on for somebody else.
+    const w0 = worthOf(q), i = s.players[side].indexOf(q);
+    if (!w0 || i < 0 || !meSub(s, side, i, w0.bi, out)) continue;
     made++;
     if (out?.mgrLog) {
       const L = out.mgrLog[side] = out.mgrLog[side] || [];
@@ -1566,6 +1626,7 @@ export function meCoachSubs(s, side, out) {
         : want > 0 ? "Chasing it: fresh legs further forward" : "Seeing it out: fresh legs at the back" });
     }
   }
+  if (made && brk && s.interval) mp._htk = 2;
   if (made && !brk) { W.used++; W.at = mp.tick; }
 }
 
@@ -1598,7 +1659,7 @@ export function meKeeperCrisis(s, side, out) {
       // He came on into somebody else's place in the shape. Put him in the one he is here for, or
       // he keeps goal from wherever the man he replaced happened to be standing.
       const gk = ps[oi];
-      if (gone) for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
+      if (gone) for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty"])
         gk[k] = gone[k];
       gk._duty = "gk"; gk._att = null; gk.pos = "GK"; gk.spos = "GK"; gk.atkW = 0;
       return;
@@ -1999,12 +2060,22 @@ export function meTick(s, rng, out) {
     meSPShape(s);
     meMove(s, rng);
     if (s.brain === 2) mindSense(s);
+    // A QUICK ONE ONLY IF IT IS STILL ON (user, 16 October 2026: restarts "rushed"). Whether a restart is played quickly
+    // is decided as the ball goes dead, on where everybody was then, and was never asked again: by the time the taker
+    // was over it the man who had been free could have a presser on him or a body in the lane. Over it, he looks again,
+    // and a ball anybody can contest (mePassRisk above nought) is no longer a quick one: the restart waits out the time an
+    // ordinary one takes (minT0) while the shape forms, and is priced again when it is taken.
+    if (s.brain === 2 && mp.sp.quick && (mp.sp.kind === "throw" || mp.sp.kind === "goalkick" || mp.sp.kind === "freekick")
+        && meSPReady(s)) {
+      const qo = mindRestart(s, mp.sp);
+      if (!qo || qo.risk > 0) { mp.sp.quick = 0; mp.sp.minT = Math.max(mp.sp.minT, mp.sp.minT0 ?? mp.sp.minT); return; }
+    }
     if (meSPReady(s)) {
       // Read off the restart before it is taken, because meSPTake clears it. The card is applied
       // AFTER the ball has gone, so a second yellow can send him off without the delivery having to
       // come off the boot of a man who is already walking.
       const wW = mp.sp.waste || 0, wI = mp.sp.ti, wS = mp.sp.side, wX = mp.sp.x, wY = mp.sp.y, wK = mp.sp.kind;
-      meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy);
+      meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, s.brain === 2 ? mindRestart : null);
       // A throw-in is a pass to the man it is thrown to, and the thrower steps back onto the pitch (mindOnThrow).
       if (s.brain === 2 && wK === "throw" && mp.passPending?.k === "throw" && mp.fj >= 0) mindOnThrow(s, wS, wI, mp.fj);
       if (wW > 0 && rng.u() < CFG.wasteCard * wW) {
@@ -2150,7 +2221,7 @@ export function meTick(s, rng, out) {
                               // beaten, exactly as a missed tackle leaves him. See config.
                               // In the second brain the men are the ones committed at the strike (pp.eng), and the ball
                               // has to have gone past him inside his reach: within pressThruR of the line it travelled.
-                              if (pp.sy !== undefined) {
+                              if (pp.sy !== undefined && !pp.rs) {
                                 const _d2 = pp.side === "home" ? 1 : -1, _op = s.players[meOther(pp.side)] || [];
                                 const _lx = mp.bx - pp.sx, _ly = mp.by - pp.sy, _ll = _lx * _lx + _ly * _ly || 1;
                                 if ((mp.bx - pp.sx) * _d2 > 4)
@@ -2173,14 +2244,14 @@ export function meTick(s, rng, out) {
                                 // What it was worth: a completed pass, plus what it gained. Only
                                 // forward progress pays, and it is capped so one long ball out of
                                 // defence cannot outscore a passage of play.
-                                const _fwd = pp.sx === undefined ? 0
+                                const _fwd = pp.sx === undefined || pp.rs ? 0
                                            : (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx);
                                 meRate(pp.byP, CFG.ratePass
                                   + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg);
                                 // The table stat. Raw completions crowned the man who recycled at
                                 // the back; a pass that GAINS ground is the one worth counting, and
                                 // the gain required shrinks as play moves higher (Wyscout tiers).
-                                if (pp.sx !== undefined) {
+                                if (pp.sx !== undefined && !pp.rs) {
                                   const _gx = meGoalX(pp.side);
                                   const _sOwn = Math.abs(pp.sx - _gx) > PITCH_L / 2;
                                   const _eOwn = Math.abs(mp.bx - _gx) > PITCH_L / 2;
@@ -2191,7 +2262,7 @@ export function meTick(s, rng, out) {
                               out.poss[pp.side] += (pp.t || 0);
                               // Ground actually gained by a pass that found a team-mate. A side can
                               // complete 160 passes a game and be no nearer the goal at the end of it.
-                              if (out.passFwd && pp.sx !== undefined)
+                              if (out.passFwd && pp.sx !== undefined && !pp.rs)
                                 out.passFwd[pp.side] += (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx); }
     else { out.passFail++;
            if (pp.byP) { pp.byP.passFail = (pp.byP.passFail || 0) + 1; meRate(pp.byP, -CFG.ratePassFail); }
@@ -2374,7 +2445,9 @@ export function meTick(s, rng, out) {
           const gm = out.min ?? 0, xg = sh ? sh.xg : CFG.rateGoalXgDef;
           const ctx = meCtxMult((out.goals[scorer] || 0) - 1, out.goals[cross.conceding] || 0, gm);
           // A tap-in is a goal; it is not the same afternoon as one from twenty yards.
-          if (gp) meRate(gp, CFG.rateGoal * ctx * (1 - CFG.rateGoalXgW * clamp01(xg)));
+          // ...and a goal is worth more from deeper (rateGoalPos), as SofaScore pays it: a defender's 1.12, a midfielder's 0.95,
+          // a forward's 0.85, measured on its own ratings (16 October 2026).
+          if (gp) meRate(gp, CFG.rateGoal * ctx * (1 - CFG.rateGoalXgW * clamp01(xg)) + (CFG.rateGoalPos[gp.pos] ?? 0));
           else meRate(s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i], -CFG.rateOwnGoal);
           if (ast) meRate(ast, CFG.rateAssist * (1 + (ctx - 1) * 0.5));
           // THE MOVE. A goal is not two men. The pre-assist, the ball before that, and the man who
@@ -2425,8 +2498,10 @@ export function meTick(s, rng, out) {
               // with dribbling into trouble; that is the price of not punishing him for the position
               // he plays.
               if (em && em.pos !== "GK"
-                  && mp.tick - e.t <= CFG.rateErrWin && (e.x - cown) * cdir < PITCH_L / 3)
+                  && mp.tick - e.t <= CFG.rateErrWin && (e.x - cown) * cdir < PITCH_L / 3) {
                 meRate(em, -CFG.rateError);
+                em.errs = (em.errs || 0) + 1;                 // counted, for the ratings harness
+              }
               break;
             }
           }
@@ -2434,7 +2509,7 @@ export function meTick(s, rng, out) {
           for (const q of s.players[cross.conceding] || []) {
             if (q.off) continue;
             if (q.pos === "GK") meRate(q, -meConcedePen(sh ? (sh.xgN ?? sh.xg) : xg, !!(sh && sh.pen)));
-            else if (q.pos === "DEF") meRate(q, -CFG.rateConcedeDef);
+            else meRate(q, -(CFG.rateConcede[q.pos] ?? 0));
           }
         }
         if (sh && sh.pen) sh._pd = 1;                    // scored: the funnel must not call it missed
@@ -3463,7 +3538,9 @@ export function meTick(s, rng, out) {
         // fraction of the reading and all of the running that goes with it, so he was sent where he could not get to,
         // jogged there because he had time, and the ball went past in front of him.
         const ppC = mp.passPending;
-        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && ppC.k === "cross" && ppC.sx !== undefined && ppC.side === sd) {
+        // ...AND A THROW, OR A RESTART PLAYED IN THE AIR TO A MAN (mindRestart, ppC.pr), by the man it is played to: one throw
+        // in six ran past its man on the old reach model (traced, 16 October 2026).
+        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || (ppC.pr && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
@@ -3480,7 +3557,8 @@ export function meTick(s, rng, out) {
         // meMeetAir, rolling), and goes for the first point of its path he can make. Over the same eight fixtures, balls
         // to the feet of a man sprinting when it was struck were kept 63% -> 79%, and those running on past him 14% -> 5%.
         // A ball to feet only: one into space or through is met on his run (meMove, thruRun), which steers him itself.
-        if (!airPred && rcv && q.pos !== "GK" && ppC && ppC.side === sd && ppC.sx !== undefined && !ppC.high && !ppC.thru) {
+        // A restart played to a man (ppC.pr) is met by this law once it is down below recvAirZ, thrown or lofted.
+        if (!airPred && rcv && q.pos !== "GK" && ppC && ppC.side === sd && ppC.sx !== undefined && (!ppC.high || ppC.pr) && !ppC.thru) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const gm = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), CFG.recvAirZ, 0, CFG.reach,
