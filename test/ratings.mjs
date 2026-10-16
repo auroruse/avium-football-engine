@@ -170,21 +170,22 @@ function analyse(matches, CFG) {
     bandIt("okBase", e => e[8][0], [[0, .4], [.4, .6], [.6, .75], [.75, .9], [.9, 1.2]]);
     bandIt("okRisk", e => e[8][1], [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, .95], [.95, 1.01]]);
     bandIt("okLate", e => e[8][2], [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, .999], [.999, 1.01]]);
-    // The fit the belief ships: logit(kept) = b0 + b1 ln okBase + b2 ln okRisk + b3 ln okLate,
+    // The fit the belief ships: logit(kept) = b0 + b1 ln okBase + b2 ln okRisk + b3 ln okLate + b4 [lofted],
     // by Newton's method. At the fixed point the coefficients come back as CFG.passCal*.
-    const X = pcs.map(e => [1, Math.log(Math.max(0.01, e[8][0])), Math.log(Math.max(0.01, e[8][1])), Math.log(Math.max(0.01, e[8][2]))]), y = pcs.map(e => e[3]);
-    let b = [0, 0, 0, 0];
+    L.push("  lofted:  " + [0, 1].map(h => { const g = pcs.filter(e => e[5] === h); return `${h ? "in the air" : "on the ground"} n=${g.length} pred ${mean(g.map(e => e[2])).toFixed(3)} real ${mean(g.map(e => e[3])).toFixed(3)}`; }).join(" | "));
+    const K = 5, X = pcs.map(e => [1, Math.log(Math.max(0.01, e[8][0])), Math.log(Math.max(0.01, e[8][1])), Math.log(Math.max(0.01, e[8][2])), e[5] ? 1 : 0]), y = pcs.map(e => e[3]);
+    let b = Array(K).fill(0);
     for (let it = 0; it < 12; it++) {
-      const H = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], g = [0, 0, 0, 0];
-      for (let i = 0; i < X.length; i++) { const x = X[i], z = b[0] * x[0] + b[1] * x[1] + b[2] * x[2] + b[3] * x[3], p = 1 / (1 + Math.exp(-z)), w = p * (1 - p);
-        for (let r = 0; r < 4; r++) { g[r] += (y[i] - p) * x[r]; for (let c = 0; c < 4; c++) H[r][c] += w * x[r] * x[c]; } }
+      const H = Array.from({ length: K }, () => Array(K).fill(0)), g = Array(K).fill(0);
+      for (let i = 0; i < X.length; i++) { const x = X[i]; let z = 0; for (let r = 0; r < K; r++) z += b[r] * x[r]; const p = 1 / (1 + Math.exp(-z)), w = p * (1 - p);
+        for (let r = 0; r < K; r++) { g[r] += (y[i] - p) * x[r]; for (let c = 0; c < K; c++) H[r][c] += w * x[r] * x[c]; } }
       const A = H.map((row, r) => [...row, g[r]]);
-      for (let c = 0; c < 4; c++) { let pr = c; for (let r = c + 1; r < 4; r++) if (Math.abs(A[r][c]) > Math.abs(A[pr][c])) pr = r; [A[c], A[pr]] = [A[pr], A[c]];
-        for (let r = 0; r < 4; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 5; k++) A[r][k] -= f * A[c][k]; } }
-      b = b.map((v, r) => v + A[r][4] / A[r][r]);
+      for (let c = 0; c < K; c++) { let pr = c; for (let r = c + 1; r < K; r++) if (Math.abs(A[r][c]) > Math.abs(A[pr][c])) pr = r; [A[c], A[pr]] = [A[pr], A[c]];
+        for (let r = 0; r < K; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= K; k++) A[r][k] -= f * A[c][k]; } }
+      b = b.map((v, r) => v + A[r][K] / A[r][r]);
     }
     R.passFit = b;
-    L.push(`  fit: logit(kept) = ${b[0].toFixed(2)} + ${b[1].toFixed(2)} ln okBase + ${b[2].toFixed(2)} ln okRisk + ${b[3].toFixed(2)} ln okLate   (shipped ${CFG.passCal0} / ${CFG.passCalB} / ${CFG.passCalR} / ${CFG.passCalL})`);
+    L.push(`  fit: logit(kept) = ${b[0].toFixed(2)} + ${b[1].toFixed(2)} ln okBase + ${b[2].toFixed(2)} ln okRisk + ${b[3].toFixed(2)} ln okLate + ${b[4].toFixed(2)} lofted   (shipped ${CFG.passCal0} / ${CFG.passCalB} / ${CFG.passCalR} / ${CFG.passCalL} / ${CFG.passCalH})`);
   }
   // Keepers: the conversion curve the model encodes, and whether it balances.
   const gks = [];
@@ -408,7 +409,7 @@ if (mode === "derive") {
   const toShip = refinish(matches, CFG, F, gk, S, PAR);
   console.log(shapeTable(toShip));
   console.log(sofaTable(toShip));
-  if (R.passFit) console.log("  passCal0: " + R.passFit[0].toFixed(2) + ", passCalB: " + R.passFit[1].toFixed(2) + ", passCalR: " + R.passFit[2].toFixed(2) + ", passCalL: " + R.passFit[3].toFixed(2) + ",   (iterate: the chosen passes move with the belief)");
+  if (R.passFit) console.log("  passCal0: " + R.passFit[0].toFixed(2) + ", passCalB: " + R.passFit[1].toFixed(2) + ", passCalR: " + R.passFit[2].toFixed(2) + ", passCalL: " + R.passFit[3].toFixed(2) + ", passCalH: " + R.passFit[4].toFixed(2) + ",   (iterate: the chosen passes move with the belief)");
 }
 if (mode === "check") {
   const bad = [];
