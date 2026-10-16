@@ -3540,7 +3540,9 @@ export function meTick(s, rng, out) {
         const ppC = mp.passPending;
         // ...AND A THROW, OR A RESTART PLAYED IN THE AIR TO A MAN (mindRestart, ppC.pr), by the man it is played to: one throw
         // in six ran past its man on the old reach model (traced, 16 October 2026).
-        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || (ppC.pr && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
+        // ...AND A LONG BALL OR A SWITCH, by the man it is played to: on the old reach model he chased where it would be a
+        // quarter of a second on, and a quarter of them came down behind him (traced, 16 October 2026).
+        if (airPred && q.pos !== "GK" && mp.fside === sd && ppC && (ppC.k === "cross" || ((ppC.pr || ppC.k === "long" || ppC.k === "switch") && rcv)) && ppC.sx !== undefined && ppC.side === sd) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const am = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), Math.min(meAerial(qa, CFG), CFG.gkHigh),
@@ -3562,7 +3564,7 @@ export function meTick(s, rng, out) {
           const qa = meAttrs(q);
           const rd = CFG.ttbChangeMs * (1 - (qa.position / 99 - 0.5) * CFG.ttbAnticip) * CFG.rcvLag / 1000;
           const gm = meMeetAir(q, mp, vmax, Math.max(0, rd - (ppC.t + 1) * ME_DT), CFG.recvAirZ, 0, CFG.reach,
-                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null, true);
+                               q._airMt === mp.tick - 1 && q._airPp === ppC ? { x: q._icx, y: q._icy } : null, true, CFG.recvStretch);
           if (gm) { ic = gm; q._airMt = mp.tick; meAirPp(q, ppC); }
         }
         q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
