@@ -25,23 +25,41 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const POSN = ["GK", "DEF", "MID", "FWD"];
-const PAR = 6.85;                                     // where a full-match par sits; see CFG.ratePar
-// SofaScore's shape, which every position is held to: the share of full matches at 8.0 or better,
-// at 9.0 or better, and at 6.0 or worse -- and, across everybody, a 10.0 once in three thousand
-// rated performances. See CFG.rateFin.
-const SHAPE = { hi8: 0.06, hi9: 0.007, lo6: 0.06, tens: 1 / 3000 };
+// SOFASCORE'S RATINGS AS THEY ARE NOW (the algorithm it brought in for 2025/26, which leans on a bell curve and gives more
+// sevens and more nines than the old one did), read from 142 matches and 4,270 rated performances of its own match data on
+// 16 October 2026: the Premier League, a round of each of the other big four and the 2026 World Cup's first round. A full
+// match is 81 minutes or more, as here. The user (3 October 2026) wants it with no positional bias, so every position is
+// held to the full-match shape below, though SofaScore's forwards have the fatter tails and its defenders the lower end.
+const PAR = 6.95;                                     // the full-match mean, where par sits; see CFG.ratePar
+const SHAPE = { hi8: 0.077, hi9: 0.0141, lo6: 0.068, tens: 1 / 860 };
+const SOFA = {
+  full: [["mean", 6.95], ["sd", 0.685], [">=7.0", 0.451], [">=7.5", 0.189], [">=8.0", 0.077], [">=8.5", 0.033], [">=9.0", 0.0141],
+         ["<=6.5", 0.276], ["<=6.0", 0.068], ["<=5.5", 0.0088]],
+  part: 6.64, partSd: 0.49, cameo: 6.61, cameoSd: 0.33,
+  win: 7.23, draw: 6.97, loss: 6.62, won3: 7.37, lost3: 6.33,
+  g1: 7.75, g2: 8.65, g3: 9.49, a1: 7.18, ga: 8.43, none: 6.80,
+  gkCS: 7.37, gkC1: 6.89, gkC2: 6.87, gkC3: 6.31, gkS6: 8.12, defL3: 6.13, defCSW: 7.44, err: 6.14,
+  motm: 8.4, motm10: 7.8, motm90: 9.2, motm9: 0.239, second: 7.85, lowest: 5.9,
+  season: 6.89, seasonSd: 0.20, season10: 6.64, season90: 7.16, seasonTop5: 7.26,
+};
 
 // ---------------------------------------------------------------- worker
 if (process.argv[2] === "--worker") {
   const [, , , engPath, start, step, N, seedBase] = process.argv;
   const eng = await import(engPath);
   if (process.env.CFG) Object.assign(eng.CFG, JSON.parse(process.env.CFG));
-  const pool = eng.PRESET_CATALOG.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two");
-  const P = pool.length;
+  // RATINGS_POOL=mix plays every senior league and the national sides, each fixture inside one of them, where the app's
+  // ratings are actually earned; the default is League One and Two together, as the calibration was always fitted.
+  const MIX = process.env.RATINGS_POOL === "mix";
+  const OUTS = new Set(["All-Nichirin Collegiate Championship", "Frederikka Cup", "Kullanmaan Cup", "Miscellaneous Aviumite"]);
+  const leagues = MIX ? [...new Set(eng.PRESET_CATALOG.map(t => t.league))].filter(l => l && !OUTS.has(l))
+                      .map(l => eng.PRESET_CATALOG.filter(t => t.league === l)).filter(g => g.length >= 2)
+                      : [eng.PRESET_CATALOG.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two")];
   globalThis.__sv = []; globalThis.__gc = []; globalThis.__rv = []; globalThis.__pp = [];
   const lines = [];
   for (let k = +start; k < +N; k += +step) {
-    const a = pool[k % P], b = pool[(k * 7 + 3) % P];
+    const pool = leagues[k % leagues.length], P = pool.length, kk = Math.floor(k / leagues.length);
+    const a = pool[kk % P], b = pool[(kk * 7 + 3) % P];
     if (a === b) continue;
     globalThis.__sv.length = 0; globalThis.__gc.length = 0; globalThis.__rv.length = 0; globalThis.__pp.length = 0;
     const { s, out } = eng.runPositionalMatch(a, b, +seedBase + k * 7919);
@@ -71,7 +89,8 @@ if (process.argv[2] === "--worker") {
       for (const p of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) {
         if (!p || p.rating == null) continue;
         const frac = Math.max(0, Math.min(1, ((p._offAt ?? total) - (p._onAt ?? 0)) / total));
-        players.push({ sd, pos: p.pos, ovr: p.ovr0 ?? p.ovr, r: p.rating, frac,
+        players.push({ sd, pos: p.pos, ovr: p.ovr0 ?? p.ovr, r: p.rating, frac, nm: p.name, club: (sd === "home" ? a : b).code,
+          sub: (p._onAt ?? 0) > 0 ? 1 : 0, errs: p.errs || 0, og: p.ownGoals || 0,
           g: p.goals || 0, a: p.assists || 0, passOk: p.passOk || 0, passFail: p.passFail || 0,
           prog: p.prog || 0, cc: p.cc || 0, def: p.defActs || 0, sv: p.saves || 0,
           duelWon: p.duelWon || 0, duelLost: p.duelLost || 0, drib: p.dribbles || 0,
@@ -218,17 +237,17 @@ function analyse(matches, CFG) {
 // The finish, applied to raw ratings exactly as meFinalise does it, so it can be refitted offline.
 // A keeper's ledger can be re-priced on a new expectation table first: every shot on target he faced
 // moves his raw rating by rateSave x (new expectation - old), saved or not.
-function refinish(matches, CFG, F, gk, S = CFG.rateBend) {
+function refinish(matches, CFG, F, gk, S = CFG.rateBend, par = CFG.ratePar) {
   const ex = (T, pen, xg, pE) => { if (pen) return pE; for (const [hi, e] of T) if (xg < hi) return e; return T[T.length - 1][1]; };
   const rows = [];
   for (const m of matches) for (const p of m.players) {
     if (p.r0 == null || p.frac * 90 < 10) continue;
     let r0 = p.r0;
     if (gk && p.pos === "GK") for (const [xg, , pen] of m.team[p.sd].sotLog) r0 += CFG.rateSave * (ex(gk.T, pen, xg, gk.pen) - ex(CFG.gkExp, pen, xg, CFG.gkExpPen));
-    const f = F[p.pos], z = (r0 - 6.5) * p.proj * p.shrink - f.mid * p.shrink;
-    const top = 6.5 + z * (z >= 0 ? f.up : f.dn) + (PAR - 6.5) * p.shrink;
+    const f = F[p.pos], z = p.rc ? r0 - 6.5 - f.mid : (r0 - 6.5 - f.mid * p.frac) * p.proj * p.shrink;
+    const top = 6.5 + z * (z >= 0 ? f.up : f.dn) + (par - 6.5) * p.shrink;
     const r = top > CFG.rateKnee ? CFG.rateKnee + f.tail * S * Math.log(1 + (top - CFG.rateKnee) / S) : top;
-    rows.push({ pos: p.pos, full: p.frac >= 0.9, r: Math.max(3, Math.min(10, +r.toFixed(2))) });
+    rows.push({ pos: p.pos, full: p.frac >= 0.9, r: Math.max(3, Math.min(10, +r.toFixed(2))), p, m });
   }
   return rows;
 }
@@ -241,7 +260,7 @@ function fitFinish(matches, CFG, gk) {
   const F = JSON.parse(JSON.stringify(CFG.rateFin));
   let S = CFG.rateBend;
   const bis = (set, f, lo, hi) => { for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; set(m); if (f() < 0) lo = m; else hi = m; } set((lo + hi) / 2); };
-  const get = (p) => refinish(matches, CFG, F, gk, S).filter(r => r.full && r.pos === p).map(r => r.r);
+  const get = (p) => refinish(matches, CFG, F, gk, S, PAR).filter(r => r.full && r.pos === p).map(r => r.r);
   for (let it = 0; it < 3; it++) {
     for (const p of POSN) for (let k = 0; k < 2; k++) {
       bis(v => F[p].mid = v, () => PAR - mean(get(p)), -2, 3);
@@ -253,6 +272,58 @@ function fitFinish(matches, CFG, gk) {
   return { F, S };
 }
 const share = (xs, f) => xs.filter(f).length / (xs.length || 1);
+// The match ratings against SofaScore's, dimension by dimension: the shape of a full match, the cameo, the result, the
+// goal and the assist, the keeper's afternoon, the man of the match, and the season average of a regular.
+function sofaTable(rows) {
+  const L = ["\nAGAINST SOFASCORE (2025/26)                       n     engine   SofaScore"];
+  const rr = (g) => g.map(r => r.r), q = (v, f) => { const a = [...v].sort((x, y) => x - y); return a.length ? a[Math.floor(f * (a.length - 1))] : NaN; };
+  const put = (name, g, tgt, n) => L.push(`  ${name.padEnd(42)} ${String(n ?? g.length).padStart(6)}   ${Number.isFinite(+g) ? (+g).toFixed(2) : g.length ? mean(rr(g)).toFixed(2) : "  - "}     ${tgt.toFixed(2)}`);
+  const full = rows.filter(r => r.full), out = rows.filter(r => r.pos !== "GK" && r.p.frac >= 0.5);
+  const fr = rr(full);
+  for (const [k, t] of SOFA.full) {
+    const v = k === "mean" ? mean(fr) : k === "sd" ? sd(fr) : share(fr, k.startsWith(">=") ? (x => x >= +k.slice(2)) : (x => x <= +k.slice(2)));
+    L.push(`  ${("full match " + k).padEnd(42)} ${String(fr.length).padStart(6)}   ${k === "mean" || k === "sd" ? v.toFixed(2) : (v * 100).toFixed(1) + "%"}     ${k === "mean" || k === "sd" ? t.toFixed(2) : (t * 100).toFixed(1) + "%"}`);
+  }
+  const part = rows.filter(r => !r.full), cameo = rows.filter(r => r.p.sub && r.p.frac * 90 < 30);
+  put("10-80 minutes, mean", part, SOFA.part); put("10-80 minutes, sd", sd(rr(part)), SOFA.partSd, part.length);
+  put("a substitute under 30 minutes, mean", cameo, SOFA.cameo); put("a substitute under 30 minutes, sd", sd(rr(cameo)), SOFA.cameoSd, cameo.length);
+  const res = (r) => { const t = r.m.team[r.p.sd]; return t.gf - t.ga; }, ga = (r) => r.m.team[r.p.sd].ga;
+  put("full match, won", full.filter(r => res(r) > 0), SOFA.win); put("full match, drawn", full.filter(r => res(r) === 0), SOFA.draw);
+  put("full match, lost", full.filter(r => res(r) < 0), SOFA.loss); put("full match, won by 3+", full.filter(r => res(r) >= 3), SOFA.won3);
+  put("full match, lost by 3+", full.filter(r => res(r) <= -3), SOFA.lost3);
+  put("outfield 45+ min, one goal", out.filter(r => r.p.g === 1), SOFA.g1); put("outfield 45+ min, two goals", out.filter(r => r.p.g === 2), SOFA.g2);
+  put("outfield 45+ min, three or more", out.filter(r => r.p.g >= 3), SOFA.g3); put("outfield 45+ min, an assist and no goal", out.filter(r => !r.p.g && r.p.a === 1), SOFA.a1);
+  put("outfield 45+ min, a goal and an assist", out.filter(r => r.p.g >= 1 && r.p.a >= 1), SOFA.ga);
+  put("outfield full match, no goal or assist", full.filter(r => r.pos !== "GK" && !r.p.g && !r.p.a), SOFA.none);
+  const gk = full.filter(r => r.pos === "GK");
+  put("keeper, clean sheet", gk.filter(r => ga(r) === 0), SOFA.gkCS); put("keeper, conceded one", gk.filter(r => ga(r) === 1), SOFA.gkC1);
+  put("keeper, conceded two", gk.filter(r => ga(r) === 2), SOFA.gkC2); put("keeper, conceded three or more", gk.filter(r => ga(r) >= 3), SOFA.gkC3);
+  put("keeper, six saves or more", gk.filter(r => r.p.sv >= 6), SOFA.gkS6);
+  put("defender, lost by 3+", full.filter(r => r.pos === "DEF" && res(r) <= -3), SOFA.defL3);
+  put("defender, clean-sheet win", full.filter(r => r.pos === "DEF" && ga(r) === 0 && res(r) > 0), SOFA.defCSW);
+  put("an error that led to a goal", rows.filter(r => r.p.errs >= 1), SOFA.err);
+  const byM = new Map(); for (const r of rows) { if (!byM.has(r.m)) byM.set(r.m, []); byM.get(r.m).push(r); }
+  const tops = [], secs = [], lows = []; let onW = 0, dec = 0;
+  for (const [m, g] of byM) { const v = rr(g).sort((x, y) => y - x); tops.push(v[0]); secs.push(v[1]); lows.push(v[v.length - 1]);
+    const best = g.reduce((a, b) => b.r > a.r ? b : a); const d = res(best); if (d !== 0) { dec++; if (d > 0) onW++; } }
+  put("man of the match, median", q(tops, .5), SOFA.motm, tops.length); put("man of the match, 10th percentile", q(tops, .1), SOFA.motm10, tops.length);
+  put("man of the match, 90th percentile", q(tops, .9), SOFA.motm90, tops.length);
+  L.push(`  ${"matches with a 9.0 or better".padEnd(42)} ${String(tops.length).padStart(6)}   ${(share(tops, x => x >= 9) * 100).toFixed(1)}%     ${(SOFA.motm9 * 100).toFixed(1)}%`);
+  put("second best, median", q(secs, .5), SOFA.second, secs.length); put("lowest, median", q(lows, .5), SOFA.lowest, lows.length);
+  L.push(`  ${"man of the match on the winners (decided)".padEnd(42)} ${String(dec).padStart(6)}   ${(onW / (dec || 1) * 100).toFixed(0)}%`);
+  // A season: each man's afternoons for his club across the sample, the regulars being those who played half his
+  // club's minutes or more.
+  const clubN = new Map(), man = new Map();
+  for (const [m] of byM) for (const sd_ of ["home", "away"]) { const c = m.players.find(p => p.sd === sd_)?.club; if (c) clubN.set(c, (clubN.get(c) || 0) + 1); }
+  for (const r of rows) { const key = r.p.club + "|" + r.p.nm; const e = man.get(key) || { c: r.p.club, n: 0, f: 0, s: 0 }; e.n++; e.f += r.p.frac; e.s += r.r; man.set(key, e); }
+  const reg = [...man.values()].filter(e => e.f >= 0.5 * (clubN.get(e.c) || 1) && (clubN.get(e.c) || 0) >= 8).map(e => e.s / e.n);
+  if (reg.length) {
+    put("season average of a regular, mean", mean(reg), SOFA.season, reg.length); put("season average of a regular, sd", sd(reg), SOFA.seasonSd, reg.length);
+    put("season average, 10th percentile", q(reg, .1), SOFA.season10, reg.length); put("season average, 90th percentile", q(reg, .9), SOFA.season90, reg.length);
+    put("season average, the top 5%", q(reg, .952), SOFA.seasonTop5, reg.length);
+  }
+  return L.join("\n");
+}
 function shapeTable(rows) {
   const L = ["POS      n   mean   sd   >=8.0  >=8.5  >=9.0  <=6.0  <=5.5   (full matches; partial 10+ min below)"];
   const line = (k, g) => `${k.padEnd(4)} ${String(g.length).padStart(6)}  ${mean(g).toFixed(2)}  ${sd(g).toFixed(2)}  ${(share(g, r => r >= 8) * 100).toFixed(1).padStart(5)}  ${(share(g, r => r >= 8.5) * 100).toFixed(1).padStart(5)}  ${(share(g, r => r >= 9) * 100).toFixed(1).padStart(5)}  ${(share(g, r => r <= 6) * 100).toFixed(1).padStart(5)}  ${(share(g, r => r <= 5.5) * 100).toFixed(1).padStart(5)}`;
@@ -270,7 +341,10 @@ function shapeTable(rows) {
 // ---------------------------------------------------------------- parent
 // On the cloud lab (LAB_TEST=ratings.mjs) the mode comes in as RATINGS_MODE and N as RATINGS_N, and only the first runner
 // plays it: this harness does not split itself, so the other nineteen leave at once.
-if (/^[1-9]\d*\/\d+$/.test(process.env.SHARD || "")) process.exit(0);
+// ...unless RATINGS_SPLIT is set: then every runner plays its share of the fixtures (SHARD=i/n) and prints them as a DUMP,
+// one match a line, for LOAD= to read back merged on the Mac.
+const SPLIT = process.env.RATINGS_SPLIT ? (process.env.SHARD || "").match(/^(\d+)\/(\d+)$/) : null;
+if (!SPLIT && /^[1-9]\d*\/\d+$/.test(process.env.SHARD || "")) process.exit(0);
 const mode = ["check", "derive"].includes(process.argv[2]) ? process.argv[2]
            : ["check", "derive"].includes(process.env.RATINGS_MODE) ? process.env.RATINGS_MODE : "run";
 const argN = mode === "run" ? process.argv[2] : process.argv[3], argW = mode === "run" ? process.argv[3] : process.argv[4];
@@ -292,7 +366,7 @@ subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\?
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
 // The rating before full time shapes it, so the finalisation can be re-fitted without replaying.
-sub("const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink", "p._r0 = p._rr ?? p.rating; p._proj = proj; p._shrink = shrink; const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink");
+sub("const z = p.rc ? rawR - 6.5 - f.mid", "p._r0 = rawR; p._proj = proj; p._shrink = shrink; const z = p.rc ? rawR - 6.5 - f.mid");
 // Indentation-free: the contest moved into its own function and the bundle re-indents it.
 sub("resolvePending(bs);", "mp._pickI = bi; resolvePending(bs); mp._pickI = -1;");
 const engPath = path.join(HERE, "engine-ratings.mjs");
@@ -304,12 +378,14 @@ const t0 = Date.now();
 // LOAD=path reads a DUMP back instead of playing, to refit on matches already played.
 const outs = process.env.LOAD ? [fs.readFileSync(process.env.LOAD, "utf8")] : await Promise.all(Array.from({ length: W }, (_, w) => new Promise((res, rej) => {
   const of = path.join(os.tmpdir(), `avium-ratings-${process.pid}-w${w}.jsonl`);
-  const ch = fork(fileURLToPath(import.meta.url), ["--worker", engPath, String(w), String(W), String(N), String(SEED)],
+  const ch = fork(fileURLToPath(import.meta.url), ["--worker", engPath, String(SPLIT ? +SPLIT[1] + +SPLIT[2] * w : w),
+                                                     String(SPLIT ? +SPLIT[2] * W : W), String(N), String(SEED)],
     { stdio: ["ignore", "inherit", "inherit", "ipc"], env: { ...env, OUT_FILE: of } });
   ch.on("exit", c => { if (c !== 0) return rej(new Error("worker " + w + " exit " + c));
     const txt = fs.readFileSync(of, "utf8"); fs.unlinkSync(of); res(txt); });
 })));
 const matches = outs.flatMap(b => b.split("\n").filter(Boolean).map(l => JSON.parse(l))).sort((a, b) => a.k - b.k);
+if (SPLIT) { process.stdout.write(matches.map(m => JSON.stringify({ k: m.k, team: m.team, players: m.players })).join("\n") + "\n"); process.exit(0); }
 // DUMP=path keeps every match's teams and players for a distribution read outside this script.
 if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, matches.map(m => JSON.stringify({ k: m.k, team: m.team, players: m.players })).join("\n") + "\n");
 console.log(`${matches.length} matches in ${((Date.now() - t0) / 1000).toFixed(0)}s on ${W} workers${env.CFG ? "   CFG " + env.CFG : ""}\n`);
@@ -318,6 +394,7 @@ console.log(text);
 console.log("\nTHE FINISH AS SHIPPED, per position against SofaScore's shape (8.0+ " + (SHAPE.hi8 * 100).toFixed(1) + "%, 9.0+ " + (SHAPE.hi9 * 100).toFixed(1) + "%, 6.0- " + (SHAPE.lo6 * 100).toFixed(1) + "%, a 10.0 in " + Math.round(1 / SHAPE.tens) + ")");
 const shipped = refinish(matches, CFG, CFG.rateFin, null);
 console.log(shapeTable(shipped));
+console.log(sofaTable(shipped));
 
 if (mode === "derive") {
   // Bands under 100 shots, and penalties under 50, keep the shipped figure.
@@ -328,7 +405,9 @@ if (mode === "derive") {
   console.log("  rateBend: " + S.toFixed(2) + ",");
   console.log("  rateFin: {\n" + POSN.map(p => `    ${(p + ":").padEnd(4)} { mid: ${F[p].mid.toFixed(3)}, up: ${F[p].up.toFixed(3)}, dn: ${F[p].dn.toFixed(3)}, tail: ${F[p].tail.toFixed(3)} },`).join("\n") + "\n  },");
   console.log("\nTHE FINISH TO SHIP, on these matches:");
-  console.log(shapeTable(refinish(matches, CFG, F, gk, S)));
+  const toShip = refinish(matches, CFG, F, gk, S, PAR);
+  console.log(shapeTable(toShip));
+  console.log(sofaTable(toShip));
   if (R.passFit) console.log("  passCal0: " + R.passFit[0].toFixed(2) + ", passCalB: " + R.passFit[1].toFixed(2) + ", passCalR: " + R.passFit[2].toFixed(2) + ", passCalL: " + R.passFit[3].toFixed(2) + ",   (iterate: the chosen passes move with the belief)");
 }
 if (mode === "check") {
