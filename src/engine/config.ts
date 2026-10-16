@@ -1431,7 +1431,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // A pass to FEET still leads a moving man: above feetMoveV he is led by his own pace across the
   // flight, at feetLeadFrac of the solve and never more than feetLeadMax metres -- enough that he
   // runs onto it, short of the through ball that mode 1 exists to be.
-  feetMoveV: 1.2, feetLeadFrac: 0.55, feetLeadMax: 4.5,
+  // ...and ACROSS the line of the pass he is led by all of it, up to feetLeadAcross (pass.ts meLeadFeet): a ball that
+  // reaches his line after he has crossed it is behind him. A lofted ball to him is led for its own flight (meMeetLoft).
+  feetMoveV: 1.2, feetLeadFrac: 0.55, feetLeadMax: 4.5, feetLeadAcross: 9,
   // ...and space is only space if there is pitch around it. Within edgeMin of a touchline the room
   // bonus is worth edgeLo of itself, whole again edgeFull metres infield.
   edgeMin: 3.5, edgeFull: 13, edgeLo: 0.25,
@@ -1606,6 +1608,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // MEETING THE BALL. The man it is played to stopped dead a stride short and let it come; he now
   // walks into it at recvMeetV, quicker by recvMeetPress with a man on him.
   recvMeetV: 1.5, recvMeetPress: 1.0,
+  // A ball to his feet he cannot make in time is still his to stretch for (pass.ts meMeetAir): the point of its path
+  // inside recvStretchT s he comes nearest to, if that is within recvStretch m beyond his reach.
+  recvStretch: 2.5, recvStretchT: 1.5,
   // ...and plans his route to it with rcvLag of the reaction time a defender reading the pass is given.
   rcvLag: 0.3,
   // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
