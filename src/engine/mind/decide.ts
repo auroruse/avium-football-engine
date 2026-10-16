@@ -21,7 +21,7 @@ import { meAtkW, meAttrs, meBadgeFx, meGkSkill, meMind, mePassBadge, meTech, meS
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine,
          meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "../geometry";
 import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "../ball";
-import { meMeetGround, meMeetLoft, mePassExecD } from "../pass";
+import { meLeadFeet, meMeetGround, meMeetLoft, mePassExecD } from "../pass";
 import { meTouchNear } from "../touch";
 import { meOppDist } from "../brain";
 import { meCoverGoalSide, meKeeperFill, meShotP, meShotSit, meWindUp } from "../decide";
@@ -333,22 +333,26 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const qvx = (q.vx || 0) / ME_DT, qvy = (q.vy || 0) / ME_DT, qsp = Math.hypot(qvx, qvy);
     const qTop = meSpeed(meAttrs(q), q.stamina);
     {
-      let fx = q.x, fy = q.y;
-      if (qsp > CFG.feetMoveV) {
-        const d00 = Math.hypot(q.x - p.x, q.y - p.y);
-        const l0 = Math.min(CFG.feetLeadMax, qsp * meGroundT(d00, d00) * CFG.feetLeadFrac);
-        fx = q.x + qvx / qsp * l0; fy = q.y + qvy / qsp * l0;
-      }
+      // Led across the line of the pass by all of his run, along it by part (pass.ts meLeadFeet).
+      let [fx, fy] = meLeadFeet(p.x, p.y, q.x, q.y, qvx, qvy);
+      if (!CFG.abLeadAcross) { fx = q.x; fy = q.y; if (qsp > CFG.feetMoveV) { const d00 = Math.hypot(q.x - p.x, q.y - p.y);
+        const l0 = Math.min(CFG.feetLeadMax, qsp * meGroundT(d00, d00) * CFG.feetLeadFrac); fx = q.x + qvx / qsp * l0; fy = q.y + qvy / qsp * l0; } }
       const fd = Math.hypot(fx - p.x, fy - p.y);
+      // A BALL IN THE AIR TO HIM IS LED FOR ITS OWN FLIGHT. The lead above is the ground ball's, and a lofted one takes twice
+      // as long to get there: traced in Askurias v Nichirin (16 October 2026), a long ball to a man running was led 4.5 m
+      // where his run over its flight was 9 to 13, a quarter of them came down behind him and a third were kept. Where he
+      // and it meet if he keeps running as he is; no meeting, the ground ball's point.
+      const inAir = (kd) => { const o = qsp > CFG.feetMoveV && CFG.abLoftLead ? meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, qvx / qsp, qvy / qsp, qsp, kd, 0) : null;
+        return o ? [o.ax, o.ay, o.d] : [fx, fy, fd]; };
       if (inHands) {
         if (fd <= CFG.gkThrowMax && meOppDist(s, side, fx, fy) < CFG.gkFreeR) { /* marked */ }
         else if (fd <= CFG.gkRollMax)
           consider(q, j, { ax: fx, ay: fy, k: "feet", high: false, tb: meGroundT(fd, fd), blk: meLaneBlock(s, side, p.x, p.y, fx, fy) });
         else {
-          const kd = fd <= CFG.gkThrowMax ? "throw" : "punt";
-          const sh = kd === "throw" ? Math.min(CFG.gkThrowShort, fd * 0.2) / Math.max(0.1, fd) : 0;
-          consider(q, j, { ax: fx - (fx - p.x) * sh, ay: fy - (fy - p.y) * sh, k: kd === "throw" ? "throw" : "long", high: true, kind: kd,
-                           zEnd: undefined, tb: meLoftT(fd, kd), blk: meLaneBlock(s, side, p.x, p.y, fx, fy, true) });
+          const kd = fd <= CFG.gkThrowMax ? "throw" : "punt", [lx, ly, ld] = inAir(kd);
+          const sh = kd === "throw" ? Math.min(CFG.gkThrowShort, ld * 0.2) / Math.max(0.1, ld) : 0;
+          consider(q, j, { ax: lx - (lx - p.x) * sh, ay: ly - (ly - p.y) * sh, k: kd === "throw" ? "throw" : "long", high: true, kind: kd,
+                           zEnd: undefined, tb: meLoftT(ld, kd), blk: meLaneBlock(s, side, p.x, p.y, lx, ly, true) });
         }
       } else {
         const blkG = meLaneBlock(s, side, p.x, p.y, fx, fy);
@@ -363,9 +367,9 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
         else {
           const lat = Math.abs(fy - p.y);
           const sw = lat > CFG.switchLat && fd > CFG.switchD && lat > Math.abs(fx - p.x);
-          const kd = sw ? "driven" : "loft";
-          consider(q, j, { ax: fx, ay: fy, k: sw ? "switch" : "long", high: true, kind: kd,
-                           zEnd: sw ? 0.25 : undefined, tb: meLoftT(fd, kd), blk });
+          const kd = sw ? "driven" : "loft", [lx, ly, ld] = inAir(kd);
+          consider(q, j, { ax: lx, ay: ly, k: sw ? "switch" : "long", high: true, kind: kd, zEnd: sw ? 0.25 : undefined, tb: meLoftT(ld, kd),
+                           blk: lx === fx && ly === fy ? blk : meLaneBlock(s, side, p.x, p.y, lx, ly, true) });
         }
       }
     }
