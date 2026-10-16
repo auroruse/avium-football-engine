@@ -503,6 +503,17 @@ foulAggr: 0.25,
   // he moves by (match.ts, the passers rework): fitted 1.49 / 0.80 / 0.66 against shipped 1.37 / 0.72 / 0.80, completion
   // 75.5% -> 76.7%. L keeps its figure again: the fit's 6.05 stood on 40 late passes of 39,121.
   passCal0: 1.49, passCalB: 0.80, passCalR: 0.66, passCalL: 13.78,
+  // THE RESTART'S OWN BELIEF (mind/decide.ts mindRestart, 16 October 2026): whether his side still has the ball five
+  // seconds after a throw, a goal kick or a deep free kick -- a restart is almost never cut out on its way (98% reached a
+  // team-mate), and what a press takes is the ball the man receives under it. The open-play components plus a ball in the
+  // air (passCalSH) and one term for any contest at all (passCalSC): any defender who can reach the ball's path cost a
+  // restart about ten points however slim his chance. Priced on the open-play belief instead, an unmarked centre-back
+  // eight metres away looked like the 84% that belief tops out at, no safer than a punt, and keepers went long. Fitted by
+  // test/specs/restarts.mjs (its `fit`) on the restarts the taker chose.
+  // First fit, 16 October 2026, on 47,195 restarts chosen under the open-play belief (cloud runs 38824452706 League One,
+  // 38824470272 nationals): kept five seconds 71.4%, every belief band within 0.01 but the few under 0.5. okLate never
+  // binds at a restart (the man is set), so its term is nought.
+  passCalS0: 1.57, passCalSB: 0.18, passCalSR: 0.20, passCalSL: 0, passCalSH: -0.64, passCalSC: -0.48,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -625,10 +636,26 @@ foulAggr: 0.25,
   // -like change over a better player out of position.
   subCap: 5, subFromTick: 1700, subStamina: 74, subKnockBias: 14, subSamePos: 8,
   // THE SECOND BRAIN'S BENCH (match.ts meCoachSubs; user, 11 October 2026), set by reasoning, not measured: before the
-  // hour (subLateMin) a change for tired legs only below subEarly, legs that are gone; from it the usual subStamina line,
-  // up to subReadPts / 2 higher for the best manager and as much lower for the worst. At most subWindows stoppages for
-  // changes in the ninety (the break not counted, one more in extra time), subWinGap minutes or more apart.
-  subEarly: 55, subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8,
+  // hour (subLateMin) a change for tired legs only once his legs are gone (pressLegs); the coach weighs every change
+  // (match.ts meCoachSubs), seeing tiredness up to subReadPts / 2 points sooner for the best manager and as much later for
+  // the worst. At most subWindows stoppages for changes in the ninety (the break not counted, one more in extra time),
+  // subWinGap minutes or more apart. subLegsW is what a point of stamina costs a man, in points of rating: measured, a
+  // side held at each stamina against the same side held fresh and some points down (test/specs/fatigue.mjs).
+  // subLegsW measured 16 October 2026 (test/specs/fatigue.mjs): an eleven held at 85 / 70 / 55 / 40 stamina against the
+  // same eleven held fresh and some points of rating down, by goal difference (xG misses the tired strike and the tired
+  // keeper, and reads about two thirds as much). League One (run 38823429549, eleven 79.6 on average, 1,200 paired fixtures
+  // an arm) lost 0.21 / 0.43 / 0.74 / 1.02 a match, which a fresh eleven loses 1.3 / 2.7 / 4.4 / 5.5 points down: 0.09 a
+  // point of stamina. The twelve strongest nations (run 38825530405, 84.5, 720 an arm) lost about as much to their legs but
+  // far less to a point of rating -- a rating point buys less at the top -- and read 0.16; League Two (run 38826379541,
+  // 73.2, 1,200 an arm) the other way, 0.05. So a point of stamina is worth more of a better man's rating: [rating, worth]
+  // pairs, read between them by the tired man's rating at the place, and held at the ends beyond them.
+  // subTolerance: how much of a change's worth (rating points, above) a manager gives up for fresh legs. Set by reasoning,
+  // not measured: real managers make about four of their five changes, and the usual gap from a starter to the man who
+  // comes on for him is three or four points (League One 4.0, League Two 3.0, nations 3.0, the medians).
+  subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8, subLegsW: [[73.2, 0.05], [79.6, 0.09], [84.5, 0.16]], subTolerance: 2,
+  // Where a substitute comes on (match.ts meSub): this far from halfway on his own bench's side, this far inside the
+  // benches' touchline. Two and a half metres is where the Live Match draws each dugout's first man.
+  subEnterX: 2.5, subEnterIn: 0.5,
   // Stamina per metre run. Swept in test/stamsweep.mjs against what it does to the bench, because
   // the two are one question -- a threshold cannot fire if nobody ever gets near it:
   //   0.0026 -> half time 93.8, full time median 87.8, 0.29 subs a match   (what shipped)
@@ -1667,7 +1694,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // mean and hands most of it back); paying the striker's currency properly is the symmetric fix.
   // ...then cut to 0.80 when the curve was set against a real distribution: at 1.15 a lone goal put
   // 1G0A at a mean of 7.89 where a real curve puts it near 7.5.
-  rateGoal: 0.80, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.46,
+  // REBUILT ON SOFASCORE'S OWN RATINGS (user, 16 October 2026: "rebuild the rating system to SofaScore's again, because it's
+  // slipping"). SofaScore's algorithm changed for 2025/26; its ratings were read for 142 matches (4,270 rated performances,
+  // the Premier League, the other four big leagues, the 2026 World Cup's first round) and each position's full matches
+  // regressed on goals, assists, goals against, the result, errors, own goals and saves. The engine's own ratings, over
+  // 5,932 matches of every league and the national sides (cloud run 38826234147), were moved onto those coefficients:
+  // a goal from deeper is worth more (rateGoalPos, raw per goal over rateGoal's own), an assist is worth about half what
+  // it was (0.46 -> 0.22), a goal against costs the men on the pitch by their line (rateConcede), the result pays by line
+  // (rateResult), errors and own goals cost about half (rateError 1.0 -> 0.58, rateOwnGoal 1.25 -> 0.85), and a save
+  // pays for itself (rateSaveVol). Fitted offline on the dumps, the finish then refitted (test/ratings.mjs derive).
+  rateGoal: 0.80, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.22,
+  rateGoalPos: { DEF: 0.25, MID: 0.08, FWD: 0.37 },
   // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
   // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
   // a busy keeper rated well for being busy, and the good keeper on the good side, facing three
@@ -1689,7 +1726,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.79, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.79, rateOwnGoal: 0.85, rateSaveVol: 0.13,
+  // A goal against, to each man of the side on the pitch, by his line (raw): SofaScore's defenders lose 0.28 a goal, its
+  // midfielders 0.08 and its forwards nothing. Was 0.06 to the defenders alone.
+  rateConcede: { DEF: 0.29, MID: 0.05, FWD: 0 },
+  // The result, to every man who played, by his share of the match (raw, [won, drawn]): SofaScore's keeper +0.16 / +0.09
+  // over a defeat, defender +0.11 / +0.08, midfielder +0.09 / +0.06, forward +0.27 / +0.12, net of everything else.
+  rateResult: { GK: [0.17, 0.12], DEF: [0.07, 0.07], MID: [0.04, 0.01], FWD: [0.21, 0.06] },
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1725,7 +1768,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 1.0, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
+  rateError: 0.58, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1820,7 +1863,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Measured, not chosen: `node test/ratings.mjs derive` fits the sixteen in rateFin from the raw
   // ratings and prints them. Re-derive whenever a rating delta, or the football, moves. rateBend is
   // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
-  ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
+  // ratePar 6.85 -> 6.95 (16 October 2026): SofaScore's full ninety now averages 6.95, with 7.7% at 8.0 or better, 1.41% at
+  // 9.0 or better and 6.8% at 6.0 or worse (it was 6.85 / 6% / 0.7% / 6% on the old algorithm).
+  ratePar: 6.95, rateKnee: 8.0, rateBend: 4.0,
   // Re-derived 12 Oct 2026 (800 matches) with gkExp above, and again that afternoon (1,200 matches) with it.
   // Re-derived 15 Oct 2026 (400 matches, cloud run 38748626857) with gkExp, for crosses met on the flight and the header
   // made a collision: forwards had drifted to a 7.06 mean with 12% of full matches at 8.0+ (6.99 before either change).
