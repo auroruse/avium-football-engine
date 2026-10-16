@@ -91,7 +91,12 @@ formation changes and the manager's shape change all place men by their own posi
 the man he replaces. A manager's change for tired legs is only ever a man who plays that place at no cost, the score
 choosing only between those (the most attacking chasing, the most defensive holding a lead), and with nobody who can
 the tired man stays on; only an injury is covered out of position (Moukden and Kirin, 14 October 2026, after "Why do
-coaches sub people in out of position so much?"). Sim All allows the same five changes as Live Match for a bench
+coaches sub people in out of position so much?"). The change is made only once the man coming on would play the place
+better than the tired man can on the legs he has left, a point of stamina costing 0.09 of a rating point (measured,
+`test/specs/fatigue.mjs`), the most worthwhile first and each window taking its share, so a side's best players stay on;
+a man who came on is not changed again, a level tie that must be settled keeps one change for extra time, and the man
+coming on enters at halfway with the restart waiting for him (Moukden and Kirin, 16 October 2026, after the Nations League
+final: "SURELY in a FINAL you'd keep them on for longer?"). Sim All allows the same five changes as Live Match for a bench
 eleven places wide, however many it names. Positions are the overseer's: an editor asks for a change by request (`kind: "pos"`). The first
 positions were set from where everyone played on 11 October 2026: club slot, then national slot (both where they
 differ), past sheets for a second, and the club substitutes nobody had placed drawn inside their bench group to cover
