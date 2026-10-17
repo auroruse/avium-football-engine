@@ -150,6 +150,9 @@ export const SP = {
   // THE KICKOFF SHAPE. Each man stands at koDepth0 of halfway's distance from his own goal plus the rest of it in
   // proportion to his formation depth, so the back line waits about fifteen metres behind halfway, not on its own box.
   koDepth0: 0.62,
+  // The side waiting for it stands koWait times as far off halfway, so its back line is about twenty-four metres back,
+  // deeper than the kickers', with the midfield between it and the forwards on the circle.
+  koWait: 1.5,
   // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
   // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
   // and are not in here. Enforced on the TARGETS, so they walk back rather than being teleported.

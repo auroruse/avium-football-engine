@@ -47,7 +47,7 @@ import participantsTSV from "./participants.tsv?raw";
 import { toBlob } from "html-to-image";
 import { shotBlob, shotWarm } from "./shot.js";
 import { DOCS, TRAIT_DOC, POS_NAME } from "./docs.js";
-import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch, meCelebT } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch, meCelebT, ME_SIM_MIN } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim/core";
@@ -6681,12 +6681,16 @@ export default function App() {
   };
   // The minute a tick fell in, stamped the way meStep stamps an event's: each period from its own start, added time apart.
   const meTickMin = (m, t) => {
+    const L = m.lagLog; if (L?.length) { let k = L.length - 1; while (k >= 0 && L[k][0] > t) k--; if (k >= 0) t -= L[k][1]; }
     if (m.et && m.etAt != null && t >= m.etAt)
       return { min: 90 + Math.min(30, Math.floor((t - m.etAt) / ME_MOM_TICKS)), add: meAddedMin(t, m.etAt, ME_ET_TICKS) };
     if (m.htAt != null && t >= m.htAt)
       return { min: Math.min(90, 45 + Math.floor((t - m.htAt) / ME_MOM_TICKS)), add: meAddedMin(t, m.htAt, ME_MATCH_TICKS >> 1) };
     return { min: Math.min(45, meMinute(t)), add: meAddedMin(t, 0, ME_MATCH_TICKS >> 1) };
   };
+  // THE CLOCK WHILE A GOAL IS CELEBRATED runs at real time, a second a second at 1x, instead of the five a second the
+  // match is played at (user, 17 October 2026). m.t is the clock in slices, so it gains a fifth of one per slice here.
+  const meClkStep = (s) => { const sp = s.mePos.sp; return sp?.celeb && sp.t < meCelebT(sp.celeb) ? ME_SIM_MIN / 90 : 1; };
   const meCelebrate = (m, side) => {
     const frames = m.tape.slice(meClipFrom(m.tape, side));
     if (frames.length < 2) return;
@@ -7367,7 +7371,11 @@ export default function App() {
                 : Math.min(45, meMinute(m.t));
       m.out.add = etOn ? meAddedMin(m.t, m.etAt, ME_ET_TICKS)
                 : meAddedMin(m.t, h2At ?? 0, ME_MATCH_TICKS >> 1);
-      meTick(m.s, m.rng, m.out); m.t++; drain(); meMomTick(m);
+      const clk = meClkStep(m.s);
+      meTick(m.s, m.rng, m.out); m.t += clk; drain(); meMomTick(m);
+      // The engine stamps its own slice count (a substitution's _onAt), which runs ahead of the clock by every slice
+      // celebrated: logged here so meTickMin can read one back as the clock had it.
+      if (clk < 1) (m.lagLog || (m.lagLog = [])).push([m.s.mePos.tick, m.s.mePos.tick - m.t]);
       if (!m.fast) { meSubScan(m); meSubStep(m); meBenchStep(m); }
       m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
       // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
@@ -21069,13 +21077,15 @@ export default function App() {
             // half read straight off it began at 45:00 plus however long the first half's stoppage
             // ran. The interval records the tick it was taken on (htAt / etHtAt), and each period
             // starts flat from its own number -- 45:00, 90:00, 105:00 -- the way the board does.
+            // ...a slice's worth of interpolation is a fifth as long while a goal is celebrated (meClkStep).
+            const alc = al * (st ? meClkStep(st) : 1);
             const secTot = m.et && m.etAt != null
               ? (m.etHtDone && m.etHtAt != null
-                  ? 6300 + Math.max(0, Math.floor((m.t + al - m.etHtAt) / ME_ET_TICKS * 1800))
-                  : Math.max(0, Math.floor(5400 + (m.t + al - m.etAt) / ME_ET_TICKS * 1800)))
+                  ? 6300 + Math.max(0, Math.floor((m.t + alc - m.etHtAt) / ME_ET_TICKS * 1800))
+                  : Math.max(0, Math.floor(5400 + (m.t + alc - m.etAt) / ME_ET_TICKS * 1800)))
               : (m.htDone && m.htAt != null
-                  ? 2700 + Math.max(0, Math.floor((m.t + al - m.htAt) / ME_MATCH_TICKS * 5400))
-                  : Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400)));
+                  ? 2700 + Math.max(0, Math.floor((m.t + alc - m.htAt) / ME_MATCH_TICKS * 5400))
+                  : Math.max(0, Math.floor((m.t + alc) / ME_MATCH_TICKS * 5400)));
             // STOPPAGE SHOWN SEPARATELY, the way a broadcast does it: the clock holds at the period's
             // number and the time played beyond it runs alongside as +N:NN. Which number it holds at
             // depends on the period, and the done-flags are what say which one is running.

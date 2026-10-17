@@ -608,8 +608,11 @@ export function meSPShape(s) {
     let base;
     // The side waiting for a kickoff keeps out of the circle by standing off it: its central men ten metres back, only
     // the wide men up to halfway, instead of every forward and midfielder ringing the circle's edge.
-    if (sp.kind === "kickoff") base = gx - dir * Math.min(koDepth(p._bd0),
-      PITCH_L / 2 - (Math.abs((p._bw0 ?? ME_HALF_W) - ME_HALF_W) < 12 ? 10.2 : 3));
+    // ...AND KEEPS ITS DEPTH. It stood at the kicking side's depths, so its back line was as high as theirs and every
+    // central man from midfield up was pushed onto the same line ten metres off: a side nine metres deep. Its distances
+    // off halfway are the kickers' stretched by koWait, the front men held off the circle as before.
+    if (sp.kind === "kickoff") base = gx - dir * (PITCH_L / 2 - Math.max(
+      Math.abs((p._bw0 ?? ME_HALF_W) - ME_HALF_W) < 12 ? 10.2 : 3, CFG.koWait * (PITCH_L / 2 - koDepth(p._bd0))));
     else if (sp.kind === "goalkick")
       base = gx - dir * Math.min(PITCH_L - 17.5, (p._bd0 ?? 40) * CFG.spGkDefScale);
     else {
