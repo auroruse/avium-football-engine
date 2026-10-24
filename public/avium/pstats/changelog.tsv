@@ -1121,14 +1121,14 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Yishai Galili	SHI	MID	69	70
 1934	International Football	Yonatan Cohen	SHI	GK	72	73
 1934	International Football	Kanata Murakumo	SHZ	MID	74	73
-1934	International Football	Artem Tkachenko	SID	FWD	74	76
-1934	International Football	Nazar Melnyk	SID	DEF	72	70
-1934	International Football	Ihor Kovalenko	SID	DEF	73	74
-1934	International Football	Klym Vernydub	SID	FWD	71	70
-1934	International Football	Levko Chornovil	SID	FWD	71	70
-1934	International Football	Panas Hrabovsky	SID	FWD	72	71
-1934	International Football	Pavlo Dovzhenko	SID	MID	72	73
-1934	International Football	Yurii Zahrebelny	SID	DEF	74	73
+1934	International Football	Artem Tkachenko	SYL	FWD	74	76
+1934	International Football	Nazar Melnyk	SYL	DEF	72	70
+1934	International Football	Ihor Kovalenko	SYL	DEF	73	74
+1934	International Football	Klym Vernydub	SYL	FWD	71	70
+1934	International Football	Levko Chornovil	SYL	FWD	71	70
+1934	International Football	Panas Hrabovsky	SYL	FWD	72	71
+1934	International Football	Pavlo Dovzhenko	SYL	MID	72	73
+1934	International Football	Yurii Zahrebelny	SYL	DEF	74	73
 1934	International Football	Nima Sarmast	SKH	DEF	54	56
 1934	International Football	Ryōhei Iwakuma	SKH	DEF	73	75
 1934	International Football	Kaveh Bahmani	SKH	FWD	68	67
@@ -1560,10 +1560,10 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Haruto Kido	SHZ	MID	76	77
 1934	International Football	Kenshirō Unagami	SHZ	DEF	80	82
 1934	International Football	Yūto Shiranui	SHZ	DEF	77	79
-1934	International Football	Danylo Perebyinis	SID	MID	76	77
-1934	International Football	Myroslav Zalizniak	SID	MID	77	79
-1934	International Football	Sviatoslav Boyko	SID	MID	79	81
-1934	International Football	Taras Bondarenko	SID	MID	75	72
+1934	International Football	Danylo Perebyinis	SYL	MID	76	77
+1934	International Football	Myroslav Zalizniak	SYL	MID	77	79
+1934	International Football	Sviatoslav Boyko	SYL	MID	79	81
+1934	International Football	Taras Bondarenko	SYL	MID	75	72
 1934	International Football	Kai Ouyang	SKH	GK	78	79
 1934	International Football	Tole-Buqa Inalchi	SKH	MID	75	77
 1934	International Football	Emrik Halvorsen	SKJ	FWD	78	77
@@ -1761,9 +1761,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Selçuk Demirci	SEL	MID	79	78
 1935	1935 WC Qualifiers	Dvir Alon	SHI	MID	74	75
 1935	1935 WC Qualifiers	Yerucham Lehrer	SHI	MID	75	76
-1935	1935 WC Qualifiers	Myroslav Zalizniak	SID	MID	79	80
-1935	1935 WC Qualifiers	Sviatoslav Boyko	SID	MID	81	82
-1935	1935 WC Qualifiers	Nazar Melnyk	SID	DEF	70	67
+1935	1935 WC Qualifiers	Myroslav Zalizniak	SYL	MID	79	80
+1935	1935 WC Qualifiers	Sviatoslav Boyko	SYL	MID	81	82
+1935	1935 WC Qualifiers	Nazar Melnyk	SYL	DEF	70	67
 1935	1935 WC Qualifiers	Simphiwe Chabalala	ASP	MID	82	84
 1935	1935 WC Qualifiers	Rolihlahla Mbeki	ASP	FWD	64	63
 1935	1935 WC Qualifiers	Biel Chuol	SSA	DEF	49	50
@@ -1999,9 +1999,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	World Cup	Yerrin Chindura	NKI	MID	86	87
 1935	World Cup	Dural Tanumura	NKI	GK	83	84
 1935	World Cup	Osamu Matsumoto	NKI	MID	77	76
-1935	World Cup	Sviatoslav Boyko	SID	MID	83	84
-1935	World Cup	Myroslav Zalizniak	SID	MID	80	81
-1935	World Cup	Ihor Kovalenko	SID	DEF	74	75
+1935	World Cup	Sviatoslav Boyko	SYL	MID	83	84
+1935	World Cup	Myroslav Zalizniak	SYL	MID	80	81
+1935	World Cup	Ihor Kovalenko	SYL	DEF	74	75
 1935	World Cup	Hjalmar Lindström	SKJ	FWD	86	87
 1935	World Cup	Victor Tvedt	SKJ	MID	86	87
 1935	World Cup	Olander Strandberg	SKJ	DEF	84	83
@@ -4307,13 +4307,13 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Janh Nguyen	ATK	GK	75	76
 1935	Nations League	Chenguang Pei	GUA	MID	76	77
 1935	Nations League	Hiraya Halili	SGD	MID	76	77
-1935	Nations League	Ihor Kovalenko	SID	DEF	76	77
+1935	Nations League	Ihor Kovalenko	SYL	DEF	76	77
 1935	Nations League	Alilang Calamba	SGD	DEF	75	76
 1935	Nations League	Osman Mamut	PER	DEF	76	77
 1935	Nations League	Wadwulf Ealhhere	EIV	MID	75	76
 1935	Nations League	Gilad Dahan	SHI	FWD	75	76
 1935	Nations League	Leonidas Stamatiou	AST	DEF	74	75
-1935	Nations League	Vasyl Nalyvaiko	SID	DEF	73	74
+1935	Nations League	Vasyl Nalyvaiko	SYL	DEF	73	74
 1935	Nations League	Viktor Zhdanovich	GIA	DEF	73	74
 1935	Nations League	Susumu Goswami	NHO	DEF	72	73
 1935	Nations League	Bo Yan	GUA	MID	71	72

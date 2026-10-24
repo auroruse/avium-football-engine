@@ -10,6 +10,8 @@ import { rollSquad } from "../src/data/roll.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "../src/data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "../src/data/badges.js";
 import { STYLE_LBL } from "../src/data/styles.js";
+// Read at module scope (AFA_YEAR_LIST), so a stripped import is a ReferenceError on load.
+import { AFA_RANKINGS, AFA_YEARS, AFA_KEEP } from "../src/data/afa.js";
 import { isNational, owns, planSave } from "../src/data/rules.js";
 import { cartItems, withoutItem } from "../src/data/cart.js";
 import { fetchAtlas } from "../src/data/atlas.js";
