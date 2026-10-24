@@ -16315,6 +16315,37 @@ export default function App() {
         <div className="ux-pyr-head">{head}</div>
         <div className="ux-pyr-rail" style={{ gridTemplateColumns: `repeat(${list.length}, minmax(0, 64px))` }}>{list}</div>
       </div>);
+    const rowHead = (r) => (<>
+      <LeagueCrest league={r.g.comp} size={22} />
+      {uxArcBy.has(r.g.comp)
+        ? <button type="button" className="ux-btnreset ux-pyr-name ux-a" onClick={() => openComp(r.g.comp)}>{r.g.name}</button>
+        : <span className="ux-pyr-name">{r.g.name}</span>}</>);
+    // A COLLEGE LEAGUE (DESIGN.md, The ANCC) is its conferences, two abreast, each in its last season's finishing order
+    // with the place under every crest, and the playoff's winner on gold (the user, 24 October 2026: "Split this into four
+    // conferences and have the results reflect properly"). A club the season file does not hold shows a dash, after the rest.
+    const confRail = (r) => {
+      const lg = (curRecs.leagues || []).find(l => l.college && (l.name === r.g.comp || (l.formerly || []).includes(r.g.comp)));
+      if (!lg?.conferences?.length) return null;
+      const L = lasts.get(r.g.comp), text = L ? lgMd[L.s.id.replace(/\.tsv$/i, ".md")] : null, ok = typeof text === "string";
+      const won = ok ? tournWinner(text) : null, wonKey = won ? archKey(won) : null;
+      // A conference lists its clubs' records; the clubs here are the app's sides, matched by name as the preset is.
+      const nameOf = new Map((curRecs.teams || RECORDS.teams).map(t => [t.id, String(t.name).trim().normalize("NFC")]));
+      const byName = new Map(r.g.clubs.map(t => [String(t.name).trim().normalize("NFC"), t]));
+      const confs = lg.conferences.map(c => ({ name: c.name, clubs: (c.clubs || []).map(id => byName.get(nameOf.get(id))).filter(Boolean)
+        .map(t => { const cl = ok ? confLine(text, archKey(t.name)) : null;
+          return { t, pos: cl?.pos ?? null, was: cl ? { comp: r.g.comp, pos: cl.pos, of: cl.of, season: L.s.season } : null }; })
+        .sort((a, b) => (a.pos ?? 999) - (b.pos ?? 999) || (Number(b.t.skill) || 0) - (Number(a.t.skill) || 0)) }));
+      return (
+        <div key={r.g.comp} className="ux-pyr-row">
+          <div className="ux-pyr-head">{rowHead(r)}</div>
+          <div className="ux-pyr-confs">{confs.map(c => (
+            <div key={c.name} className="ux-pyr-conf">
+              <div className="ux-pyr-cname">{c.name}</div>
+              <div className="ux-pyr-rail" style={{ gridTemplateColumns: `repeat(${c.clubs.length}, minmax(0, 64px))` }}>
+                {c.clubs.map(x => club(x.t, x, !!wonKey && archKey(x.t.name) === wonKey))}</div>
+            </div>))}</div>
+        </div>);
+    };
     return (
       <div className="ux-body" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
         <div className="ux-col">
@@ -16350,11 +16381,7 @@ export default function App() {
                 </div>
               </div>
               <div className="ux-pyr" onMouseLeave={() => setPyrHover(null)}>
-                {rows.map(r => rail(r.g.comp, (<>
-                  <LeagueCrest league={r.g.comp} size={22} />
-                  {uxArcBy.has(r.g.comp)
-                    ? <button type="button" className="ux-btnreset ux-pyr-name ux-a" onClick={() => openComp(r.g.comp)}>{r.g.name}</button>
-                    : <span className="ux-pyr-name">{r.g.name}</span>}</>), r.clubs.map(x => club(x.t, x, r.tier === 1 && x.pos === 1))))}
+                {rows.map(r => (COLLEGE_COMPS.has(r.g.comp) && confRail(r)) || rail(r.g.comp, rowHead(r), r.clubs.map(x => club(x.t, x, r.tier === 1 && x.pos === 1))))}
                 {pools.map(p => rail("p:" + p.name, <span className="ux-pyr-name">{p.name}</span>, p.clubs.map(t => club(t, undefined, false))))}
                 {!n.clubs.length && <div className="ux-empty" style={{ textAlign: "center", marginTop: 18 }}>No Clubs</div>}
                 {pyrHover && <UxPop at={pyrHover}>{regTeamCard(pyrHover.t, pyrHover.px)}</UxPop>}

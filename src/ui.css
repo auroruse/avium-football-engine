@@ -370,6 +370,10 @@
 .ux-pyr-head { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
 .ux-pyr-name { font-size: 14px; font-weight: 600; color: var(--ux-text); }
 .ux-pyr-rail { display: grid; justify-content: center; gap: 8px; max-width: 100%; margin: 0 auto; }
+/* A college league's conferences, two abreast, each named over its rail; one a line on a narrow window. */
+.ux-pyr-confs { display: grid; grid-template-columns: repeat(2, max-content); justify-content: center; gap: 14px 28px; }
+.ux-pyr-cname { margin-bottom: 8px; font-size: 11px; font-weight: 500; color: var(--ux-text-3); text-align: center; }
+@media (max-width: 1279px) { .ux-pyr-confs { grid-template-columns: max-content; } }
 .ux-pyr-club { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
 .ux-pyr-crest { position: relative; display: grid; place-items: center; box-sizing: border-box; width: 100%; max-width: 58px; aspect-ratio: 1;
   padding: 7px; border-radius: 8px; background: var(--ux-panel-3); border: 1px solid var(--ux-line); transition: border-color var(--ux-fast), background var(--ux-fast); }
