@@ -2652,10 +2652,11 @@ const tApps = (p) => (p.matches || 0) + (p.subApp || 0);
 const tTime = (p) => p.mins || tApps(p);
 const tGate = (all) => Math.max(1, ...all.map(tTime)) / 6;
 const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
-// Sorts a season within its year: the World Cup first, then qualifying for the NEXT one, then the
-// leagues, then the Club World Cup. Qualifiers file under the year of the tournament they feed, so
-// 1935's sit above a 1935 league season and below the 1935 finals themselves.
-const PSTATS_KIND = { wc: 0, western: 0.5, eastern: 0.6, cwc: 2, cws: 2.5 };
+// Sorts a season within its year in the order it was played: the World Cup, the leagues and cups, the Club World Cup
+// and Shield, then the Nations League (Moukden and Kirin, 24 October 2026: "World Cup -> League = Cup -> CWC = CWS ->
+// Nations League -> WC Qualifiers"). Qualifiers file under the year of the tournament they feed and uxWhen plays them the
+// year before, after everything else that year.
+const PSTATS_KIND = { wc: 0, western: 0.5, eastern: 0.6, cwc: 2, cws: 2.5, natl: 3 };
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 // Slytlia has a badge and a record but no preset row yet, so it is a former side by the same
 // mechanism until it gets one. THO and LEC left when the records they appeared in were renamed. An Independent XI
