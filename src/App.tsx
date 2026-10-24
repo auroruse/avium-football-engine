@@ -21,7 +21,7 @@ import { autoOrder, currentDraft, draftPool, makesWay, pickDue } from "./data/co
 import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
 import { STYLE_LBL } from "./data/styles.js";
-import { AFA_RANKINGS } from "./data/afa.js";
+import { AFA_RANKINGS, AFA_YEARS } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
 import { ageOf, birthDateOk, icNow } from "./data/icclock.js";
 import { rollSquad } from "./data/roll.js";
@@ -3099,6 +3099,9 @@ function LeagueCrest({ league, alts, size = 20, style }) {
 const LEAGUE_NAT = Object.fromEntries(PRESET_CLUBS.map(t => [t.league === MISC_LEAGUE ? t.comp : t.league, t.nat]).filter(([k]) => k));
 // THE REGISTRY'S SECTIONS AND PAGES (rebuilt around nations, 8 Oct 2026; the pages are in App's Registry block).
 const REG_HOME = { sec: "nations", nation: null, team: null, tab: null };
+// The AFA ranking's years, oldest first, and the one an address names (else the newest).
+const AFA_YEAR_LIST = Object.keys(AFA_RANKINGS).map(Number).sort((a, b) => a - b);
+const uxAfaYearOf = (y) => (AFA_YEAR_LIST.includes(y) ? y : AFA_YEAR_LIST[AFA_YEAR_LIST.length - 1]);
 const REG_SECS = [["nations", "Nations"], ["competitions", "Competitions"], ["players", "Players"], ["managers", "Managers"]];
 const REG_TEAM_TABS = ["overview", "squad", "tactics", "history", "honours"];
 // ── The new frame (DESIGN.md) ──
@@ -11120,7 +11123,8 @@ export default function App() {
     // then the stage on show and the round in Results, each when it is not the first).
     if (tab === "leagues" && reg.sec === "competitions") {
       segs.push("competitions");
-      if (reg.page === "h2h") { segs.push("head-to-head"); if (reg.h2h?.a && reg.h2h?.b) segs.push(reg.h2h.kind === "nt" ? "national-teams" : "clubs", reg.h2h.a.toLowerCase(), reg.h2h.b.toLowerCase());
+      if (reg.page === "afa") { segs.push("afa-rankings"); if (reg.afaYear) segs.push(String(reg.afaYear)); }
+      else if (reg.page === "h2h") { segs.push("head-to-head"); if (reg.h2h?.a && reg.h2h?.b) segs.push(reg.h2h.kind === "nt" ? "national-teams" : "clubs", reg.h2h.a.toLowerCase(), reg.h2h.b.toLowerCase());
                                  else if (reg.h2h?.kind === "nt") segs.push("national-teams"); }
       else if (reg.page === "years" || reg.year) { segs.push("years"); if (reg.year) segs.push(String(reg.year)); }
       else if (reg.comp) {
@@ -11204,6 +11208,7 @@ export default function App() {
       if (a === "head-to-head") { const k = (cs[1] || "").toLowerCase() === "national-teams" ? "nt" : "clubs";
         go({ page: "h2h", h2h: cs[2] && cs[3] ? { kind: k, a: cs[2].toUpperCase(), b: cs[3].toUpperCase() } : { kind: k } }); return; }
       if (a === "years") { const y = parseInt(cs[1], 10); go({ page: "years", year: Number.isFinite(y) ? y : null }); return; }
+      if (a === "afa-rankings") { const y = parseInt(cs[1], 10); go({ page: "afa", afaYear: Number.isFinite(y) ? y : null }); return; }
       const comp0 = UX_COMP_NAMES.find(c => compSlug(c) === urlSlug(cs[0])) || null;
       if (!comp0) { go({}); return; }
       const f = (cs[1] || "").toLowerCase(), comp = f === "cup" && LEAGUE_CUPS[comp0] ? LEAGUE_CUPS[comp0] : comp0;
@@ -12038,7 +12043,7 @@ export default function App() {
     : reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team) ? "home"
     : reg.sec === "nations" && !reg.team && reg.nation && regNationBy.has(reg.nation) ? "nation"
     : reg.sec === "nations" && regTeamObj ? (reg.tab === "history" || reg.tab === "honours" ? "clubhist" : "club")
-    : reg.sec === "competitions" ? (reg.page === "h2h" ? "h2h" : reg.page === "years" || reg.year ? "cyear" : !reg.comp ? "comps" : reg.tab === "season" ? "cseason" : reg.tab === "records" ? "crecords" : reg.tab === "draft" ? "cdraft" : "comp")
+    : reg.sec === "competitions" ? (reg.page === "h2h" ? "h2h" : reg.page === "afa" ? "cafa" : reg.page === "years" || reg.year ? "cyear" : !reg.comp ? "comps" : reg.tab === "season" ? "cseason" : reg.tab === "records" ? "crecords" : reg.tab === "draft" ? "cdraft" : "comp")
     : null;
   // Play Match: its page while no match is on (a live or finished match draws over the whole window).
   const uxMScreen = tab === "live" && meView === "setup";
@@ -15495,14 +15500,16 @@ export default function App() {
           right = uxStepper("Season", opts, now, v => setReg(r => ({ ...r, season: v, view: null, round: null })));
         }
       } else {
-        const cur = reg.page === "h2h" ? "h2h" : reg.page === "years" || reg.year ? "years" : "overview";
+        const cur = reg.page === "h2h" ? "h2h" : reg.page === "afa" ? "afa" : reg.page === "years" || reg.year ? "years" : "overview";
         title = <h1>Competitions</h1>;
-        [["overview", "Overview"], ["years", "Years"], ["h2h", "Head To Head"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id,
-          () => (id === "years" ? uxGoYear(null) : regGo({ sec: "competitions", page: id === "h2h" ? "h2h" : null, h2h: id === "h2h" ? reg.h2h || null : null })))));
+        [["overview", "Overview"], ["years", "Years"], ["h2h", "Head To Head"], ["afa", "AFA Rankings"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id,
+          () => (id === "years" ? uxGoYear(null) : id === "afa" ? uxGoAfa(reg.afaYear || null)
+            : regGo({ sec: "competitions", page: id === "h2h" ? "h2h" : null, h2h: id === "h2h" ? reg.h2h || null : null })))));
         if (cur === "years" && uxArcYears.length) {
           const y = reg.year || uxArcYears[uxArcYears.length - 1];
           right = uxStepper("Year", uxArcYears.map(x => [String(x), String(x)]), String(y), v => uxGoYear(+v));
         }
+        if (cur === "afa") right = uxStepper("Year", AFA_YEAR_LIST.map(x => [String(x), String(x)]), String(uxAfaYearOf(reg.afaYear)), v => uxGoAfa(+v));
       }
     } else if (tab === "leagues" && uxPl) {
       // A player: his club (his country when he has none) as the step up, his name, his two pages, and his editor.
@@ -15931,7 +15938,7 @@ export default function App() {
     const finishes = isNT ? [] : record.rows.filter(r => r.s.comp === t.league && r.res?.league && r.res.pos && r.res.of).sort((a, b) => a.s.ord - b.s.ord);
     // A national side's place in the AFA ranking a year at a time (src/data/afa.js), and a club's league finishes.
     const afa = isNT ? Object.entries(AFA_RANKINGS).map(([y, list]) => { const i = list.findIndex(([c]) => c === t.code);
-      return i < 0 ? null : { key: y, pos: i + 1, of: list.length, label: y, tip: [y, `${ordinal(i + 1)} of ${list.length}`] }; }).filter(Boolean) : [];
+      return i < 0 ? null : { key: y, pos: i + 1, of: list.length, label: y, tip: [y, `${ordinal(i + 1)} of ${list.length}`, `${list[i][1]} Pts`] }; }).filter(Boolean) : [];
     const finItems = finishes.map(f => { const pts = parseInt(f.res.pts, 10);
       return { key: f.s.id, pos: f.res.pos, of: f.res.of, label: f.s.season, s: f.s,
                tip: [uxSeasonName(f.s), `${ordinal(f.res.pos)} of ${f.res.of}`, ...(Number.isFinite(pts) ? [`${pts} Pts`] : [])] }; });
@@ -16118,6 +16125,11 @@ export default function App() {
                   <td className="ux-n ux-strong" style={{ ...mono, color: "var(--ux-gold)" }}>{ss2.length}</td><td className="ux-n ux-dim" style={mono}>{ss2[0].season}</td></tr>))}
                 {!titles.length && <tr><td colSpan={3} className="ux-dim">{regLoading ? "Loading" : "None"}</td></tr>}</tbody>
             </table></div>), true)}
+          {/* A NATIONAL SIDE'S AFA RANKING, A BAR A YEAR, under its honours (Moukden and Kirin, 24 October 2026: "Add AFA ranking
+              history back to national teams, one per year, below honours", then "make it a graph instead of a list"): the
+              higher its place, the taller the bar, first in gold; each bar's card gives the year, the place and the points
+              (src/data/afa.js). */}
+          {isNT && afa.length > 0 && uxPanel("AFA Rankings", null, uxBars(afa), false, null, "ux-afa")}
         </div>
         <div className="ux-col">
           {uxPanel("Results", null, (
@@ -17600,6 +17612,7 @@ export default function App() {
             season: keep || (tb === "season" && pages.length ? urlSlug(pages[pages.length - 1].season) : null) });
   };
   const uxGoYear = (y) => { if (world !== "avium") setWorld("avium"); regGo({ sec: "competitions", page: "years", year: y ?? null }); };
+  const uxGoAfa = (y) => { if (world !== "avium") setWorld("avium"); regGo({ sec: "competitions", page: "afa", afaYear: y ?? null }); };
   // A stepper: the one before, a pick, the one after.
   const uxStepper = (label, opts, value, onChange) => {
     const i = opts.findIndex(([v]) => v === value);
@@ -17647,6 +17660,49 @@ export default function App() {
             </table>
           </div>
         </section>
+      </div>);
+  };
+
+  // ── AFA RANKINGS, A YEAR AT A TIME (Competitions) ──
+  // Moukden and Kirin, 24 October 2026: "put these points leaderboards somewhere, per year", then "This doesn't seem
+  // detailed enough ... a separate leaderboard page", "Competitions Tab". Every ranked side at the year's close: its place
+  // and the move since the year before, its points and how many its matches that year won or lost it, its international record
+  // that year and the titles it won (src/data/afa.js, written by test/afa.mjs). A side new to the table reads New; in the
+  // first year there is nothing to move from, so nobody does ("Move should just be – in 1932").
+  const renderUxAfa = (y) => {
+    const list = AFA_RANKINGS[y] || [], det = AFA_YEARS[y] || {};
+    const before = new Map((AFA_RANKINGS[y - 1] || []).map(([c, v], i) => [c, { v, pos: i + 1 }]));
+    const ntOf = (code) => teams.find(t => isIntlLeague(t.league) && worldOf(t) === "avium" && t.code === code) || null;
+    return (
+      <div className="ux-body" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
+        <div className="ux-col">
+          {uxPanel(`AFA Rankings ${y}`, null, (
+            <div className="ux-pbody"><table className="ux-tbl">
+              <colgroup><col style={{ width: 44 }} /><col style={{ width: 56 }} /><col style={{ width: 260 }} /><col style={{ width: 110 }} />
+                <col style={{ width: 64 }} /><col style={{ width: 64 }} />{[0, 1, 2, 3, 4, 5, 6].map(i => <col key={i} style={{ width: 44 }} />)}<col /></colgroup>
+              <thead><tr><th className="ux-n">Rank</th><th className="ux-n">Move</th><th>Side</th><th>Conference</th><th className="ux-n">Points</th><th className="ux-n" title="Points Won Or Lost In The Year's Matches">+/-</th>
+                {[["P", "Played"], ["W", "Won"], ["D", "Drawn"], ["L", "Lost"], ["GF", "Goals For"], ["GA", "Goals Against"], ["GD", "Goal Difference"]].map(([h, tt]) => <th key={h} className="ux-n" title={tt}>{h}</th>)}
+                <th>Titles</th></tr></thead>
+              <tbody>{list.map(([code, pts], i) => { const t = ntOf(code), was = before.get(code), mv = was ? was.pos - (i + 1) : null, d = pts - (was ? was.v : 1500);
+                const r = det[code] || [], gd = (r[4] ?? 0) - (r[5] ?? 0), cf = t ? String(t.conference || CONF_BY_CODE.get(code) || "").replace(/ Conference$/, "") : "";
+                return (
+                <tr key={code}>
+                  <td className={"ux-n" + (i === 0 ? " ux-gold ux-strong" : "")} style={mono}>{i + 1}</td>
+                  <td className="ux-n" style={mono}>{mv ? <span className={"ux-facts-mv ux-" + (mv > 0 ? "up" : "down")}><UxArrow up={mv > 0} />{Math.abs(mv)}</span>
+                    : <span className="ux-dim">{was || !AFA_RANKINGS[y - 1] ? "\u2013" : "New"}</span>}</td>
+                  <td><div className="ux-tc">{t && <TeamCrest team={t} size={16} />}{t
+                    ? <button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(t)}>{t.name}</button> : <span>{code}</span>}</div></td>
+                  <td className="ux-dim">{cf || "\u2013"}</td>
+                  <td className="ux-n ux-strong" style={mono}>{pts}</td>
+                  <td className="ux-n" style={{ ...mono, color: d > 0 ? "var(--ux-up)" : d < 0 ? "var(--ux-loss)" : undefined }}>{(d > 0 ? "+" : "") + d}</td>
+                  {[r[0], r[1], r[2], r[3], r[4], r[5]].map((v, j) => <td key={j} className="ux-n" style={mono}>{v ?? 0}</td>)}
+                  <td className="ux-n" style={mono}>{(gd > 0 ? "+" : "") + gd}</td>
+                  <td>{(r[6] || []).length ? <div style={{ display: "flex", alignItems: "center", gap: 14 }}>{r[6].map(c => (
+                    <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ux-gold)", whiteSpace: "nowrap" }}><LeagueCrest league={c} size={16} />{c}</span>))}</div>
+                    : <span className="ux-dim">&#8211;</span>}</td>
+                </tr>); })}</tbody>
+            </table></div>), true)}
+        </div>
       </div>);
   };
 
@@ -20052,6 +20108,7 @@ export default function App() {
           {uxScreen === "comps" && renderUxComps()}
           {uxScreen === "cyear" && renderUxYear(reg.year || uxArcYears[uxArcYears.length - 1])}
           {uxScreen === "h2h" && renderUxH2H()}
+          {uxScreen === "cafa" && renderUxAfa(uxAfaYearOf(reg.afaYear))}
           {uxScreen === "comp" && uxCompPage(renderUxComp)}
           {uxScreen === "cseason" && uxCompPage(renderUxSeason)}
           {uxScreen === "crecords" && uxCompPage(renderUxRecords)}

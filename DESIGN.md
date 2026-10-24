@@ -73,8 +73,7 @@ The app shows a man out of position at about the rating he plays the place at (`
 `test/posdrop.mjs` writes from what each skill is worth in each kind of slot, measured by `test/specs/positions.mjs` and
 `positions2.mjs` on goal difference; a slot's main skills count whole and any other skill's gap counts less the larger it
 is, which twelve moves played out by `positions-check.mjs` confirmed within their noise), ringed in
-the loss colour on every pitch, for the eleven only: the eleven's rating counts it, a side's own rating and the AFA
-Rankings do not. Out of position means the place costs him (`posDrop` above 0, the user, 11 October 2026): a free move,
+the loss colour on every pitch, for the eleven only: the eleven's rating counts it, a side's own rating does not. Out of position means the place costs him (`posDrop` above 0, the user, 11 October 2026): a free move,
 a left back on the right or a central midfielder holding, is not flagged. Flagged, he carries the alert: on a pitch a
 red warning triangle centred over his place's label and the cost (a drawn arrow down and the points) in a block of his
 rating's width over it; in a list the triangle and the cost after his place; each opens the out-of-position card
@@ -134,7 +133,17 @@ October's at Eivorie; every
 other change in the sheets' history was a cleanup. 9 October's moves are real too: three national sides took a coach
 whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping Tierra Arcadia and Axerfreditenshin). So are 12 October's: the Giathkik Premier League's founding clubs took Sonobe (Zoryansk Rangers) and Ōkōchi (Svyatogorsk Spearmen), both out of work since leaving their Nichirian clubs. test/tenures.mjs checks the file against the records.
 A bar in League Finishes opens that season, and hovering it (or reaching it by keyboard) shows a card over it: the
-season, the place and the points (an AFA Rankings bar: the year and the place).
+season, the place and the points (an AFA Rankings bar: the year, the place and the points). A national side's Overview
+has its AFA Rankings under Honours, a bar a year (Moukden and Kirin, 24 October 2026: "one per year, below honours", then
+"make it a graph instead of a list"). The ranking is results, not ratings ("Actually use points for 1934 and 1935
+rankings too"): an Elo table over every recorded World Cup, World Cup qualifying and Nations League match from 1932,
+every side starting on 1500 and carrying its points year to year, a World Cup match counting most. The confederation
+championships are left out ("Don't use championships at all") and nothing fades between years ("remove the lead fade
+thing"); `test/afa.mjs` writes `src/data/afa.js`, a year at its close. Each year's full table is Competitions' fourth tab, **AFA
+Rankings** (Moukden and Kirin, 24 October 2026: "a separate leaderboard page", "Competitions Tab"; tried first on Registry's
+Nations panel and moved off it as "not detailed enough"), the year on a stepper at the page bar's right: every ranked
+side's place and move, its points and what that year's matches won or lost it, its international record that year and
+the titles it won. A side new to the table reads New.
 
 A player has the same two pages (Moukden and Kirin, 9 October 2026). **Overview** opens on his banner, then three
 columns: Positions (a pitch with a dot on each spot he plays, the crest of the side he plays it for beside it) over

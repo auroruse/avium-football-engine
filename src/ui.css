@@ -314,6 +314,8 @@
 .ux-chart .ux-pick-bar:focus-visible { outline: none; fill: var(--ux-text-2); }
 .ux-chart .ux-b { fill: var(--ux-line-2); } .ux-chart .ux-b:hover { fill: var(--ux-text-3); }
 .ux-chart .ux-bg { fill: var(--ux-gold); } .ux-chart .ux-bg:hover { fill: color-mix(in srgb, var(--ux-gold) 70%, #fff); }
+/* A national side's AFA ranking under its honours: a fixed height, so the honours take what is left. */
+.ux-panel.ux-afa { flex: none; height: 200px; }
 .ux-chart-x { display: flex; justify-content: space-between; padding-top: 5px; color: var(--ux-text-3); font-size: 11px; }
 /* A bar's card: its season over its place (and a league's points), above the bar; at the chart's ends it lines up with the
    bar's outer edge, so it never leaves the chart. */
