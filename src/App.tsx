@@ -21,7 +21,7 @@ import { autoOrder, currentDraft, draftPool, makesWay, pickDue } from "./data/co
 import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
 import { STYLE_LBL } from "./data/styles.js";
-import { AFA_RANKINGS, AFA_YEARS } from "./data/afa.js";
+import { AFA_RANKINGS, AFA_YEARS, AFA_KEEP } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
 import { ageOf, birthDateOk, icNow } from "./data/icclock.js";
 import { rollSquad } from "./data/roll.js";
@@ -17666,7 +17666,8 @@ export default function App() {
   // ── AFA RANKINGS, A YEAR AT A TIME (Competitions) ──
   // Moukden and Kirin, 24 October 2026: "put these points leaderboards somewhere, per year", then "This doesn't seem
   // detailed enough ... a separate leaderboard page", "Competitions Tab". Every ranked side at the year's close: its place
-  // and the move since the year before, its points and how many its matches that year won or lost it, its international record
+  // and the move since the year before, its points and how many its matches that year won or lost it (from where the year
+  // began, once a third of its lead had faded: src/data/afa.js AFA_KEEP), its international record
   // that year and the titles it won (src/data/afa.js, written by test/afa.mjs). A side new to the table reads New; in the
   // first year there is nothing to move from, so nobody does ("Move should just be – in 1932").
   const renderUxAfa = (y) => {
@@ -17683,7 +17684,7 @@ export default function App() {
               <thead><tr><th className="ux-n">Rank</th><th className="ux-n">Move</th><th>Side</th><th>Conference</th><th className="ux-n">Points</th><th className="ux-n" title="Points Won Or Lost In The Year's Matches">+/-</th>
                 {[["P", "Played"], ["W", "Won"], ["D", "Drawn"], ["L", "Lost"], ["GF", "Goals For"], ["GA", "Goals Against"], ["GD", "Goal Difference"]].map(([h, tt]) => <th key={h} className="ux-n" title={tt}>{h}</th>)}
                 <th>Titles</th></tr></thead>
-              <tbody>{list.map(([code, pts], i) => { const t = ntOf(code), was = before.get(code), mv = was ? was.pos - (i + 1) : null, d = pts - (was ? was.v : 1500);
+              <tbody>{list.map(([code, pts], i) => { const t = ntOf(code), was = before.get(code), mv = was ? was.pos - (i + 1) : null, d = Math.round(pts - (was ? 1500 + AFA_KEEP * (was.v - 1500) : 1500));
                 const r = det[code] || [], gd = (r[4] ?? 0) - (r[5] ?? 0), cf = t ? String(t.conference || CONF_BY_CODE.get(code) || "").replace(/ Conference$/, "") : "";
                 return (
                 <tr key={code}>

@@ -137,9 +137,9 @@ season, the place and the points (an AFA Rankings bar: the year, the place and t
 has its AFA Rankings under Honours, a bar a year (Moukden and Kirin, 24 October 2026: "one per year, below honours", then
 "make it a graph instead of a list"). The ranking is results, not ratings ("Actually use points for 1934 and 1935
 rankings too"): an Elo table over every recorded World Cup, World Cup qualifying and Nations League match from 1932,
-every side starting on 1500 and carrying its points year to year, a World Cup match counting most. The confederation
-championships are left out ("Don't use championships at all") and nothing fades between years ("remove the lead fade
-thing"); `test/afa.mjs` writes `src/data/afa.js`, a year at its close. Each year's full table is Competitions' fourth tab, **AFA
+every side starting on 1500 and keeping two thirds of its distance from 1500 at each year's turn ("Lead Fades Each
+Year", taken out and then put back the same day), a World Cup match counting most. The confederation championships are
+left out ("Don't use championships at all"); `test/afa.mjs` writes `src/data/afa.js`, a year at its close. Each year's full table is Competitions' fourth tab, **AFA
 Rankings** (Moukden and Kirin, 24 October 2026: "a separate leaderboard page", "Competitions Tab"; tried first on Registry's
 Nations panel and moved off it as "not detailed enough"), the year on a stepper at the page bar's right: every ranked
 side's place and move, its points and what that year's matches won or lost it, its international record that year and

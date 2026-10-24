@@ -1,9 +1,10 @@
 // THE AFA RANKING, A YEAR AT A TIME (src/data/afa.js). Moukden and Kirin, 24 October 2026: "Add AFA ranking history back
 // to national teams, one per year", then "Actually use points for 1934 and 1935 rankings too": every year is ranked by
 // results, an Elo table over every recorded World Cup, World Cup qualifying and Nations League match, every side
-// starting 1932 on 1500 and carrying its points from year to year. A World Cup match counts most; the margin scales the
-// swing; a shootout is a draw. The confederation championships are left out, matches and titles ("Don't use
-// championships at all"), and nothing fades between years ("remove the lead fade thing"), both the same day. A year's
+// starting 1932 on 1500. At each year's turn a side keeps two thirds of its distance from 1500 (KEEP), so one year's run
+// counts less in the next ("Lead Fades Each Year"; taken out, then "put the fade back in", all the same day). A World Cup
+// match counts most; the margin scales the swing; a shootout is a draw. The confederation championships are left out,
+// matches and titles ("Don't use championships at all"). A year's
 // matches are the ones played in it: its World Cup and Nations League, and the qualifying for the next World Cup, which
 // is filed under that World Cup's year. Sides that no longer exist (Calveria, Slytlia, the Independent XIs) play in the
 // table but are not ranked. A year is added when it closes: add its files to YEARS and write.
@@ -23,6 +24,7 @@ codeOf.set("NB Islands", "ANB");
 const byName = (a, b) => (avium.find(t => t.code === a[0])?.name || a[0]).localeCompare(avium.find(t => t.code === b[0])?.name || b[0]);
 const rank = (rows) => rows.sort((a, b) => b[1] - a[1] || byName(a, b));
 
+const KEEP = 2 / 3;
 const K = { wc: 60, natl: 40, western: 40, eastern: 40 };
 const YEARS = {
   1932: ["wc/1932", "natl/1932"],
@@ -76,6 +78,7 @@ function season(year) {
 }
 const results = {}, detail = {};
 for (const y of Object.keys(YEARS).map(Number)) {
+  if (y > 1932) for (const [s, v] of elo) elo.set(s, 1500 + KEEP * (v - 1500));
   const n = season(y);
   const live = new Set(avium.map(t => t.code));
   const unknown = [...played].filter(x => !live.has(x) && !/^Independent XI|^Calveria$|^Slytlia$/.test(x));
@@ -93,8 +96,10 @@ if (process.argv[2] === "write") {
     .map(r => "    " + r.join(", ")).join(",\n");
   const out = `// THE AFA RANKING, A YEAR AT A TIME, written by test/afa.mjs (read it for the method): every Avium national side that
 // has played, ranked by its points at the year's close, strongest first, ties by name. Points are an Elo table over every
-// recorded World Cup, qualifying and Nations League match from 1932, carried year to year (Moukden and Kirin, 24 October
-// 2026). A year is added when it closes.
+// recorded World Cup, qualifying and Nations League match from 1932, a third of each side's lead fading at every year's
+// turn (Moukden and Kirin, 24 October 2026). A year is added when it closes.
+// The share of its distance from 1500 a side keeps at each year's turn.
+export const AFA_KEEP = ${KEEP};
 export const AFA_RANKINGS = {
 ${Object.entries(years).map(([y, list]) => `  ${y}: [\n${fmt(list)}]`).join(",\n")},
 };
