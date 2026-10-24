@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion Mockup</title>
+<link rel="stylesheet" href="../../src/theme.css">
+<link rel="stylesheet" href="../../src/ui.css">
+<style>
+  body { margin: 0; background: var(--chrome-bg); font-family: var(--chrome-font); }
+  .ux-app.mk { display: block; height: auto; min-height: 100vh; padding: 24px; box-sizing: border-box; }
+  .mk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 1180px; }
+  .mk-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .mk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .mk-lab { color: var(--ux-text-3); font-size: 11px; font-weight: 500; }
+  .mk-pitch { position: relative; height: 92px; border-radius: 6px; background: #1d3a27; overflow: hidden; }
+  .mk-pitch .ux-bug { left: 16px; top: 18px; }
+
+  /* SCORE ROLL. Counter's spring (React Bits): each digit is a strip of 0-9 behind a window, the strip sprung to its
+     target with a little overshoot, a vertical blur while it moves fast, and the window's top and bottom feathered. */
+  .mk-dig { position: relative; display: inline-block; text-align: center; }
+  .mk-dig .mk-sz { visibility: hidden; }
+  .mk-dig .mk-win { position: absolute; inset: -.2em 0; overflow: hidden;
+    -webkit-mask-image: linear-gradient(#0000 0, #000 .2em, #000 calc(100% - .2em), #0000 100%);
+            mask-image: linear-gradient(#0000 0, #000 .2em, #000 calc(100% - .2em), #0000 100%); }
+  .mk-dig .mk-strip { position: absolute; inset: .2em 0; }
+  .mk-dig .mk-n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform; }
+  .mk-dig svg { position: absolute; width: 0; height: 0; }
+
+  /* GOAL SHEEN. One streak across the scoring side's panel, travelling toward the score; the roll starts as it arrives. */
+  .mk-sheen { position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen; opacity: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.42) 47%, rgba(255,255,255,.6) 50%, rgba(255,255,255,.42) 53%, transparent 70%);
+    background-size: 250% 100%; background-repeat: no-repeat; }
+  .mk-sheen.mk-go { animation: mk-sweep 900ms cubic-bezier(.45,.05,.35,1) both; }
+  .ux-r .mk-sheen.mk-go { animation-name: mk-sweep-r; }
+  @keyframes mk-sweep   { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 1; background-position: 0% 0; } }
+  @keyframes mk-sweep-r { 0% { opacity: 1; background-position: 0% 0; }   100% { opacity: 1; background-position: 100% 0; } }
+
+  /* HOLD TO CONFIRM. HoldButton (React Bits) at the app's button size: the loss colour rises through it while held,
+     its leading edge a small wave, and drains back if let go early. */
+  .mk-hold { position: relative; overflow: hidden; isolation: isolate; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    --p: 0; --w: 0px; --h: 0px; --wave: 5px; }
+  .mk-hold > .mk-hl { position: relative; z-index: 2; display: grid; }
+  .mk-hold > .mk-hl > span { grid-area: 1 / 1; transition: opacity 200ms; }
+  .mk-hold .mk-done { opacity: 0; }
+  .mk-hold[data-phase="done"] .mk-idle { opacity: 0; }
+  .mk-hold[data-phase="done"] .mk-done { opacity: 1; }
+  .mk-hold .mk-fill { position: absolute; inset: 0; z-index: 1; background: color-mix(in srgb, var(--ux-loss) 32%, var(--ux-panel));
+    clip-path: inset(0 calc((1 - var(--p)) * (100% + .75 * var(--wave)) - var(--p) * .25 * var(--wave)) 0 0); }
+  .mk-hold .mk-crest { position: absolute; inset: 0; z-index: 1; background: color-mix(in srgb, var(--ux-loss) 32%, var(--ux-panel));
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E") repeat-y;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E") repeat-y;
+    -webkit-mask-size: var(--wave) calc(var(--h) * 2); mask-size: var(--wave) calc(var(--h) * 2);
+    -webkit-mask-position: calc(-1 * var(--wave) + var(--p) * (var(--w) + var(--wave))) calc(-1 * var(--p) * var(--h) * 1.2);
+            mask-position: calc(-1 * var(--wave) + var(--p) * (var(--w) + var(--wave))) calc(-1 * var(--p) * var(--h) * 1.2); }
+  .mk-hold[data-phase="done"] { border-color: color-mix(in srgb, var(--ux-loss) 60%, var(--ux-line-2)); }
+
+  /* WARM TOOLTIPS. WarmTooltip (React Bits): the first name waits, and while one has just been open the next opens at
+     once, so a row of icons reads along at the pace of the pointer. */
+  .mk-fx { display: grid; grid-template-columns: 1fr auto; align-items: center; height: 32px; padding: 0 4px; border-bottom: 1px solid var(--ux-line);
+    font-size: 12px; color: var(--ux-text); }
+  .mk-fx:last-child { border-bottom: 0; }
+  .mk-fx .mk-sides { display: flex; align-items: center; gap: 6px; }
+  .mk-fx .mk-sides img { width: 16px; height: 16px; object-fit: contain; }
+  .mk-fx .mk-code { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .mk-fx .mk-acts { display: flex; gap: 4px; }
+  .mk-tip { position: fixed; z-index: 90; padding: 5px 8px; border-radius: 4px; background: var(--ux-panel-3); border: 1px solid var(--ux-line-2);
+    color: var(--ux-text); font-size: 11px; font-weight: 500; white-space: nowrap; pointer-events: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45); opacity: 0; transform: translateY(2px); transition: opacity 120ms, transform 120ms; }
+  .mk-tip.mk-on { opacity: 1; transform: none; }
+  .mk-tip.mk-warm { transition: none; }
+
+  /* RATING SHEEN. ShinyText (React Bits) on the Iridescent tier only, on hover: one band of light crosses the chip. */
+  .mk-chip { position: relative; overflow: hidden; display: inline-block; min-width: 30px; padding: 3px 7px; border-radius: 5px; color: #fff; text-align: center;
+    font-weight: 700; font-size: 11px; line-height: 1.3; text-shadow: 0 1px 2px rgba(0,0,0,.5);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.34); }
+  .mk-chip.mk-iri::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+    background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,var(--shine, .45)) 50%, transparent 65%) no-repeat; background-size: 300% 100%;
+    background-position: 100% 0; opacity: 0; }
+  .mk-prow:hover .mk-chip.mk-iri::after { animation: mk-shine 750ms ease-in-out; }
+  @keyframes mk-shine { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 1; background-position: 0% 0; } }
+  .mk-prow { display: grid; grid-template-columns: 1fr 44px 44px; align-items: center; height: 28px; padding: 0 4px; border-bottom: 1px solid var(--ux-line);
+    font-size: 13px; color: var(--ux-text); }
+  .mk-prow:hover { background: var(--ux-panel-2); }
+  .mk-prow .mk-pos { color: var(--ux-text-3); font-size: 11px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mk-sheen.mk-go, .mk-prow:hover .mk-chip.mk-iri::after { animation: none; }
+    .mk-hold .mk-crest { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="ux-app mk">
+  <div class="mk-grid">
+
+    <section class="ux-panel" style="grid-column: 1 / -1">
+      <div class="ux-ph"><h2 class="ux-pt">Scorebug</h2></div>
+      <div class="mk-body">
+        <div class="mk-pitch">
+          <div class="ux-bug" aria-label="Score">
+            <span class="ux-bug-team" id="bug-home" style="background:#233368;--ux-bug-div:#c75b28">
+              <span class="ux-bug-crest" aria-hidden="true"><img src="../../public/avium/badges/DYM.png" width="112" height="112" alt=""></span>
+              <b>DYM</b><span class="mk-sheen"></span>
+            </span>
+            <span class="ux-bug-score"><span id="sc-home"></span><i>-</i><span id="sc-away"></span></span>
+            <span class="ux-bug-team ux-r" id="bug-away" style="background:#a8232b;--ux-bug-div:#f2e6d0">
+              <span class="ux-bug-crest" aria-hidden="true"><img src="../../public/avium/badges/SPK.png" width="112" height="112" alt=""></span>
+              <b>SPK</b><span class="mk-sheen"></span>
+            </span>
+            <span class="ux-bug-clock">63:12</span>
+          </div>
+        </div>
+        <div class="mk-row">
+          <button type="button" class="ux-btnreset ux-btn" id="goal-home">DYM Score</button>
+          <button type="button" class="ux-btnreset ux-btn" id="goal-away">SPK Score</button>
+          <button type="button" class="ux-btnreset ux-btn" id="goal-off">Disallowed (SPK)</button>
+          <button type="button" class="ux-btnreset ux-btn" id="goal-reset">Reset</button>
+          <span class="mk-lab">Score Roll And Goal Sheen together; Disallowed rolls back down without the sheen</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="ux-panel">
+      <div class="ux-ph"><h2 class="ux-pt">Hold To Confirm</h2></div>
+      <div class="mk-body">
+        <div class="mk-row"><span class="mk-lab" style="width:120px">Live Match</span>
+          <button type="button" class="ux-btnreset ux-btn">Resume</button>
+          <button type="button" class="ux-btnreset ux-btn mk-hold" data-idle="Hold To Abandon" data-done="Abandoned"></button></div>
+        <div class="mk-row"><span class="mk-lab" style="width:120px">Tournament</span>
+          <button type="button" class="ux-btnreset ux-btn">Export</button>
+          <button type="button" class="ux-btnreset ux-btn mk-hold" data-idle="Hold To Reset" data-done="Reset"></button></div>
+        <div class="mk-row"><span class="mk-lab" style="width:120px">Cart</span>
+          <button type="button" class="ux-btnreset ux-btn mk-hold" data-idle="Hold To Empty Cart" data-done="Emptied"></button></div>
+        <div class="mk-row"><span class="mk-lab" style="width:120px">Today</span>
+          <button type="button" class="ux-btnreset ux-btn" id="arm-old">Abandon</button></div>
+      </div>
+    </section>
+
+    <section class="ux-panel">
+      <div class="ux-ph"><h2 class="ux-pt">Fixtures</h2></div>
+      <div class="mk-body" style="gap:0" id="fixtures"></div>
+    </section>
+
+    <section class="ux-panel" style="grid-column: 1 / -1">
+      <div class="ux-ph"><h2 class="ux-pt">Rating Sheen</h2></div>
+      <div class="mk-body" style="gap:0;max-width:420px" id="ratings"></div>
+    </section>
+
+  </div>
+  <div class="mk-tip" id="tip" role="tooltip"></div>
+</div>
+
+<script>
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── Score roll ──────────────────────────────────────────────────────────────────────────────────────
+function makeDigit(host, start) {
+  host.className = 'mk-dig';
+  host.innerHTML = '<span class="mk-sz">0</span><span class="mk-win"><span class="mk-strip"></span></span>';
+  const strip = host.querySelector('.mk-strip'), win = host.querySelector('.mk-win');
+  const id = 'b' + Math.random().toString(36).slice(2);
+  win.insertAdjacentHTML('beforeend', `<svg aria-hidden="true"><filter id="${id}" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="0 0"/></filter></svg>`);
+  const blur = win.querySelector('feGaussianBlur');
+  const nums = Array.from({ length: 10 }, (_, n) => { const s = document.createElement('span'); s.className = 'mk-n'; s.textContent = n; strip.appendChild(s); return s; });
+  const d = { pos: start, vel: 0, target: start, raf: 0, last: 0 };
+  const wrap = (o) => (((o + 5) % 10) + 10) % 10 - 5;
+  const paint = () => {
+    nums.forEach((el, n) => { el.style.transform = `translateY(${(wrap(n - d.pos) * 150).toFixed(3)}%)`; });
+    const r = Math.min(Math.max((Math.abs(d.vel) - 3) * .006, 0), .09) * 27;
+    blur.setAttribute('stdDeviation', `0 ${r.toFixed(2)}`); strip.style.filter = r > .25 ? `url(#${id})` : '';
+  };
+  const DUR = .7, BOUNCE = .2, W = 2 * Math.PI / DUR, Z = 1 - BOUNCE;
+  const frame = (now) => {
+    const dt0 = Math.min((now - d.last) / 1000, 1 / 20); d.last = now;
+    const steps = Math.ceil(dt0 * 240), dt = dt0 / steps;
+    for (let i = 0; i < steps; i++) { d.vel += (-W * W * (d.pos - d.target) - 2 * Z * W * d.vel) * dt; d.pos += d.vel * dt; }
+    if (Math.abs(d.pos - d.target) < .002 && Math.abs(d.vel) < .02) { d.pos = d.target; d.vel = 0; paint(); d.raf = 0; return; }
+    paint(); d.raf = requestAnimationFrame(frame);
+  };
+  paint();
+  return {
+    set(v, step) {
+      d.target += step;
+      if (reduced()) { d.pos = d.target; d.vel = 0; paint(); return; }
+      if (!d.raf) { d.last = performance.now(); d.raf = requestAnimationFrame(frame); }
+    }
+  };
+}
+const score = { home: 1, away: 1 };
+const dig = { home: makeDigit(document.getElementById('sc-home'), score.home), away: makeDigit(document.getElementById('sc-away'), score.away) };
+const sheen = (side) => {
+  const el = document.querySelector(`#bug-${side} .mk-sheen`);
+  el.classList.remove('mk-go'); void el.offsetWidth; el.classList.add('mk-go');
+};
+const goal = (side) => {
+  if (score[side] >= 9) return;
+  score[side]++; sheen(side);
+  setTimeout(() => dig[side].set(score[side], 1), reduced() ? 0 : 480);
+};
+document.getElementById('goal-home').onclick = () => goal('home');
+document.getElementById('goal-away').onclick = () => goal('away');
+document.getElementById('goal-off').onclick = () => { if (score.away > 0) { score.away--; dig.away.set(score.away, -1); } };
+document.getElementById('goal-reset').onclick = () => {
+  for (const s of ['home', 'away']) { const st = 1 - score[s]; if (st) dig[s].set(1, st); score[s] = 1; }
+};
+
+// ── Hold to confirm ─────────────────────────────────────────────────────────────────────────────────
+const HOLD = 1200, RELEASE = 200, TAP = 250;
+document.querySelectorAll('.mk-hold').forEach((b) => {
+  b.innerHTML = `<span class="mk-fill"></span><span class="mk-crest"></span><span class="mk-hl"><span class="mk-idle">${b.dataset.idle}</span><span class="mk-done">${b.dataset.done}</span></span>`;
+  b.setAttribute('aria-description', `Press and hold for ${HOLD / 1000} seconds to confirm`);
+  const m = { p: 0, raf: 0, phase: 'idle', t0: 0, pid: null, key: false };
+  const measure = () => { b.style.setProperty('--w', b.offsetWidth + 'px'); b.style.setProperty('--h', b.offsetHeight + 'px'); };
+  measure(); new ResizeObserver(measure).observe(b);
+  const drive = (to, ms, ease) => {
+    cancelAnimationFrame(m.raf); const from = m.p, s = performance.now();
+    const step = (now) => {
+      const t = ms > 0 ? Math.min(1, (now - s) / ms) : 1; m.p = from + (to - from) * ease(t); b.style.setProperty('--p', m.p.toFixed(4));
+      if (t < 1) { m.raf = requestAnimationFrame(step); return; }
+      m.raf = 0; if (to === 1 && m.phase === 'holding') done();
+    };
+    m.raf = requestAnimationFrame(step);
+  };
+  const done = () => { m.phase = 'done'; b.dataset.phase = 'done';
+    setTimeout(() => { m.phase = 'idle'; b.dataset.phase = 'idle'; drive(0, RELEASE, t => 1 - Math.pow(1 - t, 3)); }, 1400); };
+  const begin = () => { if (m.phase !== 'idle') return false; m.phase = 'holding'; m.t0 = performance.now(); drive(1, HOLD, t => t); return true; };
+  const release = () => { if (m.phase !== 'holding') return; m.phase = 'idle'; drive(0, RELEASE, t => 1 - Math.pow(1 - t, 3)); };
+  b.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !begin()) return; m.pid = e.pointerId; b.setPointerCapture(e.pointerId); });
+  b.addEventListener('pointerup', (e) => { if (e.pointerId === m.pid) { m.pid = null; release(); } });
+  b.addEventListener('pointercancel', release);
+  b.addEventListener('lostpointercapture', release);
+  b.addEventListener('keydown', (e) => { if (e.key === 'Escape') return release(); if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); begin(); } });
+  b.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); release(); } });
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  addEventListener('blur', release);
+});
+// Today's pattern, for comparison: click to arm, click again to confirm.
+const old = document.getElementById('arm-old'); let armed = false;
+old.onclick = () => { armed = !armed; old.textContent = armed ? 'Confirm Abandon' : 'Abandon'; old.classList.toggle('ux-danger', armed); };
+old.onblur = () => { armed = false; old.textContent = 'Abandon'; old.classList.remove('ux-danger'); };
+
+// ── Warm tooltips ───────────────────────────────────────────────────────────────────────────────────
+const ICON = {
+  sim: '<path d="M4 6l7 6-7 6zM13 6l7 6-7 6z"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',
+  live: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+};
+const FIX = [['DYM', 'Dynamo Mizuhara', 'SPK', 'Spartak Kanagawa'], ['VIR', 'Viridia Shikisen', 'ISS', 'Imperial Sports Society'],
+  ['SSK', 'Tsukumo Shinkeisei', 'NAG', 'Kyōwa Naginomiya'], ['SHZ', 'Shizuku Athletic', 'AYA', 'Ayanami Sei-Hachiman']];
+const fx = document.getElementById('fixtures');
+for (const [hc, hn, ac, an] of FIX) {
+  const side = (c, n) => `<img src="../../public/avium/badges/${c}.png" alt=""><span class="mk-code" data-tip="${n}">${c}</span>`;
+  const act = (lab, ic, cls) => `<button type="button" class="ux-btnreset ux-mini ux-ico${cls || ''}" aria-label="${lab}" data-tip="${lab}"><svg class="ux-i ux-s" viewBox="0 0 24 24">${ICON[ic]}</svg></button>`;
+  fx.insertAdjacentHTML('beforeend', `<div class="mk-fx"><span class="mk-sides">${side(hc, hn)}<span class="ux-dim">v</span>${side(ac, an)}</span>
+    <span class="mk-acts">${act('Sim', 'sim')}${act('Score', 'edit')}${act('Live', 'live', ' ux-live')}</span></div>`);
+}
+const tip = document.getElementById('tip');
+const WAIT = 500, WARM = 300;
+let showT = 0, coolT = 0, warm = false, cur = null;
+const place = (el) => {
+  const r = el.getBoundingClientRect(); tip.style.left = '0px'; tip.style.top = '0px';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = r.left + r.width / 2 - w / 2, y = r.top - h - 6;
+  if (y < 4) y = r.bottom + 6;
+  x = Math.max(4, Math.min(innerWidth - w - 4, x));
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+};
+const open = (el) => { cur = el; tip.textContent = el.dataset.tip; tip.classList.toggle('mk-warm', warm); place(el); tip.classList.add('mk-on'); warm = true; };
+const shut = () => { tip.classList.remove('mk-on'); cur = null; clearTimeout(coolT); coolT = setTimeout(() => { warm = false; }, WARM); };
+document.addEventListener('pointerover', (e) => {
+  const el = e.target.closest('[data-tip]'); if (!el || el === cur) return;
+  clearTimeout(showT); clearTimeout(coolT);
+  if (warm) open(el); else showT = setTimeout(() => open(el), WAIT);
+});
+document.addEventListener('pointerout', (e) => {
+  const el = e.target.closest('[data-tip]'); if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+  clearTimeout(showT); if (cur) shut();
+});
+document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) open(el); });
+document.addEventListener('focusout', () => { if (cur) shut(); });
+
+// ── Rating sheen ────────────────────────────────────────────────────────────────────────────────────
+const IRI = 'linear-gradient(160deg, rgba(0,0,0,0.66) 0%, rgba(0,0,0,0.44) 30%, rgba(0,0,0,0.42) 52%, rgba(0,0,0,0.48) 72%, rgba(0,0,0,0.68) 100%), linear-gradient(115deg, #00e5ff 0%, #7c5cff 20%, #ff4fa3 38%, #ffb02e 56%, #35e08a 74%, #2fa8ff 100%)';
+const METAL = (hi, mid, lo) => `linear-gradient(145deg, ${hi} 0%, ${mid} 26%, ${lo} 50%, ${mid} 74%, ${hi} 100%)`;
+const MEN = [['Denis IGRATENKO', 'AM', 93, IRI, .55], ['Ben CUNNINGHAM', 'RW', 93, IRI, .55], ['Theodosis ATHANIADIS', 'CB', 93, IRI, .55],
+  ['Florian GRUBER', 'LB', 87, METAL('#a878d0', '#5d3096', '#240d3c'), .45], ['Marvin OPPENHEIMER', 'GK', 82, METAL('#55dfa0', '#127a4a', '#05361f'), .45],
+  ['Matěj KŘÍŽEK', 'LB', 77, METAL('#f2d067', '#b5860f', '#5f4405'), .3], ['Dirk THÄLMANN', 'CM', 70, METAL('#cdd5dd', '#8b949c', '#4d555c'), .3],
+  ['Niko MEYERS', 'CM', 62, METAL('#e0a071', '#a05f2c', '#4f2a12'), .45]];
+const rt = document.getElementById('ratings');
+for (const [n, pos, v, bg, shine] of MEN) {
+  const [first, ...last] = n.split(' ');
+  rt.insertAdjacentHTML('beforeend', `<div class="mk-prow"><span>${first} <b>${last.join(' ')}</b></span><span class="mk-pos">${pos}</span>
+    <span><span class="mk-chip${v >= 90 ? ' mk-iri' : ''}" style="background:${bg};--shine:${shine}">${v}</span></span></div>`);
+}
+</script>
+</body>
+</html>

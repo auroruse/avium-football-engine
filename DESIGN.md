@@ -814,6 +814,20 @@ colour, as tall as its capitals with a stroke near its weight, and a sort order 
 Hover and selection fade in 120ms. Nothing on a data screen animates on load. `prefers-reduced-motion` stops the rest;
 the match renderer is exempt, because the moving dots are the content.
 
+Five pieces move beyond that, picked from React Bits and ported by hand (Moukden and Kirin, 24 October 2026, after a
+mockup, `design/mock/motion.html`):
+- **The score rolls.** On the Live Match scorebug each digit rolls to its new figure like an odometer, up for a goal and
+  down when a replay starts over; nothing rolls when the scorebug first draws.
+- **The goal sheen.** One streak of light crosses the scoring side's panel toward the score, and the score rolls as it
+  arrives.
+- **Hold to confirm.** Abandon, Drop Fixture, a tournament's Reset, Delete on Saved and Empty Cart are held for 1.2
+  seconds, the loss colour rising through the button, rather than clicked twice. Each says Hold in its label.
+- **Warm tooltips.** Anything named on hover (the narrow Fixtures' icons, a side given by its code) opens its name after
+  half a second, and the next at once while one has just been open. One tooltip for the whole app.
+- **The badge sheen.** An Iridescent rating badge (90 and up) catches one band of light as the pointer reaches its row.
+  The other tiers stay still (the user, 24 October 2026, after trying every tier).
+Full Time stays still, because Copy Image takes it.
+
 ---
 
 ## 3. Components

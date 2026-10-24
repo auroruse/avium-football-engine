@@ -2491,7 +2491,12 @@ const OVR_IRIDESCENT =
 // the raw value put an 84.6 side badged as 84's colour while the badge itself read 85. showOvr
 // rounds the same way, so the number and its metal can no longer disagree.
 const ovrMetal = (v) => { const n = Math.round(Number(v) || 0); return OVR_METAL.find(m => n >= m.min); };
-const ovrSheen = (m) => m.iri ? OVR_IRIDESCENT
+// THE SHINE, on the Iridescent tier only (the user, 24 October 2026). A band of light as its top layer, three badges
+// wide and parked off the left edge, where it paints nothing; UxShine sweeps it across when the pointer reaches the row.
+// Its angle is how UxShine finds a badge.
+const OVR_SHINE_DEG = 112;
+const OVR_SHINE = `linear-gradient(${OVR_SHINE_DEG}deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%) 100% 0% / 300% 100% no-repeat`;
+const ovrSheen = (m) => m.iri ? OVR_SHINE + ", " + OVR_IRIDESCENT
   : `linear-gradient(145deg, ${m.hi} 0%, ${m.mid} 26%, ${m.lo} 50%, ${m.mid} 74%, ${m.hi} 100%)`;
 // A filled badge reads as a grade at a glance where bare digits have to be compared one column at a
 // time. The inset lifts the top edge and darkens the bottom, which is what makes it read as struck
@@ -4246,6 +4251,195 @@ function FitLine({ className, end, mid, children }) {
       <span ref={line} style={{ flex: "none", whiteSpace: "nowrap", transformOrigin: mid ? "center" : end ? "right center" : "left center",
                                 transform: k < 1 ? `scaleX(${k.toFixed(4)})` : undefined }}>{children}</span>
     </span>);
+}
+// ── MOTION (the user, 24 October 2026, from React Bits) ───────────────────────────────────────────────
+// Five pieces, picked from React Bits and ported by hand rather than installed: the score's digits roll and a streak
+// crosses the scoring side's panel on the scorebug, destructive buttons are held rather than clicked twice, the icon
+// buttons' names open warm, and an Iridescent rating badge catches the light as the pointer reaches its row. Each one stops
+// under prefers-reduced-motion. Mocked in design/mock/motion.html.
+const uxReduced = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+// THE SCORE ROLLS (Counter). Each digit is a strip of 0-9 behind a feathered window, sprung to its target with a little
+// overshoot and blurred while it moves fast. A rise rolls up and a fall (a replay starting over) rolls down. A digit
+// that arrives (9 to 10) appears where it stands; nothing rolls when the scorebug first draws.
+const UX_ROLL_W = 2 * Math.PI / 0.7, UX_ROLL_Z = 0.8;
+function UxRollDigit({ d, dir, delay }) {
+  const strip = useRef(null), blur = useRef(null), st = useRef({ pos: d, vel: 0, target: d, raf: 0, last: 0, timer: 0 });
+  const id = useRef("uxr" + Math.random().toString(36).slice(2)).current;
+  const wrap = (o) => (((o + 5) % 10) + 10) % 10 - 5;
+  const paint = () => {
+    const s = st.current, el = strip.current; if (!el) return;
+    [...el.children].forEach((n, i) => { n.style.transform = `translateY(${(wrap(i - s.pos) * 150).toFixed(3)}%)`; });
+    const r = Math.min(Math.max((Math.abs(s.vel) - 3) * 0.006, 0), 0.09) * 27;
+    blur.current?.setAttribute("stdDeviation", `0 ${r.toFixed(2)}`);
+    el.style.filter = r > 0.25 ? `url(#${id})` : "";
+  };
+  const frame = (now) => {
+    const s = st.current, dt0 = Math.min((now - s.last) / 1000, 1 / 20); s.last = now;
+    const n = Math.ceil(dt0 * 240), dt = dt0 / n;
+    for (let i = 0; i < n; i++) { s.vel += (-UX_ROLL_W * UX_ROLL_W * (s.pos - s.target) - 2 * UX_ROLL_Z * UX_ROLL_W * s.vel) * dt; s.pos += s.vel * dt; }
+    if (Math.abs(s.pos - s.target) < 0.002 && Math.abs(s.vel) < 0.02) { s.pos = s.target = ((Math.round(s.target) % 10) + 10) % 10; s.vel = 0; s.raf = 0; paint(); return; }
+    paint(); s.raf = requestAnimationFrame(frame);
+  };
+  useLayoutEffect(() => { paint(); }, []);
+  useEffect(() => {
+    const s = st.current, from = ((Math.round(s.target) % 10) + 10) % 10;
+    if (from === d) return;
+    const up = (((d - from) % 10) + 10) % 10, step = dir < 0 ? up - 10 : up;
+    s.target += step;
+    if (uxReduced()) { s.pos = s.target; s.vel = 0; paint(); return; }
+    clearTimeout(s.timer);
+    s.timer = setTimeout(() => { if (!s.raf) { s.last = performance.now(); s.raf = requestAnimationFrame(frame); } }, delay || 0);
+  }, [d]);
+  useEffect(() => () => { clearTimeout(st.current.timer); cancelAnimationFrame(st.current.raf); }, []);
+  return (
+    <span className="ux-roll-d">
+      <span className="ux-roll-sz">{d}</span>
+      <span className="ux-roll-win">
+        <span ref={strip} className="ux-roll-strip">{Array.from({ length: 10 }, (_, i) => <span key={i}>{i}</span>)}</span>
+        <svg aria-hidden="true"><filter id={id} x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur ref={blur} stdDeviation="0 0" /></filter></svg>
+      </span>
+    </span>);
+}
+function UxRoll({ value, delay }) {
+  const prev = useRef(value), dir = value < prev.current ? -1 : 1, wait = value > prev.current ? delay : 0;
+  useEffect(() => { prev.current = value; }, [value]);
+  const s = String(value);
+  return (
+    <span className="ux-roll">
+      <span className="ux-roll-sr">{s}</span>
+      <span aria-hidden="true">{[...s].map((c, i) => <UxRollDigit key={s.length - i} d={+c} dir={dir} delay={wait} />)}</span>
+    </span>);
+}
+// THE GOAL SHEEN. One streak across the scoring side's panel toward the score, played when its count rises (never on
+// the first draw, so a match resumed at 2-1 does not light up). The score's roll waits UX_SHEEN_LAG for it to arrive.
+const UX_SHEEN_LAG = 480;
+function UxSheen({ n }) {
+  const ref = useRef(null), prev = useRef(n);
+  useEffect(() => {
+    const el = ref.current, up = n > prev.current; prev.current = n;
+    if (!el || !up || uxReduced()) return;
+    el.classList.remove("ux-go"); void el.offsetWidth; el.classList.add("ux-go");
+  }, [n]);
+  return <span ref={ref} className="ux-bug-sheen" aria-hidden="true" />;
+}
+// HOLD TO CONFIRM (HoldButton), in place of asking twice. The loss colour rises through the button while it is held,
+// its leading edge a small wave, and drains back if it is let go early; Space or Enter held does the same and Escape
+// lets go. The label says Hold, so a click that does nothing still says why.
+const UX_HOLD_MS = 1200, UX_HOLD_BACK = 200;
+function UxHold({ label, done, onHold, mini, disabled }) {
+  const ref = useRef(null), m = useRef({ p: 0, raf: 0, phase: "idle", pid: null, timer: 0 });
+  const [phase, setPhase] = useState("idle");
+  const go = (ph) => { m.current.phase = ph; setPhase(ph); };
+  const drive = (to, ms, ease) => {
+    const s = m.current; cancelAnimationFrame(s.raf); const from = s.p, t0 = performance.now();
+    const step = (now) => {
+      const t = ms > 0 ? Math.min(1, (now - t0) / ms) : 1; s.p = from + (to - from) * ease(t);
+      ref.current?.style.setProperty("--ux-hold-p", s.p.toFixed(4));
+      if (t < 1) { s.raf = requestAnimationFrame(step); return; }
+      s.raf = 0;
+      if (to === 1 && s.phase === "holding") {
+        go("done"); onHold?.();
+        s.timer = setTimeout(() => { go("idle"); drive(0, UX_HOLD_BACK, (x) => 1 - Math.pow(1 - x, 3)); }, 1200);
+      }
+    };
+    s.raf = requestAnimationFrame(step);
+  };
+  const begin = () => { if (disabled || m.current.phase !== "idle") return false; go("holding"); drive(1, UX_HOLD_MS, (x) => x); return true; };
+  const release = () => { if (m.current.phase !== "holding") return; go("idle"); drive(0, UX_HOLD_BACK, (x) => 1 - Math.pow(1 - x, 3)); };
+  useLayoutEffect(() => {
+    const b = ref.current; if (!b) return;
+    const fit = () => { b.style.setProperty("--ux-hold-w", b.offsetWidth + "px"); b.style.setProperty("--ux-hold-h", b.offsetHeight + "px"); };
+    fit(); if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit); ro.observe(b); return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    const cancel = () => release(); window.addEventListener("blur", cancel);
+    return () => { window.removeEventListener("blur", cancel); clearTimeout(m.current.timer); cancelAnimationFrame(m.current.raf); };
+  }, []);
+  return (
+    <button ref={ref} type="button" disabled={disabled} data-phase={phase} aria-description={`Hold For ${UX_HOLD_MS / 1000} Seconds`}
+      className={"ux-btnreset ux-hold " + (mini ? "ux-mini" : "ux-btn")}
+      onPointerDown={e => { if (e.button !== 0 || !begin()) return; m.current.pid = e.pointerId; try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
+      onPointerUp={e => { if (e.pointerId === m.current.pid) { m.current.pid = null; release(); } }}
+      onPointerCancel={release} onLostPointerCapture={release}
+      onKeyDown={e => { if (e.key === "Escape") { release(); return; } if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); begin(); } }}
+      onKeyUp={e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); release(); } }}
+      onClick={e => e.stopPropagation()} onContextMenu={e => e.preventDefault()}>
+      <span className="ux-hold-fill" aria-hidden="true" /><span className="ux-hold-crest" aria-hidden="true" />
+      <span className="ux-hold-l"><span className="ux-hold-idle" aria-hidden={phase === "done"}>{label}</span><span className="ux-hold-done" aria-hidden={phase !== "done"}>{done || label}</span></span>
+    </button>);
+}
+// WARM TOOLTIPS (WarmTooltip). Anything carrying data-tip is named on hover: the first name waits half a second, and
+// while one has just been open the next opens at once, so a row of icons reads at the pace of the pointer. One tip for
+// the whole app, mounted in the frame.
+const UX_TIP_WAIT = 500, UX_TIP_WARM = 300;
+function UxTips() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const tip = ref.current; if (!tip) return;
+    let showT = 0, coolT = 0, warm = false, cur = null;
+    const place = (el) => {
+      const r = el.getBoundingClientRect(); tip.style.left = "0px"; tip.style.top = "0px";
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = r.left + r.width / 2 - w / 2, y = r.top - h - 6;
+      if (y < 4) y = r.bottom + 6;
+      tip.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, x)) + "px"; tip.style.top = y + "px";
+    };
+    const open = (el) => { cur = el; tip.textContent = el.dataset.tip; tip.classList.toggle("ux-warm", warm); place(el); tip.classList.add("ux-on"); warm = true; };
+    const shut = () => { tip.classList.remove("ux-on"); cur = null; clearTimeout(coolT); coolT = setTimeout(() => { warm = false; }, UX_TIP_WARM); };
+    const over = (e) => {
+      const el = e.target.closest?.("[data-tip]"); if (!el || el === cur) return;
+      clearTimeout(showT); clearTimeout(coolT);
+      if (warm) open(el); else showT = setTimeout(() => { if (el.isConnected) open(el); }, UX_TIP_WAIT);
+    };
+    const out = (e) => {
+      const el = e.target.closest?.("[data-tip]"); if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+      clearTimeout(showT); if (cur) shut();
+    };
+    const focus = (e) => { const el = e.target.closest?.("[data-tip]"); if (el && e.target.matches?.(":focus-visible")) open(el); };
+    const blur = () => { if (cur) shut(); };
+    const down = () => { clearTimeout(showT); if (cur) shut(); };
+    document.addEventListener("pointerover", over); document.addEventListener("pointerout", out);
+    document.addEventListener("focusin", focus); document.addEventListener("focusout", blur); document.addEventListener("pointerdown", down);
+    return () => {
+      clearTimeout(showT); clearTimeout(coolT);
+      document.removeEventListener("pointerover", over); document.removeEventListener("pointerout", out);
+      document.removeEventListener("focusin", focus); document.removeEventListener("focusout", blur); document.removeEventListener("pointerdown", down);
+    };
+  }, []);
+  return <div ref={ref} className="ux-tip" role="tooltip" />;
+}
+// THE BADGE SHEEN (ShinyText), on the Iridescent tier. ovrSheen paints a band of light into those badges as their top
+// layer, parked off the badge's left edge; this sweeps it across once when the pointer reaches the row the badge is in. The row is
+// the largest box under the pointer no taller than a two-line item (DESIGN.md's 44px rows), so a squad list lights one
+// man at a time and never the whole panel. The band's angle, OVR_SHINE_DEG, is how a badge is found: nothing else in the
+// app draws a gradient at it.
+const UX_ROW_MAX = 48;
+function UxShine() {
+  useEffect(() => {
+    let last = null;
+    const over = (e) => {
+      if (uxReduced()) return;
+      let row = e.target instanceof Element ? e.target : null;
+      while (row?.parentElement && !row.parentElement.classList.contains("ux-app")
+             && row.parentElement.getBoundingClientRect().height <= UX_ROW_MAX) row = row.parentElement;
+      if (!row || row === last) return;
+      last = row;
+      const sel = `[style*="${OVR_SHINE_DEG}deg"]`;
+      const hits = [...row.querySelectorAll(sel)]; if (row.matches(sel)) hits.push(row);
+      for (const b of hits) {
+        if (b.getAnimations?.().some(a => a.id === "ux-shine")) continue;
+        const n = (getComputedStyle(b).backgroundImage.match(/gradient\(/g) || []).length;
+        const rest = Array(Math.max(0, n - 1)).fill("0% 0%");
+        b.animate([{ backgroundPosition: ["100% 0%", ...rest].join(", ") }, { backgroundPosition: ["0% 0%", ...rest].join(", ") }],
+                  { duration: 750, easing: "ease-in-out", id: "ux-shine" });
+      }
+    };
+    const leave = () => { last = null; };
+    document.addEventListener("pointerover", over); document.documentElement.addEventListener("pointerleave", leave);
+    return () => { document.removeEventListener("pointerover", over); document.documentElement.removeEventListener("pointerleave", leave); };
+  }, []);
+  return null;
 }
 // The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
 // selections, the two live-match slots and a tournament's participants all survive a switch, which
@@ -8157,14 +8351,12 @@ export default function App() {
   const [tPsPos, setTPsPos] = useState("ALL");
   const [tPsSide, setTPsSide] = useState("");
   const [tSidesQ, setTSidesQ] = useState("");
-  const [tResetArm, setTResetArm] = useState(false);      // Reset's second click
   const [tDelArm, setTDelArm] = useState(null);           // the result whose Delete has been clicked once
   const [tHand, setTHand] = useState(null);               // the side picked up to be placed by hand
   const [tPickQ, setTPickQ] = useState("");               // the search over the sides still to place
   const tFixBox = useRef(null);
   const [slotMsg, setSlotMsg] = useState("");
   const [slotRenaming, setSlotRenaming] = useState(null); // {id, name}
-  const [slotConfirmDelete, setSlotConfirmDelete] = useState(null);
   // Set while a payload is being applied, so the autosave effect doesn't write the outgoing
   // tournament's state into the slot we just switched to.
   const slotBusyRef = useRef(false);
@@ -8715,7 +8907,6 @@ export default function App() {
   const slotDelete = (id) => {
     try { localStorage.removeItem(SLOT_KEY(id)); } catch {}
     const rest = tSlots.filter(s => s.id !== id);
-    setSlotConfirmDelete(null);
     if (id !== tActiveSlot) { commitSlots(rest, tActiveSlot); return; }
     // Deleting the open tournament: fall through to another save, or clear the board.
     const nextSlot = rest[0] || null;
@@ -8793,7 +8984,6 @@ export default function App() {
   const [draft, setDraft] = useState(() => readPatch(DRAFT_KEY) || { v: 1, players: {} });
   const [draftOpen, setDraftOpen] = useState(false);          // the cart: review and save
   const [saveState, setSaveState] = useState(null);           // { busy } | { ok, sha, applied, asked } | { err } | { errors }
-  const [discardArm, setDiscardArm] = useState(false);        // emptying the cart: the second step
   const [undoCart, setUndoCart] = useState(null);             // { draft, what }: the cart before an item was removed
   const saveDraft = (d) => { setDraft(d);
     try { if (draftSize(d)) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch {} };
@@ -8894,7 +9084,7 @@ export default function App() {
   const posOfId = (id) => ownOfId(id)[0] || [whereIs.get(id)?.club?.pos, whereIs.get(id)?.nt?.pos].find(x => POS_ROLE[x]) || "CM";
   const ovrOfId = (id) => recNow(id)?.ovr ?? 0;
   const isNatKey = (key) => ["AVIUM", "ARTERRA"].includes(recTeam.get(key)?.file);
-  const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDiscardArm(false); setDraftOpen(false); };
+  const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDraftOpen(false); };
   const removeItem = (item) => {
     setUndoCart({ draft, what: item.trade ? "the trade" : item.rec ? item.rec.name : item.groups.map(g => g.kind === "teams" || g.kind === "leagues" ? g.name : fullDisplayName(g.name)).join(" and ") });
     commitDraft(withoutItem(recBase, draft, item)); setSaveState(null);
@@ -12180,9 +12370,9 @@ export default function App() {
   // crest and name, what saving does and Remove on its head, then a line a field, old to new (DESIGN.md "Cart").
   const uxDropRef = useRef(null);
   useEffect(() => { if (draftOpen || inboxOpen) uxDropRef.current?.focus(); }, [draftOpen, inboxOpen]);
-  const closeCart = () => { if (!saveState?.busy) { setDraftOpen(false); setDiscardArm(false); } };
+  const closeCart = () => { if (!saveState?.busy) setDraftOpen(false); };
   const closeInbox = () => { if (!reqBusy) { setInboxOpen(false); setReqArm(null); } };
-  const openCart = () => { setUxMenu(null); setAcctOpen(false); closeInbox(); setSaveState(null); setDiscardArm(false); setUndoCart(null); setDraftOpen(true); };
+  const openCart = () => { setUxMenu(null); setAcctOpen(false); closeInbox(); setSaveState(null); setUndoCart(null); setDraftOpen(true); };
   const openInbox = () => { setUxMenu(null); setAcctOpen(false); closeCart(); loadRequests(); setInboxOpen(true); };
   const teamOfKey = (k) => teams.find(x => x.rkey === k) || null;
   const uxCbHead = (kind, name, team) => (<>
@@ -12206,8 +12396,7 @@ export default function App() {
         <div className="ux-ph">
           <h2 className="ux-pt">Cart</h2><span className="ux-drop-n" style={mono}>{draftCount}</span>
           <span className="ux-drop-acts">
-            <button type="button" className={"ux-btnreset ux-btn" + (discardArm ? " ux-arm" : "")} disabled={busy || !draftCount}
-              onClick={() => (discardArm ? discardDraft() : setDiscardArm(true))} onBlur={() => setDiscardArm(false)}>{discardArm ? "Confirm Empty" : "Empty Cart"}</button>
+            <UxHold label="Hold To Empty Cart" done="Emptied" disabled={busy || !draftCount} onHold={discardDraft} />
             <button type="button" className="ux-btnreset ux-cb-x" aria-label="Close" disabled={busy} onClick={closeCart}>{uxIcon("close", "ux-s")}</button>
           </span>
         </div>
@@ -18128,8 +18317,8 @@ export default function App() {
     return { s: live ? { ...s, ...slotSummary(p) } : s, ...(p ? uxTStatus(p) : { stage: "Unreadable", lead: null, done: false, fmt: "" }) };
   }).sort((a, b) => (b.s.ts || 0) - (a.s.ts || 0)), [uxTScreen, tSlots, tActiveSlot, tConfig, tPhase, tGroups, tKO, tournamentTeamIds]);
   // Opening a save: its own pages, on Overview (or its setup, until it starts).
-  const tOpen = (id, view = null) => { if (id !== tActiveSlot) slotSwitch(id); setTPage("open"); setTView(view); setTRoundPick(null); setTResetArm(false); };
-  const tNew = () => { slotNew(); setTPage("open"); setTView(null); setTRoundPick(null); setTResetArm(false); };
+  const tOpen = (id, view = null) => { if (id !== tActiveSlot) slotSwitch(id); setTPage("open"); setTView(view); setTRoundPick(null); };
+  const tNew = () => { slotNew(); setTPage("open"); setTView(null); setTRoundPick(null); };
   // An address naming a save. On boot the saves are still on their way into state, so the index is read where it is kept
   // and the save applied directly: switching through slotSwitch then would write an empty list over the index.
   const tOpenBySlug = (slug, view) => {
@@ -18142,10 +18331,7 @@ export default function App() {
     }
     setTPage("open"); setTView(view); setTRoundPick(null);
   };
-  const tResetClick = () => {
-    if (tResetArm) { setTResetArm(false); setTView(null); resetTournament(); return; }
-    setTResetArm(true); setTimeout(() => setTResetArm(false), 4000);
-  };
+  const tResetClick = () => { setTView(null); resetTournament(); };
   useEffect(() => { setTRoundPick(null); setTDelArm(null); setTHand(null); setTPickQ(""); }, [tPhase]);
   // A small button in a row, and the form's parts.
   const uxMini = (label, go, kind, title) => (
@@ -18165,13 +18351,13 @@ export default function App() {
   // A match's action: its word on Fixtures, where there is room, and its icon in Overview's column, where the words left the
   // sides' names too little.
   const uxAct = (wide, label, icon, go, kind, title) => wide ? uxMini(label, go, kind, title) : (
-    <button key={label} type="button" className={"ux-btnreset ux-mini ux-ico" + (kind ? " ux-" + kind : "")} title={title || label} aria-label={title || label} onClick={go}>{uxIcon(icon, "ux-s")}</button>);
+    <button key={label} type="button" className={"ux-btnreset ux-mini ux-ico" + (kind ? " ux-" + kind : "")} data-tip={title || label} aria-label={title || label} onClick={go}>{uxIcon(icon, "ux-s")}</button>);
   // A side in a list of matches: crest and name, the name against the score on the home side.
   // A side in a fixture: its name, or in Overview's narrow Fixtures its code, the name on hover (the user, 14 October 2026:
   // "the fixtures should use team codes so that the team names aren't all truncated").
   const uxTSide = (t, won, right, host, code) => {
     const cr = t ? <TeamCrest team={t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />;
-    const nm = <span className={won ? "ux-strong" : undefined} style={code && t?.code ? mono : undefined} title={code && t?.code ? t.name : undefined}>
+    const nm = <span className={won ? "ux-strong" : undefined} style={code && t?.code ? mono : undefined} data-tip={code && t?.code ? t.name : undefined}>
       {(code && t?.code) || t?.name || "TBD"}{host && <small className="ux-dim"> H</small>}</span>;
     return right ? <div className="ux-tc ux-rt"><span className="ux-rtn">{nm}</span>{cr}</div> : <div className="ux-tc">{cr}{nm}</div>;
   };
@@ -18187,7 +18373,7 @@ export default function App() {
           <thead><tr><th>Name</th><th>Format</th><th className="ux-c">Sides</th><th>Stage</th><th>Leader Or Winner</th><th className="ux-c">Played</th><th>Last Saved</th><th /></tr></thead>
           <tbody>
             {uxTSavedRows.map(({ s, stage, lead, done, fmt }) => {
-              const ren = slotRenaming?.id === s.id, del = slotConfirmDelete === s.id;
+              const ren = slotRenaming?.id === s.id;
               return (
                 <tr key={s.id} className={ren ? undefined : "ux-link"} onClick={ren ? undefined : () => tOpen(s.id)}>
                   <td>{ren
@@ -18204,9 +18390,8 @@ export default function App() {
                   <td className="ux-dim" style={mono}>{uxTWhen(s.ts)}</td>
                   <td onClick={e => e.stopPropagation()}><div className="ux-tacts">
                     {ren ? <>{uxMini("Save", () => slotRename(s.id, slotRenaming.name), "pri")}{uxMini("Cancel", () => setSlotRenaming(null))}</>
-                      : del ? <>{uxMini("Confirm Delete", () => slotDelete(s.id), "danger")}{uxMini("Cancel", () => setSlotConfirmDelete(null))}</>
                       : <>{uxMini("Rename", () => setSlotRenaming({ id: s.id, name: s.name }))}{uxMini("Copy", () => slotDuplicate(s.id))}
-                          {uxMini("Export", () => slotExport(s.id))}{uxMini("Delete", () => setSlotConfirmDelete(s.id), "danger")}</>}
+                          {uxMini("Export", () => slotExport(s.id))}<UxHold mini label="Hold To Delete" done="Deleted" onHold={() => slotDelete(s.id)} /></>}
                   </div></td>
                 </tr>); })}
             {!uxTSavedRows.length && <tr><td colSpan={8} className="ux-dim">No Saved Tournaments</td></tr>}
@@ -18257,7 +18442,7 @@ export default function App() {
           <div className="ux-menu" role="menu" aria-label="Export" onKeyDown={e => { if (e.key === "Escape") setTToolsOpen(false); }}>
             {items.map(([l, fn]) => <button key={l} type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => { setTToolsOpen(false); fn(); }}>{l}</button>)}</div></>)}
       </div>
-      <button type="button" className={"ux-btnreset ux-btn" + (tResetArm ? " ux-danger" : "")} onClick={tResetClick}>{tResetArm ? "Confirm Reset" : "Reset"}</button></>);
+      <UxHold label="Hold To Reset" done="Reset" onHold={tResetClick} /></>);
   };
   const renderUxTSetupBar = () => {
     const presets = [[null, [["", "Preset"]]], ["Formats", Object.entries(T_PRESETS).filter(([, p]) => !p.divider).map(([id, p]) => ["f:" + id, p.label])],
@@ -19240,7 +19425,7 @@ export default function App() {
     }
     return (<>
       {out}
-      <button type="button" className={"ux-btnreset ux-btn" + (tResetArm ? " ux-danger" : "")} onClick={tResetClick}>{tResetArm ? "Confirm Reset" : "Reset"}</button></>);
+      <UxHold label="Hold To Reset" done="Reset" onHold={tResetClick} /></>);
   };
   // A refusal, a failed save or a score that would not go in: a note in the corner until it is clicked away.
   const uxTToast = () => {
@@ -19260,14 +19445,11 @@ export default function App() {
   const lmArm = () => { if (tPendingPlayLive) { tConfirmPlayLive(tPendingPlayLive); return; } meTourn.current = null; setTLiveTarget(null); };
   const lmKickOff = () => { if (!lmReady()) return; lmArm(); meKick(); };
   const lmSimEnd = () => { if (!lmReady()) return; lmArm(); meKick(); setTimeout(meSimEnd, 0); };
-  // Abandon throws a parked match away, so it asks twice; a tournament's fixture goes back to waiting for its kick-off.
-  const [lmAbArm, setLmAbArm] = useState(false);
+  // Abandon throws a parked match away, so it is held (UxHold); a tournament's fixture goes back to waiting for its kick-off.
   // Each side's team sheet shows its eleven on the pitch or its bench, one at a time, so the pitch has its panel's full
   // height ("Dude have you seen how crowded the pitches are", Moukden and Kirin, 10 October 2026).
   const [lmSheet, setLmSheet] = useState({ home: "xi", away: "xi" });
   const lmAbandon = () => {
-    if (!lmAbArm) { setLmAbArm(true); setTimeout(() => setLmAbArm(false), 4000); return; }
-    setLmAbArm(false);
     const tn = meTourn.current; meStop(); meRef.current = null; meTourn.current = null; setTLiveTarget(null);
     if (tn?.target) setTPendingPlayLive(tn.target); setMeFrame(f => f + 1); };
   // A fixture let go leaves its two sides behind as a friendly, on a friendly's terms.
@@ -19288,11 +19470,11 @@ export default function App() {
     const m = lmParked();
     if (m) return (<>
       <span className="ux-chip ux-chip-in ux-mlive"><i aria-hidden="true" />In Progress<b style={mono}>{m.out.goals.home}-{m.out.goals.away}</b><span style={mono}>{meMinute(m.t)}&prime;</span></span>
-      <button type="button" className={"ux-btnreset ux-btn" + (lmAbArm ? " ux-danger" : "")} onClick={lmAbandon}>{lmAbArm ? "Confirm Abandon" : "Abandon"}</button>
+      <UxHold label="Hold To Abandon" done="Abandoned" onHold={lmAbandon} />
       <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => setMeView("live")}>{uxIcon("play", "ux-s")}Resume</button></>);
     const ok = lmReady();
     return (<>
-      {tPendingPlayLive && <button type="button" className="ux-btnreset ux-btn" onClick={lmDrop}>Drop Fixture</button>}
+      {tPendingPlayLive && <UxHold label="Hold To Drop Fixture" done="Dropped" onHold={lmDrop} />}
       <button type="button" className="ux-btnreset ux-btn" disabled={!ok} onClick={lmSimEnd}>{uxIcon("sim", "ux-s")}Sim To End</button>
       <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ok} onClick={lmKickOff}>{uxIcon("play", "ux-s")}Kick Off</button></>);
   };
@@ -19821,6 +20003,8 @@ export default function App() {
       </div>
       <div className="ux-app">
         <TraitCard />
+        <UxTips />
+        <UxShine />
         {renderUxTopBar()}
         {renderUxPageBar()}
         <main className="ux-main">
@@ -21691,6 +21875,7 @@ export default function App() {
                       style={{ background: bg, "--ux-bug-div": div }}>
                   <span className="ux-bug-crest" aria-hidden="true"><TeamCrest team={t} size={112} /></span>
                   <b>{t?.code || abbr(t?.name, t?.code)}</b>
+                  <UxSheen n={out.goals[side]} />
                 </span>);
             };
             // THE SHOOTOUT ("Also what's it look like during penalty shootouts", Moukden and Kirin, 10 October 2026). Under
@@ -21716,7 +21901,7 @@ export default function App() {
             const scorebug = (
               <div className="ux-bug" aria-label="Score">
                 {bugSide(m.hT, "home")}
-                <span className="ux-bug-score">{out.goals.home}<i>-</i>{out.goals.away}</span>
+                <span className="ux-bug-score"><UxRoll value={out.goals.home} delay={UX_SHEEN_LAG} /><i>-</i><UxRoll value={out.goals.away} delay={UX_SHEEN_LAG} /></span>
                 {bugSide(m.aT, "away")}
                 <span className={"ux-bug-clock" + (brk ? " ux-brk" : "")}>{brk || clock}{!brk && added && <i>{added}</i>}</span>
                 {pkLive && <>

@@ -1149,7 +1149,7 @@ tr.ux-vac { cursor: default; }
    under the score; extra time, the aggregate and the finished shootout hang under the bar. */
 .ux-bug { position: absolute; z-index: 3; left: 18px; top: 14px; display: grid; grid-template-columns: repeat(4, auto); justify-content: start;
   color: #fff; pointer-events: none; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .45)); }
-.ux-bug-team, .ux-bug-score, .ux-bug-clock { grid-row: 1; height: 38px; }
+.ux-bug-team, .ux-bug-score, .ux-bug-clock { grid-row: 1; height: 38px; box-sizing: border-box; }
 .ux-bug-team { position: relative; display: flex; align-items: stretch; gap: 7px; padding-right: 14px; overflow: hidden; border-radius: 3px 0 0 3px;
   font: 700 31px/1 var(--ux-f-title); letter-spacing: .04em; }
 .ux-bug-team.ux-r { flex-direction: row-reverse; padding: 0 0 0 14px; border-radius: 0; }
@@ -1174,7 +1174,7 @@ tr.ux-vac { cursor: default; }
 .ux-bug-score { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 10px 1px; background: #eceef1; color: #0b0d12;
   font: 700 27px/1 var(--ux-f-title); font-variant-numeric: tabular-nums; }
 .ux-bug-score i, .ux-bug-pksc i { font-style: normal; font-weight: 600; }
-.ux-bug-clock { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 78px; margin-left: 5px; padding: 0 14px 1px; border-radius: 3px;
+.ux-bug-clock { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 106px; margin-left: 5px; padding: 0 14px 1px; border-radius: 3px;
   background: rgba(8, 9, 13, .94); font: 700 23px/1 var(--ux-f-title); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 .ux-bug-clock.ux-brk { font-size: 18px; letter-spacing: .1em; }
 .ux-bug-clock i { font-style: normal; font-size: 16px; color: var(--ui-warn); }
@@ -2248,3 +2248,54 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 .ux-st-tbl tr.ux-sel .ux-st-has { color: var(--ux-text); }
 .ux-st-many { display: flex; gap: 14px; min-width: 0; overflow: hidden; -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
 .ux-st-many .ux-seat { flex: none; max-width: none; }
+
+/* ── Motion (the user, 24 October 2026, from React Bits; App.tsx's UxRoll, UxSheen, UxHold, UxTips, UxShine) ── */
+/* The score's digits: a strip of 0-9 behind a window feathered at top and bottom, spaced a digit and a half apart so the
+   next one up never shows at rest. */
+.ux-roll { display: inline-flex; }
+.ux-roll-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ux-roll-d { position: relative; display: inline-block; text-align: center; }
+.ux-roll-sz { visibility: hidden; }
+.ux-roll-win { position: absolute; inset: -.2em 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#0000 0, #000 .2em, #000 calc(100% - .2em), #0000 100%);
+          mask-image: linear-gradient(#0000 0, #000 .2em, #000 calc(100% - .2em), #0000 100%); }
+.ux-roll-strip { position: absolute; inset: .2em 0; }
+.ux-roll-strip > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform; }
+.ux-roll-win svg { position: absolute; width: 0; height: 0; }
+/* The goal sheen: one streak across the scoring side's panel, travelling toward the score. */
+.ux-bug-sheen { position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen; opacity: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .42) 47%, rgba(255, 255, 255, .6) 50%, rgba(255, 255, 255, .42) 53%, transparent 70%) no-repeat;
+  background-size: 250% 100%; }
+.ux-bug-sheen.ux-go { animation: ux-sweep 900ms cubic-bezier(.45, .05, .35, 1) both; }
+.ux-bug-team.ux-r .ux-bug-sheen.ux-go { animation-name: ux-sweep-r; }
+@keyframes ux-sweep   { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 1; background-position: 0% 0; } }
+@keyframes ux-sweep-r { 0% { opacity: 1; background-position: 0% 0; } 100% { opacity: 1; background-position: 100% 0; } }
+/* Hold to confirm: the loss colour rises through the button while it is held, its leading edge a small wave. */
+.ux-hold { position: relative; overflow: hidden; isolation: isolate; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  --ux-hold-p: 0; --ux-hold-w: 0px; --ux-hold-h: 0px; --ux-hold-wave: 5px; --ux-hold-bg: color-mix(in srgb, var(--ux-loss) 32%, var(--ux-panel)); }
+.ux-hold-l { position: relative; z-index: 2; display: grid; }
+.ux-hold-l > span { grid-area: 1 / 1; transition: opacity 200ms; }
+.ux-hold-done { opacity: 0; }
+.ux-hold[data-phase="done"] .ux-hold-idle { opacity: 0; }
+.ux-hold[data-phase="done"] .ux-hold-done { opacity: 1; }
+.ux-hold[data-phase="done"] { border-color: color-mix(in srgb, var(--ux-loss) 60%, var(--ux-line-2)); }
+.ux-hold-fill { position: absolute; inset: 0; z-index: 1; background: var(--ux-hold-bg);
+  clip-path: inset(0 calc((1 - var(--ux-hold-p)) * (100% + .75 * var(--ux-hold-wave)) - var(--ux-hold-p) * .25 * var(--ux-hold-wave)) 0 0); }
+.ux-hold-crest { position: absolute; inset: 0; z-index: 1; background: var(--ux-hold-bg);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E") repeat-y;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E") repeat-y;
+  -webkit-mask-size: var(--ux-hold-wave) calc(var(--ux-hold-h) * 2); mask-size: var(--ux-hold-wave) calc(var(--ux-hold-h) * 2);
+  -webkit-mask-position: calc(-1 * var(--ux-hold-wave) + var(--ux-hold-p) * (var(--ux-hold-w) + var(--ux-hold-wave))) calc(-1 * var(--ux-hold-p) * var(--ux-hold-h) * 1.2);
+          mask-position: calc(-1 * var(--ux-hold-wave) + var(--ux-hold-p) * (var(--ux-hold-w) + var(--ux-hold-wave))) calc(-1 * var(--ux-hold-p) * var(--ux-hold-h) * 1.2); }
+.ux-hold:disabled .ux-hold-fill, .ux-hold:disabled .ux-hold-crest { display: none; }
+/* The warm tooltip: one for the whole app. */
+.ux-tip { position: fixed; z-index: 200; left: 0; top: 0; padding: 5px 8px; border-radius: 4px; background: var(--ux-panel-3); border: 1px solid var(--ux-line-2);
+  color: var(--ux-text); font-size: 11px; font-weight: 500; white-space: nowrap; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  opacity: 0; transform: translateY(2px); transition: opacity var(--ux-fast), transform var(--ux-fast); }
+.ux-tip.ux-on { opacity: 1; transform: none; }
+.ux-tip.ux-warm { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ux-bug-sheen.ux-go { animation: none; }
+  .ux-hold-crest { display: none; }
+  .ux-tip { transition: none; }
+}
