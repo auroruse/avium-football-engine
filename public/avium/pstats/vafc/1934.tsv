@@ -1,12 +1,12 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
-1	Rui Ōe	MID	NCH	10	10	665	13		1	Étienne Trieu	MID	ATK	7	7	514	9		1	Luca Higashiyama	MID	NCH	10	10	622	7.9		1	Luca Higashiyama	MID	NCH	10	10	622	48		1	Linus Kitingan	DEF	CAH	11	11	990	84		1	Renzo Agbayani	GK	SGD	11	11	990	37
+1	Rui Ōe	MID	NCH	10	10	665	13		1	Étienne Trieu	MID	GAI	7	7	514	9		1	Luca Higashiyama	MID	NCH	10	10	622	7.9		1	Luca Higashiyama	MID	NCH	10	10	622	48		1	Linus Kitingan	DEF	CAH	11	11	990	84		1	Renzo Agbayani	GK	SGD	11	11	990	37
 2	Catmon Nacpil	FWD	SGD	11	11	971	11		2	Luca Higashiyama	MID	NCH	10	10	622	9		2	Timur Iskanderov	MID	GIA	8	8	574	7.7		2	Valery Polyakov	FWD	GIA	8	8	694	20		2	Luca Higashiyama	MID	NCH	10	10	622	55		2	Raka Wijaya	GK	CAH	11	11	990	32
-3	Timur Iskanderov	MID	GIA	8	8	574	9		3	Valery Polyakov	FWD	GIA	8	8	694	5		3	Ilya Morozov	MID	GIA	8	8	531	7.6		3	Étienne Trieu	MID	ATK	7	7	514	19		3	Eliezer Bansa	MID	CAH	11	11	867	55		3	Evgeny Karpov	GK	PER	11	11	990	32
+3	Timur Iskanderov	MID	GIA	8	8	574	9		3	Valery Polyakov	FWD	GIA	8	8	694	5		3	Ilya Morozov	MID	GIA	8	8	531	7.6		3	Étienne Trieu	MID	GAI	7	7	514	19		3	Eliezer Bansa	MID	CAH	11	11	867	55		3	Evgeny Karpov	GK	PER	11	11	990	32
 4	Alimjan Turghun	FWD	PER	11	11	729	9		4	Hiro Oshiro	MID	NCH	10	10	711	5		4	Guowei Sun	FWD	GUA	7	7	473	7.5		4	Klim Zaytsev	MID	PER	11	11	787	19		4	Daulat Siregar	FWD	CAH	11	11	708	54		4	Bilguun Bat-Erdene	GK	AXE	6	6	540	29
-5	Vinh Ngo	FWD	ATK	7	7	605	8		5	Fedor Frolov	FWD	PER	11	11	790	5		5	Étienne Trieu	MID	ATK	7	7	514	7.5		5	Ilya Morozov	MID	GIA	8	8	531	18		5	Makisig Liwanag	MID	SGD	11	11	824	53		5	Janh Nguyen	GK	ATK	7	7	630	28
+5	Vinh Ngo	FWD	GAI	7	7	605	8		5	Fedor Frolov	FWD	PER	11	11	790	5		5	Étienne Trieu	MID	GAI	7	7	514	7.5		5	Ilya Morozov	MID	GIA	8	8	531	18		5	Makisig Liwanag	MID	SGD	11	11	824	53		5	Janh Nguyen	GK	GAI	7	7	630	28
 6	Kiyoshi Torigoe	MID	NCH	9	0	376	7		6	Qiushi Zhang	MID	GUA	7	7	533	4		6	Rui Ōe	MID	NCH	10	10	665	7.5		6	Hiro Oshiro	MID	NCH	10	10	711	15		6	Ivan Gavrilovic	DEF	PER	11	11	838	52		6	Semyon Volkov	GK	GIA	8	8	720	28
 7	Fedor Frolov	FWD	PER	11	11	790	7		7	Nikolai Lebedev	MID	GIA	8	8	612	4		7	Catmon Nacpil	FWD	SGD	11	11	971	7.5		7	Guowei Sun	FWD	GUA	7	7	473	14		7	Rodion Titov	MID	PER	11	11	914	48		7	William Bwemara	GK	ENC	7	7	630	22
-8	Chenguang Pei	FWD	GUA	7	7	611	6		8	Rui Ōe	MID	NCH	10	10	665	4		8	Vinh Ngo	FWD	ATK	7	7	605	7.4		8	Timur Iskanderov	MID	GIA	8	8	574	14		8	Kidlat Ilagan	MID	SGD	11	11	887	47		8	Andres Raivo	GK	KFK	6	6	540	19
+8	Chenguang Pei	FWD	GUA	7	7	611	6		8	Rui Ōe	MID	NCH	10	10	665	4		8	Vinh Ngo	FWD	GAI	7	7	605	7.4		8	Timur Iskanderov	MID	GIA	8	8	574	14		8	Kidlat Ilagan	MID	SGD	11	11	887	47		8	Andres Raivo	GK	KFK	6	6	540	19
 9	Valery Polyakov	FWD	GIA	8	8	694	6		9	Alimjan Turghun	FWD	PER	11	11	729	4		9	Sheng Huang	MID	FUR	8	8	445	7.4		9	Rui Ōe	MID	NCH	10	10	665	14		9	Osman Mamut	DEF	PER	11	11	990	47		9	Josefa Gonelevu	GK	ANB	7	7	630	19
 10	Hiro Oshiro	MID	NCH	10	10	711	6		10	Zhihao Tang	MID	GUA	6	3	257	3		10	Jaroslav Navrátil	MID	AKN	6	6	429	7.3		10	Qiang Zhu	MID	FUR	8	8	537	13		10	Puso Kalaw	MID	SGD	11	11	919	46		10	Yang Chen	GK	FUR	8	8	720	19
 11	Raphael Simet	FWD	AKN	6	6	389	5		11	Manasseh Tamate	MID	AKN	6	6	427	3		11	Qiushi Zhang	MID	GUA	7	7	533	7.3		11	Catmon Nacpil	FWD	SGD	11	11	971	13		11	Makar Kulikov	MID	PER	11	11	866	45		11	Eisuke Sato	GK	NCH	10	10	900	19
@@ -20,12 +20,12 @@
 19	Cyprian Kulleh	FWD	CAH	10	1	297	4		19	Silas Vatom	MID	AKN	6	6	491	2		19	Shō Itoshi	MID	NCH	9	9	529	7.2		19	Zhiyuan Fang	MID	FUR	8	1	314	10		19	Klim Zaytsev	MID	PER	11	11	787	36									
 20	Kannan Kurup	FWD	CAH	10	10	608	4		20	Oskar Berger	MID	AKN	6	6	462	2		20	Kannan Kurup	FWD	CAH	10	10	608	7.2		20	Gleb Vorontsov	MID	GIA	8	0	209	10		20	Sheng Huang	MID	FUR	8	8	445	35									
 21	Luca Higashiyama	MID	NCH	10	10	622	4		21	Enkhbold Tsendbaatar	FWD	AXE	6	6	510	2		21	Enkhbold Tsendbaatar	FWD	AXE	6	6	510	7.1		21	Sabin Madius	MID	CAH	10	10	648	10		21	Xiang Qian	DEF	FUR	8	8	603	34									
-22	Étienne Trieu	MID	ATK	7	7	514	3		22	Kolinio Rigamoto	FWD	ANB	7	7	461	2		22	Makoto Kishima	MID	NCH	10	10	833	7.1		22	Made Djelantik	FWD	CAH	11	11	679	10		22	Gen Fija	DEF	NCH	10	10	857	34									
-23	Tianyu Gu	MID	FUR	7	7	439	3		23	Lam Vu	MID	ATK	7	7	578	2		23	Raka Wijaya	GK	CAH	11	11	990	7.1		23	Daulat Siregar	FWD	CAH	11	11	708	10		23	Genma Nishigawa	DEF	NCH	10	10	854	34									
+22	Étienne Trieu	MID	GAI	7	7	514	3		22	Kolinio Rigamoto	FWD	ANB	7	7	461	2		22	Makoto Kishima	MID	NCH	10	10	833	7.1		22	Made Djelantik	FWD	CAH	11	11	679	10		22	Gen Fija	DEF	NCH	10	10	857	34									
+23	Tianyu Gu	MID	FUR	7	7	439	3		23	Lam Vu	MID	GAI	7	7	578	2		23	Raka Wijaya	GK	CAH	11	11	990	7.1		23	Daulat Siregar	FWD	CAH	11	11	708	10		23	Genma Nishigawa	DEF	NCH	10	10	854	34									
 24	Ning Jiang	FWD	FUR	7	0	244	3		24	Ganzorig Erdene	FWD	NCH	8	8	388	2		24	Daulat Siregar	FWD	CAH	11	11	708	7.1		24	Eliezer Bansa	MID	CAH	11	11	867	10		24	Makoto Kishima	MID	NCH	10	10	833	34									
 25	Sheng Huang	MID	FUR	8	8	445	3		25	Hanwen Qiu	MID	FUR	8	0	324	2		25	Zhihao Tang	MID	GUA	6	3	257	7.1		25	Daulet Kenzhebayev	MID	PER	11	11	811	10		25	Hiraya Halili	MID	SGD	11	11	887	34									
 26	Qiang Zhu	MID	FUR	8	8	537	3		26	Zhiyuan Fang	MID	FUR	8	1	314	2		26	Oskar Berger	MID	AKN	6	6	462	7.1		26	Manasseh Tamate	MID	AKN	6	6	427	9		26	Guowei Sun	FWD	GUA	7	7	473	33									
-27	Ilya Morozov	MID	GIA	8	8	531	3		27	Zemin Mao	FWD	FUR	8	8	476	2		27	Janh Nguyen	GK	ATK	7	7	630	7.1		27	Chenguang Pei	FWD	GUA	7	7	611	9		27	Liang Wu	DEF	FUR	8	8	720	33									
+27	Ilya Morozov	MID	GIA	8	8	531	3		27	Zemin Mao	FWD	FUR	8	8	476	2		27	Janh Nguyen	GK	GAI	7	7	630	7.1		27	Chenguang Pei	FWD	GUA	7	7	611	9		27	Liang Wu	DEF	FUR	8	8	720	33									
 28	Takeru Mikado	MID	NCH	9	0	296	3		28	Fengqi Lu	MID	FUR	8	8	601	2		28	Ganzorig Erdene	FWD	NCH	8	8	388	7.1		28	Sheng Huang	MID	FUR	8	8	445	9		28	Haoran Peng	MID	FUR	8	8	612	33									
 29	Sevastyan Roshchin	FWD	PER	10	0	325	3		29	Sevastyan Roshchin	FWD	PER	10	0	325	2		29	Gen Fija	DEF	NCH	10	10	857	7.1		29	Haoran Peng	MID	FUR	8	8	612	9		29	Ilya Morozov	MID	GIA	8	8	531	33									
 30	Daulat Siregar	FWD	CAH	11	11	708	3		30	Makoto Kishima	MID	NCH	10	10	833	2		30	Hiro Oshiro	MID	NCH	10	10	711	7.1		30	Kiyoshi Torigoe	MID	NCH	9	0	376	9		30	Lev Gusev	DEF	PER	11	11	988	33									
@@ -40,46 +40,46 @@
 39	Gleb Vorontsov	MID	GIA	8	0	209	2		39	Vladimir Tsoikov	FWD	GIA	1	0	26	1		39	Kazuyoshi Hiranuma	DEF	NCH	10	10	900	7.0		39	Jao Macaraeg	FWD	SGD	11	11	771	8		39	Hiro Oshiro	MID	NCH	10	10	711	29									
 40	Kazuyoshi Hiranuma	DEF	NCH	10	10	900	2		40	Wenkai Zhao	MID	GUA	4	4	260	1		40	Linus Kitingan	DEF	CAH	11	11	990	7.0		40	Oskar Berger	MID	AKN	6	6	462	7		40	Made Djelantik	FWD	CAH	11	11	679	29									
 41	Vidi Sastrowardoyo	MID	CAH	11	11	974	2		41	Minghao Bai	MID	AXE	4	0	43	1		41	Made Djelantik	FWD	CAH	11	11	679	7.0		41	Enkhbold Tsendbaatar	FWD	AXE	6	6	510	7		41	Phailo Shomponen	DEF	KFK	6	6	516	28									
-42	Daulet Kenzhebayev	MID	PER	11	11	811	2		42	Quang Đinh	MID	ATK	5	0	165	1		42	Jao Macaraeg	FWD	SGD	11	11	771	7.0		42	Qiushi Zhang	MID	GUA	7	7	533	7		42	Mahendra Singh	DEF	ANB	7	7	630	28									
+42	Daulet Kenzhebayev	MID	PER	11	11	811	2		42	Quang Đinh	MID	GAI	5	0	165	1		42	Jao Macaraeg	FWD	SGD	11	11	771	7.0		42	Qiushi Zhang	MID	GUA	7	7	533	7		42	Mahendra Singh	DEF	ANB	7	7	630	28									
 43	Rodion Titov	MID	PER	11	11	914	2		43	Ferdinand Steiner	DEF	AKN	6	6	540	1		43	Rodion Titov	MID	PER	11	11	914	7.0		43	Epeli Leweniqila	MID	ANB	7	7	543	7		43	Shō Itoshi	MID	NCH	9	9	529	28									
-44	Phong Le	FWD	ATK	1	0	25	1		44	Vitus To Ngala	DEF	AKN	6	6	506	1		44	Zixuan Wang	GK	GUA	7	7	630	6.9		44	Hiromu Furuhashi	FWD	NCH	8	2	408	7		44	Kōzō Fujise	DEF	NCH	10	10	845	28									
+44	Phong Le	FWD	GAI	1	0	25	1		44	Vitus To Ngala	DEF	AKN	6	6	506	1		44	Zixuan Wang	GK	GUA	7	7	630	6.9		44	Hiromu Furuhashi	FWD	NCH	8	2	408	7		44	Kōzō Fujise	DEF	NCH	10	10	845	28									
 45	Vladimir Tsoikov	FWD	GIA	1	0	26	1		45	Raphael Simet	FWD	AKN	6	6	389	1		45	Kidlat Ilagan	MID	SGD	11	11	887	6.9		45	Sevastyan Roshchin	FWD	PER	10	0	325	7		45	Sagip Gatmaitan	DEF	SGD	11	11	990	28									
 46	Jianguo Shu	FWD	AXE	4	0	75	1		46	Jaroslav Navrátil	MID	AKN	6	6	429	1		46	Daulet Kenzhebayev	MID	PER	11	11	811	6.9		46	Gen Fija	DEF	NCH	10	10	857	7		46	Alimjan Turghun	FWD	PER	11	11	729	28									
-47	Nathan Lavuka	MID	AKN	5	0	181	1		47	Galsan Badmaev	MID	AXE	6	6	402	1		47	Quang Đinh	MID	ATK	5	0	165	6.9		47	Wahyu Wibowo	MID	CAH	11	11	891	7		47	Nikolai Lebedev	MID	GIA	8	8	612	27									
+47	Nathan Lavuka	MID	AKN	5	0	181	1		47	Galsan Badmaev	MID	AXE	6	6	402	1		47	Quang Đinh	MID	GAI	5	0	165	6.9		47	Wahyu Wibowo	MID	CAH	11	11	891	7		47	Nikolai Lebedev	MID	GIA	8	8	612	27									
 48	Buyan Tserendorj	MID	AXE	5	0	167	1		48	Radna Tsydypov	MID	AXE	6	6	523	1		48	Arman Dosmukhamed	DEF	PER	6	0	239	6.9		48	Vidi Sastrowardoyo	MID	CAH	11	11	974	7		48	Wahyu Wibowo	MID	CAH	11	11	891	27									
 49	Olavi Marvinen	FWD	KFK	6	0	118	1		49	Tsogt Gantulga	MID	AXE	6	6	523	1		49	Xiang Qian	DEF	FUR	8	8	603	6.9		49	Zhihao Tang	MID	GUA	6	3	257	6		49	Tadhana Batumbakal	DEF	SGD	11	11	990	27									
 50	Galsan Badmaev	MID	AXE	6	6	402	1		50	Chenguang Pei	FWD	GUA	7	7	611	1		50	Hanwen Qiu	MID	FUR	8	0	324	6.9		50	Raphael Simet	FWD	AKN	6	6	389	6		50	Nayuka Patchila	GK	AAD	6	6	540	26									
 51	Radna Tsydypov	MID	AXE	6	6	523	1		51	Bo Yan	MID	GUA	7	7	619	1		51	Fengqi Lu	MID	FUR	8	8	601	6.9		51	Jaroslav Navrátil	MID	AKN	6	6	429	6		51	Sabin Madius	MID	CAH	10	10	648	26									
 52	Yuan Li	DEF	GUA	7	7	630	1		52	Anil Prasad	FWD	ANB	7	0	164	1		52	Ural Yusupov	MID	GIA	8	8	692	6.9		52	Rajesh Narayan	FWD	ANB	7	7	473	6		52	Vidi Sastrowardoyo	MID	CAH	11	11	974	26									
-53	Qiushi Zhang	MID	GUA	7	7	533	1		53	Sang Pham	MID	ATK	7	7	573	1		53	Takeru Mikado	MID	NCH	9	0	296	6.9		53	Vinh Ngo	FWD	ATK	7	7	605	6		53	Nūmho Laranyal	MID	KFK	6	6	514	25									
-54	Anil Prasad	FWD	ANB	7	0	164	1		54	Vinh Ngo	FWD	ATK	7	7	605	1		54	Eisuke Sato	GK	NCH	10	10	900	6.9		54	Lam Vu	MID	ATK	7	7	578	6		54	Fengqi Lu	MID	FUR	8	8	601	25									
+53	Qiushi Zhang	MID	GUA	7	7	533	1		53	Sang Pham	MID	GAI	7	7	573	1		53	Takeru Mikado	MID	NCH	9	0	296	6.9		53	Vinh Ngo	FWD	GAI	7	7	605	6		53	Nūmho Laranyal	MID	KFK	6	6	514	25									
+54	Anil Prasad	FWD	ANB	7	0	164	1		54	Vinh Ngo	FWD	GAI	7	7	605	1		54	Eisuke Sato	GK	NCH	10	10	900	6.9		54	Lam Vu	MID	GAI	7	7	578	6		54	Fengqi Lu	MID	FUR	8	8	601	25									
 55	Viliame Latianara	FWD	ANB	7	7	496	1		55	Ikki Dazai	MID	NCH	8	1	214	1		55	Bagus Hartono	MID	CAH	11	0	374	6.9		55	Ning Jiang	FWD	FUR	7	0	244	6		55	Aloysius Kaviu	DEF	AKN	6	6	540	24									
 56	Ilaitia Titifanue	MID	ANB	7	7	506	1		56	Hengbo Liu	DEF	FUR	8	8	669	1		56	Eliezer Bansa	MID	CAH	11	11	867	6.9		56	Gaku Ibusuki	MID	NCH	9	0	236	6		56	Isak Nanlong	MID	AAD	6	6	528	24									
-57	Manh Ton That	DEF	ATK	7	7	630	1		57	Yicheng Tan	MID	FUR	8	0	195	1		57	Puso Kalaw	MID	SGD	11	11	919	6.9		57	Rodion Titov	MID	PER	11	11	914	6		57	Changming Zhao	MID	GUA	7	7	609	24									
-58	Thinh Dang	MID	ATK	7	7	521	1		58	Sheng Huang	MID	FUR	8	8	445	1		58	Stepan Andreev	DEF	PER	11	11	905	6.9		58	Paavo Suursaaren	MID	KFK	6	6	518	5		58	Sang Pham	MID	ATK	7	7	573	24									
-59	Lam Vu	MID	ATK	7	7	578	1		59	Qiang Zhu	MID	FUR	8	8	537	1		59	Klim Zaytsev	MID	PER	11	11	787	6.9		59	Tsogt Gantulga	MID	AXE	6	6	523	5		59	Kasi Hnamano	DEF	ENC	7	7	572	24									
+57	Manh Ton That	DEF	GAI	7	7	630	1		57	Yicheng Tan	MID	FUR	8	0	195	1		57	Puso Kalaw	MID	SGD	11	11	919	6.9		57	Rodion Titov	MID	PER	11	11	914	6		57	Changming Zhao	MID	GUA	7	7	609	24									
+58	Thinh Dang	MID	GAI	7	7	521	1		58	Sheng Huang	MID	FUR	8	8	445	1		58	Stepan Andreev	DEF	PER	11	11	905	6.9		58	Paavo Suursaaren	MID	KFK	6	6	518	5		58	Sang Pham	MID	GAI	7	7	573	24									
+59	Lam Vu	MID	GAI	7	7	578	1		59	Qiang Zhu	MID	FUR	8	8	537	1		59	Klim Zaytsev	MID	PER	11	11	787	6.9		59	Tsogt Gantulga	MID	AXE	6	6	523	5		59	Kasi Hnamano	DEF	ENC	7	7	572	24									
 60	Ikki Dazai	MID	NCH	8	1	214	1		60	Dmitry Belov	DEF	GIA	8	8	720	1		60	Wenkai Zhao	MID	GUA	4	4	260	6.8		60	Kolinio Rigamoto	FWD	ANB	7	7	461	5		60	Bagus Hartono	MID	CAH	11	0	374	24									
-61	Xiang Qian	DEF	FUR	8	8	603	1		61	Ural Yusupov	MID	GIA	8	8	692	1		61	Ferdinand Steiner	DEF	AKN	6	6	540	6.8		61	Huy Luong	MID	ATK	7	7	586	5		61	Nyoman Suarjana	FWD	CAH	11	0	284	24									
+61	Xiang Qian	DEF	FUR	8	8	603	1		61	Ural Yusupov	MID	GIA	8	8	692	1		61	Ferdinand Steiner	DEF	AKN	6	6	540	6.8		61	Huy Luong	MID	GAI	7	7	586	5		61	Nyoman Suarjana	FWD	CAH	11	0	284	24									
 62	Hanwen Qiu	MID	FUR	8	0	324	1		62	Gleb Vorontsov	MID	GIA	8	0	209	1		62	Gideon Vunairoto	MID	AKN	6	6	433	6.8		62	Ikki Dazai	MID	NCH	8	1	214	5		62	Taiwin Pacaka	DEF	KFK	6	6	540	23									
 63	Fengqi Lu	MID	FUR	8	8	601	1		63	Yuri Bogdanov	MID	GIA	8	0	161	1		63	Bo Yan	MID	GUA	7	7	619	6.8		63	Boris Vinogradov	MID	GIA	8	8	620	5		63	Jaroslav Navrátil	MID	AKN	6	6	429	23									
-64	Anton Orlov	DEF	GIA	8	8	720	1		64	Timur Iskanderov	MID	GIA	8	8	574	1		64	Sang Pham	MID	ATK	7	7	573	6.8		64	Yuri Bogdanov	MID	GIA	8	0	161	5		64	Qiushi Zhang	MID	GUA	7	7	533	23									
+64	Anton Orlov	DEF	GIA	8	8	720	1		64	Timur Iskanderov	MID	GIA	8	8	574	1		64	Sang Pham	MID	GAI	7	7	573	6.8		64	Yuri Bogdanov	MID	GIA	8	0	161	5		64	Qiushi Zhang	MID	GUA	7	7	533	23									
 65	Yuri Bogdanov	MID	GIA	8	0	161	1		65	Gaku Ibusuki	MID	NCH	9	0	236	1		65	Ikki Dazai	MID	NCH	8	1	214	6.8		65	Teguh Setiawan	DEF	CAH	10	10	803	5		65	Andres Raivo	GK	KFK	6	6	540	22									
 66	Araw Tapang	MID	SGD	9	0	115	1		66	Kiyoshi Torigoe	MID	NCH	9	0	376	1		66	Dmitry Belov	DEF	GIA	8	8	720	6.8		66	Cyprian Kulleh	FWD	CAH	10	1	297	5		66	Nergüi Chimeddorj	DEF	AXE	6	6	540	22									
 67	Gaku Ibusuki	MID	NCH	9	0	236	1		67	Cyprian Kulleh	FWD	CAH	10	1	297	1		67	Gleb Vorontsov	MID	GIA	8	0	209	6.8		67	Nurlan Zhakupov	MID	PER	10	0	292	5		67	Bo Yan	MID	GUA	7	7	619	22									
-68	Jehezkiel Lawai	DEF	CAH	10	10	846	1		68	Kannan Kurup	FWD	CAH	10	10	608	1		68	Kōzō Fujise	DEF	NCH	10	10	845	6.8		68	Kōzō Fujise	DEF	NCH	10	10	845	5		68	Étienne Trieu	MID	ATK	7	7	514	22									
-69	Elan Umali	MID	SGD	10	0	252	1		69	Buwi Calang	FWD	SGD	10	0	229	1		69	Genma Nishigawa	DEF	NCH	10	10	854	6.8		69	Makisig Liwanag	MID	SGD	11	11	824	5		69	Huy Luong	MID	ATK	7	7	586	22									
+68	Jehezkiel Lawai	DEF	CAH	10	10	846	1		68	Kannan Kurup	FWD	CAH	10	10	608	1		68	Kōzō Fujise	DEF	NCH	10	10	845	6.8		68	Kōzō Fujise	DEF	NCH	10	10	845	5		68	Étienne Trieu	MID	GAI	7	7	514	22									
+69	Elan Umali	MID	SGD	10	0	252	1		69	Buwi Calang	FWD	SGD	10	0	229	1		69	Genma Nishigawa	DEF	NCH	10	10	854	6.8		69	Makisig Liwanag	MID	SGD	11	11	824	5		69	Huy Luong	MID	GAI	7	7	586	22									
 70	Buwi Calang	FWD	SGD	10	0	229	1		70	Nurlan Zhakupov	MID	PER	10	0	292	1		70	Renzo Agbayani	GK	SGD	11	11	990	6.8		70	Kidlat Ilagan	MID	SGD	11	11	887	5		70	Hiromu Furuhashi	FWD	NCH	8	2	408	22									
 71	Nurlan Zhakupov	MID	PER	10	0	292	1		71	Kazuyoshi Hiranuma	DEF	NCH	10	10	900	1		71	Hiraya Halili	MID	SGD	11	11	887	6.8		71	Wenkai Zhao	MID	GUA	4	4	260	4		71	Ganzorig Erdene	FWD	NCH	8	8	388	22									
 72	Makoto Kishima	MID	NCH	10	10	833	1		72	Yopie Runtuwene	FWD	CAH	11	0	327	1		72	Evgeny Karpov	GK	PER	11	11	990	6.8		72	Silas Vatom	MID	AKN	6	6	491	4		72	Kiyoshi Torigoe	MID	NCH	9	0	376	22									
-73	Nyoman Suarjana	FWD	CAH	11	0	284	1		73	Made Djelantik	FWD	CAH	11	11	679	1		73	Osman Mamut	DEF	PER	11	11	990	6.8		73	Gideon Vunairoto	MID	AKN	6	6	433	4		73	Félix Doan	DEF	ATK	6	6	478	21									
+73	Nyoman Suarjana	FWD	CAH	11	0	284	1		73	Made Djelantik	FWD	CAH	11	11	679	1		73	Osman Mamut	DEF	PER	11	11	990	6.8		73	Gideon Vunairoto	MID	AKN	6	6	433	4		73	Félix Doan	DEF	GAI	6	6	478	21									
 74	Makar Kulikov	MID	PER	11	11	866	1		74	Narra Catacutan	DEF	SGD	11	11	990	1		74	Lev Gusev	DEF	PER	11	11	988	6.8		74	Kaiwen Ding	FWD	AXE	6	6	480	4		74	Matouš Beneš	DEF	AAD	6	6	519	21									
 75	Klim Zaytsev	MID	PER	11	11	787	1		75	Sagip Gatmaitan	DEF	SGD	11	11	990	1		75	Nathan Lavuka	MID	AKN	5	0	181	6.7		75	Théophile Thibault	MID	ANB	7	7	630	4		75	Lingyun Hao	MID	GUA	7	7	628	21									
 									76	Jao Macaraeg	FWD	SGD	11	11	771	1		76	Dambiin Dorzhiev	DEF	AXE	6	6	540	6.7		76	Hengbo Liu	DEF	FUR	8	8	669	4		76	Soane Lagivaka	DEF	ENC	7	7	528	21									
 									77	Osman Mamut	DEF	PER	11	11	990	1		77	Radna Tsydypov	MID	AXE	6	6	523	6.7		77	Genma Nishigawa	DEF	NCH	10	10	854	4		77	Boris Vinogradov	MID	GIA	8	8	620	21									
-									78	Rodion Titov	MID	PER	11	11	914	1		78	Huy Luong	MID	ATK	7	7	586	6.7		78	Nyoman Suarjana	FWD	CAH	11	0	284	4		78	Manasseh Tamate	MID	AKN	6	6	427	20									
-																		79	Lam Vu	MID	ATK	7	7	578	6.7		79	Lev Gusev	DEF	PER	11	11	988	4		79	Haotian Ha	DEF	AXE	6	6	540	20									
+									78	Rodion Titov	MID	PER	11	11	914	1		78	Huy Luong	MID	GAI	7	7	586	6.7		78	Nyoman Suarjana	FWD	CAH	11	0	284	4		78	Manasseh Tamate	MID	AKN	6	6	427	20									
+																		79	Lam Vu	MID	GAI	7	7	578	6.7		79	Lev Gusev	DEF	PER	11	11	988	4		79	Haotian Ha	DEF	AXE	6	6	540	20									
 																		80	Tianyu Gu	MID	FUR	7	7	439	6.7		80	Ézéchiel Tein	MID	ENC	5	0	152	3		80	Saw Htoo	DEF	AAD	6	6	504	20									
-																		81	Hengbo Liu	DEF	FUR	8	8	669	6.7		81	Nathan Lavuka	MID	AKN	5	0	181	3		81	Manh Ton That	DEF	ATK	7	7	630	20									
+																		81	Hengbo Liu	DEF	FUR	8	8	669	6.7		81	Nathan Lavuka	MID	AKN	5	0	181	3		81	Manh Ton That	DEF	GAI	7	7	630	20									
 																		82	Zhiyuan Fang	MID	FUR	8	1	314	6.7		82	Daiwo Âhänōnyte	FWD	KFK	6	6	427	3		82	Falakiko Vailala	MID	ENC	7	7	558	20									
 																		83	Boris Vinogradov	MID	GIA	8	8	620	6.7		83	Vīren Chōna	MID	KFK	6	6	486	3		83	Feng Ji	DEF	GUA	7	7	622	19									
 																		84	Gaku Ibusuki	MID	NCH	9	0	236	6.7		84	Ferdinand Steiner	DEF	AKN	6	6	540	3		84	Augustin Moreau	DEF	ANB	7	7	630	19									
@@ -88,25 +88,25 @@
 																		87	Sevastyan Roshchin	FWD	PER	10	0	325	6.7		87	Isak Nanlong	MID	AAD	6	6	528	3		87	Mingzhe Xiong	DEF	FUR	8	8	720	19									
 																		88	Sagip Gatmaitan	DEF	SGD	11	11	990	6.7		88	Yuxuan Cui	FWD	GUA	7	0	151	3		88	Lakan Dimayuga	DEF	SGD	11	11	946	19									
 																		89	Ivan Gavrilovic	DEF	PER	11	11	838	6.7		89	Nathaniel Suifua	MID	AGN	7	7	628	3		89	Noren Apngan	DEF	KFK	6	6	519	18									
-																		90	Junwei Shen	DEF	FUR	4	0	168	6.7		90	Sang Pham	MID	ATK	7	7	573	3		90	Bilguun Bat-Erdene	GK	AXE	6	6	540	18									
+																		90	Junwei Shen	DEF	FUR	4	0	168	6.7		90	Sang Pham	MID	GAI	7	7	573	3		90	Bilguun Bat-Erdene	GK	AXE	6	6	540	18									
 																		91	Buyan Tserendorj	MID	AXE	5	0	167	6.7		91	Xiang Qian	DEF	FUR	8	8	603	3		91	Sitiveni Seruvakula	DEF	ANB	7	7	630	18									
-																		92	Félix Doan	DEF	ATK	6	6	478	6.7		92	Mingzhe Xiong	DEF	FUR	8	8	720	3		92	Roman Stepanov	DEF	GIA	8	8	690	18									
+																		92	Félix Doan	DEF	GAI	6	6	478	6.7		92	Mingzhe Xiong	DEF	FUR	8	8	720	3		92	Roman Stepanov	DEF	GIA	8	8	690	18									
 																		93	Nūmho Laranyal	MID	KFK	6	6	514	6.7		93	Kazuyoshi Hiranuma	DEF	NCH	10	10	900	3		93	Arman Dosmukhamed	DEF	PER	6	0	239	17									
 																		94	Aloysius Kaviu	DEF	AKN	6	6	540	6.7		94	Yopie Runtuwene	FWD	CAH	11	0	327	3		94	Engalo Samāyan	DEF	KFK	6	6	497	17									
 																		95	Vitus To Ngala	DEF	AKN	6	6	506	6.7		95	Narra Catacutan	DEF	SGD	11	11	990	3		95	Raphael Simet	FWD	AKN	6	6	389	17									
-																		96	Galsan Badmaev	MID	AXE	6	6	402	6.7		96	Vladimir Tsoikov	FWD	GIA	1	0	26	2		96	Cuong Khuat	DEF	ATK	7	7	630	17									
+																		96	Galsan Badmaev	MID	AXE	6	6	402	6.7		96	Vladimir Tsoikov	FWD	GIA	1	0	26	2		96	Cuong Khuat	DEF	GAI	7	7	630	17									
 																		97	Feng Ji	DEF	GUA	7	7	622	6.7		97	Jonah Kambuou	MID	AKN	4	0	72	2		97	Douglas MacKenzie	DEF	ENC	7	7	589	17									
-																		98	Lingyun Hao	MID	GUA	7	7	628	6.7		98	Nam Cao	MID	ATK	4	0	40	2		98	Poindi Kabar	MID	ENC	7	7	560	17									
-																		99	Changming Zhao	MID	GUA	7	7	609	6.7		99	Quang Đinh	MID	ATK	5	0	165	2		99	Zemin Mao	FWD	FUR	8	8	476	17									
+																		98	Lingyun Hao	MID	GUA	7	7	628	6.7		98	Nam Cao	MID	GAI	4	0	40	2		98	Poindi Kabar	MID	ENC	7	7	560	17									
+																		99	Changming Zhao	MID	GUA	7	7	609	6.7		99	Quang Đinh	MID	GAI	5	0	165	2		99	Zemin Mao	FWD	FUR	8	8	476	17									
 																		100	Epeli Leweniqila	MID	ANB	7	7	543	6.7		100	Peter Warota	MID	AKN	5	0	99	2		100	Dmitry Belov	DEF	GIA	8	8	720	17									
 																		101	Ilaitia Titifanue	MID	ANB	7	7	506	6.7		101	Dōren Lâchūaton	FWD	KFK	6	6	515	2		101	Narra Catacutan	DEF	SGD	11	11	990	17									
-																		102	Manh Ton That	DEF	ATK	7	7	630	6.7		102	Olavi Marvinen	FWD	KFK	6	0	118	2		102	Vīren Chōna	MID	KFK	6	6	486	16									
-																		103	Thinh Dang	MID	ATK	7	7	521	6.7		103	Doh Paw	MID	AAD	6	6	540	2		103	Pau Atong	DEF	AAD	6	6	540	16									
+																		102	Manh Ton That	DEF	GAI	7	7	630	6.7		102	Olavi Marvinen	FWD	KFK	6	0	118	2		102	Vīren Chōna	MID	KFK	6	6	486	16									
+																		103	Thinh Dang	MID	GAI	7	7	521	6.7		103	Doh Paw	MID	AAD	6	6	540	2		103	Pau Atong	DEF	AAD	6	6	540	16									
 																		104	Yang Chen	GK	FUR	8	8	720	6.7		104	Weilin Fu	MID	GUA	7	0	158	2		104	Ferdinand Steiner	DEF	AKN	6	6	540	15									
 																		105	Liang Wu	DEF	FUR	8	8	720	6.7		105	Anil Prasad	FWD	ANB	7	0	164	2		105	Irgen Mu	MID	AXE	6	6	480	15									
 																		106	Mingzhe Xiong	DEF	FUR	8	8	720	6.7		106	Viliame Latianara	FWD	ANB	7	7	496	2		106	Viliame Latianara	FWD	ANB	7	7	496	15									
 																		107	Yicheng Tan	MID	FUR	8	0	195	6.7		107	Philemon Iroga	FWD	AGN	7	7	571	2		107	Manasseh Tanangada	DEF	AGN	7	7	630	15									
-																		108	Cyprian Kulleh	FWD	CAH	10	1	297	6.7		108	Thinh Dang	MID	ATK	7	7	521	2		108	Takeru Mikado	MID	NCH	9	0	296	15									
+																		108	Cyprian Kulleh	FWD	CAH	10	1	297	6.7		108	Thinh Dang	MID	GAI	7	7	521	2		108	Takeru Mikado	MID	NCH	9	0	296	15									
 																		109	Sabin Madius	MID	CAH	10	10	648	6.7		109	Mwalé Löpwi	FWD	ENC	7	7	470	2		109	Elan Umali	MID	SGD	10	0	252	15									
 																		110	Elan Umali	MID	SGD	10	0	252	6.7		110	Yicheng Tan	MID	FUR	8	0	195	2		110	Nurlan Zhakupov	MID	PER	10	0	292	15									
 																		111	Trofim Savelyev	MID	PER	10	0	196	6.7		111	Dmitry Belov	DEF	GIA	8	8	720	2		111	Yopie Runtuwene	FWD	CAH	11	0	327	15									
@@ -114,7 +114,7 @@
 																		113	Nyoman Suarjana	FWD	CAH	11	0	284	6.7		113	Buwi Calang	FWD	SGD	10	0	229	2		113	Risto Ātlaköneinen	MID	KFK	6	6	502	14									
 																		114	Narra Catacutan	DEF	SGD	11	11	990	6.7		114	Linus Kitingan	DEF	CAH	11	11	990	2		114	Vitus To Ngala	DEF	AKN	6	6	506	14									
 																		115	Makar Kulikov	MID	PER	11	11	866	6.7		115	Stepan Andreev	DEF	PER	11	11	905	2		115	Heng Kong	DEF	GUA	7	7	630	14									
-																		116	Panting Jugah	DEF	CAH	4	1	210	6.6		116	Phong Le	FWD	ATK	1	0	25	1		116	Thinh Dang	MID	ATK	7	7	521	14									
+																		116	Panting Jugah	DEF	CAH	4	1	210	6.6		116	Phong Le	FWD	GAI	1	0	25	1		116	Thinh Dang	MID	GAI	7	7	521	14									
 																		117	Paavo Suursaaren	MID	KFK	6	6	518	6.6		117	Jianfeng Na	FWD	AXE	2	0	15	1		117	Tianyu Gu	MID	FUR	7	7	439	14									
 																		118	Notini Tikana	GK	AKN	6	6	540	6.6		118	Natanael Panggabean	MID	CAH	2	1	94	1		118	Ikki Dazai	MID	NCH	8	1	214	14									
 																		119	Haotian Ha	DEF	AXE	6	6	540	6.6		119	Daichi Komatsubara	MID	NCH	2	0	42	1		119	Gaku Ibusuki	MID	NCH	9	0	236	14									
@@ -123,7 +123,7 @@
 																		122	Irgen Mu	MID	AXE	6	6	480	6.6		122	Otto Lindenberg	MID	AGN	4	0	47	1		122	Radna Tsydypov	MID	AXE	6	6	523	13									
 																		123	Yuan Li	DEF	GUA	7	7	630	6.6		123	Minghao Bai	MID	AXE	4	0	43	1		123	Tsogt Gantulga	MID	AXE	6	6	523	13									
 																		124	Mahendra Singh	DEF	ANB	7	7	630	6.6		124	Boqin Xie	MID	FUR	4	0	70	1		124	Gustav Sedláček	MID	AAD	6	6	540	13									
-																		125	Augustin Moreau	DEF	ANB	7	7	630	6.6		125	Dat Truong	MID	ATK	5	0	67	1		125	Napolioni Tikoisuva	MID	ANB	7	7	619	13									
+																		125	Augustin Moreau	DEF	ANB	7	7	630	6.6		125	Dat Truong	MID	GAI	5	0	67	1		125	Napolioni Tikoisuva	MID	ANB	7	7	619	13									
 																		126	Ning Jiang	FWD	FUR	7	0	244	6.6		126	Konrad Hellwig	MID	AKN	5	0	106	1		126	Joseph Nanau	GK	AGN	7	7	630	13									
 																		127	Roman Stepanov	DEF	GIA	8	8	690	6.6		127	Benedict To Warai	FWD	AKN	5	0	151	1		127	Nathaniel Suifua	MID	AGN	7	7	628	13									
 																		128	Wahyu Wibowo	MID	CAH	11	11	891	6.6		128	Buyan Tserendorj	MID	AXE	5	0	167	1		128	Ramsay Sutherland	MID	ENC	7	7	554	13									
@@ -146,7 +146,7 @@
 																		145	Maxim Fedorov	DEF	GIA	8	8	720	6.5		145	Ilaitia Titifanue	MID	ANB	7	7	506	1		145	Buwi Calang	FWD	SGD	10	0	229	11									
 																		146	Lakan Dimayuga	DEF	SGD	11	11	946	6.5		146	Hedley Kabutaulaka	DEF	AGN	7	7	630	1		146	Daigo Takanashi	DEF	NCH	3	0	144	10									
 																		147	Titus Turuk	DEF	AKN	6	6	540	6.4		147	Abraham Taloikwao	MID	AGN	7	7	592	1		147	Panting Jugah	DEF	CAH	4	1	210	10									
-																		148	Yingjie Ma	DEF	AXE	6	6	516	6.4		148	Wolfgang Steinberg	FWD	AGN	7	7	609	1		148	Quang Đinh	MID	ATK	5	0	165	10									
+																		148	Yingjie Ma	DEF	AXE	6	6	516	6.4		148	Wolfgang Steinberg	FWD	AGN	7	7	609	1		148	Quang Đinh	MID	GAI	5	0	165	10									
 																		149	Saw Htoo	DEF	AAD	6	6	504	6.4		149	Kurt Hartmann	MID	AGN	7	7	625	1		149	Oskar Berger	MID	AKN	6	6	462	10									
 																		150	Bual Ponge	MID	AAD	6	6	509	6.4		150	Kasi Hnamano	DEF	ENC	7	7	572	1		150	Doh Paw	MID	AAD	6	6	540	10									
 																		151	Doh Paw	MID	AAD	6	6	540	6.4		151	Jobi Paoume	FWD	ENC	7	7	515	1		151	Khumba Chari	FWD	AAD	6	6	457	10									
@@ -157,8 +157,8 @@
 																		156	Abraham Taloikwao	MID	AGN	7	7	592	6.4		156	Roman Stepanov	DEF	GIA	8	8	690	1		156	Zhiyuan Fang	MID	FUR	8	1	314	10									
 																		157	Benaiah Taupongi	MID	AGN	7	7	590	6.4		157	Tolib Rahimov	MID	GIA	8	0	113	1		157	Yuri Bogdanov	MID	GIA	8	0	161	10									
 																		158	Kurt Hartmann	MID	AGN	7	7	625	6.4		158	Trofim Savelyev	MID	PER	10	0	196	1		158	Valery Polyakov	FWD	GIA	8	8	694	10									
-																		159	Cuong Khuat	DEF	ATK	7	7	630	6.4		159	Lakan Dimayuga	DEF	SGD	11	11	946	1		159	Sevastyan Roshchin	FWD	PER	10	0	325	10									
-																		160	Duy Tran	DEF	ATK	7	7	568	6.4		160	Sagip Gatmaitan	DEF	SGD	11	11	990	1		160	Wenkai Zhao	MID	GUA	4	4	260	9									
+																		159	Cuong Khuat	DEF	GAI	7	7	630	6.4		159	Lakan Dimayuga	DEF	SGD	11	11	946	1		159	Sevastyan Roshchin	FWD	PER	10	0	325	10									
+																		160	Duy Tran	DEF	GAI	7	7	568	6.4		160	Sagip Gatmaitan	DEF	SGD	11	11	990	1		160	Wenkai Zhao	MID	GUA	4	4	260	9									
 																		161	Kasi Hnamano	DEF	ENC	7	7	572	6.4		161	Puso Kalaw	MID	SGD	11	11	919	1		161	Bual Ponge	MID	AAD	6	6	509	9									
 																		162	Nidoïsh Naisseline	MID	ENC	7	7	630	6.4											162	Kolinio Rigamoto	FWD	ANB	7	7	461	9									
 																		163	Poindi Kabar	MID	ENC	7	7	560	6.4											163	Benaiah Taupongi	MID	AGN	7	7	590	9									
@@ -167,7 +167,7 @@
 																		166	Hedley Kabutaulaka	DEF	AGN	7	7	630	6.3											166	Titus Turuk	DEF	AKN	6	6	540	8									
 																		167	Yopie Runtuwene	FWD	CAH	11	0	327	6.3											167	Josefa Gonelevu	GK	ANB	7	7	630	8									
 																		168	Phailo Shomponen	DEF	KFK	6	6	516	6.3											168	Théophile Thibault	MID	ANB	7	7	630	8									
-																		169	Daiwo Âhänōnyte	FWD	KFK	6	6	427	6.3											169	Duy Tran	DEF	ATK	7	7	568	8									
+																		169	Daiwo Âhänōnyte	FWD	KFK	6	6	427	6.3											169	Duy Tran	DEF	GAI	7	7	568	8									
 																		170	Manasseh Tanangada	DEF	AGN	7	7	630	6.3											170	Ruben Sihombing	MID	CAH	9	0	112	8									
 																		171	Bilguun Bat-Erdene	GK	AXE	6	6	540	6.2											171	Trofim Savelyev	MID	PER	10	0	196	8									
 																		172	Pau Atong	DEF	AAD	6	6	540	6.2											172	Raka Wijaya	GK	CAH	11	11	990	8									
@@ -177,10 +177,10 @@
 																		176	Noren Apngan	DEF	KFK	6	6	519	6.1											176	Ewald Kessler	DEF	AGN	7	7	591	7									
 																		177	Engalo Samāyan	DEF	KFK	6	6	497	6.1											177	Kurt Hartmann	MID	AGN	7	7	625	7									
 																		178	Elias Totanange	DEF	AAD	6	6	540	6.1											178	Nikita Shirokov	MID	PER	7	0	93	7									
-																		179	Tomas Meka	DEF	AGN	7	7	630	6.1											179	Lam Vu	MID	ATK	7	7	578	7									
+																		179	Tomas Meka	DEF	AGN	7	7	630	6.1											179	Lam Vu	MID	GAI	7	7	578	7									
 																		180	Toma Peato	FWD	ENC	7	7	473	6.1											180	Evgeny Karpov	GK	PER	11	11	990	7									
 																		181	Josefa Gonelevu	GK	ANB	7	7	630	6.1											181	Natanael Panggabean	MID	CAH	2	1	94	6									
-																		182	Douglas MacKenzie	DEF	ENC	7	7	589	6.1											182	Dat Truong	MID	ATK	5	0	67	6									
+																		182	Douglas MacKenzie	DEF	ENC	7	7	589	6.1											182	Dat Truong	MID	GAI	5	0	67	6									
 																		183	Taiwin Pacaka	DEF	KFK	6	6	540	6.0											183	Wamytan Goromido	DEF	ENC	5	0	154	6									
 																		184	Dōren Lâchūaton	FWD	KFK	6	6	515	6.0											184	Enkhbold Tsendbaatar	FWD	AXE	6	6	510	6									
 																		185	Khumba Chari	FWD	AAD	6	6	457	6.0											185	Weilin Fu	MID	GUA	7	0	158	6									
@@ -194,33 +194,33 @@
 																		193	Andres Raivo	GK	KFK	6	6	540	5.2											193	Mwalé Löpwi	FWD	ENC	7	7	470	5									
 																		194	Vladimir Tsoikov	FWD	GIA	1	0	26	7.7											194	Semyon Volkov	GK	GIA	8	8	720	5									
 																		195	Antaei Djurunga	DEF	CAH	1	1	90	7.5											195	Konrad Hellwig	MID	AKN	5	0	106	4									
-																		196	Phong Le	FWD	ATK	1	0	25	7.3											196	Benedict To Warai	FWD	AKN	5	0	151	4									
+																		196	Phong Le	FWD	GAI	1	0	25	7.3											196	Benedict To Warai	FWD	AKN	5	0	151	4									
 																		197	Natanael Panggabean	MID	CAH	2	1	94	6.8											197	Olavi Marvinen	FWD	KFK	6	0	118	4									
 																		198	Silas Maetala	DEF	AGN	1	0	39	6.7											198	Yuxuan Cui	FWD	GUA	7	0	151	4									
 																		199	Nikita Shirokov	MID	PER	7	0	93	6.7											199	Waisale Ravuiwasa	MID	ANB	7	0	146	4									
 																		200	Yuri Bogdanov	MID	GIA	8	0	161	6.7											200	Anil Prasad	FWD	ANB	7	0	164	4									
-																		201	Ziqiang Bao	MID	GUA	6	0	16	6.7											201	Janh Nguyen	GK	ATK	7	7	630	4									
+																		201	Ziqiang Bao	MID	GUA	6	0	16	6.7											201	Janh Nguyen	GK	GAI	7	7	630	4									
 																		202	Weilin Fu	MID	GUA	7	0	158	6.7											202	Kidlat Yabut	MID	SGD	8	0	65	4									
 																		203	Festus Boseto	MID	AGN	1	0	2	6.7											203	Gleb Vorontsov	MID	GIA	8	0	209	4									
 																		204	Araw Tapang	MID	SGD	9	0	115	6.7											204	Araw Tapang	MID	SGD	9	0	115	4									
 																		205	Kidlat Yabut	MID	SGD	8	0	65	6.7											205	Renzo Agbayani	GK	SGD	11	11	990	4									
 																		206	Zorigt Damba	MID	AXE	1	0	5	6.7											206	Silas Maetala	DEF	AGN	1	0	39	3									
 																		207	Ochir Gombojav	MID	AXE	3	0	17	6.7											207	Kaspar Tokori	DEF	AKN	1	0	34	3									
-																		208	Minghao Bai	MID	AXE	4	0	43	6.7											208	Marcel Huỳnh	MID	ATK	5	0	95	3									
+																		208	Minghao Bai	MID	AXE	4	0	43	6.7											208	Marcel Huỳnh	MID	GAI	5	0	95	3									
 																		209	Kaspar Tokori	DEF	AKN	1	0	34	6.7											209	Ézéchiel Tein	MID	ENC	5	0	152	3									
-																		210	An Thach	MID	ATK	3	0	12	6.7											210	Hamish Urquhart	FWD	ENC	6	0	217	3									
-																		211	Nam Cao	MID	ATK	4	0	40	6.7											211	Zixuan Wang	GK	GUA	7	7	630	3									
-																		212	Pyotr Egorov	MID	GIA	4	0	24	6.7											212	Vinh Ngo	FWD	ATK	7	7	605	3									
+																		210	An Thach	MID	GAI	3	0	12	6.7											210	Hamish Urquhart	FWD	ENC	6	0	217	3									
+																		211	Nam Cao	MID	GAI	4	0	40	6.7											211	Zixuan Wang	GK	GUA	7	7	630	3									
+																		212	Pyotr Egorov	MID	GIA	4	0	24	6.7											212	Vinh Ngo	FWD	GAI	7	7	605	3									
 																		213	Poe Lwin	MID	AAD	1	0	5	6.7											213	Sabit Nurgaliev	MID	GIA	7	0	64	3									
-																		214	Dakila Magsino Bulanhagui	MID	SGD	3	0	12	6.7											214	Gia Bui	DEF	ATK	3	1	152	2									
+																		214	Dakila Magsino Bulanhagui	MID	SGD	3	0	12	6.7											214	Gia Bui	DEF	GAI	3	1	152	2									
 																		215	Tikhon Tarasov	MID	PER	1	0	2	6.7											215	Yengo Yaka	FWD	ENC	3	0	53	2									
 																		216	Daigo Takanashi	DEF	NCH	3	0	144	6.7											216	Ruuna Annasaaren	DEF	KFK	3	0	70	2									
 																		217	Haoyu Shi	MID	GUA	7	0	70	6.6											217	Micah Saeniu	FWD	AGN	4	0	71	2									
 																		218	Ruben Sihombing	MID	CAH	9	0	112	6.6											218	Jianguo Shu	FWD	AXE	4	0	75	2									
-																		219	Delana Koroi	MID	ANB	7	0	76	6.6											219	Nam Cao	MID	ATK	4	0	40	2									
+																		219	Delana Koroi	MID	ANB	7	0	76	6.6											219	Nam Cao	MID	GAI	4	0	40	2									
 																		220	Otto Lindenberg	MID	AGN	4	0	47	6.6											220	Peter Warota	MID	AKN	5	0	99	2									
-																		221	Marcel Huỳnh	MID	ATK	5	0	95	6.6											221	Buyan Tserendorj	MID	AXE	5	0	167	2									
-																		222	Dat Truong	MID	ATK	5	0	67	6.6											222	Ziqiang Bao	MID	GUA	6	0	16	2									
+																		221	Marcel Huỳnh	MID	GAI	5	0	95	6.6											221	Buyan Tserendorj	MID	AXE	5	0	167	2									
+																		222	Dat Truong	MID	GAI	5	0	67	6.6											222	Ziqiang Bao	MID	GUA	6	0	16	2									
 																		223	Ézéchiel Tein	MID	ENC	5	0	152	6.6											223	Delana Koroi	MID	ANB	7	0	76	2									
 																		224	Gaitu Waia	MID	ENC	3	0	66	6.6											224	Tolib Rahimov	MID	GIA	8	0	113	2									
 																		225	Ilmari Hatamaaen	MID	KFK	3	0	17	6.6											225	Zorigt Damba	MID	AXE	1	0	5	1									
@@ -229,7 +229,7 @@
 																		228	Peter Warota	MID	AKN	5	0	99	6.6											228	Eh Htay	DEF	AAD	2	0	57	1									
 																		229	Jonah Kambuou	MID	AKN	4	0	72	6.6											229	Daichi Komatsubara	MID	NCH	2	0	42	1									
 																		230	Benedict To Warai	FWD	AKN	5	0	151	6.6											230	Gaitu Waia	MID	ENC	3	0	66	1									
-																		231	Boqin Xie	MID	FUR	4	0	70	6.6											231	An Thach	MID	ATK	3	0	12	1									
+																		231	Boqin Xie	MID	FUR	4	0	70	6.6											231	An Thach	MID	GAI	3	0	12	1									
 																		232	Thura Maung	MID	AAD	4	0	38	6.6											232	Jonah Kambuou	MID	AKN	4	0	72	1									
 																		233	Tolib Rahimov	MID	GIA	8	0	113	6.6											233	Minghao Bai	MID	AXE	4	0	43	1									
 																		234	Eino Halttunen	FWD	KFK	2	0	20	6.6											234	Pyotr Egorov	MID	GIA	4	0	24	1									
@@ -252,7 +252,7 @@
 																		251	Usaia Veitayaki	FWD	ANB	7	0	100	6.5																											
 																		252	Anil Prasad	FWD	ANB	7	0	164	6.5																											
 																		253	Micah Saeniu	FWD	AGN	4	0	71	6.5																											
-																		254	Gia Bui	DEF	ATK	3	1	152	6.5																											
+																		254	Gia Bui	DEF	GAI	3	1	152	6.5																											
 																		255	Yengo Yaka	FWD	ENC	3	0	53	6.5																											
 																		256	Aluk Enam	FWD	AAD	5	0	83	6.5																											
 																		257	Platon Denisov	FWD	PER	6	0	136	6.5																											

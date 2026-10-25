@@ -7,7 +7,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1932	World Cup Qualifiers	Dhanushkodi Thuraisingam	ARU	FWD	61	63
 1932	World Cup Qualifiers	Semyon Volkov	GIA	GK	73	75
 1932	World Cup Qualifiers	Jaroslav Navrátil	AKN	MID	60	62
-1932	World Cup Qualifiers	Kenji Nagase	NHO	FWD	81	83
+1932	World Cup Qualifiers	Kenji Nagase	NSH	FWD	81	83
 1932	World Cup Qualifiers	Victor Tvedt	SKJ	MID	84	85
 1932	World Cup Qualifiers	Rosendo Zapatero	AUR	FWD	88	85
 1932	World Cup Qualifiers	Harry Caine	ELV	FWD	90	88
@@ -839,14 +839,14 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Mateus Herrera	ATA	DEF	62	61
 1934	International Football	Ogimaa Panadis	ATA	MID	57	58
 1934	International Football	Zhaawan Commanda	ATA	FWD	58	59
-1934	International Football	Duy Tran	ATK	DEF	73	71
-1934	International Football	Janh Nguyen	ATK	GK	74	76
-1934	International Football	Sang Pham	ATK	MID	73	75
-1934	International Football	Gia Bui	ATK	DEF	71	70
-1934	International Football	Huy Luong	ATK	MID	71	72
-1934	International Football	Manh Ton That	ATK	DEF	73	74
-1934	International Football	Quang Đinh	ATK	MID	72	73
-1934	International Football	Thinh Dang	ATK	MID	72	71
+1934	International Football	Duy Tran	GAI	DEF	73	71
+1934	International Football	Janh Nguyen	GAI	GK	74	76
+1934	International Football	Sang Pham	GAI	MID	73	75
+1934	International Football	Gia Bui	GAI	DEF	71	70
+1934	International Football	Huy Luong	GAI	MID	71	72
+1934	International Football	Manh Ton That	GAI	DEF	73	74
+1934	International Football	Quang Đinh	GAI	MID	72	73
+1934	International Football	Thinh Dang	GAI	MID	72	71
 1934	International Football	Enamul Islam	AWB	DEF	65	63
 1934	International Football	Humayun Piker	AWB	MID	70	72
 1934	International Football	Jahangir Hossain	AWB	DEF	67	65
@@ -1005,45 +1005,45 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Iilpo Kolemainen	MRJ	MID	74	73
 1934	International Football	Ohto Voutilainen	MRJ	DEF	73	72
 1934	International Football	Yakov Sorokin	MYH	MID	74	75
-1934	International Football	Anirban Goswami	NHO	DEF	74	76
-1934	International Football	Ashim Bhattacharya	NHO	GK	73	75
-1934	International Football	Bhupen Narishita	NHO	FWD	70	68
-1934	International Football	Jatin Sudatta	NHO	FWD	71	69
-1934	International Football	Susumu Uehara	NHO	DEF	69	71
-1934	International Football	Yoshio Hanazawa	NHO	FWD	73	75
-1934	International Football	Amiya Majumdar	NHO	DEF	69	70
-1934	International Football	Haripada Bagchi	NHO	MID	70	69
-1934	International Football	Khagendra Mitra	NHO	DEF	71	72
-1934	International Football	Phani Kyaithang	NHO	DEF	73	74
+1934	International Football	Anirban Goswami	NSH	DEF	74	76
+1934	International Football	Ashim Bhattacharya	NSH	GK	73	75
+1934	International Football	Bhupen Narishita	NSH	FWD	70	68
+1934	International Football	Jatin Sudatta	NSH	FWD	71	69
+1934	International Football	Susumu Uehara	NSH	DEF	69	71
+1934	International Football	Yoshio Hanazawa	NSH	FWD	73	75
+1934	International Football	Amiya Majumdar	NSH	DEF	69	70
+1934	International Football	Haripada Bagchi	NSH	MID	70	69
+1934	International Football	Khagendra Mitra	NSH	DEF	71	72
+1934	International Football	Phani Kyaithang	NSH	DEF	73	74
 1934	International Football	Minoru Andō	NKI	FWD	74	72
 1934	International Football	Eijiro Matsumoto	NKI	MID	73	74
 1934	International Football	Nyilan Shikishima	NKI	FWD	72	71
 1934	International Football	Sadao Garabin	NKI	MID	72	71
 1934	International Football	Tarran Nyaruguru	NKI	MID	72	73
-1934	International Football	Chirá Nubrí	NMZ	FWD	63	65
-1934	International Football	Ditsö Nakí	NMZ	MID	65	67
-1934	International Football	Duchí Siwöl	NMZ	MID	65	67
-1934	International Football	Namú Suriá	NMZ	DEF	68	70
-1934	International Football	Tsirú Diköl	NMZ	DEF	67	69
-1934	International Football	Yëría Kaché	NMZ	MID	74	76
-1934	International Football	Dowá Tuvöl	NMZ	DEF	66	67
-1934	International Football	Juní Börá	NMZ	FWD	65	66
-1934	International Football	Kanë Dabá	NMZ	MID	65	66
-1934	International Football	Këbö Wirbli	NMZ	MID	63	62
-1934	International Football	Sibö Kurbli	NMZ	GK	73	74
-1934	International Football	Sulá Bikakö	NMZ	DEF	66	67
-1934	International Football	Talí Sabákö	NMZ	MID	63	64
-1934	International Football	Ioannes Dongolawi	NRG	DEF	55	57
-1934	International Football	Stephanos Ballana	NRG	MID	54	56
-1934	International Football	Theodoros Farasin	NRG	MID	55	57
-1934	International Football	Yohannis Mina	NRG	MID	55	57
-1934	International Football	Yohannis Sukkoti	NRG	DEF	51	53
-1934	International Football	Damianos Faragab	NRG	MID	56	57
-1934	International Football	Georgios Artigasha	NRG	DEF	60	61
-1934	International Football	Kalidurut Bishoy	NRG	DEF	58	59
-1934	International Football	Moüses Kyrillos	NRG	FWD	55	56
-1934	International Football	Petros Nogedi	NRG	MID	52	53
-1934	International Football	Tadros Sonqi	NRG	MID	56	57
+1934	International Football	Chirá Nubrí	NIR	FWD	63	65
+1934	International Football	Ditsö Nakí	NIR	MID	65	67
+1934	International Football	Duchí Siwöl	NIR	MID	65	67
+1934	International Football	Namú Suriá	NIR	DEF	68	70
+1934	International Football	Tsirú Diköl	NIR	DEF	67	69
+1934	International Football	Yëría Kaché	NIR	MID	74	76
+1934	International Football	Dowá Tuvöl	NIR	DEF	66	67
+1934	International Football	Juní Börá	NIR	FWD	65	66
+1934	International Football	Kanë Dabá	NIR	MID	65	66
+1934	International Football	Këbö Wirbli	NIR	MID	63	62
+1934	International Football	Sibö Kurbli	NIR	GK	73	74
+1934	International Football	Sulá Bikakö	NIR	DEF	66	67
+1934	International Football	Talí Sabákö	NIR	MID	63	64
+1934	International Football	Ioannes Dongolawi	NDH	DEF	55	57
+1934	International Football	Stephanos Ballana	NDH	MID	54	56
+1934	International Football	Theodoros Farasin	NDH	MID	55	57
+1934	International Football	Yohannis Mina	NDH	MID	55	57
+1934	International Football	Yohannis Sukkoti	NDH	DEF	51	53
+1934	International Football	Damianos Faragab	NDH	MID	56	57
+1934	International Football	Georgios Artigasha	NDH	DEF	60	61
+1934	International Football	Kalidurut Bishoy	NDH	DEF	58	59
+1934	International Football	Moüses Kyrillos	NDH	FWD	55	56
+1934	International Football	Petros Nogedi	NDH	MID	52	53
+1934	International Football	Tadros Sonqi	NDH	MID	56	57
 1934	International Football	Faisal Al-Dosari	NSR	GK	66	68
 1934	International Football	Jaadallah El-Farid	NSR	MID	63	65
 1934	International Football	Badr Yami	NSR	MID	61	60
@@ -1230,10 +1230,10 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Nikolaos Papadopoulos	AST	GK	85	86
 1934	International Football	Pyrros Dimitrakopoulos	AST	MID	77	76
 1934	International Football	Themistoklis Zervas	AST	MID	80	82
-1934	International Football	Étienne Trieu	ATK	MID	81	83
-1934	International Football	Félix Doan	ATK	DEF	75	76
-1934	International Football	Lam Vu	ATK	MID	78	76
-1934	International Football	Vinh Ngo	ATK	FWD	81	82
+1934	International Football	Étienne Trieu	GAI	MID	81	83
+1934	International Football	Félix Doan	GAI	DEF	75	76
+1934	International Football	Lam Vu	GAI	MID	78	76
+1934	International Football	Vinh Ngo	GAI	FWD	81	82
 1934	International Football	Ánselmo Fernandez	AUR	MID	78	79
 1934	International Football	Arcadio Villa	AUR	MID	78	79
 1934	International Football	Cayetano Montoya	AUR	DEF	78	79
@@ -1440,20 +1440,20 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Makoto Kishima	NCH	MID	84	83
 1934	International Football	Naoto Umenokōji	NCH	DEF	81	82
 1934	International Football	Rui Ōe	NCH	MID	87	88
-1934	International Football	Kamal Bodhipal	NHO	FWD	77	79
-1934	International Football	Kenji Nagase	NHO	FWD	84	83
-1934	International Football	Pradip Chowdhury	NHO	FWD	76	74
-1934	International Football	Sudhir Chakraborty	NHO	MID	80	82
-1934	International Football	Tanvir Howlader	NHO	FWD	82	84
-1934	International Football	Tatsuki Akagawa	NHO	FWD	80	82
+1934	International Football	Kamal Bodhipal	NSH	FWD	77	79
+1934	International Football	Kenji Nagase	NSH	FWD	84	83
+1934	International Football	Pradip Chowdhury	NSH	FWD	76	74
+1934	International Football	Sudhir Chakraborty	NSH	MID	80	82
+1934	International Football	Tanvir Howlader	NSH	FWD	82	84
+1934	International Football	Tatsuki Akagawa	NSH	FWD	80	82
 1934	International Football	Dural Tanumura	NKI	GK	80	81
 1934	International Football	Keigo Ikeda	NKI	DEF	75	76
 1934	International Football	Tanjin Tsukahara	NKI	DEF	76	78
 1934	International Football	Warrik Wirandaru	NKI	DEF	77	79
 1934	International Football	Yerrin Chindura	NKI	MID	84	85
-1934	International Football	Durí Karí	NMZ	MID	78	80
-1934	International Football	Basem Shenouda	NRG	GK	84	86
-1934	International Football	Merkurios Kudanbes	NRG	DEF	75	77
+1934	International Football	Durí Karí	NIR	MID	78	80
+1934	International Football	Basem Shenouda	NDH	GK	84	86
+1934	International Football	Merkurios Kudanbes	NDH	DEF	75	77
 1934	International Football	Kōhei Gushiken	NSR	DEF	76	77
 1934	International Football	Loïc Kervadec	NSR	MID	78	77
 1934	International Football	Raleigh Preston	NSR	FWD	79	80
@@ -1705,7 +1705,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	James Feruccio	HOL	MID	80	79
 1935	1935 WC Qualifiers	Kemar Browner	HOL	MID	82	81
 1935	1935 WC Qualifiers	Reuben Mendoza	HOL	DEF	77	75
-1935	1935 WC Qualifiers	Sudhir Chakraborty	NHO	MID	82	84
+1935	1935 WC Qualifiers	Sudhir Chakraborty	NSH	MID	82	84
 1935	1935 WC Qualifiers	Konsta Yrjölä	KAR	DEF	82	84
 1935	1935 WC Qualifiers	Kasper Kaljurand	KAR	MID	87	88
 1935	1935 WC Qualifiers	Kuismaa Kivisild	KAR	FWD	80	81
@@ -1726,8 +1726,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Omar Kazluaska	LVO	MID	81	84
 1935	1935 WC Qualifiers	Gvidas Rimkevičius	LVO	DEF	79	81
 1935	1935 WC Qualifiers	Otto Manteuffel	LVO	MID	71	70
-1935	1935 WC Qualifiers	Durí Karí	NMZ	MID	80	81
-1935	1935 WC Qualifiers	Tsirú Diköl	NMZ	DEF	69	70
+1935	1935 WC Qualifiers	Durí Karí	NIR	MID	80	81
+1935	1935 WC Qualifiers	Tsirú Diköl	NIR	DEF	69	70
 1935	1935 WC Qualifiers	Kasi Hnamano	ENC	DEF	54	55
 1935	1935 WC Qualifiers	Jobi Paoume	ENC	FWD	50	49
 1935	1935 WC Qualifiers	Ganzorig Erdene	NCH	FWD	87	88
@@ -1749,7 +1749,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Timur Oorzhak	RUD	DEF	83	82
 1935	1935 WC Qualifiers	Toivo Grigorovic	RUD	DEF	76	75
 1935	1935 WC Qualifiers	Matvei Popov	RUD	DEF	74	72
-1935	1935 WC Qualifiers	Merkurios Kudanbes	NRG	DEF	77	80
+1935	1935 WC Qualifiers	Merkurios Kudanbes	NDH	DEF	77	80
 1935	1935 WC Qualifiers	William Levice	SAL	MID	78	81
 1935	1935 WC Qualifiers	Amos Donnelly	SAL	FWD	72	73
 1935	1935 WC Qualifiers	Catmon Nacpil	SGD	FWD	78	79
@@ -1769,7 +1769,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Biel Chuol	SSA	DEF	49	50
 1935	1935 WC Qualifiers	Gatdet Hoth	SSA	MID	48	49
 1935	1935 WC Qualifiers	Niibin Nadjiwon	ATA	FWD	60	61
-1935	1935 WC Qualifiers	Étienne Trieu	ATK	MID	83	84
+1935	1935 WC Qualifiers	Étienne Trieu	GAI	MID	83	84
 1935	1935 WC Qualifiers	Péter Szabó	TUR	MID	90	91
 1935	1935 WC Qualifiers	Sepideh Shakibaii	VAR	MID	86	87
 1935	1935 WC Qualifiers	Valentino Zaccagni	VIC	MID	84	86
@@ -1961,15 +1961,15 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	World Cup	Constantin Reverdin	ARV	MID	84	83
 1935	World Cup	Claude Lemaitre	ARV	DEF	83	82
 1935	World Cup	Antoine Bagradian	ARV	MID	81	80
-1935	World Cup	Durí Karí	NMZ	MID	81	83
-1935	World Cup	Yëría Kaché	NMZ	MID	76	77
-1935	World Cup	Sibö Kurbli	NMZ	GK	74	75
-1935	World Cup	Duchí Siwöl	NMZ	MID	67	68
-1935	World Cup	Sulá Bikakö	NMZ	MID	67	68
-1935	World Cup	Bikëí Yëköl	NMZ	MID	66	67
-1935	World Cup	Juní Börá	NMZ	FWD	66	68
-1935	World Cup	Kanë Dabá	NMZ	MID	66	67
-1935	World Cup	Chirá Nubrí	NMZ	FWD	65	66
+1935	World Cup	Durí Karí	NIR	MID	81	83
+1935	World Cup	Yëría Kaché	NIR	MID	76	77
+1935	World Cup	Sibö Kurbli	NIR	GK	74	75
+1935	World Cup	Duchí Siwöl	NIR	MID	67	68
+1935	World Cup	Sulá Bikakö	NIR	MID	67	68
+1935	World Cup	Bikëí Yëköl	NIR	MID	66	67
+1935	World Cup	Juní Börá	NIR	FWD	66	68
+1935	World Cup	Kanë Dabá	NIR	MID	66	67
+1935	World Cup	Chirá Nubrí	NIR	FWD	65	66
 1935	World Cup	Alimjan Turghun	PER	FWD	79	80
 1935	World Cup	Klim Zaytsev	PER	MID	75	76
 1935	World Cup	Osman Mamut	PER	DEF	73	75
@@ -1992,10 +1992,10 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	World Cup	Jaan Soosaar	KAR	MID	84	83
 1935	World Cup	Iilmari Torjalasten	KAR	MID	80	79
 1935	World Cup	Roððo Duongi	KAR	FWD	80	79
-1935	World Cup	Tanvir Howlader	NHO	FWD	84	83
-1935	World Cup	Tatsuki Akagawa	NHO	FWD	82	81
-1935	World Cup	Anirban Goswami	NHO	DEF	76	77
-1935	World Cup	Ashim Bhattacharya	NHO	GK	75	76
+1935	World Cup	Tanvir Howlader	NSH	FWD	84	83
+1935	World Cup	Tatsuki Akagawa	NSH	FWD	82	81
+1935	World Cup	Anirban Goswami	NSH	DEF	76	77
+1935	World Cup	Ashim Bhattacharya	NSH	GK	75	76
 1935	World Cup	Yerrin Chindura	NKI	MID	86	87
 1935	World Cup	Dural Tanumura	NKI	GK	83	84
 1935	World Cup	Osamu Matsumoto	NKI	MID	77	76
@@ -4294,7 +4294,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Matías Salcedo	ASK	FWD	84	85
 1935	Nations League	Yassine Benali	AEM	GK	83	84
 1935	Nations League	Ashkan Mahdavi	VAR	MID	83	84
-1935	Nations League	Sudhir Chakraborty	NHO	MID	83	84
+1935	Nations League	Sudhir Chakraborty	NSH	MID	83	84
 1935	Nations League	James Smith	ELV	DEF	80	81
 1935	Nations League	Kalle Räikkönen	KAR	DEF	80	81
 1935	Nations League	Valery Polyakov	GIA	FWD	81	82
@@ -4304,7 +4304,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Galvarino Calfucurá	AKG	MID	77	78
 1935	Nations League	Beonetun Hocere	EIV	MID	77	78
 1935	Nations League	Touraj Hayaii	VAR	DEF	76	77
-1935	Nations League	Janh Nguyen	ATK	GK	75	76
+1935	Nations League	Janh Nguyen	GAI	GK	75	76
 1935	Nations League	Chenguang Pei	GUA	MID	76	77
 1935	Nations League	Hiraya Halili	SGD	MID	76	77
 1935	Nations League	Ihor Kovalenko	SYL	DEF	76	77
@@ -4315,7 +4315,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Leonidas Stamatiou	AST	DEF	74	75
 1935	Nations League	Vasyl Nalyvaiko	SYL	DEF	73	74
 1935	Nations League	Viktor Zhdanovich	GIA	DEF	73	74
-1935	Nations League	Susumu Goswami	NHO	DEF	72	73
+1935	Nations League	Susumu Goswami	NSH	DEF	72	73
 1935	Nations League	Bo Yan	GUA	MID	71	72
 1935	Nations League	Fedor Frolov	PER	FWD	72	73
 1935	Nations League	Dmitry Belov	GIA	DEF	71	72

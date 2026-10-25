@@ -26,13 +26,13 @@ export const MANAGER_HISTORY = [
                                                                                                      // Tatara; Alferinho after the 1933 World Cup; Kanno
   { side: "t0067", name: "Arverne", spells: [["m0041", "1932"], ["m0061", "after:wc/1933"]] },          // De Courcelles; Tatara
   { side: "t0094", name: "Salishia", spells: [[null, "1932"], ["m0041", "after:wc/1933"]] },            // nobody recorded; De Courcelles
-  { side: "t0086", name: "Hōrai", spells: [[null, "1932"], ["m0059", "1933"], ["m0179", SEP_1934], ["m0193", EARLY_1935]] },
+  { side: "t0086", name: "Shashanka", spells: [[null, "1932"], ["m0059", "1933"], ["m0179", SEP_1934], ["m0193", EARLY_1935]] },
                                                                                                      // nobody recorded; Kanno from E.S.U.; Kurobe; Hvit
   { side: "t0082", name: "Kinshū", spells: [["m0007", "1932"], ["m0072", SEP_1934], ["m0024", EARLY_1935]] },
                                                                                                      // Albers; Ōnuki; Albers
   { side: "t0095", name: "Divia", spells: [["m0072", "1932"], ["m0082", SEP_1934]] },                   // Ōnuki; Kanamori
-  { side: "t0099", name: "Mizuho", spells: [["m0166", "1932"], ["m0194", SEP_1934], ["m0051", EARLY_1935]] },  // Stroganov; Zarubin; Thibaudeau
-  { side: "t0109", name: "Ryūgu", spells: [["m0116", "1932"], ["m0190", SEP_1934], ["m0092", EARLY_1935]] },   // Beauchamp; Yagihara; Weber
+  { side: "t0099", name: "Iriria", spells: [["m0166", "1932"], ["m0194", SEP_1934], ["m0051", EARLY_1935]] },  // Stroganov; Zarubin; Thibaudeau
+  { side: "t0109", name: "Dar Hadid", spells: [["m0116", "1932"], ["m0190", SEP_1934], ["m0092", EARLY_1935]] },   // Beauchamp; Yagihara; Weber
   { side: "t0106", name: "Tierra Arcadia", spells: [["m0089", "1932"], ["m0097", EARLY_1935]] },      // Rautinen; Sarelainen
   { side: "t0114", name: "Axerfreditenshin", spells: [["m0097", "1932"], ["m0089", EARLY_1935]] },    // Sarelainen; Rautinen
   // Sides retconned out of the world, their seasons in the archive as Independent XIs (9 October 2026): East Kaukasos
