@@ -5945,5 +5945,21 @@
 {"id":"p5983","name":"Titusz FELLEGVÁR","nat":"TUR","ovr":63,"born":"1905-12-02","pos":["CB"]},
 {"id":"p5984","name":"Roland KERMESDY","nat":"TUR","ovr":64,"born":"1905-11-03","pos":["CM"]},
 {"id":"p5985","name":"Dömötör PÁCZ","nat":"TUR","ovr":62,"born":"1912-02-05","pos":["CM"]},
-{"id":"p5986","name":"Endre THÉBAI","nat":"TUR","ovr":65,"born":"1902-08-18","pos":["ST"]}
+{"id":"p5986","name":"Endre THÉBAI","nat":"TUR","ovr":65,"born":"1902-08-18","pos":["ST"]},
+{"id":"p5987","name":"Árvin KELDHÁZI","nat":"TUR","ovr":67,"born":"1917-01-29","pos":["GK"]},
+{"id":"p5988","name":"Elemér BÁCS","nat":"TUR","ovr":70,"born":"1903-12-24","pos":["LWB","LB"]},
+{"id":"p5989","name":"Dávid VERÉB","nat":"TUR","ovr":66,"born":"1907-02-08","pos":["CB"]},
+{"id":"p5990","name":"Árpád PAPUCS","nat":"TUR","ovr":68,"born":"1917-03-20","pos":["CB"]},
+{"id":"p5991","name":"Erling LINDSSON","nat":"SKJ","ovr":69,"born":"1908-06-24","pos":["CB"]},
+{"id":"p5992","name":"Boldizsár GELEGONYA","nat":"TUR","ovr":73,"born":"1914-12-02","pos":["RWB","RB"]},
+{"id":"p5993","name":"Pista ORBÁN","nat":"TUR","ovr":65,"born":"1916-07-24","pos":["LM"]},
+{"id":"p5994","name":"Kornél ÚRHEGYI","nat":"TUR","ovr":70,"born":"1910-10-20","pos":["CM","AM"]},
+{"id":"p5995","name":"Tibor BENKŐ","nat":"TUR","ovr":67,"born":"1913-05-12","pos":["CM","DM"]},
+{"id":"p5996","name":"Korvin PÁSZTOR","nat":"TUR","ovr":63,"born":"1908-07-24","pos":["RM","ST"]},
+{"id":"p5997","name":"Ervin CSIKÓS","nat":"TUR","ovr":72,"born":"1905-04-07","pos":["ST","AM"]},
+{"id":"p5998","name":"Gergő BÁLVÁNY","nat":"TUR","ovr":59,"born":"1906-04-26","pos":["GK"]},
+{"id":"p5999","name":"Zoltán KONCZ","nat":"TUR","ovr":61,"born":"1916-10-10","pos":["CB"]},
+{"id":"p6000","name":"Damján BÍBOROS","nat":"TUR","ovr":60,"born":"1911-04-18","pos":["CM","LM"]},
+{"id":"p6001","name":"Csanád VINPOSZICS","nat":"TUR","ovr":58,"born":"1915-08-31","pos":["CM","RM"]},
+{"id":"p6002","name":"Nimród ASZTALOS","nat":"TUR","ovr":68,"born":"1909-07-18","pos":["ST"]}
 ]
