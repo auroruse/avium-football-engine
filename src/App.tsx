@@ -14971,7 +14971,11 @@ export default function App() {
           {sq.slice(11).map((id, x) => { const i = 11 + x, cell = k + "|p" + i;
             return (
               <div key={i} className={"ux-sh-lb" + (shOver === cell ? " ux-sh-over" : "")} {...drop(i)}>
-                <span className="ux-sh-pl" style={{ color: POS_CLR[lab[i]] || "var(--ux-text-3)", ...mono }}>{lab[i]}</span>
+                {/* The man's own position (user, 26 October 2026: "This needs to show specific position"), the one of his that
+                    fits the place, else his first, as the side page's bench shows it; an open place shows its group. */}
+                {(() => { const own = id ? ownOfId(id) : [], shown = own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
+                  return <span className="ux-sh-pl" style={{ color: POS_CLR[shown] || "var(--ux-text-3)", ...mono }}
+                    title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` : undefined}>{shown}</span>; })()}
                 {id ? shChip(id, k, i, lab[i], isNational(T) ? T.code : T.nation, mine) : <span className="ux-sh-open">{mine ? "Open" : "–"}</span>}
               </div>); })}
         </section>

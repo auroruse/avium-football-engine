@@ -116,6 +116,7 @@ if (process.argv[2] === "nations") {
   const lines = [];
   for (const t of teams) {
     if (t.removed || t.file !== "AVIUM" || !Array.isArray(t.squad) || !t.squad.length) continue;
+    if (process.env.ONLY && !process.env.ONLY.split(",").includes(t.code)) continue;   // ONLY=ESU: just those sides
     sides++;
     const before = t.squad, after = select(t), xiPos = sposFor(String(t.formation || "4-3-3").trim());
     if (after.length !== before.length) throw new Error(`${t.code}: squad length changed`);
