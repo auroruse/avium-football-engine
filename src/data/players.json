@@ -5961,5 +5961,21 @@
 {"id":"p5999","name":"Zoltán KONCZ","nat":"TUR","ovr":61,"born":"1916-10-10","pos":["CB"]},
 {"id":"p6000","name":"Damján BÍBOROS","nat":"TUR","ovr":60,"born":"1911-04-18","pos":["CM","LM"]},
 {"id":"p6001","name":"Csanád VINPOSZICS","nat":"TUR","ovr":58,"born":"1915-08-31","pos":["CM","RM"]},
-{"id":"p6002","name":"Nimród ASZTALOS","nat":"TUR","ovr":68,"born":"1909-07-18","pos":["ST"]}
+{"id":"p6002","name":"Nimród ASZTALOS","nat":"TUR","ovr":68,"born":"1909-07-18","pos":["ST"]},
+{"id":"p6003","name":"Dániel KORMÁNYOS","nat":"TUR","ovr":65,"born":"1913-11-30","pos":["GK"]},
+{"id":"p6004","name":"Jóska NÁDAS","nat":"TUR","ovr":65,"born":"1912-12-26","pos":["CB"]},
+{"id":"p6005","name":"Gáspár HOLTÁGI","nat":"TUR","ovr":68,"born":"1912-05-30","pos":["CB"]},
+{"id":"p6006","name":"Richárd MEZEI","nat":"TUR","ovr":70,"born":"1916-06-15","pos":["CB"]},
+{"id":"p6007","name":"Bence TÁSZVÁRI","nat":"TUR","ovr":67,"born":"1906-07-14","pos":["LM"]},
+{"id":"p6008","name":"Koppány GULYÁS","nat":"TUR","ovr":64,"born":"1902-10-22","pos":["CM"]},
+{"id":"p6009","name":"Miklós CÁR","nat":"TUR","ovr":66,"born":"1911-05-18","pos":["CM"]},
+{"id":"p6010","name":"Ferenc BODZA","nat":"TUR","ovr":70,"born":"1912-07-04","pos":["RM"]},
+{"id":"p6011","name":"Attila GYÖNGY","nat":"TUR","ovr":69,"born":"1915-07-10","pos":["LW"]},
+{"id":"p6012","name":"Robert GRUSZKA","nat":"COR","ovr":71,"born":"1904-12-21","pos":["ST"]},
+{"id":"p6013","name":"Csaba BALLA","nat":"TUR","ovr":69,"born":"1910-01-26","pos":["RW"]},
+{"id":"p6014","name":"Mátyás VARJAS","nat":"TUR","ovr":63,"born":"1912-10-20","pos":["GK"]},
+{"id":"p6015","name":"Zsigmond MÓRÓCZ","nat":"TUR","ovr":62,"born":"1908-05-12","pos":["CB","DM"]},
+{"id":"p6016","name":"Gábor GYALOGOS","nat":"TUR","ovr":61,"born":"1915-07-19","pos":["CM"]},
+{"id":"p6017","name":"Ágoston VÁRADI","nat":"TUR","ovr":58,"born":"1912-11-21","pos":["CM"]},
+{"id":"p6018","name":"Ernő BÁDOGOS","nat":"TUR","ovr":68,"born":"1903-03-21","pos":["ST"]}
 ]
