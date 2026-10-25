@@ -1,6 +1,6 @@
 #	PLAYER	POS	TEAM	GP	G		#	PLAYER	POS	TEAM	GP	A		#	PLAYER	POS	TEAM	GP	RTG		#	PLAYER	POS	TEAM	GP	CC		#	PLAYER	POS	TEAM	GP	DC		#	PLAYER	POS	TEAM	GP	S
 1	Rosendo Zapatero	FWD	LUT	18	17		1	Silvio Caruso	FWD	LUT	18	6		1	Rosendo Zapatero	FWD	LUT	18	7.3		1	Théo Santini	MID	OM	18	27		1	Rémy Bourdelle	DEF	RCC	18	68		1	Étienne Barral	GK	CDM	18	94
-2	Vinh Ngo	FWD	OM	18	12		2	Gaku Ibusuki	FWD	FCB	18	5		2	Siegmund Stracke	FWD	LUT	18	7.1		2	Cyprien Malartre	MID	RCC	18	26		2	Sergei Smirnov	DEF	OM	18	65		2	Wouter Claessens	GK	BLG	18	83
+2	Đại Đông Nguyễn	FWD	OM	18	12		2	Gaku Ibusuki	FWD	FCB	18	5		2	Siegmund Stracke	FWD	LUT	18	7.1		2	Cyprien Malartre	MID	RCC	18	26		2	Sergei Smirnov	DEF	OM	18	65		2	Wouter Claessens	GK	BLG	18	83
 3	Hervé Thibodeau	FWD	OL	18	11		3	Valentino Zaccagni	MID	LUT	18	5		3	Léo Origer	MID	LUZ	18	7.1		3	Siegmund Stracke	FWD	LUT	18	24		3	Jonas Verstraete	DEF	BLG	18	53		3	Ahmet Aydin	GK	OM	18	82
 4	Dario Spinetta	FWD	CDM	18	11		4	Siegmund Stracke	FWD	LUT	18	5		4	Octave Faravel	MID	OL	18	7.1		4	Silvio Caruso	FWD	LUT	18	24		4	Aurélien Vanhecke	MID	BLG	18	53		4	Brice Viardot	GK	ULT	18	78
 5	Nicolas Boulloche	FWD	ULT	18	8		5	Nolan Perrigault	FWD	RCC	18	5		5	Nabil Ouazzani	MID	OM	17	7.1		5	Damien Scholtes	MID	LUZ	18	21		5	Rachid Benyahia	DEF	OM	18	52		5	Mathis Weiler	GK	LUZ	18	77
@@ -13,7 +13,7 @@
 12	Pierre-Louis Anfossi	MID	CDM	18	5		12	Yvan Massena	MID	CDM	18	4		12	Antoine Bagradian	MID	LUT	16	7.0		12	Valentino Zaccagni	MID	LUT	18	18		12	Bruno Vandeputte	DEF	BLG	16	47		12	Antonin Delahaye	GK	BOR	5	15
 13	Jocelyn Teissier	MID	RCC	18	5		13	Jocelyn Teissier	MID	RCC	18	4		13	Bertrand Mauclair	MID	BOR	17	7.0		13	Pau Puigcorbé	FWD	FCB	15	16		13	Norbert Schiltz	DEF	LUZ	18	47		13	Loïc Ferrandis	GK	OM	5	13
 14	Pau Puigcorbé	FWD	FCB	15	4		14	Philippe Taillardat	DEF	LUT	14	3		14	Sergei Smirnov	DEF	OM	18	7.0		14	Ettore Bianchi	MID	OM	18	16		14	Séverin Malbranque	DEF	ULT	18	46		14	Ludovic Mercadier	GK	LUT	2	5
-15	Antoine Bagradian	MID	LUT	16	4		15	Pau Puigcorbé	FWD	FCB	15	3		15	Vinh Ngo	FWD	OM	18	7.0		15	Nicolas Boulloche	FWD	ULT	18	16		15	Hugo Saint-Laurent	DEF	LUT	18	46		15	Ulysse Parmentier	GK	ULT	1	3
+15	Antoine Bagradian	MID	LUT	16	4		15	Pau Puigcorbé	FWD	FCB	15	3		15	Đại Đông Nguyễn	FWD	OM	18	7.0		15	Nicolas Boulloche	FWD	ULT	18	16		15	Hugo Saint-Laurent	DEF	LUT	18	46		15	Ulysse Parmentier	GK	ULT	1	3
 16	Marc-Antoine Peyrefitte	FWD	BOR	17	4		16	Conan Neitzel	MID	OM	17	3		16	Séverin Malbranque	DEF	ULT	18	7.0		16	Fabio Marchisio	DEF	CDM	18	16		16	Oriol Montagut	DEF	LUT	18	46		16	Aleix Fontcuberta	GK	FCB	3	3
 17	Marin Chassagne	FWD	ULT	18	4		17	Louis-Marie Gerbault	MID	ULT	17	3		17	Aurèle Castelnau	DEF	BOR	18	7.0		17	Élie Marchesseau	FWD	RCC	18	16		17	Adrien Vauthier	MID	ULT	18	45							
 18	Gaku Ibusuki	FWD	FCB	18	4		18	Pascal Villemain	MID	BOR	17	3		18	Petr Procházka	FWD	FCB	18	7.0		18	Rachid Benyahia	DEF	OM	18	15		18	Francisco Alameda	DEF	FCB	18	44							
@@ -59,12 +59,12 @@
 58	Damien Scholtes	MID	LUZ	18	2		58	Enzo Gorlomi	DEF	OM	17	1		58	Alban Fresnaye	DEF	RCC	18	6.9		58	Yvan Massena	MID	CDM	18	10		58	Amaury Brissaud	DEF	OL	18	32							
 59	Charles-Henri Boissieu	MID	CDM	18	2		59	Gaël Bonnafous	DEF	ULT	17	1		59	Renaat Houthoofd	MID	BLG	7	6.9		59	Rémy Bourdelle	DEF	RCC	18	10		59	Yvan Massena	MID	CDM	18	32							
 60	Victorin Dauphiné	MID	RCC	18	2		60	Hippolyte Sergent	FWD	ULT	17	1		60	Olivier Zenner	DEF	LUZ	10	6.9		60	Grégoire Sauveterre	MID	BOR	16	9		60	Ambroise Guerrier	MID	RCC	18	32							
-61	Osamu Matsumoto	MID	RCC	18	2		61	Bertrand Mauclair	MID	BOR	17	1		61	Philippe Taillardat	DEF	LUT	14	6.9		61	Vinh Ngo	FWD	OM	18	9		61	Émile Vandersteen	DEF	BLG	17	31							
+61	Osamu Matsumoto	MID	RCC	18	2		61	Bertrand Mauclair	MID	BOR	17	1		61	Philippe Taillardat	DEF	LUT	14	6.9		61	Đại Đông Nguyễn	FWD	OM	18	9		61	Émile Vandersteen	DEF	BLG	17	31							
 62	Lothaire Chalumeau	DEF	OL	10	1		62	Émile Vandersteen	DEF	BLG	17	1		62	Gaspard Moulinier	DEF	OL	17	6.9		62	Marin Chassagne	FWD	ULT	18	9		62	Ivan Soubeyran	FWD	BOR	18	31							
 63	Paul Scholer	FWD	LUZ	11	1		63	Gaspard Moulinier	DEF	OL	17	1		63	Ahmet Aydin	GK	OM	18	6.9		63	Loïc Tardiveau	MID	BOR	18	9		63	Rodrigo Alvarenga	DEF	FCB	18	31							
 64	Yanis Moukhtar	MID	OM	12	1		64	Ferdinand Dumas	MID	OM	18	1		64	Rachid Benyahia	DEF	OM	18	6.9		64	Ivan Soubeyran	FWD	BOR	18	9		64	Louis-Marie Gerbault	MID	ULT	17	30							
 65	Théo Gastaldi	MID	CDM	15	1		65	Ettore Bianchi	MID	OM	18	1		65	Ferdinand Dumas	MID	OM	18	6.9		65	Francisco Alameda	DEF	FCB	18	9		65	Pascal Villemain	MID	BOR	17	30							
-66	Grégoire Sauveterre	MID	BOR	16	1		66	Vinh Ngo	FWD	OM	18	1		66	Aurélien Fouché	DEF	ULT	18	6.9		66	Léo Origer	MID	LUZ	18	9		66	Gaspard Moulinier	DEF	OL	17	30							
+66	Grégoire Sauveterre	MID	BOR	16	1		66	Đại Đông Nguyễn	FWD	OM	18	1		66	Aurélien Fouché	DEF	ULT	18	6.9		66	Léo Origer	MID	LUZ	18	9		66	Gaspard Moulinier	DEF	OL	17	30							
 67	Serge Boucheron	DEF	BOR	16	1		67	Clément Desrosiers	DEF	ULT	18	1		67	Baptiste Noirclerc	DEF	ULT	18	6.9		67	Stijn Delvaux	MID	BLG	18	9		67	Yeray Bengoetxea	MID	FCB	18	30							
 68	Conan Neitzel	MID	OM	17	1		68	Sébastien Lauriol	MID	ULT	18	1		68	Théophile Anquetil	MID	ULT	18	6.9		68	Kobe Servais	MID	BLG	18	9		68	Gauthier Dewinter	FWD	BLG	18	30							
 69	Louis-Marie Gerbault	MID	ULT	17	1		69	Théophile Anquetil	MID	ULT	18	1		69	Marin Chassagne	FWD	ULT	18	6.9		69	Léandre Pochard	MID	OL	18	9		69	Antoine Faravel	DEF	CDM	18	30							
@@ -73,7 +73,7 @@
 72	Pieter-Jan Moens	FWD	BLG	17	1		72	Aurèle Castelnau	DEF	BOR	18	1		72	Anselme Vauquelin	DEF	LUT	18	6.9		72	Alban Fresnaye	DEF	RCC	18	9		72	Théophile Anquetil	MID	ULT	18	29							
 73	Ferdinand Dumas	MID	OM	18	1		73	Loïc Tardiveau	MID	BOR	18	1		73	Mathis Weiler	GK	LUZ	18	6.9		73	Nicolas Glesener	MID	LUZ	15	8		73	Gonzalo Valbuena	MID	FCB	18	29							
 74	Aurélien Fouché	DEF	ULT	18	1		74	Régis Chambonnet	FWD	BOR	18	1		74	Édouard Pescatore	FWD	LUZ	18	6.9		74	Octave Étienne	FWD	OM	17	8		74	Léon Chastellain	GK	RCC	18	29							
-75	Vincent Tremblay	FWD	ULT	18	1		75	Gonzalo Valbuena	MID	FCB	18	1		75	Lucien Debaets	DEF	BLG	18	6.9		75	Louis-Marie Gerbault	MID	ULT	17	8		75	Vinh Ngo	FWD	OM	18	28							
+75	Vincent Tremblay	FWD	ULT	18	1		75	Gonzalo Valbuena	MID	FCB	18	1		75	Lucien Debaets	DEF	BLG	18	6.9		75	Louis-Marie Gerbault	MID	ULT	17	8		75	Đại Đông Nguyễn	FWD	OM	18	28							
 76	Xavier Montbrun	DEF	BOR	18	1		76	Oriol Montagut	DEF	LUT	18	1		76	Léandre Pochard	MID	OL	18	6.9		76	Yann Mercereau	MID	BOR	17	8		76	Rosendo Zapatero	FWD	LUT	18	28							
 77	Gonzalo Valbuena	MID	FCB	18	1		77	Killian Charpentier	DEF	LUZ	18	1		77	Dorian Roussel	MID	OL	18	6.9		77	Marc-Antoine Peyrefitte	FWD	BOR	17	8		77	Étienne Barral	GK	CDM	18	28							
 78	Nil Berenguer	MID	FCB	18	1		78	Marc Duhr	MID	LUZ	18	1		78	Félicien Couture	MID	OL	18	6.9		78	Aurèle Castelnau	DEF	BOR	18	8		78	Nolan Perrigault	FWD	RCC	18	28							

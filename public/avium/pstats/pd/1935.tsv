@@ -4,7 +4,7 @@
 3	Nicasio Miguelturra	FWD	RC	14	14	1103	8		3	Bastien Villeneuve	MID	RC	14	14	1102	5		3	Yeray Bengoetxea	MID	CGV	14	14	1059	7.7		3	Cipriano Moneva	MID	SRK	14	14	1223	25		3	Baldomero Almagro	DEF	RC	14	14	1155	80		3	Guillem Orriols	GK	VLQ	14	14	1260	49
 4	Domingo Illueca	FWD	SRK	14	14	1200	7		4	Salvador Figueiredo	MID	ATO	14	14	1133	5		4	Volkert Lindenau	FWD	ATO	14	14	1011	7.6		4	Ausiàs Campanar	MID	CA	14	14	1049	25		4	Ibai Urrutia	DEF	CA	14	14	1189	80		4	Melquíades Porzuna	GK	RC	14	14	1260	47
 5	Matías Salcedo	FWD	CA	14	14	986	7		5	Hugo Vilarinho	MID	CCF	14	14	861	5		5	Salvador Figueiredo	MID	ATO	14	14	1133	7.5		5	Yeray Bengoetxea	MID	CGV	14	14	1059	25		5	Teodomiro Daimiel	DEF	RC	14	14	1247	78		5	Ilídio Paradela	GK	CCF	14	14	1260	42
-6	Sang Pham	MID	ATO	14	14	1052	5		6	Vicent Massanassa	MID	VLQ	14	14	1066	5		6	Hugo Vilarinho	MID	CCF	14	14	861	7.4		6	Salvador Figueiredo	MID	ATO	14	14	1133	24		6	Ludovic Fontenelle	DEF	VLQ	14	14	1260	78		6	Gorka Agirretxe	GK	CGV	14	14	1260	42
+6	Thạch Lam Trương	MID	ATO	14	14	1052	5		6	Vicent Massanassa	MID	VLQ	14	14	1066	5		6	Hugo Vilarinho	MID	CCF	14	14	861	7.4		6	Salvador Figueiredo	MID	ATO	14	14	1133	24		6	Ludovic Fontenelle	DEF	VLQ	14	14	1260	78		6	Gorka Agirretxe	GK	CGV	14	14	1260	42
 7	Kenzō Takemiya	FWD	RC	14	14	846	4		7	Francisco Alameda	DEF	ATO	14	14	1233	4		7	Dinis Estrela	MID	CCF	14	14	1038	7.4		7	Marcelino Burguillos	MID	RT	14	14	1150	22		7	Rodrigo Alvarenga	DEF	SRK	14	14	1139	77		7	Shenoute Nebamun	GK	ATO	14	14	1260	33
 8	Yeray Bengoetxea	MID	CGV	14	14	1059	4		8	Gil Moutinho	MID	ATO	14	14	1260	4		8	Vicent Massanassa	MID	VLQ	14	14	1066	7.4		8	Kenzō Takemiya	FWD	RC	14	14	846	19		8	Dinis Estrela	MID	CCF	14	14	1038	76		8	Anselmo Rebelo	GK	CA	14	14	1260	29
 9	Koldo Aranburu	FWD	CGV	14	14	862	4		9	Aires Montez	MID	CCF	14	14	1080	4		9	Dwight Whitfield	FWD	RT	14	14	980	7.4		9	Aires Montez	MID	CCF	14	14	1080	19		9	Vasco Trindade	DEF	CA	14	14	1260	72									
@@ -29,8 +29,8 @@
 28	Unax Garmendia	MID	CGV	6	0	163	1		28	Eckhardt Oberholzer	DEF	ATO	14	14	1260	1		28	Beñat Oiarzabal	DEF	CGV	14	14	1232	7.0		28	Bernat Tormos	DEF	VLQ	14	14	1260	12		28	Hor Senedjem	DEF	RC	14	14	1260	56									
 29	Peio Mendizabal	FWD	CGV	11	0	380	1		29	Tatsuya Shirakawa	DEF	ATO	14	14	1231	1		29	Julen Arrieta	MID	CGV	14	14	1205	7.0		29	Nicasio Miguelturra	FWD	RC	14	14	1103	11		29	Iñaki Larrañaga	DEF	CGV	14	14	1260	54									
 30	Aniceto Menasalbas	FWD	RT	12	0	296	1		30	Volkert Lindenau	FWD	ATO	14	14	1011	1		30	Mikel Goikoetxea	MID	CGV	14	14	1231	7.0		30	Baldomero Almagro	DEF	RC	14	14	1155	11		30	Francisco Alameda	DEF	ATO	14	14	1233	53									
-31	Zakaria Bouhaddou	FWD	ATO	12	0	406	1		31	Sang Pham	MID	ATO	14	14	1052	1		31	Ludovic Fontenelle	DEF	VLQ	14	14	1260	7.0		31	Domingo Illueca	FWD	SRK	14	14	1200	11		31	Ausiàs Campanar	MID	CA	14	14	1049	53									
-32	Félix Doan	MID	ATO	13	0	386	1		32	Emídio Campelo	DEF	CCF	14	0	552	1		32	Marcelino Burguillos	MID	RT	14	14	1150	7.0		32	Joan Xirau	MID	CA	13	13	1044	10		32	Kidlat Ilagan	MID	VLQ	14	14	1151	52									
+31	Zakaria Bouhaddou	FWD	ATO	12	0	406	1		31	Thạch Lam Trương	MID	ATO	14	14	1052	1		31	Ludovic Fontenelle	DEF	VLQ	14	14	1260	7.0		31	Domingo Illueca	FWD	SRK	14	14	1200	11		31	Ausiàs Campanar	MID	CA	14	14	1049	53									
+32	Vĩnh Phúc Đoàn	MID	ATO	13	0	386	1		32	Emídio Campelo	DEF	CCF	14	0	552	1		32	Marcelino Burguillos	MID	RT	14	14	1150	7.0		32	Joan Xirau	MID	CA	13	13	1044	10		32	Kidlat Ilagan	MID	VLQ	14	14	1151	52									
 33	Jordi Albuixech	MID	VLQ	13	0	301	1		33	Shigeru Kurose	MID	CCF	14	14	1217	1		33	Fructuoso Navahermosa	FWD	RT	14	14	872	7.0		33	Fulgencio Manzanares	DEF	RC	14	14	1167	10		33	Vicent Massanassa	MID	VLQ	14	14	1066	52									
 34	Domènec Alzira	FWD	VLQ	13	0	365	1		34	Jao Macaraeg	FWD	CCF	14	14	930	1		34	Joan Xirau	MID	CA	13	13	1044	6.9		34	Francisco Alameda	DEF	ATO	14	14	1233	10		34	Xabier Etxaniz	DEF	CGV	14	14	1187	51									
 35	Nuno Almada	MID	ATO	14	14	1221	1		35	Abel Taveira	DEF	CCF	14	14	1121	1		35	Bastien Villeneuve	MID	RC	14	14	1102	6.9		35	Gil Moutinho	MID	ATO	14	14	1260	10		35	Shigeru Kurose	MID	CCF	14	14	1217	48									
@@ -40,13 +40,13 @@
 39	Rufino Borja	MID	SRK	14	14	1153	1		39	Aleix Benimaclet	DEF	CA	14	14	1260	1		39	Harlan Carruthers	DEF	SRK	14	14	1260	6.9		39	Aitor Urdangarin	MID	VLQ	14	14	1167	9		39	Gil Moutinho	MID	ATO	14	14	1260	42									
 40	Aleix Benimaclet	DEF	CA	14	14	1260	1		40	Ibai Urrutia	DEF	CA	14	14	1189	1		40	Rufino Borja	MID	SRK	14	14	1153	6.9		40	Perfecto Ocaña	MID	RT	14	14	1212	9		40	Rufino Borja	MID	SRK	14	14	1153	42									
 41	Ibai Urrutia	DEF	CA	14	14	1189	1		41	Firmino Loureiro	MID	CA	14	14	1148	1		41	Duarte Magalhães	DEF	CA	14	14	1197	6.9		41	Jokin Otaegi	FWD	CGV	11	0	213	8		41	Aitor Urdangarin	MID	VLQ	14	14	1167	41									
-42	Vasco Trindade	DEF	CA	14	14	1260	1		42	Augustin Aragonés	MID	CA	14	14	1207	1		42	Vasco Trindade	DEF	CA	14	14	1260	6.9		42	Sang Pham	MID	ATO	14	14	1052	8		42	Genaro Piedrabuena	MID	RC	14	14	1227	40									
+42	Vasco Trindade	DEF	CA	14	14	1260	1		42	Augustin Aragonés	MID	CA	14	14	1207	1		42	Vasco Trindade	DEF	CA	14	14	1260	6.9		42	Thạch Lam Trương	MID	ATO	14	14	1052	8		42	Genaro Piedrabuena	MID	RC	14	14	1227	40									
 43	Firmino Loureiro	MID	CA	14	14	1148	1		43	Matías Salcedo	FWD	CA	14	14	986	1		43	Ander Zumalde	DEF	CGV	14	14	1201	6.9		43	Jao Macaraeg	FWD	CCF	14	14	930	8		43	Hugo Vilarinho	MID	CCF	14	14	861	40									
 44	Bernat Tormos	DEF	VLQ	14	14	1260	1		44	Koldo Aranburu	FWD	CGV	14	14	862	1		44	Fabrice Delahaye	DEF	VLQ	14	14	1242	6.9		44	Matías Salcedo	FWD	CA	14	14	986	8		44	Aires Montez	MID	CCF	14	14	1080	39									
 45	Kidlat Ilagan	MID	VLQ	14	14	1151	1		45	Patxi Elorriaga	FWD	CGV	14	14	1108	1		45	Bernat Tormos	DEF	VLQ	14	14	1260	6.9		45	Iñaki Larrañaga	DEF	CGV	14	14	1260	8		45	Mikel Goikoetxea	MID	CGV	14	14	1231	39									
 46	Vicent Massanassa	MID	VLQ	14	14	1066	1		46	Eneko Berasategi	FWD	CGV	14	14	1079	1		46	Tatsuya Shirakawa	DEF	ATO	14	14	1231	6.8		46	Fabrice Delahaye	DEF	VLQ	14	14	1242	8		46	Bastien Villeneuve	MID	RC	14	14	1102	38									
 47	Baptista Sueca	FWD	VLQ	14	0	482	1		47	Ludovic Fontenelle	DEF	VLQ	14	14	1260	1		47	Gil Moutinho	MID	ATO	14	14	1260	6.8		47	Faustino Orgaz	MID	RT	14	14	1194	8		47	Abel Taveira	DEF	CCF	14	14	1121	37									
-48	Marcelino Burguillos	MID	RT	14	14	1150	1		48	Baptista Sueca	FWD	VLQ	14	0	482	1		48	Sang Pham	MID	ATO	14	14	1052	6.8		48	Teodomiro Daimiel	DEF	RC	14	14	1247	7		48	Gaudioso Ejea	MID	SRK	14	14	961	37									
+48	Marcelino Burguillos	MID	RT	14	14	1150	1		48	Baptista Sueca	FWD	VLQ	14	0	482	1		48	Thạch Lam Trương	MID	ATO	14	14	1052	6.8		48	Teodomiro Daimiel	DEF	RC	14	14	1247	7		48	Gaudioso Ejea	MID	SRK	14	14	961	37									
 49	Lucio Mascaraque	FWD	RT	14	0	453	1		49	Enric Sollana	FWD	VLQ	14	14	830	1		49	Kolthe Harkhuf	MID	CCF	14	14	1260	6.8		49	Emídio Campelo	DEF	CCF	14	0	552	7		49	Yeray Bengoetxea	MID	CGV	14	14	1059	37									
 									50	Nicolau Ferrandis	DEF	RT	14	14	1198	1		50	Jao Macaraeg	FWD	CCF	14	14	930	6.8		50	Casimiro Belchite	DEF	SRK	14	14	1046	7		50	Anacleto Valdepeñas	DEF	RC	14	14	1180	36									
 									51	Faustino Orgaz	MID	RT	14	14	1194	1		51	Casimiro Belchite	DEF	SRK	14	14	1046	6.8		51	Ambrosio Polán	MID	RT	14	14	1224	7		51	Salvador Figueiredo	MID	ATO	14	14	1133	35									
@@ -54,7 +54,7 @@
 									53	Fructuoso Navahermosa	FWD	RT	14	14	872	1		53	Gaudioso Ejea	MID	SRK	14	14	961	6.8		53	Tatsuya Shirakawa	DEF	ATO	14	14	1231	6		53	Puso Kalaw	MID	VLQ	14	14	1167	35									
 									54	Teodosio Ajofrín	MID	RT	14	14	1150	1		54	Puso Kalaw	MID	VLQ	14	14	1167	6.8		54	Shigeru Kurose	MID	CCF	14	14	1217	6		54	Nuno Almada	MID	ATO	14	14	1221	34									
 																		55	Gani Cacapit	DEF	VLQ	14	14	1228	6.8		55	Vasco Trindade	DEF	CA	14	14	1260	6		55	Titus Calloway	MID	SRK	14	14	1053	33									
-																		56	Anastasio Illescas	GK	RT	14	14	1260	6.8		56	Firmino Loureiro	MID	CA	14	14	1148	6		56	Sang Pham	MID	ATO	14	14	1052	32									
+																		56	Anastasio Illescas	GK	RT	14	14	1260	6.8		56	Firmino Loureiro	MID	CA	14	14	1148	6		56	Thạch Lam Trương	MID	ATO	14	14	1052	32									
 																		57	Fulgencio Manzanares	DEF	RC	14	14	1167	6.7		57	Hor Senedjem	DEF	RC	14	14	1260	5		57	Eneko Berasategi	FWD	CGV	14	14	1079	32									
 																		58	Herminio Tomelloso	MID	RC	14	14	1178	6.7		58	Genaro Piedrabuena	MID	RC	14	14	1227	5		58	Marcelino Burguillos	MID	RT	14	14	1150	32									
 																		59	Ilídio Paradela	GK	CCF	14	14	1260	6.7		59	Buwi Calang	FWD	RC	14	0	446	5		59	Patxi Elorriaga	FWD	CGV	14	14	1108	31									
@@ -67,10 +67,10 @@
 																		66	Eneko Berasategi	FWD	CGV	14	14	1079	6.7		66	Lucio Mascaraque	FWD	RT	14	0	453	5		66	Prudencio Calatayud	MID	SRK	13	0	421	27									
 																		67	Kidlat Ilagan	MID	VLQ	14	14	1151	6.7		67	Rui Seabra	MID	CA	10	1	327	4		67	Joan Xirau	MID	CA	13	13	1044	26									
 																		68	Aitor Urdangarin	MID	VLQ	14	14	1167	6.7		68	Peio Mendizabal	FWD	CGV	11	0	380	4		68	Teotónio Cavaco	FWD	ATO	14	14	894	26									
-																		69	Casimiro Nambroca	DEF	RT	14	14	1195	6.7		69	Félix Doan	MID	ATO	13	0	386	4		69	Kenzō Takemiya	FWD	RC	14	14	846	25									
+																		69	Casimiro Nambroca	DEF	RT	14	14	1195	6.7		69	Vĩnh Phúc Đoàn	MID	ATO	13	0	386	4		69	Kenzō Takemiya	FWD	RC	14	14	846	25									
 																		70	Faustino Orgaz	MID	RT	14	14	1194	6.7		70	Domènec Alzira	FWD	VLQ	13	0	365	4		70	Nicasio Miguelturra	FWD	RC	14	14	1103	24									
 																		71	Lucio Mascaraque	FWD	RT	14	0	453	6.7		71	Eusébio Carneiro	DEF	CCF	14	14	1180	4		71	Augustin Aragonés	MID	CA	14	14	1207	22									
-																		72	Félix Doan	MID	ATO	13	0	386	6.6		72	Harlan Carruthers	DEF	SRK	14	14	1260	4		72	Emídio Campelo	DEF	CCF	14	0	552	21									
+																		72	Vĩnh Phúc Đoàn	MID	ATO	13	0	386	6.6		72	Harlan Carruthers	DEF	SRK	14	14	1260	4		72	Emídio Campelo	DEF	CCF	14	0	552	21									
 																		73	Aristides Pimentel	FWD	CA	13	0	438	6.6		73	Titus Calloway	MID	SRK	14	14	1053	4		73	Matías Salcedo	FWD	CA	14	14	986	20									
 																		74	Hor Senedjem	DEF	RC	14	14	1260	6.6		74	Damián Quevedo	MID	CA	14	0	369	4		74	Koldo Aranburu	FWD	CGV	14	14	862	20									
 																		75	Baldomero Almagro	DEF	RC	14	14	1155	6.6		75	Puso Kalaw	MID	VLQ	14	14	1167	4		75	Enric Sollana	FWD	VLQ	14	14	830	19									
@@ -78,7 +78,7 @@
 																		77	Abel Taveira	DEF	CCF	14	14	1121	6.6		77	Simão Azevedo	FWD	CCF	10	0	339	3		77	Fructuoso Navahermosa	FWD	RT	14	14	872	18									
 																		78	Pishoy Djehuty	DEF	SRK	14	14	1236	6.6		78	Prudencio Calatayud	MID	SRK	13	0	421	3		78	Teodosio Ajofrín	MID	RT	14	14	1150	17									
 																		79	Anselmo Rebelo	GK	CA	14	14	1260	6.6		79	Aristides Pimentel	FWD	CA	13	0	438	3		79	Domingo Illueca	FWD	SRK	14	14	1200	16									
-																		80	Augustin Aragonés	MID	CA	14	14	1207	6.6		80	Eckhardt Oberholzer	DEF	ATO	14	14	1260	3		80	Félix Doan	MID	ATO	13	0	386	15									
+																		80	Augustin Aragonés	MID	CA	14	14	1207	6.6		80	Eckhardt Oberholzer	DEF	ATO	14	14	1260	3		80	Vĩnh Phúc Đoàn	MID	ATO	13	0	386	15									
 																		81	Volkmar Scherer	FWD	CA	14	14	996	6.6		81	Ismael Menéndez	DEF	ATO	14	14	1104	3		81	Leandro Boavida	DEF	CCF	5	0	170	14									
 																		82	Patxi Elorriaga	FWD	CGV	14	14	1108	6.6		82	Kolthe Harkhuf	MID	CCF	14	14	1260	3		82	Zakaria Bouhaddou	FWD	ATO	12	0	406	14									
 																		83	Enric Sollana	FWD	VLQ	14	14	830	6.6		83	Abanoub Sethnakht	MID	SRK	14	14	1236	3		83	Haoran Peng	MID	CCF	13	0	367	14									

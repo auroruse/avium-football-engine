@@ -66,7 +66,7 @@
 65	Sergei Yakovlev	MID	VKR	25	5	979	2		65	Archibald Bamford	MID	KVU	28	28	1833	2		65	Konstantin Yashin	MID	SKM	28	28	2256	6.8		65	Fyodor Tarasov	FWD	SKM	28	28	1776	21		65	David Martelev	DEF	VGW	28	28	2439	52									
 66	Semyon Mkrtchyan	MID	KVU	26	0	887	2		66	Anton Biryukov	MID	LGU	28	28	2156	2		66	Ruslan Makarov	MID	SKM	28	28	2116	6.8		66	Ruslan Ostapenko	FWD	KNA	28	28	1989	21		66	Boris Korneev	MID	LGU	28	28	2297	52									
 67	Igor Voronov	FWD	KVU	26	0	868	2		67	Boris Korneev	MID	LGU	28	28	2297	2		67	Mikhail Zaytsev	DEF	KTG	28	28	2325	6.8		67	Mikhail Orlov	DEF	MVC	28	28	2403	21		67	Sergei Antonov	DEF	MVC	28	28	2395	52									
-68	Steven Ilianov	MID	ATW	26	26	1935	2		68	Ivan Petrov	MID	MVC	28	28	2236	2		68	Dmitri Gorbachov	DEF	KNA	28	28	2365	6.8		68	Ivan Petrov	MID	MVC	28	28	2236	21		68	Nam Cao	MID	KVC	28	21	1713	52									
+68	Steven Ilianov	MID	ATW	26	26	1935	2		68	Ivan Petrov	MID	MVC	28	28	2236	2		68	Dmitri Gorbachov	DEF	KNA	28	28	2365	6.8		68	Ivan Petrov	MID	MVC	28	28	2236	21		68	Hải Dương Vũ	MID	KVC	28	21	1713	52									
 69	Pitso Modisé	FWD	SVP	26	8	1150	2		69	Senya Kiselyov	MID	ATW	28	28	1975	2		69	Ruslan Ostapenko	FWD	KNA	28	28	1989	6.8		69	Nikolai Baranov	DEF	MVC	28	28	2330	21		69	Yegor Andreev	MID	FSD	28	28	2168	52									
 70	Igor Zhukov	DEF	SVP	26	26	2090	2		70	Nikita Vasilenko	FWD	ZYR	28	28	1958	2		70	Mikhail Kazakov	DEF	MVC	28	26	2257	6.8		70	Nikita Vasilenko	FWD	ZYR	28	28	1958	21		70	Ilya Tkachenko	DEF	VKR	26	26	2177	51									
 71	Sevastyan Roshchin	FWD	BRT	27	27	1612	2		71	Maxim Fedorov	DEF	KVC	28	28	2444	2		71	Konstantin Dronov	DEF	FSD	28	28	2407	6.8		71	Konstantin Dronov	DEF	FSD	28	28	2407	21		71	Velimir Bekmurzaev	MID	LGU	27	27	1744	51									
@@ -80,7 +80,7 @@
 79	Ruslan Makarov	MID	SKM	28	28	2116	2		79	Soren Bolshakov	MID	FSD	2	0	31	1		79	Alexis Korokevsky	MID	VGW	28	28	2065	6.7		79	Stanislav Vetrovski	FWD	KNA	28	28	1630	20		79	Denis Polunin	MID	FKS	25	10	1217	48									
 80	Ilya Chernenko	MID	KNA	28	1	911	2		80	Vsevolod Safonov	MID	FSD	6	6	452	1		80	Yegor Danilov	FWD	FKS	28	28	1774	6.7		80	Panoub Sobekhotep	GK	LGU	28	28	2520	20		80	Arkady Osipov	MID	BRT	28	28	1839	48									
 81	Semyon Lavrov	MID	LGU	28	28	2274	2		81	Petros Nogedi	DEF	KVU	10	8	746	1		81	Lev Grishin	FWD	VKR	28	28	1848	6.7		81	Vladimir Karovich	DEF	MVC	28	28	2271	20		81	Ivan Petrov	MID	MVC	28	28	2236	47									
-82	Soini Kroon	MID	KVC	28	28	2147	2		82	Lev Kharitonov	DEF	ZYR	10	0	194	1		82	Andrei Filippov	MID	VKR	28	27	2073	6.7		82	Nam Cao	MID	KVC	28	21	1713	20		82	Anton Bessmertny	DEF	KTG	25	24	2073	45									
+82	Soini Kroon	MID	KVC	28	28	2147	2		82	Lev Kharitonov	DEF	ZYR	10	0	194	1		82	Andrei Filippov	MID	VKR	28	27	2073	6.7		82	Hải Dương Vũ	MID	KVC	28	21	1713	20		82	Anton Bessmertny	DEF	KTG	25	24	2073	45									
 83	Zakhar Vlasov	MID	VKR	1	0	17	1		83	Mark Sidorenko	MID	VKR	11	1	280	1		83	Yegor Zaitsev	MID	SKM	28	24	2046	6.7		83	Makar Kulikov	MID	FSD	28	28	2189	20		83	Lev Ponomarenko	MID	LGU	28	28	2363	45									
 84	Svyatoslav Mironov	DEF	MVC	5	0	53	1		84	Timur Gusev	MID	SKM	17	17	1227	1		84	Ivan Chernov	DEF	KTG	28	28	2247	6.7		84	Leonid Knyazev	MID	ZYR	24	24	1689	19		84	Shmuel Jaffe	DEF	ATW	28	28	2444	45									
 85	Kirill Antonov	FWD	KTG	10	0	159	1		85	Aleksei Sergeev	DEF	LGU	19	0	323	1		85	Nuno Kharitonov	MID	KNA	28	27	1937	6.7		85	Lev Grishin	FWD	VKR	28	28	1848	19		85	Andrei Filippov	MID	VKR	28	27	2073	44									
@@ -90,7 +90,7 @@
 89	Anton Suvorov	MID	FSD	17	9	840	1		89	Boris Galkin	MID	FSD	23	21	1763	1		89	Sergei Brokovsky	MID	ATW	28	28	2140	6.7		89	Anton Bessmertny	DEF	KTG	25	24	2073	18		89	Andrei Yudin	MID	FKS	28	28	2229	42									
 90	Vadim Kolesnik	FWD	VKR	19	0	469	1		90	Anton Kravtsov	MID	SKM	23	15	1536	1		90	Bogdan Lysenko	MID	ZYR	28	28	2183	6.7		90	Georgi Petrov	MID	ATW	27	19	1749	18		90	Andrei Kuznetsov	MID	KTG	28	28	2237	42									
 91	Arkady Savin	FWD	FKS	19	0	442	1		91	Leonid Knyazev	MID	ZYR	24	24	1689	1		91	Fyodor Klyuev	MID	ZYR	28	28	2294	6.7		91	Yegor Danilov	FWD	FKS	28	28	1774	18		91	Fyodor Klyuev	MID	ZYR	28	28	2294	42									
-92	Alexandr Kozel	MID	KVU	20	0	503	1		92	Roman Stepanov	MID	BRT	25	12	1366	1		92	Nam Cao	MID	KVC	28	21	1713	6.7		92	Sergei Krupsky	FWD	KNA	28	10	1528	18		92	Steven Ilianov	MID	ATW	26	26	1935	41									
+92	Alexandr Kozel	MID	KVU	20	0	503	1		92	Roman Stepanov	MID	BRT	25	12	1366	1		92	Hải Dương Vũ	MID	KVC	28	21	1713	6.7		92	Sergei Krupsky	FWD	KNA	28	10	1528	18		92	Steven Ilianov	MID	ATW	26	26	1935	41									
 93	Viktor Ivanov	MID	VGW	21	21	1734	1		93	Sergei Yakovlev	MID	VKR	25	5	979	1		93	Daniil Yakovlev	MID	FSD	28	26	2093	6.7		93	Boris Korneev	MID	LGU	28	28	2297	18		93	Maxim Kozlov	MID	KTG	28	28	2137	41									
 94	Artem Voronin	DEF	KTG	21	16	1520	1		94	Mikhail Moiseev	MID	SKM	25	0	787	1		94	Amos Donnelly	FWD	SVP	28	2	1092	6.7		94	Lev Ponomarenko	MID	LGU	28	28	2363	18		94	Nikolai Lebedev	FWD	SVP	28	20	1703	41									
 95	Grigori Ignatiev	MID	KTG	24	9	1094	1		95	Matvei Zubkov	MID	SKM	25	15	1556	1		95	Elias Kalinin	DEF	ATW	5	5	430	6.6		95	Anton Rudnev	MID	VKR	25	25	2178	17		95	Anatoly Vukašin	MID	ATW	26	0	723	40									
@@ -129,7 +129,7 @@
 128	Sergei Brokovsky	MID	ATW	28	28	2140	1		128	Ruslan Ostapenko	FWD	KNA	28	28	1989	1		128	Nikolai Belov	DEF	KTG	18	12	1140	6.5		128	Anatoly Shubin	FWD	ZYR	28	4	1074	13		128	Fyodor Tarasov	FWD	SKM	28	28	1776	30									
 129	Gleb Kostiuk	MID	ZYR	28	28	2324	1		129	Bairam Kirillov	DEF	KVU	28	26	2161	1		129	Vadim Kolesnik	FWD	VKR	19	0	469	6.5		129	Maxim Fedorov	DEF	KVC	28	28	2444	13		129	Roman Belyaev	FWD	KTG	28	28	2046	30									
 130	Maxim Fedorov	DEF	KVC	28	28	2444	1		130	Odissey Lazarev	FWD	KVU	28	28	1551	1		130	Arkady Savin	FWD	FKS	19	0	442	6.5		130	Grigori Ignatiev	MID	KTG	24	9	1094	12		130	Semyon Mkrtchyan	MID	KVU	26	0	887	29									
-131	Nam Cao	MID	KVC	28	21	1713	1		131	Maksim Zubkov	DEF	LGU	28	28	2255	1		131	Matteo Lindqvist	DEF	VKR	22	0	620	6.5		131	Sergei Morozov	MID	KTG	26	26	2117	12		131	Pitso Modisé	FWD	SVP	26	8	1150	29									
+131	Hải Dương Vũ	MID	KVC	28	21	1713	1		131	Maksim Zubkov	DEF	LGU	28	28	2255	1		131	Matteo Lindqvist	DEF	VKR	22	0	620	6.5		131	Sergei Morozov	MID	KTG	26	26	2117	12		131	Pitso Modisé	FWD	SVP	26	8	1150	29									
 132	Aleksandr Belyakov	MID	KVC	28	20	1968	1		132	Artem Lobanov	MID	LGU	28	28	2076	1		132	Nikita Krylov	MID	SKM	22	2	748	6.5		132	Danil Shostak	DEF	LGU	26	26	1958	12		132	Aleksei Ilyin	MID	BRT	27	8	1209	29									
 133	Luka Kalinin	DEF	FSD	28	28	2401	1		133	Kirill Chumak	DEF	LGU	28	28	2270	1		133	Sigurd Shilov	FWD	SVP	23	0	688	6.5		133	Ilya Chernenko	MID	KNA	28	1	911	12		133	Nikolai Zorin	MID	FKS	28	28	2329	29									
 134	Daniil Yakovlev	MID	FSD	28	26	2093	1		134	Zakhar Yashin	FWD	LGU	28	28	2292	1		134	Boris Galkin	MID	FSD	23	21	1763	6.5		134	Mikhail Kazakov	DEF	MVC	28	26	2257	12		134	Ivan Filippov	MID	FSD	19	19	1606	28									
@@ -142,7 +142,7 @@
 									141	Bogdan Lysenko	MID	ZYR	28	28	2183	1		141	Sergei Morozov	MID	KTG	26	26	2117	6.5		141	Igor Voronov	FWD	KVU	26	0	868	11		141	Boris Galkin	MID	FSD	23	21	1763	26									
 									142	Anatoly Shubin	FWD	ZYR	28	4	1074	1		142	Konstantin Shubin	DEF	KVU	26	0	792	6.5		142	Pitso Modisé	FWD	SVP	26	8	1150	11		142	Yulian Sobol	MID	KVC	27	7	1113	26									
 									143	Grigori Yefimov	DEF	ZYR	28	28	2422	1		143	Semyon Mkrtchyan	MID	KVU	26	0	887	6.5		143	Gennady Vasiliev	FWD	FSD	27	0	926	11		143	Pyotr Egorov	MID	BRT	28	3	1016	26									
-									144	Nam Cao	MID	KVC	28	21	1713	1		144	Igor Voronov	FWD	KVU	26	0	868	6.5		144	Alexander Cetkov	GK	VGW	28	28	2520	11		144	Niibin Nadjiwon	FWD	VGW	28	28	1794	26									
+									144	Hải Dương Vũ	MID	KVC	28	21	1713	1		144	Igor Voronov	FWD	KVU	26	0	868	6.5		144	Alexander Cetkov	GK	VGW	28	28	2520	11		144	Niibin Nadjiwon	FWD	VGW	28	28	1794	26									
 									145	Luka Kalinin	DEF	FSD	28	28	2401	1		145	Vitaly Kravchenko	DEF	LGU	26	0	606	6.5		145	Rolan Vinogradov	DEF	KVU	28	27	2280	11		145	Gleb Barinov	MID	VKR	28	28	2269	26									
 									146	Mikhail Drozdov	DEF	FSD	28	28	2313	1		146	Anatoly Vukašin	MID	ATW	26	0	723	6.5		146	Kirill Chumak	DEF	LGU	28	28	2270	11		146	Ruslan Ostapenko	FWD	KNA	28	28	1989	26									
 									147	Yegor Kirsanov	FWD	FSD	28	28	1692	1		147	Steven Ilianov	MID	ATW	26	26	1935	6.5		147	Xiang Qian	DEF	SVP	28	28	2304	11		147	Gleb Kostiuk	MID	ZYR	28	28	2324	25									

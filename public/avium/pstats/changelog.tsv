@@ -169,7 +169,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	nl1	Olof Sjöberg	ISS	DEF	84	83
 1934	nl1	Arthur Kohlberg	SPK	DEF	82	81
 1934	nl1	Takamasa Hida	KAM	MID	82	81
-1934	nl1	Étienne Trieu	AYA	MID	82	81
+1934	nl1	Huy Lam Đặng	AYA	MID	82	81
 1934	nl1	Shin Segawa	SSK	MID	81	80
 1934	nl1	Nicolas Bellamy	ISS	DEF	80	79
 1934	nl1	Ryōga Ikarashi	FCH	FWD	80	79
@@ -309,7 +309,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	nl2	Takahiro Chikaraishi	IFK	DEF	67	68
 1934	nl2	Ren Ikegami	BGE	GK	75	76
 1934	nl2	Toshiya Kogure	BGE	DEF	71	72
-1934	nl2	Lam Vu	RYO	MID	77	78
+1934	nl2	Hoàng Ly Ngô	RYO	MID	77	78
 1934	nl2	Eren Peretz	RYO	MID	76	77
 1934	nl2	Kentarō Ishizuka	RYO	DEF	72	73
 1934	nl2	Naoto Soejima	RYO	DEF	72	73
@@ -350,7 +350,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	nl2	Kaito Ōkawara	RYO	FWD	71	69
 1934	nl2	Yasuhiro Narukawa	VAL	MID	72	71
 1934	nl2	Tomer Mizrahi	VAL	DEF	71	70
-1934	nl2	Phong Le	VAL	FWD	72	71
+1934	nl2	Kamon Arthit	VAL	FWD	72	71
 1934	nl2	Ryūhei Kuriyama	MRG	MID	73	72
 1934	nl2	Akito Namiki	MRG	MID	71	70
 1934	nl2	Erfan Rastkar	MRG	DEF	70	69
@@ -839,14 +839,14 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Mateus Herrera	ATA	DEF	62	61
 1934	International Football	Ogimaa Panadis	ATA	MID	57	58
 1934	International Football	Zhaawan Commanda	ATA	FWD	58	59
-1934	International Football	Duy Tran	GAI	DEF	73	71
-1934	International Football	Janh Nguyen	GAI	GK	74	76
-1934	International Football	Sang Pham	GAI	MID	73	75
-1934	International Football	Gia Bui	GAI	DEF	71	70
-1934	International Football	Huy Luong	GAI	MID	71	72
-1934	International Football	Manh Ton That	GAI	DEF	73	74
-1934	International Football	Quang Đinh	GAI	MID	72	73
-1934	International Football	Thinh Dang	GAI	MID	72	71
+1934	International Football	Tử Khoa Hoàng	GAI	DEF	73	71
+1934	International Football	Prasert Bùi	GAI	GK	74	76
+1934	International Football	Thạch Lam Trương	GAI	MID	73	75
+1934	International Football	Vũ Châu Văn Võ	GAI	DEF	71	70
+1934	International Football	Vũ Lương Huỳnh	GAI	MID	71	72
+1934	International Football	Quang Diệu Cao	GAI	DEF	73	74
+1934	International Football	Sophon Bunnag	GAI	MID	72	73
+1934	International Football	Nguyên Nhân Lý	GAI	MID	72	71
 1934	International Football	Enamul Islam	AWB	DEF	65	63
 1934	International Football	Humayun Piker	AWB	MID	70	72
 1934	International Football	Jahangir Hossain	AWB	DEF	67	65
@@ -1230,10 +1230,10 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Nikolaos Papadopoulos	AST	GK	85	86
 1934	International Football	Pyrros Dimitrakopoulos	AST	MID	77	76
 1934	International Football	Themistoklis Zervas	AST	MID	80	82
-1934	International Football	Étienne Trieu	GAI	MID	81	83
-1934	International Football	Félix Doan	GAI	DEF	75	76
-1934	International Football	Lam Vu	GAI	MID	78	76
-1934	International Football	Vinh Ngo	GAI	FWD	81	82
+1934	International Football	Huy Lam Đặng	GAI	MID	81	83
+1934	International Football	Vĩnh Phúc Đoàn	GAI	DEF	75	76
+1934	International Football	Hoàng Ly Ngô	GAI	MID	78	76
+1934	International Football	Đại Đông Nguyễn	GAI	FWD	81	82
 1934	International Football	Ánselmo Fernandez	AUR	MID	78	79
 1934	International Football	Arcadio Villa	AUR	MID	78	79
 1934	International Football	Cayetano Montoya	AUR	DEF	78	79
@@ -1769,7 +1769,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Biel Chuol	SSA	DEF	49	50
 1935	1935 WC Qualifiers	Gatdet Hoth	SSA	MID	48	49
 1935	1935 WC Qualifiers	Niibin Nadjiwon	ATA	FWD	60	61
-1935	1935 WC Qualifiers	Étienne Trieu	GAI	MID	83	84
+1935	1935 WC Qualifiers	Huy Lam Đặng	GAI	MID	83	84
 1935	1935 WC Qualifiers	Péter Szabó	TUR	MID	90	91
 1935	1935 WC Qualifiers	Sepideh Shakibaii	VAR	MID	86	87
 1935	1935 WC Qualifiers	Valentino Zaccagni	VIC	MID	84	86
@@ -1787,7 +1787,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	Club World Shield	Spencer Chadwick	SHE	MID	83	85
 1934	Club World Shield	Eliel Klemetti	SHE	DEF	77	76
 1934	Club World Shield	Alceste Derocles	SHE	DEF	77	76
-1934	Club World Shield	Étienne Trieu	AYA	MID	84	86
+1934	Club World Shield	Huy Lam Đặng	AYA	MID	84	86
 1934	Club World Shield	Gen Fija	AYA	DEF	84	85
 1934	Club World Shield	Makisig Liwanag	AYA	MID	81	82
 1934	Club World Shield	Itsuki Toguchi	AYA	MID	79	80
@@ -2654,7 +2654,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Championnat Arvernois	Amaury Brissaud	OL	DEF	78	77	Rebalance
 1935	Championnat Arvernois	Lothaire Chalumeau	OL	DEF	77	79	Rebalance
 1935	Championnat Arvernois	Octave Faravel	OL	MID	77	79	Rebalance
-1935	Championnat Arvernois	Vinh Ngo	OM	FWD	82	80	Rebalance
+1935	Championnat Arvernois	Đại Đông Nguyễn	OM	FWD	82	80	Rebalance
 1935	Championnat Arvernois	Nabil Ouazzani	OM	MID	78	81	Rebalance
 1935	Championnat Arvernois	Sergei Smirnov	OM	DEF	78	80	Rebalance
 1935	Championnat Arvernois	Octave Étienne	OM	FWD	77	76	Rebalance
@@ -3414,7 +3414,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	nl1	Jean-Luc Moreau	ASH	MID	73	71	Rebalance
 1935	nl1	Percival Graves	ASH	MID	73	72	Rebalance
 1935	nl1	Rémi Gauthier	AYA	FWD	87	86	Rebalance
-1935	nl1	Étienne Trieu	AYA	MID	86	88	Rebalance
+1935	nl1	Huy Lam Đặng	AYA	MID	86	88	Rebalance
 1935	nl1	Gen Fija	AYA	DEF	86	88	Rebalance
 1935	nl1	Makisig Liwanag	AYA	MID	82	85	Rebalance
 1935	nl1	Toma Shimabukuro	AYA	GK	82	85	Rebalance
@@ -3746,7 +3746,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	nl2	Kōhei Itagaki	OTA	DEF	70	71	Rebalance
 1935	nl2	Yasuharu Katsuragawa	OTA	GK	69	71	Rebalance
 1935	nl2	Eren Peretz	RYO	MID	78	79	Rebalance
-1935	nl2	Lam Vu	RYO	MID	76	78	Rebalance
+1935	nl2	Hoàng Ly Ngô	RYO	MID	76	78	Rebalance
 1935	nl2	Yūya Tachikawa	RYO	GK	76	78	Rebalance
 1935	nl2	Hiroaki Tomioka	RYO	MID	73	74	Rebalance
 1935	nl2	Kentarō Ishizuka	RYO	DEF	73	74	Rebalance
@@ -3832,7 +3832,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Primera División	Gil Moutinho	ATO	MID	78	79	Rebalance
 1935	Primera División	Zakaria Bouhaddou	ATO	FWD	78	77	Rebalance
 1935	Primera División	Shenoute Nebamun	ATO	GK	77	76	Rebalance
-1935	Primera División	Sang Pham	ATO	MID	75	76	Rebalance
+1935	Primera División	Thạch Lam Trương	ATO	MID	75	76	Rebalance
 1935	Primera División	Bento Seixas	ATO	MID	74	75	Rebalance
 1935	Primera División	Matías Salcedo	CA	FWD	85	84	Rebalance
 1935	Primera División	Ausiàs Campanar	CA	MID	84	86	Rebalance
@@ -4233,7 +4233,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Shield	Yoshinori Mizoguchi	YNC	FWD	77	76
 1935	Club World Shield	Ludvig Brantman	SDM	FWD	77	76
 1935	Club World Shield	Pyotor Kirilov	SVP	GK	76	75
-1935	Club World Shield	Janh Nguyen	AGL	GK	76	75
+1935	Club World Shield	Prasert Bùi	AGL	GK	76	75
 1935	Club World Shield	Rémi Wagener	LUZ	MID	76	75
 1935	Club World Shield	Pyrros Dimitrakopoulos	AGL	MID	76	75
 1935	Club World Shield	Alistair Fairweather	YNC	FWD	76	75
@@ -4304,7 +4304,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Galvarino Calfucurá	AKG	MID	77	78
 1935	Nations League	Beonetun Hocere	EIV	MID	77	78
 1935	Nations League	Touraj Hayaii	VAR	DEF	76	77
-1935	Nations League	Janh Nguyen	GAI	GK	75	76
+1935	Nations League	Prasert Bùi	GAI	GK	75	76
 1935	Nations League	Chenguang Pei	GUA	MID	76	77
 1935	Nations League	Hiraya Halili	SGD	MID	76	77
 1935	Nations League	Ihor Kovalenko	SYL	DEF	76	77

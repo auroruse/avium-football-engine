@@ -22,7 +22,7 @@
 21	Loïc Kervadec	FWD	VAL	37	13		21	Fábio Pintassilgo	MID	SHM	37	8		21	Yavuz Koç	MID	SHM	36	7.1		21	Matvei Popov	MID	SHM	35	34		21	Amgalanbaatar Sükh	DEF	ORU	36	103		21	Seishirō Ōkubo	GK	TOY	2	9
 22	Umberto Bellarmino	FWD	CHU	37	13		22	Rui Ōe	MID	DYM	37	8		22	Akihisa Kubo	GK	FCH	38	7.1		22	Orkun Çeti̇n	MID	NAG	38	34		22	Emil Hansen	DEF	FCH	37	103		22	Kai Togane	GK	SSK	2	8
 23	Fumito Katagiri	FWD	KAM	37	13		23	Ander Zubikarai	FWD	FCH	38	8		23	Przemysław Nowak	GK	SHM	38	7.1		23	Gaku Ibusuki	FWD	ISS	38	33		23	Bjarke Lindqvist	DEF	KAM	37	103		23	Ren Ikegami	GK	ORU	3	8
-24	Ákos Tolvaj	FWD	MAK	38	13		24	Stéphan Konaté	FWD	SEN	38	8		24	Magnus Andersson	GK	BGE	38	7.1		24	Étienne Trieu	MID	AYA	35	33		24	Yūta Kamogawa	MID	VAL	38	101		24	Rui Torigoe	GK	MAK	2	4
+24	Ákos Tolvaj	FWD	MAK	38	13		24	Stéphan Konaté	FWD	SEN	38	8		24	Magnus Andersson	GK	BGE	38	7.1		24	Huy Lam Đặng	MID	AYA	35	33		24	Yūta Kamogawa	MID	VAL	38	101		24	Rui Torigoe	GK	MAK	2	4
 25	Rúben Guerreiro	MID	MAK	34	12		25	Wenkai Zhao	FWD	NIK	38	8		25	Taiga Bashira	FWD	DYM	38	7.1		25	Simphiwe Chabalala	MID	SPK	36	33		25	Zen Kumagae	DEF	SHZ	36	101		25	Yūma Kitazono	GK	CHU	2	3
 26	Kenji Nagase	MID	SSK	36	12		26	Gijs Dreesens	MID	DYM	36	7		26	Raffaele Lucchese	FWD	AYA	38	7.1		26	Drake Kessler	MID	NIK	37	33		26	Shintarō Katahira	DEF	KAM	38	101		26	Kiyoshi Torigoe	MID	MAK	37	1
 27	Sheng Huang	MID	SSK	37	12		27	Eetu Hämäläinen	MID	TOY	36	7		27	Kei Tomonaga	FWD	FCH	37	7.1		27	Wyatt Bradford	MID	NAG	37	33		27	Arslanbaatar Ganbold	MID	ORU	37	99							
@@ -30,9 +30,9 @@
 29	Sviatoslav Boyko	FWD	NAG	38	12		29	Melvyn Raes	MID	FCH	37	7		29	Gaku Ibusuki	FWD	ISS	38	7.1		29	Kei Tomonaga	FWD	FCH	37	32		29	Olof Sjöberg	DEF	ISS	35	99							
 30	Gaku Ibusuki	FWD	ISS	38	12		30	Dylan Evans	MID	VIR	38	7		30	Thibault Verschueren	FWD	KAM	35	7.1		30	Rúben Guerreiro	MID	MAK	34	32		30	Gvidas Rimkevičius	DEF	TAK	38	99							
 31	Alex Kaczmarek	FWD	SHZ	33	11		31	Themistoklis Zervas	MID	VIR	38	7		31	Sōta Kuribayashi	GK	VAL	38	7.1		31	Rikuto Funabashi	MID	SEN	36	32		31	Daiki Moriizumi	MID	CHU	37	97							
-32	Étienne Trieu	MID	AYA	35	11		32	Orkun Çeti̇n	MID	NAG	38	7		32	Eisuke Sato	GK	NAG	38	7.0		32	Themistoklis Zervas	MID	VIR	38	32		32	Niccolò Donizetti	MID	CHU	37	97							
+32	Huy Lam Đặng	MID	AYA	35	11		32	Orkun Çeti̇n	MID	NAG	38	7		32	Eisuke Sato	GK	NAG	38	7.0		32	Themistoklis Zervas	MID	VIR	38	32		32	Niccolò Donizetti	MID	CHU	37	97							
 33	Epaminondas Mavromatis	FWD	SHZ	35	11		33	Raleigh Preston	FWD	NAG	38	7		33	Attila Hegedűs	MID	SEN	37	7.0		33	Pedram Nazeri	MID	TOY	37	32		33	Kōzō Fujise	DEF	DYM	36	97							
-34	Kōdai Misonoo	MID	FCH	36	11		34	Gaku Ibusuki	FWD	ISS	38	7		34	Étienne Trieu	MID	AYA	35	7.0		34	Renshi Kuzuryū	MID	MAK	38	32		34	Nicolas Bellamy	DEF	ISS	37	97							
+34	Kōdai Misonoo	MID	FCH	36	11		34	Gaku Ibusuki	FWD	ISS	38	7		34	Huy Lam Đặng	MID	AYA	35	7.0		34	Renshi Kuzuryū	MID	MAK	38	32		34	Nicolas Bellamy	DEF	ISS	37	97							
 35	Gijs Dreesens	MID	DYM	36	11		35	Shunpei Kadota	MID	CHU	36	6		35	Chenguang Pei	FWD	FCH	38	7.0		35	Katsumi Enokida	MID	TOY	36	32		35	Radosław Gołębiowski	MID	VAL	37	95							
 36	Shōhei Kaburagi	FWD	TAK	36	11		36	Arslanbaatar Ganbold	MID	ORU	37	6		36	Hajime Morimoto	FWD	TOY	38	7.0		36	Fábio Pintassilgo	MID	SHM	37	32		36	Édouard Szymański	MID	CHU	37	95							
 37	Luca Higashiyama	MID	VIR	37	11		37	Umberto Bellarmino	FWD	CHU	37	6		37	Itsuki Toguchi	MID	AYA	37	7.0		37	Rintarō Ichinohe	MID	TAK	37	32		37	Luca Higashiyama	MID	VIR	37	95							
@@ -51,7 +51,7 @@
 50	Pedram Nazeri	MID	TOY	37	9		50	Akihiro Kaibara	FWD	FCH	31	5		50	Shūji Kannazuki	GK	MAK	37	7.0		50	Silas Davis	MID	NAG	36	30		50	Gōki Kumashiro	DEF	BGE	38	91							
 51	Fengqi Lu	MID	NIK	37	9		51	Yūshi Kurata	MID	SEN	33	5		51	Arnold Bjarnfreðsson	FWD	TAK	38	7.0		51	Melvyn Raes	MID	FCH	37	30		51	Trent Hawthorne	FWD	ISS	37	90							
 52	Tomoki Iwabuchi	FWD	CHU	38	9		52	Timur Oorzhak	DEF	DYM	34	5		52	Nikolaos Papadopoulos	GK	VIR	38	7.0		52	Kiyoshi Murandin	MID	SPK	38	30		52	Kōsuke Yokomizo	MID	CHU	37	89							
-53	Ander Zubikarai	FWD	FCH	38	9		53	Étienne Trieu	MID	AYA	35	5		53	Teppei Aragaki	GK	DYM	38	7.0		53	Yūsuke Nobata	MID	TAK	36	29		53	Makoto Sugisaki	MID	SHM	37	89							
+53	Ander Zubikarai	FWD	FCH	38	9		53	Huy Lam Đặng	MID	AYA	35	5		53	Teppei Aragaki	GK	DYM	38	7.0		53	Yūsuke Nobata	MID	TAK	36	29		53	Makoto Sugisaki	MID	SHM	37	89							
 54	Chenguang Pei	FWD	FCH	38	9		54	Pêr Lostanlen	MID	VIR	35	5		54	Rikuto Funabashi	MID	SEN	36	7.0		54	Keisuke Nozawa	MID	KAM	38	29		54	Yaqub Ghattas	MID	BGE	37	89							
 55	Raleigh Preston	FWD	NAG	38	9		55	Mirko Begović	MID	MAK	35	5		55	Wyatt Bradford	MID	NAG	37	7.0		55	Virgilio Piromalli	MID	KAM	35	29		55	Taras Bondarenko	MID	SEN	37	89							
 56	Ryōta Ibara	FWD	SHZ	29	8		56	Jebe Khurchakus	MID	ORU	36	5		56	Umberto Bellarmino	FWD	CHU	37	7.0		56	Hiro Oshiro	MID	DYM	36	29		56	Kazuyoshi Hiranuma	DEF	SPK	36	88							
@@ -104,7 +104,7 @@
 103	Kalle Vuorijärvi	DEF	TOY	37	5		103	Daichi Komaba	MID	VIR	35	3		103	Lingyun Hao	DEF	NIK	38	6.9		103	Kōdai Misonoo	MID	FCH	36	23		103	Vladimír Králik	DEF	MAK	36	74							
 104	Taras Bondarenko	MID	SEN	37	5		104	Shin Segawa	DEF	SSK	35	3		104	Keisuke Nozawa	MID	KAM	38	6.9		104	Tatsunori Nijigahara	DEF	FCH	36	23		104	Kenneth Haugland	DEF	VIR	37	74							
 105	Reinhold Von Ungern	MID	TAK	37	5		105	Kazunari Tsuruta	MID	NIK	35	3		105	Epaminondas Mavromatis	FWD	SHZ	35	6.9		105	Fumito Katagiri	FWD	KAM	37	22		105	Horace Peshlakai	FWD	NAG	38	74							
-106	Tetsuya Mibu	DEF	NAG	37	5		106	Gakuto Minamikawa	MID	NAG	35	3		106	Onni Pitkänen	MID	TOY	37	6.9		106	Yaqub Ghattas	MID	BGE	37	22		106	Étienne Trieu	MID	AYA	35	73							
+106	Tetsuya Mibu	DEF	NAG	37	5		106	Gakuto Minamikawa	MID	NAG	35	3		106	Onni Pitkänen	MID	TOY	37	6.9		106	Yaqub Ghattas	MID	BGE	37	22		106	Huy Lam Đặng	MID	AYA	35	73							
 107	Yūta Kamogawa	MID	VAL	38	5		107	Thibault Verschueren	FWD	KAM	35	3		107	Fumito Katagiri	FWD	KAM	37	6.9		107	Bürgedei Dashnyam	MID	ORU	34	22		107	Gijs Dreesens	MID	DYM	36	73							
 108	Yūto Shiranui	DEF	BGE	38	5		108	Tatsunori Nijigahara	DEF	FCH	36	3		108	Tianyu Gu	FWD	NIK	38	6.9		108	Makisig Liwanag	MID	AYA	35	22		108	Rintarō Ichinohe	MID	TAK	37	73							
 109	Orkun Çeti̇n	MID	NAG	38	5		109	Percival Graves	MID	BGE	36	3		109	Jacinto Valencia	DEF	ISS	33	6.9		109	Daiki Moriizumi	MID	CHU	37	22		109	Themistoklis Zervas	MID	VIR	38	73							
