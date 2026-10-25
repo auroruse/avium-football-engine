@@ -3,8 +3,8 @@
 // touch. `h` is how squads are judged: h.labels(team) its slot positions (and each bench place's group), h.fit(a, b) the
 // position cost, h.ovr(id) a man's rating and h.pos(id) his own positions.
 //
-// The overseer changes everything. An editor changes their own nation's sides (its national side and its clubs): names
-// and kits outright; codes, grounds and cities by request to the overseer; formations, slots, and who plays for and
+// The overseer changes everything. An editor changes their own nation's sides (its national side and its clubs): names,
+// kits and grounds outright; codes and cities by request to the overseer; formations, slots, and who plays for and
 // manages them, by moving men. A man from another nation's club comes by a trade, which that nation answers (the
 // overseer where it has no editor). New players, managers, clubs and leagues are requests the overseer answers, editing
 // them first if he likes; a new man's rating may wait for him. A player's or manager's own record (rating, age,
@@ -54,8 +54,9 @@ export const ownersOf = (editors, t) => [...new Set([
   ...(isNational(t) ? [] : Object.entries(editors?.clubs || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u))])];
 
 // What an editor may change on a team of their own outright, and what goes to the overseer as a request.
-const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "formation", "style", "manager", "squad", "timeWasting"]);
-const BY_REQUEST = new Set(["code", "stadium", "location"]);
+// A side's ground is its editors' outright (Moukden and Kirin, 26 October 2026: "Let editors change their own grounds directly").
+const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "stadium", "formation", "style", "manager", "squad", "timeWasting"]);
+const BY_REQUEST = new Set(["code", "location"]);
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 // EVERY SQUAD HAS TWENTY-TWO PLACES, a club's as a national side's (Moukden and Kirin, 12 October 2026: "clubs will also be
 // given 11-man benches"). A club squad of sixteen (asked for before then, or kept on a form) takes its six new places open.

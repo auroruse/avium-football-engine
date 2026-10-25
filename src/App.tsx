@@ -12815,7 +12815,7 @@ export default function App() {
               </div>));
     return (
       <div className="ux-ed-rec">
-        {/* The side's head: crest, name and kits (its own to change), then code, ground and city (by request for an editor). */}
+        {/* The side's head: crest, name and kits (its own to change), then code, ground and city (code and city by request for an editor). */}
         <section className="ux-panel ux-ed-head">
           <div className="ux-ed-id">
             {tm && <TeamCrest team={tm} size={48} />}

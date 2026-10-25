@@ -7,6 +7,7 @@
 //
 //   node test/lineups.mjs          report what would change, side by side
 //   node test/lineups.mjs write    write it into src/data/teams.json (then node test/records.mjs export)
+//   ONLY=GAI node test/lineups.mjs [write]   just the sides with those codes
 //   node test/lineups.mjs nations [write]
 //                                  NATIONAL SELECTION instead (the user, 14 October 2026: "the same thing, but for
 //                                  optimizing national team selections"): every Avium national side's 22 picked afresh
@@ -139,6 +140,7 @@ let sides = 0, changed = 0, xiChanged = 0, gain = 0, moved = 0;
 const report = [];
 for (const t of teams) {
   if (t.removed || COLLEGE.has(t.group) || !Array.isArray(t.squad) || !t.squad.length) continue;
+  if (process.env.ONLY && !process.env.ONLY.split(",").includes(t.code)) continue;   // ONLY=GAI,ALE: just those sides
   sides++;
   const before = t.squad, after = pick(t);
   if (after.length !== before.length) throw new Error(`${t.code}: squad length changed`);
