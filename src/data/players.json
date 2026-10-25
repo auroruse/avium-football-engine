@@ -5929,5 +5929,21 @@
 {"id":"p5967","name":"Dhafer AL-ZAD","nat":"VAR","ovr":48,"born":"1917-11-12","pos":["LWB"]},
 {"id":"p5968","name":"Shafi AL-RAKIB","nat":"VAR","ovr":50,"born":"1917-04-23","pos":["RWB"]},
 {"id":"p5969","name":"Ahmad IBN FADLAN","nat":"VAR","ovr":52,"born":"1913-09-08","pos":["CM","DM"]},
-{"id":"p5970","name":"Shaddad AL-KATHIB","nat":"VAR","ovr":54,"born":"1915-04-12","pos":["ST"]}
+{"id":"p5970","name":"Shaddad AL-KATHIB","nat":"VAR","ovr":54,"born":"1915-04-12","pos":["ST"]},
+{"id":"p5971","name":"Ákos TOLMÁCS","nat":"TUR","ovr":68,"born":"1909-04-02","pos":["GK"]},
+{"id":"p5972","name":"János KURUCZ","nat":"TUR","ovr":65,"born":"1915-05-03","pos":["LB"]},
+{"id":"p5973","name":"Ernő DEÁK","nat":"TUR","ovr":66,"born":"1913-03-31","pos":["CB"]},
+{"id":"p5974","name":"Valter KÁDÁR","nat":"TUR","ovr":70,"born":"1907-09-12","pos":["CB"]},
+{"id":"p5975","name":"Yuki HAYASHIMA","nat":"NCH","ovr":73,"born":"1907-11-07","pos":["RB"]},
+{"id":"p5976","name":"Géza DÁRTÁDY","nat":"TUR","ovr":67,"born":"1902-05-28","pos":["CM"]},
+{"id":"p5977","name":"Gáspár GYŐZŐ","nat":"TUR","ovr":69,"born":"1911-07-10","pos":["CM"]},
+{"id":"p5978","name":"Ervin KOLOSTOROS","nat":"TUR","ovr":71,"born":"1916-03-31","pos":["CM"]},
+{"id":"p5979","name":"Balázs CSEKE","nat":"TUR","ovr":66,"born":"1910-08-23","pos":["AM"]},
+{"id":"p5980","name":"Dominik KŐMŰVES","nat":"TUR","ovr":66,"born":"1910-03-05","pos":["ST"]},
+{"id":"p5981","name":"János DZSENÓSZA","nat":"TUR","ovr":70,"born":"1903-04-23","pos":["ST"]},
+{"id":"p5982","name":"Vilmos HERCZEG","nat":"TUR","ovr":65,"born":"1909-05-03","pos":["GK"]},
+{"id":"p5983","name":"Titusz FELLEGVÁR","nat":"TUR","ovr":63,"born":"1905-12-02","pos":["CB"]},
+{"id":"p5984","name":"Roland KERMESDY","nat":"TUR","ovr":64,"born":"1905-11-03","pos":["CM"]},
+{"id":"p5985","name":"Dömötör PÁCZ","nat":"TUR","ovr":62,"born":"1912-02-05","pos":["CM"]},
+{"id":"p5986","name":"Endre THÉBAI","nat":"TUR","ovr":65,"born":"1902-08-18","pos":["ST"]}
 ]
