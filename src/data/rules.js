@@ -262,7 +262,9 @@ function newProblems(rec, n, scope, over, h) {
       if (seen.has(id)) bad("a player is listed twice"); seen.add(id);
       if (at && !owns(scope, rec.teams.find(t => teamKey(t) === at))) bad(`${p.name} is at another nation's club`);
     }
-    if (n.manager) { const m = rec.managers.find(x => x.id === n.manager), at = mgrClubOf.get(n.manager);
+    // A manager made for the new club on the Sheet comes in it as a new man, the way a new league's clubs carry theirs.
+    if (isNew(n.manager)) newManProblems(rec, n.manager, "managers", scope, over, bad);
+    else if (n.manager) { const m = rec.managers.find(x => x.id === n.manager), at = mgrClubOf.get(n.manager);
       if (!m) bad("no such manager"); else if (at && !owns(scope, rec.teams.find(t => teamKey(t) === at))) bad(`${m.name} manages another nation's club`); }
   }
   return out;
@@ -442,16 +444,20 @@ function createDraft(rec, d, n, h) {
   // A new club goes on the sheet its league's clubs are on.
   const clubs = next.teams.filter(t => !isNational(t) && t.nation === n.nation), file = (clubs.find(t => t.group === n.group) || clubs[0]).file;
   const id = nextId(next.teams, "t");
-  const { clubOf, mgrClubOf } = placesOf(next), mgrSide = n.manager ? next.teams.find(t => teamKey(t) === mgrClubOf.get(n.manager)) : null;
-  const mgrRec = n.manager ? next.managers.find(m => m.id === n.manager) : null;
-  const style = mgrSide?.style || styleName(mgrRec?.style) || "Balanced";
+  const { clubOf, mgrClubOf } = placesOf(next), mgrNew = isNew(n.manager);
+  const mgrSide = n.manager && !mgrNew ? next.teams.find(t => teamKey(t) === mgrClubOf.get(n.manager)) : null;
+  const mgrRec = n.manager && !mgrNew ? next.managers.find(m => m.id === n.manager) : null;
+  const style = mgrSide?.style || styleName(mgrNew ? n.manager.style : mgrRec?.style) || "Balanced";
+  let manager = mgrNew ? null : n.manager || null;
+  if (mgrNew) { manager = nextId([...next.managers, ...add.managers], "m");
+    add.managers.push({ id: manager, name: n.manager.name, nat: n.manager.nat, ovr: n.manager.ovr, born: n.manager.born, style }); }
   // Its new men first, each a record of his own in his place.
   const squad = padPlaces(n.squad).map(v => { if (!isNew(v)) return v || null; const pid = nextId([...next.players, ...add.players], "p");
     add.players.push({ id: pid, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null), ...(gradOk(v.grad) ? { grad: v.grad } : null) }); return pid; });
   const ovrs = squad.slice(0, 11).filter(Boolean).map(pid => [...next.players, ...add.players].find(p => p.id === pid)?.ovr || 0);
   const team = { id, file, nation: n.nation, at: "", code: n.code, name: n.name, ovr: (ovrs.reduce((a, b) => a + b, 0) / Math.max(1, ovrs.length)).toFixed(1),
                  style, formation: n.formation, timeWasting: TIME_WASTING.includes(n.timeWasting) ? n.timeWasting : "Never", gkPassing: "Short", dlBehavior: "No Instruction",
-                 manager: n.manager || null, squad, home: n.home, away: n.away, location: n.location, stadium: n.stadium, group: n.group };
+                 manager, squad, home: n.home, away: n.away, location: n.location, stadium: n.stadium, group: n.group };
   add.teams.push(team); out = { ...out, add };
   for (const pid of n.squad.filter(v => typeof v === "string")) { const at = clubOf.get(pid); if (!at) continue;
     const t = applyDraft(rec, out).teams.find(x => teamKey(x) === at);
