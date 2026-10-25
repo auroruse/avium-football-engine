@@ -6521,5 +6521,915 @@
    ]
   },
   "locks": []
+ },
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-25T09:53:10.344Z",
+  "approved": [],
+  "id": "842a24c3",
+  "kind": "new",
+  "what": "teams",
+  "teamName": "Tűztorony SE",
+  "rec": {
+   "name": "Tűztorony SE",
+   "code": "TSE",
+   "home": "#c71a1a",
+   "away": "#ffffff",
+   "stadium": "Lángstadion (5,800)",
+   "location": "Hídkővár",
+   "group": "Turulországi Felsőliga",
+   "formation": "4-3-1-2",
+   "timeWasting": "Never",
+   "manager": {
+    "id": "mvf3rtcwcu9l",
+    "name": "Elemér PRIBÉK",
+    "nat": "TUR",
+    "born": "1884-05-27",
+    "style": "secondball",
+    "ovr": 67
+   },
+   "squad": [
+    {
+     "id": "mv9u68owl6v0",
+     "name": "Ákos TOLMÁCS",
+     "nat": "TUR",
+     "born": "1909-04-02",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 68,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9u6zhw4oel",
+     "name": "János KURUCZ",
+     "nat": "TUR",
+     "born": "1915-05-03",
+     "pos": [
+      "LB"
+     ],
+     "ovr": 65,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9u7gqrenee",
+     "name": "Ernő DEÁK",
+     "nat": "TUR",
+     "born": "1913-03-31",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 66,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9u81m7b32p",
+     "name": "Valter KÁDÁR",
+     "nat": "TUR",
+     "born": "1907-09-12",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 70,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9u9j47pggj",
+     "name": "Yuki HAYASHIMA",
+     "nat": "NCH",
+     "born": "1907-11-07",
+     "pos": [
+      "RB"
+     ],
+     "ovr": 73,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9ua7wmh5gt",
+     "name": "Géza DÁRTÁDY",
+     "nat": "TUR",
+     "born": "1902-05-28",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 67,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9uazd2yn8t",
+     "name": "Gáspár GYŐZŐ",
+     "nat": "TUR",
+     "born": "1911-07-10",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mv9ucbnwntnb",
+     "name": "Ervin KOLOSTOROS",
+     "nat": "TUR",
+     "born": "1916-03-31",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 71,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9ucvml4plf",
+     "name": "Balázs CSEKE",
+     "nat": "TUR",
+     "born": "1910-08-23",
+     "pos": [
+      "AM"
+     ],
+     "ovr": 66,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9uefcv5ejt",
+     "name": "Dominik KŐMŰVES",
+     "nat": "TUR",
+     "born": "1910-03-05",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 66,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9ufom9v5is",
+     "name": "János DZSENÓSZA",
+     "nat": "TUR",
+     "born": "1903-04-23",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mv9ugsikdafe",
+     "name": "Vilmos HERCZEG",
+     "nat": "TUR",
+     "born": "1909-05-03",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 65,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9uhntpl75b",
+     "name": "Titusz FELLEGVÁR",
+     "nat": "TUR",
+     "born": "1905-12-02",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 63,
+     "badges": [],
+     "bornSet": true
+    },
+    null,
+    null,
+    null,
+    {
+     "id": "mv9uj2d1q6rk",
+     "name": "Roland KERMESDY",
+     "nat": "TUR",
+     "born": "1905-11-03",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 64,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mv9ujqvjhm7d",
+     "name": "Dömötör PÁCZ",
+     "nat": "TUR",
+     "born": "1912-02-05",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 62,
+     "badges": []
+    },
+    null,
+    null,
+    null,
+    {
+     "id": "mv9ulmm1zolw",
+     "name": "Endre THÉBAI",
+     "nat": "TUR",
+     "born": "1902-08-18",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 65,
+     "badges": []
+    }
+   ],
+   "what": "teams",
+   "nation": "TUR"
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-25T09:53:10.344Z",
+  "approved": [],
+  "id": "932c7d0c",
+  "kind": "new",
+  "what": "teams",
+  "teamName": "Miklósi Bányász TgyK",
+  "rec": {
+   "name": "Miklósi Bányász TgyK",
+   "code": "MBT",
+   "home": "#f58300",
+   "away": "#000000",
+   "stadium": "Bányász Aréna (8,500)",
+   "location": "Miklós",
+   "group": "Turulországi Felsőliga",
+   "formation": "5-4-1",
+   "timeWasting": "Constantly",
+   "manager": {
+    "id": "mvkzparo1q35",
+    "name": "Géza VAK",
+    "nat": "TUR",
+    "born": "1894-02-20",
+    "style": "counterattack",
+    "ovr": 67
+   },
+   "squad": [
+    {
+     "id": "mvf3syoxpjvq",
+     "name": "Árvin KELDHÁZI",
+     "nat": "TUR",
+     "born": "1917-01-29",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 67,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mvf3tv1btekl",
+     "name": "Elemér BÁCS",
+     "nat": "TUR",
+     "born": "1903-12-24",
+     "pos": [
+      "LWB",
+      "LB"
+     ],
+     "ovr": 70,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mvf3ugbzfw16",
+     "name": "Dávid VERÉB",
+     "nat": "TUR",
+     "born": "1907-02-08",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 66,
+     "badges": [],
+     "auto": false
+    },
+    {
+     "id": "mvf3v93emqlw",
+     "name": "Árpád PAPUCS",
+     "nat": "TUR",
+     "born": "1917-03-20",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 68,
+     "badges": [],
+     "auto": false
+    },
+    {
+     "id": "mvf3xr9eh4sg",
+     "name": "Erling LINDSSON",
+     "nat": "SKJ",
+     "born": "1908-06-24",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mvf3ykx2jlyd",
+     "name": "Boldizsár GELEGONYA",
+     "nat": "TUR",
+     "born": "1914-12-02",
+     "pos": [
+      "RWB",
+      "RB"
+     ],
+     "ovr": 73,
+     "badges": []
+    },
+    {
+     "id": "mvf418ffpcpz",
+     "name": "Pista ORBÁN",
+     "nat": "TUR",
+     "born": "1916-07-24",
+     "pos": [
+      "LM"
+     ],
+     "ovr": 65,
+     "badges": []
+    },
+    {
+     "id": "mvf4267llfme",
+     "name": "Kornél ÚRHEGYI",
+     "nat": "TUR",
+     "born": "1910-10-20",
+     "pos": [
+      "CM",
+      "AM"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mvf4366x876v",
+     "name": "Tibor BENKŐ",
+     "nat": "TUR",
+     "born": "1913-05-12",
+     "pos": [
+      "CM",
+      "DM"
+     ],
+     "ovr": 67,
+     "badges": []
+    },
+    {
+     "id": "mvf445eiuhy5",
+     "name": "Korvin PÁSZTOR",
+     "nat": "TUR",
+     "born": "1908-07-24",
+     "pos": [
+      "RM",
+      "ST"
+     ],
+     "ovr": 63,
+     "badges": []
+    },
+    {
+     "id": "mvf44su5liko",
+     "name": "Ervin CSIKÓS",
+     "nat": "TUR",
+     "born": "1905-04-07",
+     "pos": [
+      "ST",
+      "AM"
+     ],
+     "ovr": 72,
+     "badges": []
+    },
+    {
+     "id": "mvf45geo4gf8",
+     "name": "Gergő BÁLVÁNY",
+     "nat": "TUR",
+     "born": "1906-04-26",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 59,
+     "badges": []
+    },
+    {
+     "id": "mvf461o7t7go",
+     "name": "Zoltán KONCZ",
+     "nat": "TUR",
+     "born": "1916-10-10",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 61,
+     "badges": []
+    },
+    null,
+    null,
+    null,
+    null,
+    {
+     "id": "mvf489757l8x",
+     "name": "Damján BÍBOROS",
+     "nat": "TUR",
+     "born": "1911-04-18",
+     "pos": [
+      "CM",
+      "LM"
+     ],
+     "ovr": 60,
+     "badges": [],
+     "auto": false
+    },
+    {
+     "id": "mvf49h3qw51r",
+     "name": "Csanád VINPOSZICS",
+     "nat": "TUR",
+     "born": "1915-08-31",
+     "pos": [
+      "CM",
+      "RM"
+     ],
+     "ovr": 58,
+     "badges": []
+    },
+    null,
+    null,
+    {
+     "id": "mvf4al2uj62i",
+     "name": "Nimród ASZTALOS",
+     "nat": "TUR",
+     "born": "1909-07-18",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 68,
+     "badges": [],
+     "bornSet": true
+    }
+   ],
+   "what": "teams",
+   "nation": "TUR"
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-25T09:53:10.344Z",
+  "approved": [],
+  "id": "e0d7aaec",
+  "kind": "new",
+  "what": "teams",
+  "teamName": "VII. Kerületi AC",
+  "rec": {
+   "name": "VII. Kerületi AC",
+   "code": "VII",
+   "home": "#000000",
+   "away": "#ffffff",
+   "stadium": "VII. Fellegvár (2,700)",
+   "location": "Szerencsehely",
+   "group": "Turulországi Felsőliga",
+   "formation": "3-4-3",
+   "timeWasting": "Never",
+   "manager": {
+    "id": "mvmfi77cqpkn",
+    "name": "Csanád GOMBÁS",
+    "nat": "TUR",
+    "born": "1882-03-07",
+    "style": "verticaltiki",
+    "ovr": 66
+   },
+   "squad": [
+    {
+     "id": "mvkzr3v2w5tb",
+     "name": "Dániel KORMÁNYOS",
+     "nat": "TUR",
+     "born": "1913-11-30",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 65,
+     "badges": []
+    },
+    {
+     "id": "mvmege4kuknq",
+     "name": "Jóska NÁDAS",
+     "nat": "TUR",
+     "born": "1912-12-26",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 65,
+     "badges": [],
+     "bornSet": true
+    },
+    {
+     "id": "mvmehnuxqzdp",
+     "name": "Gáspár HOLTÁGI",
+     "nat": "TUR",
+     "born": "1912-05-30",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 68,
+     "badges": []
+    },
+    {
+     "id": "mvmeomixpp9a",
+     "name": "Richárd MEZEI",
+     "nat": "TUR",
+     "born": "1916-06-15",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mvmeublgs9il",
+     "name": "Bence TÁSZVÁRI",
+     "nat": "TUR",
+     "born": "1906-07-14",
+     "pos": [
+      "LM"
+     ],
+     "ovr": 67,
+     "badges": []
+    },
+    {
+     "id": "mvmewh1v0x7q",
+     "name": "Koppány GULYÁS",
+     "nat": "TUR",
+     "born": "1902-10-22",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 64,
+     "badges": []
+    },
+    {
+     "id": "mvmf831u9zkf",
+     "name": "Miklós CÁR",
+     "nat": "TUR",
+     "born": "1911-05-18",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 66,
+     "badges": []
+    },
+    {
+     "id": "mvmf9olkzrzd",
+     "name": "Ferenc BODZA",
+     "nat": "TUR",
+     "born": "1912-07-04",
+     "pos": [
+      "RM"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mvmfbgfrt37l",
+     "name": "Attila GYÖNGY",
+     "nat": "TUR",
+     "born": "1915-07-10",
+     "pos": [
+      "LW"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mvmfet1zsryj",
+     "name": "Robert GRUSZKA",
+     "nat": "COR",
+     "born": "1904-12-21",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 71,
+     "badges": []
+    },
+    {
+     "id": "mvmfgcpqn5s7",
+     "name": "Csaba BALLA",
+     "nat": "TUR",
+     "born": "1910-01-26",
+     "pos": [
+      "RW"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mvnjpig0293w",
+     "name": "Mátyás VARJAS",
+     "nat": "TUR",
+     "born": "1912-10-20",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 63,
+     "badges": []
+    },
+    {
+     "id": "mvnjr8w77q66",
+     "name": "Zsigmond MÓRÓCZ",
+     "nat": "TUR",
+     "born": "1908-05-12",
+     "pos": [
+      "CB",
+      "DM"
+     ],
+     "ovr": 62,
+     "badges": [],
+     "auto": false
+    },
+    null,
+    null,
+    null,
+    {
+     "id": "mvnjswkp8qwh",
+     "name": "Gábor GYALOGOS",
+     "nat": "TUR",
+     "born": "1915-07-19",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 61,
+     "badges": []
+    },
+    {
+     "id": "mvnju0ud4co6",
+     "name": "Ágoston VÁRADI",
+     "nat": "TUR",
+     "born": "1912-11-21",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 58,
+     "badges": []
+    },
+    null,
+    null,
+    {
+     "id": "mvnjvc4cxpkj",
+     "name": "Ernő BÁDOGOS",
+     "nat": "TUR",
+     "born": "1903-03-21",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 68,
+     "badges": []
+    },
+    null
+   ],
+   "what": "teams",
+   "nation": "TUR"
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "zezelandnationstates-hash",
+  "at": "2026-10-25T09:53:10.344Z",
+  "approved": [],
+  "id": "691a849b",
+  "kind": "new",
+  "what": "teams",
+  "teamName": "SZTE",
+  "rec": {
+   "name": "SZTE",
+   "code": "STE",
+   "home": "#ffffff",
+   "away": "#003bd1",
+   "stadium": "SZTE Park (13,000)",
+   "location": "Szalaváros",
+   "group": "Turulországi Felsőliga",
+   "formation": "4-3-3",
+   "timeWasting": "Sometimes",
+   "manager": {
+    "id": "mvmfj2i9oom5",
+    "name": "Gyula HORN",
+    "nat": "TUR",
+    "born": "1884-09-13",
+    "style": "wingplay",
+    "ovr": 70
+   },
+   "squad": [
+    {
+     "id": "mvkzrrr49dep",
+     "name": "Viktor TRESZNYÁK",
+     "nat": "TUR",
+     "born": "1902-11-01",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mvmegt3hj704",
+     "name": "Nándor VIRÁG",
+     "nat": "TUR",
+     "born": "1916-12-22",
+     "pos": [
+      "LB"
+     ],
+     "ovr": 66,
+     "badges": []
+    },
+    {
+     "id": "mvmeic2qx5sr",
+     "name": "Benedek DÉTÁRY",
+     "nat": "TUR",
+     "born": "1917-06-07",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mvmes6nsxsp5",
+     "name": "Móricz TÓTH",
+     "nat": "TUR",
+     "born": "1914-11-02",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 71,
+     "badges": []
+    },
+    {
+     "id": "mvmevbx5hm54",
+     "name": "Jarno CASTEGLIO",
+     "nat": "VIC",
+     "born": "1905-01-15",
+     "pos": [
+      "RB"
+     ],
+     "ovr": 73,
+     "badges": []
+    },
+    {
+     "id": "mvmewsp5sk8w",
+     "name": "Zsolt OROSZ",
+     "nat": "TUR",
+     "born": "1913-05-06",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 69,
+     "badges": []
+    },
+    {
+     "id": "mvmf8vqeobv0",
+     "name": "Előd BOCSKOR",
+     "nat": "TUR",
+     "born": "1903-04-28",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 71,
+     "badges": []
+    },
+    {
+     "id": "mvmfagz08r80",
+     "name": "Ábel KEREPES",
+     "nat": "TUR",
+     "born": "1915-10-03",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 67,
+     "badges": []
+    },
+    {
+     "id": "mvmfd6ihw4u6",
+     "name": "René ARNOUX",
+     "nat": "ARV",
+     "born": "1903-12-06",
+     "pos": [
+      "LW"
+     ],
+     "ovr": 70,
+     "badges": []
+    },
+    {
+     "id": "mvmffgzthnm8",
+     "name": "Csongor SZEKERES",
+     "nat": "TUR",
+     "born": "1912-07-20",
+     "pos": [
+      "ST"
+     ],
+     "ovr": 75,
+     "badges": []
+    },
+    {
+     "id": "mvmfha4rorsv",
+     "name": "Joonas NEVALAINEN",
+     "nat": "KAR",
+     "born": "1907-07-13",
+     "pos": [
+      "RW"
+     ],
+     "ovr": 73,
+     "badges": []
+    },
+    {
+     "id": "mvnjqiikniau",
+     "name": "Martin ARVINSON",
+     "nat": "SKJ",
+     "born": "1909-05-24",
+     "pos": [
+      "GK"
+     ],
+     "ovr": 67,
+     "badges": []
+    },
+    {
+     "id": "mvnjs97g6yi7",
+     "name": "Gergő KIRÁLY",
+     "nat": "TUR",
+     "born": "1905-09-21",
+     "pos": [
+      "CB"
+     ],
+     "ovr": 65,
+     "badges": []
+    },
+    null,
+    null,
+    null,
+    {
+     "id": "mvnjtkpz8o3f",
+     "name": "Dezső NAGY",
+     "nat": "TUR",
+     "born": "1916-02-26",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 62,
+     "badges": []
+    },
+    {
+     "id": "mvnjuh4vq3is",
+     "name": "Sámuel RÉTFALVI",
+     "nat": "TUR",
+     "born": "1916-09-08",
+     "pos": [
+      "CM"
+     ],
+     "ovr": 60,
+     "badges": []
+    },
+    null,
+    null,
+    null,
+    {
+     "id": "mvnjws78wlfz",
+     "name": "Róbert KŐVÁGÓ",
+     "nat": "TUR",
+     "born": "1906-12-09",
+     "pos": [
+      "ST",
+      "AM"
+     ],
+     "ovr": 70,
+     "badges": []
+    }
+   ],
+   "what": "teams",
+   "nation": "TUR"
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
  }
 ]
