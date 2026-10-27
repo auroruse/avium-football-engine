@@ -53,6 +53,22 @@
   font-weight: 700;
   font-display: swap;
 }
+/* Grenze, the 1936 theme's face: a roman with blackletter bones, the text companion to the Gothic of Cortesia's wordmark,
+   so it carries the look at 10px where the wordmark itself could not. Omnibus-Type, SIL Open Font License (Grenze-OFL.txt).
+   One variable file, every weight. Measured against Helvetica Neue in Chrome: its x-height is 13% smaller and it sets about
+   20% narrower, so size-adjust lifts it 112% (x-height level, text still ~10% narrower, nothing can overflow) and the
+   three overrides give it Helvetica Neue's line box exactly, divided by the 1.12 because size-adjust scales them too. Rows
+   and buttons keep their height. */
+@font-face {
+  font-family: 'Grenze';
+  src: url('./fonts/Grenze.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+  size-adjust: 112%;
+  ascent-override: 85%;
+  descent-override: 19%;
+  line-gap-override: 2.5%;
+}
 /* The file is FreightText Pro Medium. Declared at 400 so it IS the regular face: there is no
    lighter cut to fall back to, and the browser synthesises the bold. */
 @font-face {
@@ -341,6 +357,48 @@
   /* A gold button needs dark ink. Overridden here and nowhere else. */
   --ui-on-accent: #00223d;
   --ui-on-accent-cc: #00223dcc;
+}
+
+/* 1936 World Cup — Cortesia. The logo's three: the royal blue of the Gothic wordmark (#1f4fa2), the gold of the wheat and
+   the lettering (#d6a628), and the navy of the ribbon at the trophy's foot, deepened into the night indigo at the top of
+   both conference posters for the field. The blue is the brand and the gold is the gold, the other way round from 1935. */
+[data-theme="1936cor"] {
+  --chrome-font: 'AviumNumerals','Grenze','Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-bg: #080b1f;
+  --chrome-bg-08: #080b1f08;
+  --chrome-bg-dd: #080b1fdd;
+  --chrome-bg2: #05071a;
+  --chrome-bg3: #0b1027;
+  --chrome-panel: #111a3f;
+  --chrome-panel-08: #111a3f08;
+  --chrome-panel-66: #111a3f66;
+  --chrome-border: #2a3a80;
+  --chrome-border-33: #2a3a8033;
+  --chrome-border-66: #2a3a8066;
+  --chrome-border-88: #2a3a8088;
+  --chrome-muted: #9aa7d6;
+  --chrome-muted-22: #9aa7d622;
+  --chrome-muted-33: #9aa7d633;
+  --chrome-muted-44: #9aa7d644;
+  --chrome-muted-66: #9aa7d666;
+  --chrome-muted-80: #9aa7d680;
+  --chrome-muted-88: #9aa7d688;
+  --chrome-brand: #2559c0;
+  --chrome-brand-11: #2559c011;
+  --chrome-brand-14: #2559c014;
+  --chrome-brand-1a: #2559c01a;
+  --chrome-brand-20: #2559c020;
+  --chrome-brand-22: #2559c022;
+  --chrome-brand-33: #2559c033;
+  --chrome-brand-44: #2559c044;
+  --chrome-brand-66: #2559c066;
+  --chrome-brand-88: #2559c088;
+  --chrome-gold: #d6a628;
+  --chrome-gold-11: #d6a62811;
+  --chrome-gold-22: #d6a62822;
+  --chrome-gold-44: #d6a62844;
+  --chrome-gold-66: #d6a62866;
+  --chrome-champion-glow: #2a2208;
 }
 
 /* Nichirin League One declares no palette. It is a BANNER theme: selecting it swaps the masthead

@@ -2019,6 +2019,7 @@ function chromeExportColors(uiTheme) {
   if (uiTheme === "1933nch") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
   if (uiTheme === "1934esu") return { panel: "#0f0f43", border: "#23237a", muted: "#8f95c9", brand: "#1d3fd1" };
   if (uiTheme === "1935skj") return { panel: "#04182a", border: "#003159", muted: "#8fb0cc", brand: "#ffd700" };
+  if (uiTheme === "1936cor") return { panel: "#111a3f", border: "#2a3a80", muted: "#9aa7d6", brand: "#2559c0" };
   return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
@@ -8074,12 +8075,102 @@ export default function App() {
   const [preSwap, setPreSwap] = useState({side:null,off:null});
   const [gvReplayKeys, setGvReplayKeys] = useState({});
   const [goalFlash, setGoalFlash] = useState(null);
+  // EVERY FIXTURE AS A PICTURE (Moukden and Kirin, 27 October 2026): the group rounds, then every knockout round, each a
+  // block of its ties with the home side on the left, its crest beside it, the score between them or "v" when it is still to
+  // play, and the winner in bold. Blocks run in order, left to right and down, in the theme's colours and face, saved as a
+  // PNG the same way the bracket is. Crests are fetched and written into the picture, since an SVG drawn as an image cannot
+  // reach them; a side with no crest gets the shield in its colours that TeamCrest draws.
+  const exportFixtures = async () => {
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : uiTheme === "1936cor" ? "Grenze,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const blocks = [], many = tGroups.length > 1, seen = (m) => m && !m.bye && (m.home || m.away);
+    const nGR = Math.max(0, ...tGroups.map(g => g.schedule.length));
+    for (let ri = 0; ri < nGR; ri++) {
+      const rows = [];
+      tGroups.forEach((g, gi) => (g.schedule[ri] || []).forEach(m => { if (seen(m) && m.home && m.away) rows.push({ m, tag: many ? groupTag(g, gi) : null }); }));
+      if (rows.length) blocks.push({ title: "Round " + (ri + 1), rows });
+    }
+    if (tKO) {
+      const add = (title, ms) => { const rows = ms.filter(seen).map(m => ({ m })); if (rows.length) blocks.push({ title, rows }); };
+      tKO.rounds.forEach(rd => add(rd.name, rd.matches));
+      (tKO.losers || []).forEach(rd => add(rd.name, rd.matches));
+      if (tKO.thirdPlace) add("Third Place", [tKO.thirdPlace]);
+      if (tKO.grandFinal) add("Grand Final", [tKO.grandFinal]);
+      if (tKO.reset) add("Reset Match", [tKO.reset]);
+    }
+    if (!blocks.length) return;
+    const teams = new Map();
+    blocks.forEach(b => b.rows.forEach(({ m }) => [m.home, m.away].forEach(t => { if (t) teams.set(t.name, t); })));
+    const crest = new Map();
+    await Promise.all([...teams.values()].map(async t => {
+      const code = abbr(t.name, t.code); if (!code) return;
+      try {
+        const r = await fetch(`${import.meta.env.BASE_URL}${worldOf(t)}/badges/${code}.png`);
+        if (!r.ok || !(r.headers.get("content-type") || "").includes("image")) return;
+        const blob = await r.blob();
+        crest.set(t.name, await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); }));
+      } catch {}
+    }));
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
+    const pd = 28, titleH = 46, colW = 440, gapX = 20, gapY = 20, headH = 30, rowH = 26, cs = 16;
+    const cols = blocks.length <= 2 ? blocks.length : blocks.length <= 6 ? 3 : 4;
+    const bh = (b) => headH + b.rows.length * rowH + 8;
+    const rowsOfBlocks = []; for (let i = 0; i < blocks.length; i += cols) rowsOfBlocks.push(blocks.slice(i, i + cols));
+    const svgW = pd * 2 + cols * colW + (cols - 1) * gapX;
+    const svgH = pd * 2 + titleH + rowsOfBlocks.reduce((s, r) => s + Math.max(...r.map(bh)), 0) + (rowsOfBlocks.length - 1) * gapY;
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgW + '" height="' + svgH + '" style="background:var(--chrome-bg)">';
+    s += '<style>text{font-family:' + fontStack + ';fill:var(--chrome-muted);font-size:11px}.n{fill:var(--ui-text)}.w{fill:var(--ui-text);font-weight:700}'
+      + '.sc{font-family:JetBrains Mono,monospace;font-size:11px;fill:var(--ui-text);text-anchor:middle}.t{fill:var(--ui-text);font-size:20px;font-weight:700}'
+      + '.h{fill:var(--chrome-brand);font-size:10px;font-weight:700;letter-spacing:1.2px}.g{font-size:9px;font-weight:700;fill:var(--chrome-muted)}'
+      + '.x{font-size:8px;font-weight:700;fill:var(--ui-attack)}</style>';
+    s += '<text x="' + pd + '" y="' + (pd + 22) + '" class="t">' + esc(tSlotName()) + '</text>';
+    s += '<text x="' + (svgW - pd) + '" y="' + (pd + 22) + '" text-anchor="end" class="h">FIXTURES</text>';
+    const badge = (t, x, y) => {
+      const d = crest.get(t.name);
+      if (d) { s += '<image href="' + d + '" x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" preserveAspectRatio="xMidYMid meet"/>'; return; }
+      const home = t.primaryColor || "var(--chrome-muted)", away = t.secondaryColor || t.primaryColor || "var(--chrome-border)";
+      s += '<svg x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" viewBox="-12 -12 64 68"><path d="M20 2 L35 8 L35 20 C35 30 28.5 37.5 20 41.5 C11.5 37.5 5 30 5 20 L5 8 Z" fill="' + home + '" stroke="' + away + '" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+    };
+    const score = (m) => {
+      const r = m.result; if (!r) return { main: "v", extra: null };
+      if (r.twoLeg) return r.partial ? { main: r.leg1.home + "-" + r.leg1.away, extra: "LEG 1" }
+        : { main: (r.agg?.home ?? 0) + "-" + (r.agg?.away ?? 0), extra: r.pen ? "AGG, " + r.pen.home + "-" + r.pen.away + " PENS" : r.awayGoalsRule && r.agg?.home === r.agg?.away ? "AGG, AWAY GOALS" : "AGG" };
+      const h = r.ftHome + (r.et?.home || 0), a = r.ftAway + (r.et?.away || 0);
+      return { main: h + "-" + a, extra: r.pen ? r.pen.home + "-" + r.pen.away + " PENS" : r.et ? "AET" : null };
+    };
+    let y0 = pd + titleH;
+    rowsOfBlocks.forEach(line => {
+      line.forEach((b, ci) => {
+        const x = pd + ci * (colW + gapX), h = bh(b), cx = x + colW / 2;
+        s += '<rect x="' + x + '" y="' + y0 + '" width="' + colW + '" height="' + h + '" rx="6" fill="var(--chrome-panel)" stroke="var(--chrome-border)"/>';
+        s += '<text x="' + (x + 12) + '" y="' + (y0 + 19) + '" class="h">' + esc(String(b.title).toUpperCase()) + '</text>';
+        b.rows.forEach(({ m, tag }, i) => {
+          const ry = y0 + headH + i * rowH, ty = ry + 17, played = !!m.result && !m.result.partial;
+          if (i % 2 === 0) s += '<rect x="' + (x + 1) + '" y="' + ry + '" width="' + (colW - 2) + '" height="' + rowH + '" fill="var(--chrome-border-33)"/>';
+          const w = played ? koWinner(m) : null, draw = played && !m.result.pen && !m.result.twoLeg && !m.result.et && m.result.ftHome === m.result.ftAway;
+          const cls = (t) => !played ? "" : draw ? ' class="n"' : w === t ? ' class="w"' : ' class="n"';
+          if (tag) s += '<text x="' + (x + 12) + '" y="' + ty + '" class="g">' + esc(tag) + '</text>';
+          const sc = score(m), half = 34;
+          if (m.home) { s += '<text x="' + (cx - half - cs - 8) + '" y="' + ty + '" text-anchor="end"' + cls(m.home) + '>' + esc(cut(m.home.name, tag ? 22 : 25)) + '</text>'; badge(m.home, cx - half - cs - 2, ry + 5); }
+          else s += '<text x="' + (cx - half - 8) + '" y="' + ty + '" text-anchor="end">TBD</text>';
+          if (m.away) { badge(m.away, cx + half + 2, ry + 5); s += '<text x="' + (cx + half + cs + 8) + '" y="' + ty + '"' + cls(m.away) + '>' + esc(cut(m.away.name, 25)) + '</text>'; }
+          else s += '<text x="' + (cx + half + 8) + '" y="' + ty + '">TBD</text>';
+          s += '<text x="' + cx + '" y="' + ty + '" class="sc"' + (sc.main === "v" ? ' style="fill:var(--chrome-muted)"' : '') + '>' + sc.main + '</text>';
+          if (sc.extra) s += '<text x="' + (x + colW - 10) + '" y="' + ty + '" text-anchor="end" class="x">' + esc(sc.extra) + '</text>';
+        });
+      });
+      y0 += Math.max(...line.map(bh)) + gapY;
+    });
+    s += '</svg>';
+    s = inlineVars(s);
+    downloadSvgPng(s, `${tSlotName()} Fixtures.png`, [...fontStack.split(","), "JetBrains Mono"]);
+  };
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
     // Drawn as a standalone .svg image and saved as a PNG (downloadSvgPng), outside the app's DOM,
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
-    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : uiTheme === "1936cor" ? "Grenze,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -8221,7 +8312,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
-    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : uiTheme === "1936cor" ? "Grenze,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -18631,7 +18722,8 @@ export default function App() {
       if (next) out.push(btn("r", "Sim Round", next), btn("a", "Sim All", () => tScorinateKO(-1, -1, 0)));
     }
     const items = [["Season File (.md)", tExportSeasonMd], ["Player Stats (.tsv)", tExportStatsTsv],
-      ...(tKO ? [["Bracket (.png)", tKO.losers ? exportDEBracket : exportBracket]] : [])];
+      ...(tGroups.length || tKO ? [["Fixtures (.png)", exportFixtures]] : []),
+      ...(tKO && !tKO.firstOnly ? [["Bracket (.png)", tKO.losers ? exportDEBracket : exportBracket]] : [])];
     return (<>
       {out}
       <div className="ux-menu-wrap">
