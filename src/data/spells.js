@@ -10,7 +10,8 @@
 //   national sides given a coach whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping
 //   Tierra Arcadia and Axerfreditenshin), since a manager owns the style his sides play. So are 12 October's, after it too:
 //   the Giathkik Premier League's founding clubs took two men out of work since then, Sonobe at Zoryansk Rangers and
-//   Ōkōchi at Svyatogorsk Spearmen. Every other change in the sheets' history
+//   Ōkōchi at Svyatogorsk Spearmen. So are 27 October's, after it too: Elvester gave Tudor's place to Alferinho, out of
+//   work since, for Route One. Every other change in the sheets' history
 //   is a cleanup and not canon, and so are 6 September's swaps at Spartak, Dynamo and ISS and 5 October's at Eivorie
 //   (Dæltun Leah has had Eivorie throughout).
 // Seasons are public/avium/pstats folders and seasons; sides are team records (src/data/teams.json); managers are
@@ -22,6 +23,7 @@ const EARLY_1935 = "after:wc/1935";   // their 2, 5 and 9 October 2026 moves
 export const MANAGER_HISTORY = [
   // National sides.
   { side: "t0065", name: "E.S.U.", spells: [["m0059", "1932"], ["m0060", "1933"]] },                    // Kanno; Van der Bilt before 1933
+  { side: "t0070", name: "Elvester", spells: [["m0064", "1932"], ["m0244", EARLY_1935]] },              // Tudor; Alferinho
   { side: "t0063", name: "Nichirin", spells: [["m0061", "1932"], ["m0244", "after:wc/1933"], ["m0059", EARLY_1935]] },
                                                                                                      // Tatara; Alferinho after the 1933 World Cup; Kanno
   { side: "t0067", name: "Arverne", spells: [["m0041", "1932"], ["m0061", "after:wc/1933"]] },          // De Courcelles; Tatara
