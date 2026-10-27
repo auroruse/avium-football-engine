@@ -691,6 +691,7 @@
 .ux-zkey i.ux-z-playoff { background: var(--ux-playoff); }
 /* A tournament's groups, two abreast. */
 .ux-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding: 2px 12px 12px; }
+.ux-groups > .ux-grp:only-child { grid-column: 1 / -1; }
 .ux-grp-h { font: 700 12px/1 var(--ux-f-title); letter-spacing: .06em; text-transform: uppercase; color: var(--ux-text-2); margin: 2px 0 4px 6px; }
 .ux-groups .ux-tbl th:first-child, .ux-groups .ux-tbl td:first-child { padding-left: 6px; }
 .ux-groups .ux-tbl th:last-child, .ux-groups .ux-tbl td:last-child { padding-right: 6px; }

@@ -3824,6 +3824,20 @@ function seasonFaces(s, report) {
 // Who won a knockout tournament, read off its last Final. Three tells, in order of trust: the
 // bolded side of the match cell, a "(X win ... pens)" note in the score, the score itself (the
 // Agg column when the tie was two-legged). "Final Standings" and "LB Final" do not match.
+// A TOURNAMENT WITH NO FINAL AND ONE TABLE: a qualifying campaign that ends in a one-round playoff (the 1936
+// qualifiers, user 27 October 2026). Its table is how it finished, as the 1935 campaign's league-style report was read;
+// a report with several tables (a World Cup's groups) has no single one to read. Null unless there is exactly one.
+function soleStandings(text) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n"), cells = r => r.replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+  const found = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim().startsWith("|")) continue;
+    const rows = []; while (i < lines.length && lines[i].trim().startsWith("|")) rows.push(lines[i++].trim());
+    const head = cells(rows[0]), ti = head.findIndex(h => /^(team|club)$/i.test(h));
+    if (ti >= 0 && head.some(h => /^pts$/i.test(h))) found.push(rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(r => String(cells(r)[ti] || "").replace(/\*+/g, "").trim()));
+  }
+  return found.length === 1 ? found[0] : null;
+}
 function tournWinner(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   let best = null;
@@ -8022,7 +8036,7 @@ export default function App() {
     const ti = F ? F.head.findIndex(h => /team|club/i.test(h)) : -1;
     if (ti >= 0 && F.body[0]) return String(F.body[0][ti]).replace(/\*/g, "").trim() || null;
     const w = text.match(/^\*\*(?:Winner|Champions?):\s*([^,*]+)|^(?:Winner|Champions?):\s*\*\*([^*]+)\*\*/m);
-    return w ? (w[1] || w[2]).trim() : tournWinner(text);
+    return w ? (w[1] || w[2]).trim() : tournWinner(text) || soleStandings(text)?.[0] || null;
   };
   // Each Registry section that still shows an earlier view keeps that view pointed at something it has: Competitions at
   // a competition on the rail (the first, when nothing or a directory is open), Players and Managers at the whole
@@ -17777,7 +17791,7 @@ export default function App() {
         for (const m of fin) { const h = m.hk === ck; if (!h && m.ak !== ck) continue;
           us += h ? m.hg : m.ag; them += h ? m.ag : m.hg; opp = h ? m.away : m.home; if (m.pens) pens = h ? m.pens : [m.pens[1], m.pens[0]]; }
         Object.assign(out, { runner: opp, score: `${us}-${them}`, pens, aet: fin.some(m => m.aet) });
-      }
+      } else if (!fin) { const st = soleStandings(text); if (st && out.champ && archKey(st[0]) === ck) out.runner = st[1] || null; }
     }
     uxSumMemo.current.set(s.id, out);
     return out;
@@ -18226,14 +18240,15 @@ export default function App() {
     </>);
   };
   // A group's table, small.
-  const uxGroupTable = (g, i) => {
+  // A stage of one group is a league table and takes the panel's width, its Team column the slack.
+  const uxGroupTable = (g, i, wide = false) => {
     const col = (re) => g.head.findIndex(h => re.test(String(h).trim()));
     const ti = col(/^(team|club)$/i), pi = col(/^(#|pos)$/i), ptsJ = col(/^pts$/i), figs = g.head.map((_, j) => j).filter(j => j !== ti && j !== pi);
     return (
       <div key={i} className="ux-grp">
         {g.cap && <div className="ux-grp-h">{uxTitle(g.cap)}</div>}
         <table className="ux-tbl">
-          <colgroup><col style={{ width: 30 }} /><col style={{ width: 170 }} />{figs.map(j => <col key={j} style={{ width: 36 }} />)}</colgroup>
+          <colgroup><col style={{ width: 30 }} /><col style={wide ? undefined : { width: 170 }} />{figs.map(j => <col key={j} style={{ width: wide ? 56 : 36 }} />)}</colgroup>
           <thead><tr><th>#</th><th>Team</th>{figs.map(j => <th key={j} className="ux-n">{uxTitle(g.head[j])}</th>)}</tr></thead>
           <tbody>{g.body.map((r, k) => { const nm = String(r[ti]).replace(/\*+/g, "").trim();
             return (
@@ -18272,7 +18287,7 @@ export default function App() {
     if (!groups.length && !ko.length) return <div className="ux-empty">Nothing On File</div>;
     return (
       <div className="ux-pbody">
-        {groups.length > 0 && <div className="ux-groups">{groups.map(uxGroupTable)}</div>}
+        {groups.length > 0 && <div className="ux-groups">{groups.map((g, i) => uxGroupTable(g, i, groups.length === 1))}</div>}
         {ko.length > 0 && uxBracket(ko)}
       </div>);
   };
