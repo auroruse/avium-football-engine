@@ -946,6 +946,74 @@ function genRR(teams, legs) {
   for (let leg = 1; leg < lg; leg++) base.forEach(rd => rounds.push(rd.map(m => leg % 2 === 1 ? { home: m.away, away: m.home, result: null } : { home: m.home, away: m.away, result: null })));
   return rounds;
 }
+// A DRAWN SWISS, the new Champions League's way: the field is cut into pots by rating, one pot for every two rounds, and
+// each side plays two from every pot, its own included, one at home and one away. The whole schedule is drawn before a
+// ball is kicked, so every side meets the same spread of opposition and hosts exactly half its matches. Inside a pot the
+// sides host each other round a ring; between two pots each side hosts one opposite number and visits the next. The
+// pairs are then dealt into rounds, every side once a round and never three at home or three away in a row. Null when
+// the field does not split into pots of three or more; the setup refuses that before it gets here.
+function genDrawnSwiss(teams, rounds, rng = new RNG(Date.now())) {
+  const P = Math.floor(rounds / 2), n = teams.length, size = n / P;
+  if (rounds % 2 || P < 1 || !Number.isInteger(size) || size < 3) return null;
+  const sorted = [...teams].sort((a, b) => b.skill - a.skill);
+  const pots = Array.from({ length: P }, (_, i) => sorted.slice(i * size, (i + 1) * size));
+  let pairs = [];
+  for (let draw = 0; draw < 60; draw++) {
+    pairs = [];
+    for (let a = 0; a < P; a++) for (let b = a; b < P; b++) {
+      const A = shuffleRng(pots[a], rng), B = shuffleRng(pots[b], rng);
+      for (let i = 0; i < size; i++) {
+        if (a === b) pairs.push([A[i], A[(i + 1) % size]]);
+        else { pairs.push([A[i], B[i]]); pairs.push([B[(i + 1) % size], A[i]]); }
+      }
+    }
+    const dealt = dealRounds(pairs, rounds, rng, true, 40);
+    if (dealt) return dealt.map(rd => rd.map(([home, away]) => ({ home, away, result: null })));
+  }
+  const dealt = dealRounds(pairs, rounds, rng, false, 400);
+  return dealt ? dealt.map(rd => rd.map(([home, away]) => ({ home, away, result: null }))) : null;
+}
+// Deals a fixed set of pairs into rounds, one match a side a round. Each round is a search that settles the side with the
+// fewest open pairs first; a deal that strands a side is thrown away and started again. Strict keeps every side from three
+// at home or three away in a row; when a draw's pairs will not deal that way, a fresh draw is tried, and only if sixty
+// draws all fail is the rule let go.
+function dealRounds(pairs, rounds, rng, strict, tries) {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const hist = new Map(), out = [];
+    let left = shuffleRng(pairs, rng);
+    for (let r = 0; r < rounds; r++) {
+      const pick = dealRound(left, hist, strict, rng);
+      if (!pick) break;
+      const used = new Set(pick), rd = pick.map(i => left[i]);
+      left = left.filter((_, i) => !used.has(i));
+      for (const [h, a] of rd) { hist.set(h.name, (hist.get(h.name) || "") + "H"); hist.set(a.name, (hist.get(a.name) || "") + "A"); }
+      out.push(rd);
+    }
+    if (out.length === rounds) return out;
+  }
+  return null;
+}
+function dealRound(left, hist, strict, rng) {
+  const by = new Map();
+  left.forEach((p, i) => { for (const t of p) { if (!by.has(t.name)) by.set(t.name, []); by.get(t.name).push(i); } });
+  const names = [...by.keys()], taken = new Set(), pick = [];
+  const open = (i) => { const [h, a] = left[i];
+    return !taken.has(h.name) && !taken.has(a.name) && (!strict || (!(hist.get(h.name) || "").endsWith("HH") && !(hist.get(a.name) || "").endsWith("AA"))); };
+  let steps = 0;
+  const search = () => {
+    if (++steps > 20000) return false;
+    let opts = null;
+    for (const nm of names) { if (taken.has(nm)) continue; const o = by.get(nm).filter(open); if (!o.length) return false; if (!opts || o.length < opts.length) opts = o; }
+    if (!opts) return true;
+    for (const i of shuffleRng(opts, rng)) {
+      const [h, a] = left[i]; taken.add(h.name); taken.add(a.name); pick.push(i);
+      if (search()) return true;
+      pick.pop(); taken.delete(h.name); taken.delete(a.name);
+    }
+    return false;
+  };
+  return search() ? pick : null;
+}
 function genSwissRound(group, roundNum) {
   const tm = {}; group.teams.forEach(t => { tm[t.name] = t; });
   const played = new Set();
@@ -1045,6 +1113,7 @@ function genSwissRound(group, roundNum) {
 }
 function initGroup(g, format, legs) {
   if (format === "swiss") { g.schedule = [genSwissRound(g, 0)]; }
+  else if (format === "drawnSwiss") { g.schedule = genDrawnSwiss(g.teams, legs) || genRR(g.teams, 1); }
   else { g.schedule = genRR(g.teams, legs); }
   g.standings = g.teams.map(t => ({ name: t.name, code: t.code, skill: t.skill, style: t.style, formation: t.formation, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }));
 }
@@ -1409,9 +1478,20 @@ const FORM_ROTATE_GAP = 0.5;
 // of months without missing one, so this is a workload backstop, not a rotation policy.
 const CONSEC_START_CAP = 14;
 const playerFormFrom = (prev, rating) => (prev || 0) * (1 - FORM_EMA) + ((rating ?? RATING_BASE) - RATING_BASE) * FORM_EMA;
-// Qualification zone for a standings row. ri 0-indexed, N total teams.
+// A side ALREADY QUALIFIED (a World Cup host playing its conference's qualifiers) takes no place in the zones: the places
+// pass down past it, so the side below it takes the line it would have held. zoneSlot gives a row's place counted without
+// such sides, and the table size without them; a qualified side's own row comes back with ri -1.
+function zoneSlot(standings, ri, pre) {
+  const N = standings.length;
+  if (!pre?.length) return { ri, N };
+  const q = (r) => pre.includes(r.name);
+  if (q(standings[ri])) return { ri: -1, N };
+  let skip = 0; for (let k = 0; k < ri; k++) if (q(standings[k])) skip++;
+  return { ri: ri - skip, N: N - standings.filter(q).length };
+}
+// Qualification zone for a standings row. ri 0-indexed, N total teams; ri -1 is a side already qualified, in no zone.
 function zoneFor(ri, N, zones) {
-  if (!zones) return null;
+  if (!zones || ri < 0) return null;
   const top = ri + 1, bot = N - ri;
   for (const z of zones) {
     if (z.anchor === "top" && top >= z.from && top <= z.to) return z;
@@ -1558,6 +1638,7 @@ function propagateKO(ko) {
       nm.away = through.get(pair[1]) || null;
     });
   }
+  if (ko.firstOnly) { ko.champion = null; return; }
   if (!ko.losers) { const fm = ko.rounds[ko.rounds.length - 1].matches[0]; if (fm?.result) ko.champion = koWinner(fm); return; }
   // Reset all LB/GF/reset slots before repopulating (preserves results)
   ko.losers.forEach(lr => lr.matches.forEach(m => { m.home = null; m.away = null; delete m.bye; }));
@@ -1628,8 +1709,11 @@ function propagateKO(ko) {
   }
 }
 
+// Seeds by record; from one group, by the table itself, so a qualifying playoff pairs 8th with 23rd as the table finished,
+// tiebreakers included.
 function buildKnockoutSeeded(teams, hasTP) {
-  const sorted = [...teams].sort((a, b) => (b.pts??0) - (a.pts??0) || ((b.gf??0) - (b.ga??0)) - ((a.gf??0) - (a.ga??0)) || (b.gf??0) - (a.gf??0) || b.skill - a.skill);
+  const oneTable = teams.length > 0 && teams.every(t => t.groupPos && t.groupLabel != null && t.groupLabel === teams[0].groupLabel);
+  const sorted = [...teams].sort((a, b) => oneTable ? a.groupPos - b.groupPos : (b.pts??0) - (a.pts??0) || ((b.gf??0) - (b.ga??0)) - ((a.gf??0) - (a.ga??0)) || (b.gf??0) - (a.gf??0) || b.skill - a.skill);
   let n2 = 1; while (n2 < sorted.length) n2 *= 2;
   const seeds = bracketSeeds(n2);
   const first = [];
@@ -1730,7 +1814,10 @@ function fitToScore(sr, goals, rng) {
   sr.ftHome = goals.home[0] || 0; sr.ftAway = goals.away[0] || 0;
   return sr;
 }
+// A knockout that stops after its first round (a qualifying playoff, koFirstOnly) has no champion: it is over once every
+// tie in that round is decided, and each winner goes through.
 function isKOComplete(ko) {
+  if (ko.firstOnly) return ko.rounds[0].matches.every(m => m.bye || (m.result && !m.result.partial));
   if (ko.losers) return !!ko.champion;
   const fm = ko.rounds[ko.rounds.length - 1].matches[0];
   return fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial));
@@ -1770,15 +1857,16 @@ function areTied(a, b, tiebreakers, schedule) {
   }
   return true;
 }
-function hasUnresolvedTies(groups, zones, tiebreakers) {
+function hasUnresolvedTies(groups, zones, tiebreakers, pre) {
   if (!zones || zones.length === 0) return false;
   if (!tiebreakers || !tiebreakers.includes("manual")) return false;
   for (const g of groups) {
     const N = g.standings.length;
     for (let i = 0; i < N - 1; i++) {
       if (areTied(g.standings[i], g.standings[i+1], tiebreakers, g.schedule)) {
-        const zA = zoneFor(i, N, zones);
-        const zB = zoneFor(i + 1, N, zones);
+        const sA = zoneSlot(g.standings, i, pre), sB = zoneSlot(g.standings, i + 1, pre);
+        const zA = zoneFor(sA.ri, sA.N, zones);
+        const zB = zoneFor(sB.ri, sB.N, zones);
         if (zA?.type !== zB?.type || (zA && !zB) || (!zA && zB)) return true;
       }
     }
@@ -1788,20 +1876,21 @@ function hasUnresolvedTies(groups, zones, tiebreakers) {
 function zonesHaveAdvance(zones) {
   return (zones || []).some(z => z.type === "advance" || z.type === "best");
 }
-function collectKOTeamsFromZones(groups, zones) {
+function collectKOTeamsFromZones(groups, zones, pre) {
   const direct = [], pool = [];
   const advZones = (zones || []).filter(z => z.type === "advance");
   const bestZones = (zones || []).filter(z => z.type === "best");
   groups.forEach(g => {
-    const N = g.standings.length;
-    g.standings.forEach((r, ri) => {
+    g.standings.forEach((r, gri) => {
+      const { ri, N } = zoneSlot(g.standings, gri, pre);
+      if (ri < 0) return;
       for (const z of advZones) {
         const pos = z.anchor === "top" ? ri + 1 : N - ri;
-        if (pos >= z.from && pos <= z.to) { direct.push({ ...r, groupLabel: g.label, groupPos: ri + 1 }); return; }
+        if (pos >= z.from && pos <= z.to) { direct.push({ ...r, groupLabel: g.label, groupPos: gri + 1 }); return; }
       }
       for (const z of bestZones) {
         const pos = z.anchor === "top" ? ri + 1 : N - ri;
-        if (pos >= z.from && pos <= z.to) { pool.push({ ...r, groupLabel: g.label, groupPos: ri + 1 }); return; }
+        if (pos >= z.from && pos <= z.to) { pool.push({ ...r, groupLabel: g.label, groupPos: gri + 1 }); return; }
       }
     });
   });
@@ -5913,6 +6002,12 @@ const T_PRESETS = {
   // THE 1935 CLUB WORLD SHIELD (Moukden and Kirin, 14 October 2026: "Same rules as CWC").
   cws1935: { label: "1935 Club World Shield", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koFinalOneLeg: true, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "draw", koDrawRounds: [], koDrawRules: { sameGroup: true, sameConf: false, sameNation: true, seedSplit: true }, drawRules: { maxPerNation: 0, maxPerConf: 0, pins: {}, potMode: "nation", pots: {} }, koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   wc1935: { label: "1935 World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  // THE 1936 CONFERENCE QUALIFIERS (Moukden and Kirin, 27 October 2026): a drawn Swiss of ten rounds, five pots of six, two
+  // from each pot, five at home and five away; the top places go straight to the World Cup and the next sixteen play one-match
+  // playoffs at the higher finisher's ground, 8th against 23rd, for the last eight places. Cortesia, the host, plays the
+  // Eastern qualifiers and counts, but takes no place: the places pass down past it. East 15 places, West 16.
+  wcq1936e: { label: "1936 Eastern Qualifiers", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "drawnSwiss", swissRounds: 10, rrLegs: 1, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "first", thirdPlace: false, koLegs: 1, koAwayGoals: false, koFormat: "single", koFirstOnly: true, homeAdvTeams: [], preQualified: ["Cortesia"], advPerGroup: 1, numPots: 4, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 7, label: "Direct Qualification", color: "#5e9c6b", type: "cosmetic" }, { anchor: "top", from: 8, to: 23, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
+  wcq1936w: { label: "1936 Western Qualifiers", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "drawnSwiss", swissRounds: 10, rrLegs: 1, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "first", thirdPlace: false, koLegs: 1, koAwayGoals: false, koFormat: "single", koFirstOnly: true, homeAdvTeams: [], preQualified: [], advPerGroup: 1, numPots: 4, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Direct Qualification", color: "#5e9c6b", type: "cosmetic" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
   // THE 1935 NATIONS LEAGUE (Moukden and Kirin, 15 October 2026: "One-legged HA, weaker team gets it, but grand final is neutral
   // HA"): the Nations League's double elimination of one-leg ties, the weaker side at home in every one, and the grand final at
   // a neutral ground. No reset match, as in 1934, when the lower bracket's winner beat the upper's in a single grand final.
@@ -6373,7 +6468,7 @@ export default function App() {
     // loading the Shield does not also mean remembering to pick Legacy UCL from the other menu.
     const fmt = p.config || (p.format && !T_PRESETS[p.format]?.divider ? T_PRESETS[p.format]?.config : null);
     setTConfig(c => {
-      const next = { ...c, stages: null, ...(fmt || {}) };
+      const next = { ...c, stages: null, ...(fmt ? { preQualified: [], koFirstOnly: false, ...fmt } : {}) };
       // A preset that names its groups fixes the allocation as well as the field.
       if (p.groups && !missing.length) { next.numGroups = Object.keys(p.groups).length; next.allocMode = "preset"; }
       else if (next.allocMode === "preset") next.allocMode = "seed";
@@ -8306,14 +8401,14 @@ export default function App() {
   const [tNotice, setTNotice] = useState("");
   const [tRebuildArm, setTRebuildArm] = useState(false);       // the rebuild's confirm click
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koDrawRounds: [], koDrawRules: { ...KO_DRAW_RULES }, injuries: true, suspensions: true, testMode: false, staminaCarry: true, drawRules: { ...DRAW_RULES }, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], preQualified: [], koFirstOnly: false, koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koDrawRounds: [], koDrawRules: { ...KO_DRAW_RULES }, injuries: true, suspensions: true, testMode: false, staminaCarry: true, drawRules: { ...DRAW_RULES }, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   // A ONE-LEG FINAL (Moukden and Kirin, 14 October 2026: "Finals should only be 1 leg at a neutral venue"): with two-legged
   // ties and One-Leg Final on, a single elimination's last round is one match, with no side at home unless one is set by hand.
   // `ref` is a knockout fixture as the bracket names it ({ ri, mi, bracket, tp }).
   const tOneLegFinal = (ref) => !!tConfig.koFinalOneLeg && tConfig.koLegs === 2 && tConfig.koFormat !== "double_elim" && !!ref && !ref.tp
-    && (!ref.bracket || ref.bracket === "wb") && (tKO?.rounds?.length || 0) > 0 && ref.ri === tKO.rounds.length - 1;
+    && (!ref.bracket || ref.bracket === "wb") && (tKO?.rounds?.length || 0) > 0 && !tKO.firstOnly && ref.ri === tKO.rounds.length - 1;
   const [tManual, setTManual] = useState(null); // manual allocation state
   const [tKOManual, setTKOManual] = useState(null);
   const [tByeManual, setTByeManual] = useState(null);
@@ -8387,7 +8482,7 @@ export default function App() {
   const koActionable = useMemo(() => {
     if (!tKO) return { wbRi: -1, lbRi: -1, tpReady: false, gfReady: false, resetReady: false };
     const isDE = !!tKO.losers;
-    const wbScanEnd = isDE ? tKO.rounds.length : tKO.rounds.length - 1; // single-elim's last "round" is the Final, always shown, not part of this scan
+    const wbScanEnd = isDE || tKO.firstOnly ? tKO.rounds.length : tKO.rounds.length - 1; // single-elim's last "round" is the Final, always shown, not part of this scan; a playoff has no Final
     let wbRi = -1;
     for (let i = 0; i < wbScanEnd; i++) if (!wbRoundDone(tKO.rounds[i])) { wbRi = i; break; }
     let lbRi = -1;
@@ -9669,6 +9764,8 @@ export default function App() {
   // ─── TOURNAMENT ───
   const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;
   const tPerGroupMax = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(tournamentTeams.length / tConfig.numGroups) : 0;
+  // What a group's schedule is built from: its legs, or for a drawn Swiss its rounds.
+  const tLegs = tConfig.matchFormat === "drawnSwiss" ? +tConfig.swissRounds : tConfig.rrLegs;
   const tHasGroups = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "groups");
   const tHasKO = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "knockout");
   const qz = tConfig.qualZones || [];
@@ -9690,9 +9787,14 @@ export default function App() {
   // in range is no longer a proxy for a workable draw: a confederation pot can be any size, and a
   // pot count above the group count is a perfectly good format (six nations into four groups of six).
   const tSwissOk = tConfig.matchFormat !== "swiss" || (tConfig.swissRounds >= 1 && tConfig.swissRounds <= Math.max(1, tPerGroup - 1));
+  // A drawn Swiss cuts each group into one pot for every two rounds, so it needs an even number of rounds and groups that
+  // split into equal pots of three or more.
+  const tDrawnPots = Math.floor((+tConfig.swissRounds || 0) / 2);
+  const tDrawnOk = tConfig.matchFormat !== "drawnSwiss" || (+tConfig.swissRounds % 2 === 0 && tDrawnPots >= 1 && tPerGroup === tPerGroupMax
+    && tPerGroup % tDrawnPots === 0 && tPerGroup / tDrawnPots >= 3);
   const tNumByes = (()=>{ let n2=1; const nt = tHasKO ? (tConfig.mode === "double" ? tKoTeams : tournamentTeams.length) : 0; while(n2<nt)n2*=2; return n2-nt; })();
   const tParticipantErrors = tournamentTeams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
-  const tValid = !tParticipantErrors && tournamentTeamIds.length >= 2 && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tSwissOk && tAdvOk && (!tHasKO || tKoValid)));
+  const tValid = !tParticipantErrors && tournamentTeamIds.length >= 2 && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tSwissOk && tDrawnOk && tAdvOk && (!tHasKO || tKoValid)));
   const tTotalMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.length, 0), 0);
   const tPlayedMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.filter(m => m.result).length, 0), 0);
 
@@ -9746,9 +9848,9 @@ export default function App() {
     // The chip is hidden once the field stops matching, but the setting can outlive it — an edit
     // between choosing the preset and pressing Create would otherwise allocate to a stale plan.
     if (m === "preset" && !tActivePreset) m = "seed";
-    if (m === "preset") { setTGroups(allocPreset(genTeams, tActivePreset.groups, fmt, tConfig.rrLegs, tActivePreset.names)); setTPhase("groups"); }
-    else if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
-    else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    if (m === "preset") { setTGroups(allocPreset(genTeams, tActivePreset.groups, fmt, tLegs, tActivePreset.names)); setTPhase("groups"); }
+    else if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tLegs)); setTPhase("groups"); }
+    else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tLegs)); setTPhase("groups"); }
     // The draw gets its own screen for the rules before any ball comes out — the teams are
     // snapshotted here so editing the roster behind the draw cannot change who is in the pots.
     else if (m === "draw") {
@@ -9765,7 +9867,7 @@ export default function App() {
   };
   const tManualConfirm = () => {
     if (!tManual || tManual.pool.length > 0) return;
-    const grps = tManual.grps.map(g => { const ng = { ...g }; initGroup(ng, tConfig.matchFormat, tConfig.rrLegs); return ng; });
+    const grps = tManual.grps.map(g => { const ng = { ...g }; initGroup(ng, tConfig.matchFormat, tLegs); return ng; });
     setTGroups(grps); setTPhase("groups"); setTManual(null);
   };
   // ─── DRAW ───
@@ -9780,12 +9882,12 @@ export default function App() {
   // approves a draw the solver then cannot find would be worse than no preview. Fixed seed, so the
   // verdict does not flicker between renders while the rules are being edited.
   const tDrawRun = (seed) => tDrawSetup && allocDraw(tDrawSetup.teams, tConfig.numGroups, tConfig.numPots,
-    new RNG(seed), tConfig.matchFormat, tConfig.rrLegs, tConfig.drawRules);
+    new RNG(seed), tConfig.matchFormat, tLegs, tConfig.drawRules);
   const tDrawPreview = useMemo(() => {
     if (!tDrawSetup) return null;
     const res = tDrawRun(DRAW_PREVIEW_SEED);
     return { ok: !!res, attempts: res ? res.attempts : DRAW_ATTEMPTS };
-  }, [tDrawSetup, tConfig.drawRules, tConfig.numGroups, tConfig.numPots, tConfig.matchFormat, tConfig.rrLegs]);
+  }, [tDrawSetup, tConfig.drawRules, tConfig.numGroups, tConfig.numPots, tConfig.matchFormat, tLegs]);
   const tDrawPots = useMemo(() => tDrawSetup ? drawPots(tDrawSetup.teams, tConfig.numPots, (tConfig.drawRules || DRAW_RULES).potMode, (tConfig.drawRules || DRAW_RULES).pots) : [],
     [tDrawSetup, tConfig.numPots, tConfig.drawRules]);
   // How many pots each mode would actually produce, so a mode that cannot split this field is
@@ -9830,7 +9932,14 @@ export default function App() {
     }
     setTGroups(ng);
   };
-  const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
+  const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers, tConfig.preQualified);
+  // FIRST ROUND ONLY: every way a bracket gets built (seeded, drawn, by hand, past byes) ends in a fresh tKO, so the cut is
+  // made here once, after any of them, rather than in each. The bracket keeps its first round, renamed the Playoff.
+  useEffect(() => {
+    if (!tConfig.koFirstOnly || !tKO || tKO.firstOnly || tKO.losers || tKO.rounds.length < 2) return;
+    setTKO({ ...tKO, rounds: [{ ...tKO.rounds[0], name: "Playoff" }], thirdPlace: null, champion: null, firstOnly: true });
+    if (isKOComplete({ ...tKO, firstOnly: true })) setTPhase("complete");
+  }, [tKO, tConfig.koFirstOnly]);
   // koDrawRounds describes the tournament being reset, not a preference to carry into the next one:
   // left standing it re-pairs a later round of a bracket nobody asked to be drawn.
   const resetTournament = () => { setTConfig(c => ({ ...c, koDrawRounds: [] })); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTByeManual(null); setTDrawSetup(null); setTDrawAnim(null); setTKoDrawAnim(null); setTKoDrawSetup(null); setTKoDrawFail(""); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTVenueAuto({}); setTPendingPlayLive(null); _rc.clear(); _setRcV(v => v + 1); };
@@ -10384,7 +10493,7 @@ export default function App() {
   };
 
   const tProceedKO = () => {
-    const qualified = tUseZones ? collectKOTeamsFromZones(tGroups, tConfig.qualZones).all : collectKOTeams(tGroups, tConfig.advPerGroup);
+    const qualified = tUseZones ? collectKOTeamsFromZones(tGroups, tConfig.qualZones, tConfig.preQualified).all : collectKOTeams(tGroups, tConfig.advPerGroup);
     let n2p=1; while(n2p<qualified.length)n2p*=2; const nbp=n2p-qualified.length;
     if (nbp > 0 && tConfig.koByeMode === "manual") {
       const sorted = [...qualified].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||b.skill-a.skill);
@@ -18373,7 +18482,8 @@ export default function App() {
   // draw, and groups, byes or ties picked by hand. ════
   // What a format is called, off its settings.
   const uxTFormat = (c) => {
-    const grp = (+c.numGroups || 0) <= 1 ? (c.matchFormat === "swiss" ? "Swiss League" : "League") : c.matchFormat === "swiss" ? "Swiss Groups" : "Groups";
+    const sw = c.matchFormat === "swiss" ? "Swiss " : c.matchFormat === "drawnSwiss" ? "Drawn Swiss " : "";
+    const grp = (+c.numGroups || 0) <= 1 ? (sw ? sw + "League" : "League") : sw + "Groups";
     const ko = c.koFormat === "double_elim" ? "Double Elimination" : "Knockout";
     return c.mode === "double" ? grp + ", " + ko : c.singleType === "knockout" ? ko : grp;
   };
@@ -18382,7 +18492,7 @@ export default function App() {
     const cfg = p.tConfig || {}, phase = p.tPhase || "setup", groups = p.tGroups || [], ko = p.tKO || null;
     const open = (m) => !!m && !m.bye && !!m.home && !!m.away && (!m.result || !!m.result.partial);
     const left = groups.some(g => g.schedule.some(r => r.some(m => !m.bye && !m.result)));
-    const done = !!ko?.champion || (cfg.mode === "single" && cfg.singleType === "groups" && phase === "groups" && groups.length > 0 && !left);
+    const done = !!ko?.champion || (!!ko?.firstOnly && isKOComplete(ko)) || (cfg.mode === "single" && cfg.singleType === "groups" && phase === "groups" && groups.length > 0 && !left);
     let stage = { setup: "Setup", draw_setup: "Draw", ko_draw_setup: "Draw", manual: "Allocation", ko_byes: "Allocation", ko_manual: "Allocation" }[phase] || null;
     if (done) stage = "Complete";
     else if (!stage && phase === "groups") {
@@ -18493,7 +18603,7 @@ export default function App() {
   // A single elimination's final, when its two sides are known and it is still to play: its round, else -1. koActionable
   // leaves the final out, since the old screen always showed it with its own buttons.
   const uxTFinalOpen = () => {
-    if (!tKO || tKO.losers) return -1;
+    if (!tKO || tKO.losers || tKO.firstOnly) return -1;
     const ri = tKO.rounds.length - 1, m = tKO.rounds[ri]?.matches[0];
     return m && m.home && m.away && (!m.result || m.result.partial) ? ri : -1;
   };
@@ -18538,7 +18648,7 @@ export default function App() {
       ...(PARTICIPANT_PRESETS.size ? [["Fields", [...PARTICIPANT_PRESETS.keys()].map(n => ["p:" + n, n])]] : [])];
     const many = tHasGroups && tConfig.numGroups > 1;
     return (<>
-      {uxPickG("Preset", "", presets, v => { if (v.startsWith("f:")) setTConfig(c => ({ ...c, stages: null, ...T_PRESETS[v.slice(2)].config })); else if (v.startsWith("p:")) applyParticipantPreset(v.slice(2)); })}
+      {uxPickG("Preset", "", presets, v => { if (v.startsWith("f:")) setTConfig(c => ({ ...c, stages: null, preQualified: [], koFirstOnly: false, ...T_PRESETS[v.slice(2)].config })); else if (v.startsWith("p:")) applyParticipantPreset(v.slice(2)); })}
       <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!tValid} onClick={() => createTournament()}>
         {many && tConfig.allocMode === "manual" ? "Begin Allocation" : many && tConfig.allocMode === "draw" ? "Set Up Draw" : "Create Tournament"}</button></>);
   };
@@ -18637,14 +18747,22 @@ export default function App() {
           <div className="ux-fsec">Groups</div>
           {uxFRow("Groups", <>{uxNumIn("Groups", tConfig.numGroups, v => setTConfig(c => ({ ...c, numGroups: v })), !tGroupsOk, 26)}
             {tPerGroup >= 1 && <span className="ux-fnote">{tPerGroup === tPerGroupMax ? `${tPerGroup} Sides Each` : `${tPerGroup} To ${tPerGroupMax} Sides Each`}</span>}</>)}
-          {uxFRow("Played As", uxSegIn("Played As", tConfig.matchFormat, [["roundRobin", "Round Robin"], ["swiss", "Swiss"]], v => setTConfig(c => ({ ...c, matchFormat: v }))))}
+          {uxFRow("Played As", uxSegIn("Played As", tConfig.matchFormat, [["roundRobin", "Round Robin"], ["swiss", "Swiss"], ["drawnSwiss", "Drawn Swiss"]], v => setTConfig(c => ({ ...c, matchFormat: v }))))}
           {tConfig.matchFormat === "swiss"
             ? uxFRow("Rounds", <>{uxNumIn("Rounds", tConfig.swissRounds, v => setTConfig(c => ({ ...c, swissRounds: v })), !tSwissOk, Math.max(1, tPerGroup - 1))}
                 {tPerGroup > 1 && <span className="ux-fnote">Up To {tPerGroup - 1}</span>}</>)
+            : tConfig.matchFormat === "drawnSwiss"
+            ? uxFRow("Rounds", <>{uxNumIn("Rounds", tConfig.swissRounds, v => setTConfig(c => ({ ...c, swissRounds: v })), !tDrawnOk, Math.max(2, tPerGroup - 1))}
+                {tDrawnOk && tPerGroup > 0 && <span className="ux-fnote">{tDrawnPots} Pots Of {tPerGroup / tDrawnPots}, {tDrawnPots} Home And {tDrawnPots} Away</span>}</>)
             : uxFRow("Legs", uxNumIn("Legs", tConfig.rrLegs, v => setTConfig(c => ({ ...c, rrLegs: v === "" ? "" : Math.max(1, v) }))))}
           {tConfig.numGroups > 1 && uxFRow("Allocation", tActivePreset && tConfig.allocMode === "preset" ? <span className="ux-chip ux-chip-in">As Drawn</span>
             : uxSegIn("Allocation", tConfig.allocMode, [...(tActivePreset ? [["preset", "As Drawn"]] : []), ["seed", "Seed"], ["random", "Random"], ["manual", "By Hand"], ["draw", "Draw"]],
               v => setTConfig(c => ({ ...c, allocMode: v }))))}
+          {qz.length > 0 && uxFRow("Already Qualified", tournamentTeams.length ? (
+            <div className="ux-chips">{tournamentTeams.map(t => { const on = (tConfig.preQualified || []).includes(t.name); return (
+              <button key={t.id} type="button" className={"ux-btnreset ux-side ux-chip-side" + (on ? " ux-on" : "")} aria-pressed={on}
+                onClick={() => setTConfig(c => { const p = c.preQualified || []; return { ...c, preQualified: on ? p.filter(x => x !== t.name) : [...p, t.name] }; })}>
+                {uxCheck(on)}<TeamCrest team={t} size={14} /><span>{t.name}</span></button>); })}</div>) : <span className="ux-dim">Pick The Sides First</span>)}
           {tHasKO && !tUseZones && uxFRow("Through Per Group", uxNumIn("Through Per Group", tConfig.advPerGroup,
             v => setTConfig(c => ({ ...c, advPerGroup: v === "" ? "" : Math.max(1, v) })), !(+tConfig.advPerGroup >= 1), Math.max(1, tPerGroupMax)))}
         </>)}
@@ -18653,7 +18771,8 @@ export default function App() {
           {uxFRow("Format", uxSegIn("Knockout Format", tConfig.koFormat === "double_elim" ? "double_elim" : "single", [["single", "Single Elimination"], ["double_elim", "Double Elimination"]],
             v => setTConfig(c => ({ ...c, koFormat: v, ...(v === "double_elim" ? { thirdPlace: false } : {}) }))))}
           {uxFRow("Ties", <>
-            {tConfig.koFormat !== "double_elim" && koN >= 4 && uxTog("Third-Place Match", tConfig.thirdPlace, v => setTConfig(c => ({ ...c, thirdPlace: v })))}
+            {tConfig.koFormat !== "double_elim" && tConfig.mode === "double" && uxTog("First Round Only", !!tConfig.koFirstOnly, v => setTConfig(c => ({ ...c, koFirstOnly: v, ...(v ? { thirdPlace: false } : {}) })))}
+            {tConfig.koFormat !== "double_elim" && !tConfig.koFirstOnly && koN >= 4 && uxTog("Third-Place Match", tConfig.thirdPlace, v => setTConfig(c => ({ ...c, thirdPlace: v })))}
             {uxTog("Two Legs", tConfig.koLegs === 2, v => setTConfig(c => ({ ...c, koLegs: v ? 2 : 1 })))}
             {tConfig.koLegs === 2 && uxTog("Away Goals", tConfig.koAwayGoals, v => setTConfig(c => ({ ...c, koAwayGoals: v })))}
             {tConfig.koLegs === 2 && tConfig.koFormat !== "double_elim" && uxTog("One-Leg Final", !!tConfig.koFinalOneLeg, v => setTConfig(c => ({ ...c, koFinalOneLeg: v })))}
@@ -18721,12 +18840,13 @@ export default function App() {
     const n = tournamentTeams.length, G = +tConfig.numGroups || 0, legs = Math.max(1, +tConfig.rrLegs || 1);
     const sizes = tHasGroups && G > 0 ? Array.from({ length: G }, (_, i) => Math.floor(n / G) + (i < n % G ? 1 : 0)) : [];
     const gm = !tHasGroups ? 0 : tConfig.matchFormat === "swiss" ? sizes.reduce((s, k) => s + Math.floor(k / 2) * (+tConfig.swissRounds || 0), 0)
+      : tConfig.matchFormat === "drawnSwiss" ? sizes.reduce((s, k) => s + k * (+tConfig.swissRounds || 0) / 2, 0)
       : sizes.reduce((s, k) => s + k * (k - 1) / 2 * legs, 0);
     const koN = !tHasKO ? 0 : tConfig.mode === "single" ? n : tKoTeams; let p2 = 1; while (p2 < koN) p2 *= 2;
     const de = tConfig.koFormat === "double_elim", kl = tConfig.koLegs === 2 ? 2 : 1;
     // Every side but the champion goes out once in a knockout; twice, but for the champion's one defeat at most, in a double
     // elimination, whose grand final is one match whatever the legs.
-    const km = koN < 2 ? 0 : de ? (2 * koN - 3) * kl + 1 : (koN - 1 + (tConfig.thirdPlace && koN >= 4 ? 1 : 0)) * kl - (kl === 2 && tConfig.koFinalOneLeg ? 1 : 0);
+    const km = koN < 2 ? 0 : tConfig.koFirstOnly && !de ? Math.floor(koN / 2) * kl : de ? (2 * koN - 3) * kl + 1 : (koN - 1 + (tConfig.thirdPlace && koN >= 4 ? 1 : 0)) * kl - (kl === 2 && tConfig.koFinalOneLeg ? 1 : 0);
     const round = (k) => k <= 2 ? "Final" : k === 4 ? "Semi-Finals" : k === 8 ? "Quarter-Finals" : "Round Of " + k;
     const probs = [];
     if (tournamentTeamIds.length < 2) probs.push("Pick At Least 2 Sides");
@@ -18734,6 +18854,9 @@ export default function App() {
     if (tHasGroups && n >= 2) {
       if (!tGroupsOk) probs.push("Groups Run From 1 To 26"); else if (tPerGroup < 2) probs.push("Each Group Needs At Least 2 Sides");
       if (!tSwissOk) probs.push(`Swiss Rounds Run From 1 To ${Math.max(1, tPerGroup - 1)}`);
+      if (!tDrawnOk) probs.push(tPerGroup !== tPerGroupMax ? "A Drawn Swiss Needs Groups Of Equal Size"
+        : +tConfig.swissRounds % 2 || tDrawnPots < 1 ? "A Drawn Swiss Needs An Even Number Of Rounds"
+        : `${tPerGroup} Sides Do Not Split Into ${tDrawnPots} Pots Of 3 Or More`);
     }
     if (tConfig.mode === "double" && n >= 2 && !tKoValid) probs.push("Fewer Than 2 Sides Reach The Knockout");
     const row = (label, v) => <div key={label} className="ux-sumrow"><span>{label}</span><b style={typeof v === "number" ? mono : undefined}>{v}</b></div>;
@@ -18744,7 +18867,7 @@ export default function App() {
           {row("Sides", n)}
           {tHasGroups && G > 0 && n >= 2 && row(G === 1 ? "League" : "Groups", G === 1 ? `${n} Sides` : n >= G ? `${G} Of ${mn === mx ? mn : mn + " To " + mx}` : `${G} Groups`)}
           {tHasGroups && n >= 2 && row(G === 1 ? "League Matches" : "Group Matches", gm)}
-          {tHasKO && n >= 2 && koN >= 2 && <>{row("Knockout Sides", koN)}{row("First Round", round(p2))}{tNumByes > 0 && row("Byes", tNumByes)}{row("Knockout Matches", km)}</>}
+          {tHasKO && n >= 2 && koN >= 2 && <>{row("Knockout Sides", koN)}{row("First Round", tConfig.koFirstOnly && !de ? "Playoff" : round(p2))}{tNumByes > 0 && row("Byes", tNumByes)}{row("Knockout Matches", km)}</>}
           {row("Total Matches", gm + km)}
         </div>))}
       {probs.length > 0 && uxPanel("Before It Can Start", null, <div className="ux-pbody ux-fit ux-fbody">{probs.map(p => <div key={p} className="ux-tprob">{p}</div>)}</div>)}
@@ -18760,12 +18883,14 @@ export default function App() {
   // ── A running tournament: its stages, its fixtures with each one's buttons, its leaders ──
   // A row of a group table: the zone's colour at its left edge, and a swap for two sides level on every tiebreaker.
   const uxTStandRow = (g, gi, r, ri, N, form) => {
-    const zone = zoneFor(ri, N, qz), team = (g.teams || []).find(t => t.name === r.name) || r, gd = r.gf - r.ga;
+    const slot = zoneSlot(g.standings, ri, tConfig.preQualified), pre = slot.ri < 0;
+    const zone = zoneFor(slot.ri, slot.N, qz), team = (g.teams || []).find(t => t.name === r.name) || r, gd = r.gf - r.ga;
     const tied = tPhase === "groups" && ri < N - 1 && areTied(r, g.standings[ri + 1], tConfig.tiebreakers, g.schedule);
     return (
       <tr key={r.name}>
         <td className="ux-dim" style={{ ...mono, ...(zone ? { boxShadow: `inset 3px 0 0 ${zone.color}` } : null) }}>{ri + 1}</td>
         <td><div className="ux-tc"><TeamCrest team={team} size={16} /><span>{r.name}</span>
+          {pre && <small className="ux-dim" title="Already Qualified: Takes No Place In The Zones">Qualified</small>}
           {tied && <button type="button" className="ux-btnreset ux-mini ux-ico" title="Level On Every Tiebreaker: Swap With The Side Below"
             aria-label={"Swap " + r.name + " With The Side Below"} onClick={() => tSwapStandings(gi, ri)}>{uxIcon("swap", "ux-s")}</button>}</div></td>
         {[r.p, r.w, r.d, r.l, r.gf, r.ga].map((v, k) => <td key={k} className="ux-n" style={mono}>{v}</td>)}
@@ -18795,7 +18920,7 @@ export default function App() {
   // The sides in a best-placed zone across every group, ranked, the ones going through marked.
   const uxTPoolTable = (zones) => {
     const pool = [];
-    tGroups.forEach(g => { const N = g.standings.length; g.standings.forEach((r, ri) => {
+    tGroups.forEach(g => { g.standings.forEach((r, gri) => { const { ri, N } = zoneSlot(g.standings, gri, tConfig.preQualified); if (ri < 0) return;
       for (const z of zones) { const pos = z.anchor === "top" ? ri + 1 : N - ri; if (pos >= z.from && pos <= z.to) { pool.push({ r, g }); return; } } }); });
     if (!pool.length) return null;
     pool.sort((a, b) => b.r.pts - a.r.pts || (b.r.gf - b.r.ga) - (a.r.gf - a.r.ga) || b.r.gf - a.r.gf || (b.r.skill || 0) - (a.r.skill || 0));
@@ -19018,6 +19143,7 @@ export default function App() {
   };
   // When it is over: the champion, the runner-up and third, off the final, or a league's table.
   const uxTFinal = () => {
+    if (tKO?.firstOnly) return isKOComplete(tKO) ? { through: tKO.rounds[0].matches.filter(m => !m.bye).map(m => ({ team: koWinner(m), m })) } : null;
     if (tKO?.champion) {
       const fm = tKO.losers ? (tKO.reset?.result ? tKO.reset : tKO.grandFinal) : tKO.rounds[tKO.rounds.length - 1]?.matches[0];
       const runner = fm?.result ? (koWinner(fm) === fm.home ? fm.away : fm.home) : null;
@@ -19029,7 +19155,12 @@ export default function App() {
     }
     return null;
   };
-  const uxTSummary = (f) => uxPanel("Summary", null, (
+  const uxTSummary = (f) => f.through ? uxPanel("Through The Playoff", null, (
+    <div className="ux-pbody ux-fit">{f.through.map(({ team: t, m }) => (
+      <div key={t.name} className="ux-ldr ux-sm" role="link" tabIndex={0} onClick={() => openTeam(t)} onKeyDown={e => { if (e.key === "Enter") openTeam(t); }}>
+        <span className="ux-ldr-who"><TeamCrest team={t} size={18} /><span className="ux-ldr-nm">{t.name}</span></span>
+        <span className="ux-ldr-v" style={mono}>{uxTKoScore(m)}</span>
+      </div>))}</div>)) : uxPanel("Summary", null, (
     <div className="ux-pbody ux-fit">{[["Champions", f.champ, f.final ? uxTKoScore(f.final) : f.pts?.[0] != null ? f.pts[0] + " Pts" : null],
       ["Runner-Up", f.runner, f.pts?.[1] != null ? f.pts[1] + " Pts" : null], ["Third Place", f.third, f.pts?.[2] != null ? f.pts[2] + " Pts" : null]]
       .filter(([, t]) => t).map(([label, t, v], i) => (
@@ -19130,7 +19261,7 @@ export default function App() {
             {tPresetName && fact("Field", tPresetName)}
             {tHasGroups && tGroups.length > 0 && <>
               {fact(tGroups.length === 1 ? "League" : "Groups", tGroups.length === 1 ? tGroups[0].teams.length + " Sides" : tGroups.length + " Groups")}
-              {fact("Played As", c.matchFormat === "swiss" ? `Swiss, ${c.swissRounds} Rounds` : `Round Robin, ${c.rrLegs} ${+c.rrLegs === 1 ? "Leg" : "Legs"}`)}
+              {fact("Played As", c.matchFormat === "swiss" ? `Swiss, ${c.swissRounds} Rounds` : c.matchFormat === "drawnSwiss" ? `Drawn Swiss, ${c.swissRounds} Rounds` : `Round Robin, ${c.rrLegs} ${+c.rrLegs === 1 ? "Leg" : "Legs"}`)}
               {tGroups.length > 1 && fact("Allocation", alloc[c.allocMode] || c.allocMode)}</>}
             {tHasKO && <>
               {fact("Knockout", [c.koFormat === "double_elim" ? "Double Elimination" : "Single Elimination", c.koLegs === 2 ? "Two Legs" : null,

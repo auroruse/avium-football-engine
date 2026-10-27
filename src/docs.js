@@ -251,12 +251,13 @@ export const DOCS = [
       "Tournaments are kept in this browser and saved by themselves a moment after every change. Saved lists them newest first, with the stage each has reached, its leader or winner and the matches played. Each row has Rename, Copy, Export and Delete, and New Tournament and Import are in the page bar. An exported tournament is a file another browser can import. A tournament copies its sides' squads when it is made, so later changes to a squad never reach it.",
     ] },
     { id: "formats", title: "Formats", body: [
-      "New Tournament starts from a preset or from scratch. The presets are League, Cup, World Cup, Club World Cup, Nations League, Legacy UCL, Legacy WC, 1935 Club World Cup, 1935 Club World Shield, 1935 World Cup and 1935 Nations League. Three fields come ready-made: the 1934 and 1935 World Cups, with their groups as drawn, and the 1934 Club World Shield.",
+      "New Tournament starts from a preset or from scratch. The presets are League, Cup, World Cup, Club World Cup, Nations League, Legacy UCL, Legacy WC, 1935 Club World Cup, 1935 Club World Shield, 1935 World Cup, 1935 Nations League, 1936 Eastern Qualifiers and 1936 Western Qualifiers. Three fields come ready-made: the 1934 and 1935 World Cups, with their groups as drawn, and the 1934 Club World Shield.",
       { dl: [
         ["Structure", "Groups; Groups, Then Knockout; or Knockout."],
         ["Groups", "From 1 to 26, played as a round robin over the legs you choose, or Swiss, over up to one round fewer than a group's size."],
+        ["Drawn Swiss", "A Swiss whose whole schedule is drawn before a ball is kicked. Each group is cut into pots by rating, one pot for every two rounds, and every side plays two from each pot, its own included, one at home and one away. Every side hosts half its matches and never plays three at home or three away in a row."],
         ["Group Allocation", "As Drawn, Seed (snake order by rating), Random, By Hand or Draw."],
-        ["Knockout", "Single or double elimination, with a third-place match, two legs with away goals, a reset match, and byes by ranking or by hand."],
+        ["Knockout", "Single or double elimination, with a third-place match, two legs with away goals, a reset match, and byes by ranking or by hand. First Round Only stops it after its first round, the Playoff: every winner goes through and there is no champion."],
         ["Knockout Allocation", "Seed, Random, By Hand, Draw or Crossover. Crossover pairs group winners with other groups' runners-up (1A against 2B), and works when exactly the top two of an even number of groups go through."],
       ] },
       "Before It Can Start lists anything that stops a tournament from starting, such as too few sides or more Swiss rounds than a group allows.",
@@ -274,6 +275,7 @@ export const DOCS = [
         ["Best Placed", "The sides in it from every group go into one table, ranked by points, goal difference, goals and rating, and the number you set qualify, the way a World Cup takes its best third-placed sides."],
       ] },
       "Go Through and Best Placed exist only in a tournament with a knockout. Without either, Through Per Group sets how many go through from each group.",
+      "Already Qualified marks sides that play and count but take no place in the zones, the way a World Cup host plays its qualifiers: the places pass down past them, so if the host finishes third, fourth takes the third place's zone.",
     ] },
     { id: "tiebreakers", title: "Tiebreakers", body: [
       "Points come first. After them come the tiebreakers, in an order you drag to set: Goal Difference, Goals Scored, Head To Head (points, then goal difference, then goals between the sides level), Wins, Buchholz (Swiss only: the strength of the opponents faced) and By Hand. Sides level on everything rank by rating.",
