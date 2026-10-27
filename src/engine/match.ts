@@ -2563,13 +2563,22 @@ export function meTick(s, rng, out) {
       }
       if (cross.kind === "woodwork") {
         // Off the frame and back into play: a live ball, not a stoppage.
-        out.woodwork = (out.woodwork || 0) + 1; meBump(out, "woodworkSide", scorer);
-        if (sh && sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "post";
+        // ...COUNTED ONCE. A ball still sitting against the post a tick later is the same hit (user, 27 October 2026:
+        // a match read 3,741 woodwork with one shot on target, the ball knocked against the frame every tick).
+        const again = mp._wwT != null && mp.tick - mp._wwT <= 2;
+        mp._wwT = mp.tick;
+        if (!again) {
+          out.woodwork = (out.woodwork || 0) + 1; meBump(out, "woodworkSide", scorer);
+          if (sh && sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "post";
+          meEvt(out, sh && sh.pen ? "penmiss" : "block", scorer, mp.bx, mp.by, mp.bx, mp.by,
+                sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
+        }
         mePenRes(out, sh);
-        meEvt(out, sh && sh.pen ? "penmiss" : "block", scorer, mp.bx, mp.by, mp.bx, mp.by,
-              sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
-        mp.bvx = -mp.bvx * 0.55; mp.bvy = mp.bvy * 0.55 + (rng.u() - 0.5) * 3; mp.bvz = Math.abs(mp.bvz) * 0.4 + 1;
-        mp.bx += mp.bvx * 0.05;
+        // ...AND ALWAYS BACK INTO THE PITCH, clear of the line. Reversing whatever it was doing sent a ball that met the
+        // frame from behind, or that a man's body had pushed onto it, back over the line it came from, to hit it again.
+        const into = cross.conceding === "home" ? 1 : -1;
+        mp.bvx = into * Math.max(Math.abs(mp.bvx) * 0.55, 1.5); mp.bvy = mp.bvy * 0.55 + (rng.u() - 0.5) * 3; mp.bvz = Math.abs(mp.bvz) * 0.4 + 1;
+        mp.bx = (into > 0 ? 0 : PITCH_L) + into * (CFG.ballR + 0.02);
         mp.lastSide = scorer;
         meBallPredict(mp);
         return;
@@ -3473,7 +3482,13 @@ export function meTick(s, rng, out) {
       resolvePending(null); mePenRes(out, mp.shot, mp); mp.shot = null;
       meDead(s, "throw", meOther(mp.touchSide), 76, out); holdFrame(); return;
     }
-    cross = ev; endOfPlay(); holdFrame(); return;
+    cross = ev; endOfPlay();
+    // OFF THE FRAME THE BALL IS STILL LIVE, so the slice plays on as it does after any other deflection. Ending it here
+    // as a stoppage did meant nobody moved or decided that tick, and a ball the bounce put back against the post (a man
+    // standing on the line beside it) hit it again the next tick, and the next, with everyone frozen: one woodwork a tick
+    // from the 12th minute to the whistle (user, 27 October 2026).
+    if (ev.kind === "woodwork") { cross = null; continue; }
+    holdFrame(); return;
   }
   meBallPredict(mp);
   // A SHOT THAT HAS STOPPED BEING ONE IS A LOOSE BALL. Nobody chases a shot (meMove) and the keeper
