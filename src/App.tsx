@@ -1943,7 +1943,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // Theme ids are the banner filenames in public/avium/banners, so a World Cup is keyed by the year
 // AND its host -- 1933nch is Nichirin's. null is a rule in the picker, not a theme.
 const UI_THEMES = [["default", "Standard"], null,
-                   ["1935skj", "1935 World Cup"], ["1934esu", "1934 World Cup"],
+                   ["1936cor", "1936 World Cup"], ["1935skj", "1935 World Cup"], ["1934esu", "1934 World Cup"],
                    ["1933nch", "1933 World Cup"], ["1932ale", "1932 World Cup"], null,
                    ["cwc", "Club World Cup"], null,
                    ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"],
