@@ -37,8 +37,8 @@
 36	Kimi Liikanen	FWD	KHY	2	2	141	1		36	Niilo Kankkunen	FWD	LAK	3	3	194	1		36	Veikko Huttunen	MID	KAJ	1	1	90	7.4		36	Omar Kazluaska	FWD	MRJ	3	3	222	4		36	Konsta Yrjölä	DEF	AFK	2	2	180	10		36	Andres Raivo	GK	FIW	1	1	90	2
 37	Urmas Kauppila	FWD	TLO	2	2	147	1		37	Seppo Nikkilä	MID	NJK	3	3	209	1		37	Aleksi Viitanen	MID	VLV	2	0	116	7.4		37	Bort Org	FWD	MRJ	3	3	225	4		37	James Feruccio	MID	AFK	2	2	180	10		37	Naori Gasan	GK	KJK	1	1	90	2
 38	Anton Rytkönen	DEF	KNO	2	2	180	1		38	Teemo Õunapuu	MID	RSR	3	0	160	1		38	Usko Nenonen	FWD	TVS	2	2	81	7.4		38	Kasperi Harjula	FWD	RSA	4	4	302	4		38	Neçirvan Barzani	FWD	AFK	2	2	148	10		38	Xi Zhou	GK	OJK	2	2	180	2
-39	Reino Peltomaa	MID	SUR	2	2	130	1		39	Ivan Kenderic	DEF	MRJ	3	3	209	1		39	Jaakima Marttila	MID	POU	2	2	179	7.4		39	Sojjo Sarapuu	DEF	RPS	4	4	309	4		39	Miiko Simmes	FWD	LAK	3	3	184	10		39	Aatos Korpela	GK	SUR	2	2	180	2
-40	Rodion Belyayev	FWD	SUR	2	0	86	1		40	Omar Kazluaska	FWD	MRJ	3	3	222	1		40	Ohttola Sillaste	DEF	RJK	2	2	180	7.4		40	Kuismaa Kivisild	FWD	RPS	4	4	263	4		40	Ivan Kenderic	DEF	MRJ	3	3	209	10		40	Aleksi Järveläinen	GK	KUI	2	2	180	2
+39	Reino Peltomaa	MID	SUR	2	2	130	1		39	Ignac Korfanty	DEF	MRJ	3	3	209	1		39	Jaakima Marttila	MID	POU	2	2	179	7.4		39	Sojjo Sarapuu	DEF	RPS	4	4	309	4		39	Miiko Simmes	FWD	LAK	3	3	184	10		39	Aatos Korpela	GK	SUR	2	2	180	2
+40	Rodion Belyayev	FWD	SUR	2	0	86	1		40	Omar Kazluaska	FWD	MRJ	3	3	222	1		40	Ohttola Sillaste	DEF	RJK	2	2	180	7.4		40	Kuismaa Kivisild	FWD	RPS	4	4	263	4		40	Ignac Korfanty	DEF	MRJ	3	3	209	10		40	Aleksi Järveläinen	GK	KUI	2	2	180	2
 41	Yngvar Gustavsonn	FWD	SYV	2	2	124	1		41	Teivo Eriksejn	MID	TSI	3	0	167	1		41	Tim Pukki	FWD	PIE	2	2	80	7.4		41	Folke Raudkalda	MID	XIV	4	0	215	4		41	Károly Dunai	MID	TSI	3	3	221	10		41	Topi Bonkonen	GK	UNI	1	1	90	1
 42	Henrik Kristianson	FWD	SYV	2	2	141	1		42	Luca Portella	MID	TSI	3	3	217	1		42	Töhötöm Molnár	FWD	PJS	2	0	89	7.4		42	Albert Pottaslainen	MID	RSR	5	5	288	4		42	Ivaan Mielonen	DEF	ARK	3	3	270	10		42	Joavnna Gaup	GK	LAA	1	1	90	1
 43	Ulrik Zilinkas	MID	RJK	2	1	130	1		43	Hugo Ploomõts	MID	ARK	3	3	225	1		43	Vladimir Tsoikov	FWD	AFK	2	0	77	7.4		43	Kalle Olstalainen	DEF	VKS	5	5	450	4		43	Taavi Saarela	MID	ARK	3	3	214	10		43	Andero Pollasmaa	GK	TLO	2	2	180	1
@@ -228,7 +228,7 @@
 																		227	Jesse Johansson	MID	LAK	3	3	220	6.8		227	Bittu Õunlepik	FWD	KAL	2	2	118	1		227	Csaba Görbe	FWD	RPS	4	0	214	4									
 																		228	Ralf Ketola	MID	NJK	3	3	233	6.8		228	Jesse Terho	MID	KHY	2	2	138	1		228	Folke Raudkalda	MID	XIV	4	0	215	4									
 																		229	Seppo Nikkilä	MID	NJK	3	3	209	6.8		229	Paates Karsson	DEF	TLO	2	2	180	1		229	Nemanja Petrovic	FWD	RSR	5	5	450	4									
-																		230	Ivan Kenderic	DEF	MRJ	3	3	209	6.8		230	Kimi Myllylä	MID	TLO	2	2	127	1		230	Antero Isometsä	DEF	PTI	1	1	90	3									
+																		230	Ignac Korfanty	DEF	MRJ	3	3	209	6.8		230	Kimi Myllylä	MID	TLO	2	2	127	1		230	Antero Isometsä	DEF	PTI	1	1	90	3									
 																		231	Enders Koponen	GK	TSI	3	3	270	6.8		231	Alfred Korpela	FWD	TLO	2	2	131	1		231	Aatu Pukki	MID	PTI	1	1	61	3									
 																		232	Veitto Harttikainen	DEF	ARK	3	3	270	6.8		232	Kaino Lahti	MID	TLO	2	2	164	1		232	Yrjä Helkanen	MID	VJS	1	1	90	3									
 																		233	Jarkko Yrjönen	DEF	RSA	4	4	360	6.8		233	Severi Partanen	MID	KNO	2	2	180	1		233	Endel Rannamets	MID	KAJ	1	1	90	3									
@@ -263,7 +263,7 @@
 																		262	Aatos Helminen	MID	TVS	2	2	180	6.7		262	Ville Partanen	MID	NJK	3	3	220	1		262	Patrik Miettula	MID	KAL	2	2	123	3									
 																		263	Vili Lindhölm	DEF	POU	2	2	180	6.7		263	Navid Lashkari	FWD	NJK	3	3	212	1		263	Nakato Fujimoto	FWD	KAL	2	0	102	3									
 																		264	Kari Aalto	DEF	POU	2	2	180	6.7		264	Karin Tuomela	DEF	RSR	3	0	171	1		264	Visker Nsytröm	FWD	KAL	2	2	140	3									
-																		265	Quan Jianhong	FWD	KMY	2	2	131	6.7		265	Ivan Kenderic	DEF	MRJ	3	3	209	1		265	Aron Tulpaa	DEF	KAL	2	2	144	3									
+																		265	Quan Jianhong	FWD	KMY	2	2	131	6.7		265	Ignac Korfanty	DEF	MRJ	3	3	209	1		265	Aron Tulpaa	DEF	KAL	2	2	144	3									
 																		266	Bierrelaš Iđga	DEF	KMY	2	0	107	6.7		266	Yuki Endō	MID	MRJ	3	3	270	1		266	Niiko Rautia	DEF	KAL	2	2	146	3									
 																		267	Lari Ahola	DEF	VJK	2	2	180	6.7		267	Yūki Hattori	FWD	MRJ	3	3	206	1		267	Eso Paavola	MID	TLO	2	2	126	3									
 																		268	Tatu Kettola	MID	VJK	2	2	180	6.7		268	Harald Erikson	DEF	TSI	3	3	221	1		268	Anton Rytkönen	DEF	KNO	2	2	180	3									
@@ -330,7 +330,7 @@
 																		329	Salari Uljas	MID	OJK	2	2	134	6.6											329	Sárat Duštá	DEF	MPA	1	1	51	2									
 																		330	Eetu Ujalainen	DEF	TVS	2	2	180	6.6											330	Zintá Dunginen	MID	KAL	1	0	57	2									
 																		331	Tiitus Kallas	MID	RAU	2	0	95	6.6											331	Pekka Sihvonen	MID	SYV	1	0	54	2									
-																		332	Peder Somby	MID	RAU	2	2	129	6.6											332	Kanta Zielenski	DEF	KUI	1	0	62	2									
+																		332	Peder Somby	MID	RAU	2	2	129	6.6											332	Kunz Adamiec	DEF	KUI	1	0	62	2									
 																		333	Benjam Jussila	DEF	VJK	2	2	180	6.6											333	Miska Nikula	DEF	PYR	2	2	180	2									
 																		334	Viljam Heiskanen	MID	VJK	2	2	180	6.6											334	Rhamschosi Ouzahor	FWD	PYR	2	2	133	2									
 																		335	Santteri Haapalainen	MID	KAL	2	0	96	6.6											335	Yrjänä Pekkanen	MID	PYR	2	2	147	2									
@@ -447,7 +447,7 @@
 																		446	Ánte Skáiddus	FWD	NIE	1	1	80	6.4											446	Aalto Huttunen	DEF	NOW	1	1	90	1									
 																		447	Biera Tuuliparänen	DEF	UNI	1	1	90	6.4											447	Aarne Kainulainen	MID	NOW	1	1	90	1									
 																		448	Porona Simpansen	DEF	UNI	1	1	90	6.4											448	Rainer Pakarinen	MID	NOW	1	1	90	1									
-																		449	Feodor Kulanen	MID	UNI	1	1	90	6.4											449	Zhalek Cheremesinoff	MID	NOW	1	0	27	1									
+																		449	Feodor Kulanen	MID	UNI	1	1	90	6.4											449	Witek Czaja	MID	NOW	1	0	27	1									
 																		450	Luukas Inha	MID	INK	1	1	90	6.4											450	Noori Samalainen	DEF	MPA	1	1	90	1									
 																		451	Asser Luoma	DEF	AUL	1	1	90	6.4											451	Gregor Tsorovic	MID	MPA	1	0	44	1									
 																		452	Väino Suomi	MID	AUL	1	1	90	6.4											452	Kaapro Kivi	MID	TLO	1	0	53	1									
@@ -638,10 +638,10 @@
 																		637	Aaltto Laita	DEF	LAA	1	0	35	6.5																											
 																		638	Heikko Puistonen	DEF	LAA	1	1	55	6.5																											
 																		639	Samuli Ilhalainen	DEF	OJK	1	0	32	6.5																											
-																		640	Zhalek Cheremesinoff	MID	NOW	1	0	27	6.5																											
+																		640	Witek Czaja	MID	NOW	1	0	27	6.5																											
 																		641	Luuka Velikkon	FWD	NOW	1	0	26	6.5																											
 																		642	Kari Likkalainen	MID	LAK	1	0	50	6.5																											
-																		643	Kanta Zielenski	DEF	KUI	1	0	62	6.5																											
+																		643	Kunz Adamiec	DEF	KUI	1	0	62	6.5																											
 																		644	Elmo Aholainen	FWD	VJS	1	0	28	6.4																											
 																		645	Yorgos Moustakellis	FWD	KAJ	1	1	49	6.4																											
 																		646	Matias Keskitalo	FWD	VLV	2	2	67	6.4																											

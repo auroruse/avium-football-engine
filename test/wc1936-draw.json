@@ -1,0 +1,53 @@
+{
+ "seed": 2877359648,
+ "groups": {
+  "A": [
+   "Cortesia",
+   "Guandong",
+   "East Astriya",
+   "Ponurvia"
+  ],
+  "B": [
+   "Alemannia",
+   "Kemet",
+   "Arverne",
+   "West Bangala"
+  ],
+  "C": [
+   "Cahaya",
+   "Elvester",
+   "Kinshū",
+   "Vicily"
+  ],
+  "D": [
+   "Livonia",
+   "Perovska",
+   "Neuhollmar",
+   "Shashanka"
+  ],
+  "E": [
+   "Nichirin",
+   "Demâruz",
+   "Eivorie",
+   "Auritania"
+  ],
+  "F": [
+   "Skjarnland",
+   "Varahmehr",
+   "E.S.U.",
+   "Askurias"
+  ],
+  "G": [
+   "Rudania",
+   "Shivon",
+   "Hollosend",
+   "Iriria"
+  ],
+  "H": [
+   "Selmira",
+   "Karjania",
+   "Barbary",
+   "Salishia"
+  ]
+ }
+}

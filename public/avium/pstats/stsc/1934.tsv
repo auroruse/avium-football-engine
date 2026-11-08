@@ -6,7 +6,7 @@
 5	Themistoklis Zervas	MID	VIR	5	3		5	Miltiadis Galanis	FWD	VIR	5	2		5	Diego Montenegro	DEF	CHU	2	7.7		5	Chaghagan Uua Uder	MID	ORU	3	6		5	Genta Obinata	MID	TAK	4	16		5	Ren Ikegami	GK	BGE	1	13
 6	Miltiadis Galanis	FWD	VIR	5	3		6	Luca Higashiyama	MID	VIR	5	2		6	Junya Narahara	MID	SHM	2	7.7		6	Arslanbaatar Ganbold	MID	ORU	3	6		6	Hajime Ōyama	MID	AYA	5	15		6	Akihisa Kubo	GK	FCH	2	13
 7	Jun'ichi Teraoka	FWD	RYO	2	2		7	Tatsuya Okuyama	DEF	MRG	1	1		7	Yavuz Koç	FWD	SHM	2	7.7		7	Itsuki Toguchi	MID	AYA	5	6		7	Haruto Kido	MID	SHZ	4	14		7	Jordan Stanford	GK	SPK	2	12
-8	Akihiro Kaibara	FWD	CHU	2	2		8	Ryūhei Kuriyama	MID	MRG	1	1		8	Sixten Karlsson	MID	SPK	2	7.6		8	Sviatoslav Boyko	MID	NAG	2	5		8	Hiromu Furuhashi	FWD	SHZ	4	14		8	Semyon Volkov	GK	TAK	4	12
+8	Akihiro Kaibara	FWD	CHU	2	2		8	Ryūhei Kuriyama	MID	MRG	1	1		8	Sixten Karlsson	MID	SPK	2	7.6		8	Stacho Buchta	MID	NAG	2	5		8	Hiromu Furuhashi	FWD	SHZ	4	14		8	Semyon Volkov	GK	TAK	4	12
 9	Junya Narahara	MID	SHM	2	2		9	Hayato Sagami	FWD	MRG	1	1		9	Shūji Kannazuki	GK	KAN	1	7.5		9	Sixten Karlsson	MID	SPK	2	5		9	Diego Montenegro	DEF	CHU	2	13		9	Kenzō Fujinami	GK	KOS	2	10
 10	Ryōsuke Tsugawa	FWD	KOS	2	2		10	Drake Kessler	MID	NIK	1	1		10	Katsunori Haneda	DEF	MAT	2	7.5		10	Nuno Gouveia	MID	SPK	2	5		10	Buri Bulchiru Kaishan	MID	ORU	3	13		10	Miklós Nagy	GK	ISS	2	10
 11	Yōhei Takigawa	FWD	SPK	2	2		11	Hiro Oshiro	MID	DYM	1	1		11	Shō Itoshi	FWD	SPK	2	7.5		11	Raffaele Lucchese	MID	ISS	2	5		11	Yūto Shiranui	DEF	SHZ	4	13		11	Parnell Chee	GK	NIK	1	9
@@ -88,7 +88,7 @@
 														87	Renpei Shimotsuma	DEF	NIK	1	7.1		87	Asahi Nishioka	MID	ASH	1	2		87	Renshi Kuzuryū	MID	MAK	3	6							
 														88	Niall Kinsella	FWD	NIK	1	7.1		88	Johan De Ridder	DEF	SSK	1	2		88	Masato Hinata	DEF	VIR	4	6							
 														89	Akira Nagumo	DEF	DYM	1	7.1		89	Szymon Kowalczyk	MID	VAL	1	2		89	Trygve Ødegaard	MID	TAK	4	6							
-														90	Taras Bondarenko	MID	SEN	1	7.1		90	Amiya Majumdar	MID	VAL	1	2		90	Édouard Szymański	MID	TAK	4	6							
+														90	Toma Piecha	MID	SEN	1	7.1		90	Amiya Majumdar	MID	VAL	1	2		90	Édouard Szymański	MID	TAK	4	6							
 														91	Goshi Suganuma	DEF	ASH	1	7.1		91	Kōtarō Unno	FWD	KAM	1	2		91	Seiji Kasuga	MID	AYA	5	6							
 														92	Neçirvan Barzani	FWD	SSK	1	7.1		92	Kentarō Ishizuka	DEF	RYO	2	2		92	Anirban Goswami	DEF	SHR	1	5							
 														93	Ryūtarō Washio	MID	KAM	1	7.1		93	Hiroaki Tomioka	MID	RYO	2	2		93	Jóhann Sigfússon	DEF	NIK	1	5							
@@ -99,7 +99,7 @@
 														98	Matvei Popov	DEF	SHM	2	7.1		98	Itsuki Tsukahara	MID	IFK	2	2		98	Akihisa Chikatsu	MID	BGE	1	5							
 														99	Rasmus Karlssen	FWD	SHM	2	7.1		99	Fumito Katagiri	FWD	NAG	2	2		99	Shigenori Takaoka	DEF	KAN	1	5							
 														100	Yëría Kaché	MID	MAT	2	7.1		100	Sōta Washizu	DEF	ORU	2	2		100	Naoya Kumazawa	FWD	KAN	1	5							
-														101	Ryōga Ikarashi	FWD	FCH	2	7.1		101	Ganzorig Erdene	FWD	ORU	2	2		101	Taras Bondarenko	MID	SEN	1	5							
+														101	Ryōga Ikarashi	FWD	FCH	2	7.1		101	Ganzorig Erdene	FWD	ORU	2	2		101	Toma Piecha	MID	SEN	1	5							
 														102	Kenzō Fujinami	GK	KOS	2	7.1		102	Naoya Kurihara	DEF	CHU	2	2		102	Johan De Ridder	DEF	SSK	1	5							
 														103	Ippei Sawaki	MID	KOS	2	7.1		103	Alarico Canavese	MID	CHU	2	2		103	Masahiro Kusakari	MID	SSK	1	5							
 														104	Yoshitaka Nabeshima	MID	KOS	2	7.1		104	Akihiro Kaibara	FWD	CHU	2	2		104	Neçirvan Barzani	FWD	SSK	1	5							
@@ -127,7 +127,7 @@
 														126	Ignazio Esposito	MID	ASH	1	7.0		126	Vilgot Sundkvist	MID	MRG	1	1		126	Tōru Chikuami	DEF	TAK	4	5							
 														127	Rainer Pietach	DEF	SSK	1	7.0		127	Keigo Ikeda	DEF	SHR	1	1		127	Basem Shenouda	GK	SHZ	4	5							
 														128	Shintarō Katahira	DEF	KAM	1	7.0		128	Hengbo Liu	DEF	SHR	1	1		128	Nikolaos Papadopoulos	GK	VIR	5	5							
-														129	Sviatoslav Boyko	MID	NAG	2	7.0		129	Mircea Ionescu	MID	SHR	1	1		129	Miltiadis Galanis	FWD	VIR	5	5							
+														129	Stacho Buchta	MID	NAG	2	7.0		129	Mircea Ionescu	MID	SHR	1	1		129	Miltiadis Galanis	FWD	VIR	5	5							
 														130	Fumito Katagiri	FWD	NAG	2	7.0		130	Naoki Higashino	MID	SHR	1	1		130	Juhani Hämälainen	GK	AYA	5	5							
 														131	Ismael Menéndez	DEF	CHU	2	7.0		131	Drake Kessler	MID	NIK	1	1		131	Itsuki Toguchi	MID	AYA	5	5							
 														132	Naoya Kurihara	DEF	CHU	2	7.0		132	Tianyu Gu	MID	NIK	1	1		132	Makisig Liwanag	MID	AYA	5	5							
@@ -199,7 +199,7 @@
 														198	Merkurios Kudanbes	DEF	ASH	1	6.9		198	Attila Hegedűs	MID	SHM	2	1		198	Yasushi Kobayakawa	MID	IFK	2	3							
 														199	Bjarke Lindqvist	DEF	ASH	1	6.9		199	Shinji Kawarabuki	MID	SHM	2	1		199	Fumiya Habiro	FWD	IFK	2	3							
 														200	Patrick Stumpfegger	MID	ASH	1	6.9		200	Shin'ya Fuchigami	FWD	SHM	2	1		200	Shūhei Ozaki	FWD	IFK	2	3							
-														201	Masahiro Kusakari	MID	SSK	1	6.9		201	Yavuz Koç	FWD	SHM	2	1		201	Sviatoslav Boyko	MID	NAG	2	3							
+														201	Masahiro Kusakari	MID	SSK	1	6.9		201	Yavuz Koç	FWD	SHM	2	1		201	Stacho Buchta	MID	NAG	2	3							
 														202	Sōtarō Nagata	MID	SSK	1	6.9		202	Yūsuke Shiota	DEF	MAT	2	1		202	Sōta Washizu	DEF	ORU	2	3							
 														203	Tomohiro Arimatsu	FWD	VAL	1	6.9		203	Tomoki Kameyama	DEF	MAT	2	1		203	Shunpei Kadota	FWD	CHU	2	3							
 														204	Iñigo Arrizabalaga	DEF	KAM	1	6.9		204	Rostam Khalili	MID	MAT	2	1		204	Eisuke Tatebayashi	DEF	SHM	2	3							
@@ -312,7 +312,7 @@
 														311	Issei Kunieda	MID	TOY	1	6.7									311	Parnell Chee	GK	NIK	1	1							
 														312	Sélim Bouziane	DEF	SAT	1	6.7									312	Robert Berthold	FWD	NIK	1	1							
 														313	Durí Karí	MID	SAT	1	6.7									313	Kenta Wakasugi	MID	NIK	1	1							
-														314	Artem Tkachenko	FWD	SAT	1	6.7									314	Niall Kinsella	FWD	NIK	1	1							
+														314	Ambroz Jonderenko	FWD	SAT	1	6.7									314	Niall Kinsella	FWD	NIK	1	1							
 														315	Asahi Nishioka	MID	ASH	1	6.7									315	Magnus Andersson	GK	DYM	1	1							
 														316	Shin Segawa	DEF	SSK	1	6.7									316	Kengo Okitsu	MID	DYM	1	1							
 														317	Makoto Kishima	MID	SSK	1	6.7									317	Ryland Nash	FWD	DYM	1	1							
@@ -342,7 +342,7 @@
 														341	Yūsuke Konparu	MID	BGE	1	6.7									341	Eliezer Bansa	MID	SAT	1	1							
 														342	Sadao Garabin	MID	KAN	1	6.7									342	Séamus Ó'Duinnín	FWD	SAT	1	1							
 														343	Kōta Kanazawa	DEF	KAN	1	6.7									343	Durí Karí	MID	SAT	1	1							
-														344	Tsuyoshi Mikuriya	DEF	KAN	1	6.7									344	Artem Tkachenko	FWD	SAT	1	1							
+														344	Tsuyoshi Mikuriya	DEF	KAN	1	6.7									344	Ambroz Jonderenko	FWD	SAT	1	1							
 														345	Haripada Bagchi	MID	SEN	1	6.7									345	Merkurios Kudanbes	DEF	ASH	1	1							
 														346	Nyunda Yiribaru	MID	SHM	1	6.7									346	Tomoki Iwabuchi	FWD	ASH	1	1							
 														347	Niccolò Donizetti	MID	SUM	1	6.7									347	Radosław Gołębiowski	FWD	ASH	1	1							

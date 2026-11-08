@@ -87,7 +87,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	nl1	Juhani Hämälainen	AYA	GK	79	81
 1934	nl1	Amgalanbaatar Sükh	ORU	DEF	78	80
 1934	nl1	Takeru Nakandakari	NIK	DEF	78	80
-1934	nl1	Sviatoslav Boyko	NAG	MID	77	79
+1934	nl1	Stacho Buchta	NAG	MID	77	79
 1934	nl1	Cristian Urdaneta	NIK	DEF	76	78
 1934	nl1	Dānilo Pavlović	SEN	GK	75	77
 1934	nl1	Erlend Mikkelsen	SHZ	MID	75	77
@@ -132,7 +132,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	nl1	Goshi Suganuma	ASH	DEF	74	75
 1934	nl1	Masaki Togawa	TAK	DEF	74	75
 1934	nl1	Shōgo Higashiyama	SEN	MID	74	75
-1934	nl1	Artem Tkachenko	SAT	FWD	73	74
+1934	nl1	Ambroz Jonderenko	SAT	FWD	73	74
 1934	nl1	Vladimír Králik	MAK	DEF	73	74
 1934	nl1	Ørjan Skjelbred	SHM	DEF	73	74
 1934	nl1	Eisuke Tatebayashi	SHM	DEF	72	73
@@ -1121,14 +1121,14 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Yishai Galili	SHI	MID	69	70
 1934	International Football	Yonatan Cohen	SHI	GK	72	73
 1934	International Football	Kanata Murakumo	SHZ	MID	74	73
-1934	International Football	Artem Tkachenko	SYL	FWD	74	76
-1934	International Football	Nazar Melnyk	SYL	DEF	72	70
-1934	International Football	Ihor Kovalenko	SYL	DEF	73	74
-1934	International Football	Klym Vernydub	SYL	FWD	71	70
-1934	International Football	Levko Chornovil	SYL	FWD	71	70
-1934	International Football	Panas Hrabovsky	SYL	FWD	72	71
-1934	International Football	Pavlo Dovzhenko	SYL	MID	72	73
-1934	International Football	Yurii Zahrebelny	SYL	DEF	74	73
+1934	International Football	Ambroz Jonderenko	SYL	FWD	74	76
+1934	International Football	Otton Muc	SYL	DEF	72	70
+1934	International Football	Ignac Jonderko	SYL	DEF	73	74
+1934	International Football	Krystek Widera	SYL	FWD	71	70
+1934	International Football	Lec Czogalla	SYL	FWD	71	70
+1934	International Football	Boler Zgajewski	SYL	FWD	72	71
+1934	International Football	Pater Dyrda	SYL	MID	72	73
+1934	International Football	Jonek Zgajewski	SYL	DEF	74	73
 1934	International Football	Nima Sarmast	SKH	DEF	54	56
 1934	International Football	Ryōhei Iwakuma	SKH	DEF	73	75
 1934	International Football	Kaveh Bahmani	SKH	FWD	68	67
@@ -1560,10 +1560,10 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Haruto Kido	SHZ	MID	76	77
 1934	International Football	Kenshirō Unagami	SHZ	DEF	80	82
 1934	International Football	Yūto Shiranui	SHZ	DEF	77	79
-1934	International Football	Danylo Perebyinis	SYL	MID	76	77
-1934	International Football	Myroslav Zalizniak	SYL	MID	77	79
-1934	International Football	Sviatoslav Boyko	SYL	MID	79	81
-1934	International Football	Taras Bondarenko	SYL	MID	75	72
+1934	International Football	Ewald Pluta	SYL	MID	76	77
+1934	International Football	Martin Widera	SYL	MID	77	79
+1934	International Football	Stacho Buchta	SYL	MID	79	81
+1934	International Football	Toma Piecha	SYL	MID	75	72
 1934	International Football	Kai Ouyang	SKH	GK	78	79
 1934	International Football	Tole-Buqa Inalchi	SKH	MID	75	77
 1934	International Football	Emrik Halvorsen	SKJ	FWD	78	77
@@ -1761,9 +1761,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Selçuk Demirci	SEL	MID	79	78
 1935	1935 WC Qualifiers	Dvir Alon	SHI	MID	74	75
 1935	1935 WC Qualifiers	Yerucham Lehrer	SHI	MID	75	76
-1935	1935 WC Qualifiers	Myroslav Zalizniak	SYL	MID	79	80
-1935	1935 WC Qualifiers	Sviatoslav Boyko	SYL	MID	81	82
-1935	1935 WC Qualifiers	Nazar Melnyk	SYL	DEF	70	67
+1935	1935 WC Qualifiers	Martin Widera	SYL	MID	79	80
+1935	1935 WC Qualifiers	Stacho Buchta	SYL	MID	81	82
+1935	1935 WC Qualifiers	Otton Muc	SYL	DEF	70	67
 1935	1935 WC Qualifiers	Simphiwe Chabalala	ASP	MID	82	84
 1935	1935 WC Qualifiers	Rolihlahla Mbeki	ASP	FWD	64	63
 1935	1935 WC Qualifiers	Biel Chuol	SSA	DEF	49	50
@@ -1833,7 +1833,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	Club World Shield	Onur Tekeli̇	YNC	MID	74	73
 1934	Club World Shield	Yoshinori Mizoguchi	YNC	FWD	78	77
 1934	Club World Shield	Orkun Çeti̇n	NAG	MID	86	87
-1934	Club World Shield	Sviatoslav Boyko	NAG	MID	82	83
+1934	Club World Shield	Stacho Buchta	NAG	MID	82	83
 1934	Club World Shield	Wyatt Bradford	NAG	DEF	83	84
 1934	Club World Shield	József Antall	NAG	FWD	84	83
 1934	Club World Shield	Federico Soberon	NAG	DEF	77	76
@@ -1844,7 +1844,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	Club World Shield	Anselmo Carranza	LA	DEF	83	82
 1934	Club World Shield	Karel Černý	CSG	FWD	80	81
 1934	Club World Shield	Timur Iskanderov	CSG	MID	74	75
-1934	Club World Shield	Ostap Hrytsenko	CSG	DEF	72	71
+1934	Club World Shield	Oswald Hanke	CSG	DEF	72	71
 1934	Club World Shield	Thor Andresen	SPA	FWD	83	85
 1934	Club World Shield	Ane Ludvigsen	SPA	DEF	79	80
 1934	Club World Shield	Ime Paulsen	SPA	MID	81	82
@@ -1999,9 +1999,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	World Cup	Yerrin Chindura	NKI	MID	86	87
 1935	World Cup	Dural Tanumura	NKI	GK	83	84
 1935	World Cup	Osamu Matsumoto	NKI	MID	77	76
-1935	World Cup	Sviatoslav Boyko	SYL	MID	83	84
-1935	World Cup	Myroslav Zalizniak	SYL	MID	80	81
-1935	World Cup	Ihor Kovalenko	SYL	DEF	74	75
+1935	World Cup	Stacho Buchta	SYL	MID	83	84
+1935	World Cup	Martin Widera	SYL	MID	80	81
+1935	World Cup	Ignac Jonderko	SYL	DEF	74	75
 1935	World Cup	Hjalmar Lindström	SKJ	FWD	86	87
 1935	World Cup	Victor Tvedt	SKJ	MID	86	87
 1935	World Cup	Olander Strandberg	SKJ	DEF	84	83
@@ -2732,7 +2732,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Elvesterian Premier League	Corwin Thistlewood	GAE	MID	75	76	Rebalance
 1935	Elvesterian Premier League	Jake Croft	GAE	MID	75	76	Rebalance
 1935	Elvesterian Premier League	Ellis West	GAL	FWD	81	83	Rebalance
-1935	Elvesterian Premier League	Myroslav Zalizniak	GAL	MID	81	84	Rebalance
+1935	Elvesterian Premier League	Martin Widera	GAL	MID	81	84	Rebalance
 1935	Elvesterian Premier League	Peter Baláž	GAL	DEF	81	84	Rebalance
 1935	Elvesterian Premier League	Ayato Hachikawa	GAL	FWD	79	78	Rebalance
 1935	Elvesterian Premier League	Rory Kincardine	GAL	DEF	79	80	Rebalance
@@ -2763,7 +2763,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Elvesterian Premier League	Inácio Madureira	MNU	DEF	75	77	Rebalance
 1935	Elvesterian Premier League	Finn Ashcroft	MNU	MID	74	75	Rebalance
 1935	Elvesterian Premier League	Owen Bramley	MNU	MID	73	71	Rebalance
-1935	Elvesterian Premier League	Yurii Zahrebelny	MNU	MID	73	72	Rebalance
+1935	Elvesterian Premier League	Jonek Zgajewski	MNU	MID	73	72	Rebalance
 1935	Elvesterian Premier League	Arcadio Villa	MYH	MID	79	80	Rebalance
 1935	Elvesterian Premier League	Marcus Wright	MYH	MID	78	79	Rebalance
 1935	Elvesterian Premier League	Íñigo Basterretxea	MYH	DEF	78	79	Rebalance
@@ -2790,7 +2790,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Elvesterian Premier League	Tanjin Tsukahara	SCR	DEF	78	80	Rebalance
 1935	Elvesterian Premier League	Jackson Miller	SCR	GK	78	79	Rebalance
 1935	Elvesterian Premier League	Wendelin Gratz	SCR	MID	77	78	Rebalance
-1935	Elvesterian Premier League	Borys Skovoroda	SCR	MID	76	77	Rebalance
+1935	Elvesterian Premier League	Benno Strzoda	SCR	MID	76	77	Rebalance
 1935	Elvesterian Premier League	Osbert Crowe	SCR	DEF	76	75	Rebalance
 1935	Elvesterian Premier League	Oisín Doolan	SCR	FWD	75	76	Rebalance
 1935	Elvesterian Premier League	Horace Peshlakai	SHE	FWD	87	86	Rebalance
@@ -2979,7 +2979,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Karjanian Premier League	Rauli Jokinen	KUI	DEF	75	77	Rebalance
 1935	Karjanian Premier League	Damian Jalkanen	KUI	GK	75	74	Rebalance
 1935	Karjanian Premier League	Ferencz Vágó	KUI	MID	73	74	Rebalance
-1935	Karjanian Premier League	Kanta Zielenski	KUI	DEF	72	73	Rebalance
+1935	Karjanian Premier League	Kunz Adamiec	KUI	DEF	72	73	Rebalance
 1935	Karjanian Premier League	Markku Jäämaalainen	KUI	FWD	67	66	Rebalance
 1935	Karjanian Premier League	Yrjö Pietarinen	MPA	FWD	77	74	Rebalance
 1935	Karjanian Premier League	Nicolai Taicescu	MPA	FWD	77	76	Rebalance
@@ -2999,7 +2999,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Karjanian Premier League	Péter Alföldi	MRJ	FWD	74	75	Rebalance
 1935	Karjanian Premier League	Johann Berglund	MRJ	MID	74	73	Rebalance
 1935	Karjanian Premier League	Olli Aaskruus	MRJ	DEF	74	75	Rebalance
-1935	Karjanian Premier League	Ivan Kenderic	MRJ	DEF	74	71	Rebalance
+1935	Karjanian Premier League	Ignac Korfanty	MRJ	DEF	74	71	Rebalance
 1935	Karjanian Premier League	Ohto Voutilainen	MRJ	DEF	72	70	Rebalance
 1935	Karjanian Premier League	Iilmeri Vähäsarja	MRJ	GK	71	72	Rebalance
 1935	Karjanian Premier League	Aonuma Jingūji	NOW	DEF	81	78	Rebalance
@@ -3011,7 +3011,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Karjanian Premier League	Petri Kumpulainen	NOW	GK	75	73	Rebalance
 1935	Karjanian Premier League	Aalto Huttunen	NOW	DEF	75	72	Rebalance
 1935	Karjanian Premier League	Mona Zhuravlyov	NOW	GK	74	75	Rebalance
-1935	Karjanian Premier League	Zhalek Cheremesinoff	NOW	MID	73	71	Rebalance
+1935	Karjanian Premier League	Witek Czaja	NOW	MID	73	71	Rebalance
 1935	Karjanian Premier League	Andero Randmaa	NOW	DEF	73	72	Rebalance
 1935	Karjanian Premier League	Paates Kajatamäki	NOW	DEF	73	70	Rebalance
 1935	Karjanian Premier League	Kolomir Onappovic	NOW	MID	72	71	Rebalance
@@ -3489,7 +3489,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	nl1	Bastien Shengelia	DYM	FWD	74	73	Rebalance
 1935	nl1	Mirko Begović	MAK	DEF	72	74	Rebalance
 1935	nl1	Eisuke Sato	NAG	GK	85	82	Rebalance
-1935	nl1	Sviatoslav Boyko	NAG	MID	84	85	Rebalance
+1935	nl1	Stacho Buchta	NAG	MID	84	85	Rebalance
 1935	nl1	József Antall	NAG	FWD	83	82	Rebalance
 1935	nl1	Sheng Huang	NAG	MID	81	82	Rebalance
 1935	nl1	Valente Pantuso	NAG	DEF	79	80	Rebalance
@@ -3763,7 +3763,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	nl2	Yūsuke Nobata	SEN	MID	74	75	Rebalance
 1935	nl2	Ákos Tolvaj	SEN	FWD	73	75	Rebalance
 1935	nl2	Matej Holešovský	SEN	DEF	73	72	Rebalance
-1935	nl2	Taras Bondarenko	SEN	MID	72	71	Rebalance
+1935	nl2	Toma Piecha	SEN	MID	72	71	Rebalance
 1935	nl2	Levi Nez	SUM	FWD	78	79	Rebalance
 1935	nl2	Yëría Kaché	SUM	MID	77	80	Rebalance
 1935	nl2	Gakuto Minamikawa	SUM	MID	77	80	Rebalance
@@ -4068,7 +4068,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Cup	Devante Rowley	CSR	MID	77	78
 1935	Club World Cup	Segev Even-Khen	MGN	MID	76	77
 1935	Club World Cup	Namsarai Ayusheev	CSR	MID	76	77
-1935	Club World Cup	Ihor Kovalenko	CSR	DEF	75	76
+1935	Club World Cup	Ignac Jonderko	CSR	DEF	75	76
 1935	Club World Cup	Tole-Buqa Inalchi	SKH	MID	75	76
 1935	Club World Cup	Nimród Szegvári	SZT	FWD	74	75
 1935	Club World Cup	Jari Tähtinen	KVC	FWD	74	75
@@ -4141,8 +4141,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Cup	Gáspár Slattics	KDH	MID	74	73
 1935	Club World Cup	Farhad Adelstein	AZA	FWD	74	73
 1935	Club World Cup	Dénes Pákozdy	KDH	DEF	72	71
-1935	Club World Cup	Mykola Holoborodko	CSR	MID	72	71
-1935	Club World Cup	Ivan Kenderic	MRJ	DEF	71	70
+1935	Club World Cup	Maniek Hanke	CSR	MID	72	71
+1935	Club World Cup	Ignac Korfanty	MRJ	DEF	71	70
 1935	Club World Cup	Odysseas Katsaros	KVC	MID	71	70
 1935	Club World Cup	Set Törngren	MLM	MID	70	69
 1935	Club World Cup	Jahangir Mozafari	AZA	FWD	70	69
@@ -4200,7 +4200,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Shield	Jaron Horn	STU	DEF	74	75
 1935	Club World Shield	Osip Yudin	UKA	FWD	74	75
 1935	Club World Shield	Xiang Qian	SVP	DEF	73	74
-1935	Club World Shield	Pavlo Dovzhenko	CSG	MID	73	74
+1935	Club World Shield	Pater Dyrda	CSG	MID	73	74
 1935	Club World Shield	Ilmar Saar	RIE	FWD	72	73
 1935	Club World Shield	Mohsen Tabrizi	PAS	DEF	70	71
 1935	Club World Shield	Feng Ji	BNG	DEF	70	71
@@ -4307,13 +4307,13 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Prasert Bùi	GAI	GK	75	76
 1935	Nations League	Chenguang Pei	GUA	MID	76	77
 1935	Nations League	Hiraya Halili	SGD	MID	76	77
-1935	Nations League	Ihor Kovalenko	SYL	DEF	76	77
+1935	Nations League	Ignac Jonderko	SYL	DEF	76	77
 1935	Nations League	Alilang Calamba	SGD	DEF	75	76
 1935	Nations League	Osman Mamut	PER	DEF	76	77
 1935	Nations League	Wadwulf Ealhhere	EIV	MID	75	76
 1935	Nations League	Gilad Dahan	SHI	FWD	75	76
 1935	Nations League	Leonidas Stamatiou	AST	DEF	74	75
-1935	Nations League	Vasyl Nalyvaiko	SYL	DEF	73	74
+1935	Nations League	Maniek Goj	SYL	DEF	73	74
 1935	Nations League	Viktor Zhdanovich	GIA	DEF	73	74
 1935	Nations League	Susumu Goswami	NSH	DEF	72	73
 1935	Nations League	Bo Yan	GUA	MID	71	72
