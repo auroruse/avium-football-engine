@@ -56,6 +56,7 @@ export const MANAGER_HISTORY = [
         "western/1935": "Independent XI" } },
     spells: [["m0088", "1932"]] },                                                                    // Fazekas
   // Clubs.
+  { former: { key: "CSB", code: "CSB", name: "CSKA Bramytolne" }, spells: [["m0163", "1932"]] },            // Skoryk; club removed 8 November 2026
   { side: "t0142", name: "Winscor Chaplains", spells: [["m0086", "1932"], ["m0117", SEP_1934]] },        // Khan; Rogan
   { side: "t0203", name: "Spartak Kanagawa", spells: [["m0061", "1932"], ["m0168", EARLY_1935]] },       // Tatara; Vogelsang
   { side: "t0205", name: "Dynamo Mizuhara", spells: [["m0194", "1932"], ["m0170", EARLY_1935]] },        // Zarubin; Onogi

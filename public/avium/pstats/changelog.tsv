@@ -1842,9 +1842,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	Club World Shield	Nathanael Custer	LA	DEF	77	75
 1934	Club World Shield	Ali Macalipay	LA	DEF	76	75
 1934	Club World Shield	Anselmo Carranza	LA	DEF	83	82
-1934	Club World Shield	Karel Černý	CSG	FWD	80	81
-1934	Club World Shield	Timur Iskanderov	CSG	MID	74	75
-1934	Club World Shield	Oswald Hanke	CSG	DEF	72	71
+1934	Club World Shield	Karel Černý	CSB	FWD	80	81
+1934	Club World Shield	Timur Iskanderov	CSB	MID	74	75
+1934	Club World Shield	Oswald Hanke	CSB	DEF	72	71
 1934	Club World Shield	Thor Andresen	SPA	FWD	83	85
 1934	Club World Shield	Ane Ludvigsen	SPA	DEF	79	80
 1934	Club World Shield	Ime Paulsen	SPA	MID	81	82
@@ -1915,7 +1915,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	Club World Shield	István Barta	SZT	DEF	67	68
 1934	Club World Shield	Márk Vígh	SZT	MID	68	69
 1934	Club World Shield	Erik Sundqvist	VAT	MID	81	82
-1934	Club World Shield	Ural Yusupov	CSG	MID	73	72
+1934	Club World Shield	Ural Yusupov	CSB	MID	73	72
 1934	Club World Shield	Miltiadis Galanis	VIR	FWD	89	88
 1934	Club World Shield	Frans Cuijpers	E02	FWD	79	80
 1934	Club World Shield	Chenglei Zhou	BNG	DEF	64	65
@@ -4189,7 +4189,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Shield	Cédric Serre	MYH	MID	78	79
 1935	Club World Shield	Ezequiel Mulholland	RSR	MID	78	79
 1935	Club World Shield	Cesare Bottinelli	KAN	MID	78	79
-1935	Club World Shield	Emmett Prendergast	CSG	MID	78	79
+1935	Club World Shield	Emmett Prendergast	CSB	MID	78	79
 1935	Club World Shield	Mathis Weiler	LUZ	GK	77	78
 1935	Club World Shield	Anton Westerberg	HAV	DEF	77	78
 1935	Club World Shield	Damien Scholtes	LUZ	MID	77	78
@@ -4200,7 +4200,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Shield	Jaron Horn	STU	DEF	74	75
 1935	Club World Shield	Osip Yudin	UKA	FWD	74	75
 1935	Club World Shield	Xiang Qian	SVP	DEF	73	74
-1935	Club World Shield	Pater Dyrda	CSG	MID	73	74
+1935	Club World Shield	Pater Dyrda	CSB	MID	73	74
 1935	Club World Shield	Ilmar Saar	RIE	FWD	72	73
 1935	Club World Shield	Mohsen Tabrizi	PAS	DEF	70	71
 1935	Club World Shield	Feng Ji	BNG	DEF	70	71
@@ -4256,7 +4256,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Club World Shield	Bo Yan	BNG	MID	72	71
 1935	Club World Shield	Lars Jørgensen	SDM	MID	72	71
 1935	Club World Shield	Jakub Modelski	SDM	MID	72	71
-1935	Club World Shield	Přemysl Kratochvíl	CSG	DEF	71	70
+1935	Club World Shield	Přemysl Kratochvíl	CSB	DEF	71	70
 1935	Club World Shield	Zhihao Tang	BNG	DEF	71	70
 1935	Club World Shield	Ran Uzan	HET	MID	71	70
 1935	Club World Shield	Amichai Shtern	HET	DEF	70	69

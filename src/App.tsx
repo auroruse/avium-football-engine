@@ -2753,7 +2753,7 @@ const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 // stands in for a side retconned out of the world (East Kaukasos, Polabiny and Albinya on 9 October 2026, Morozia on the
 // 10th); their results stand. It is not a standing team, so it is numbered only within a tournament that had more than
 // one (IX1, IX2...), and is plain IX, Independent XI, everywhere else (Moukden and Kirin, 10 October 2026).
-const FORMER_TEAMS = { CAL: "Calveria", SLY: "Slytlia", IX: "Independent XI", IX1: "Independent XI 1", IX2: "Independent XI 2",
+const FORMER_TEAMS = { CAL: "Calveria", SLY: "Slytlia", CSB: "CSKA Bramytolne", IX: "Independent XI", IX1: "Independent XI 1", IX2: "Independent XI 2",
   IX3: "Independent XI 3", IX4: "Independent XI 4" };
 const formerName = (code) => FORMER_TEAMS[code] || code;
 // A former side's badge outlives its preset row, so a report naming one still gets its crest.
