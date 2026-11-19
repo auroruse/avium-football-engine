@@ -1,36 +1,68 @@
 PRESET	TEAM	GROUP	FORMAT
-1934 World Cup	E.S.U.	A
-1934 World Cup	Polabiny	A
-1934 World Cup	Guandong	A
-1934 World Cup	Neuhollmar	A
-1934 World Cup	Rudania	B
-1934 World Cup	Seignid	B
-1934 World Cup	Barbary	B
-1934 World Cup	South Pelagonia	B
-1934 World Cup	Karjania	C
-1934 World Cup	Vicily	C
-1934 World Cup	Aphirica del Nord	C
-1934 World Cup	Varahmehr	C
-1934 World Cup	Alemannia	D
-1934 World Cup	Nichirin	D
-1934 World Cup	Iriria	D
-1934 World Cup	Divia	D
-1934 World Cup	Elvester	E
-1934 World Cup	Furan	E
-1934 World Cup	Salishia	E
-1934 World Cup	Kemet	E
-1934 World Cup	Skjarnland	F
-1934 World Cup	East Astriya	F
-1934 World Cup	Ponurvia	F
-1934 World Cup	Uj-Pannonia	F
-1934 World Cup	Turulia	G
-1934 World Cup	Great Ai	G
-1934 World Cup	Hollosend	G
-1934 World Cup	Shashanka	G
-1934 World Cup	Askurias	H
-1934 World Cup	Giathka	H
-1934 World Cup	Auritania	H
-1934 World Cup	Noradia	H
+1934 World Cup	E.S.U.	A	oldWC
+1934 World Cup	Polabiny	A	oldWC
+1934 World Cup	Guandong	A	oldWC
+1934 World Cup	Neuhollmar	A	oldWC
+1934 World Cup	Rudania	B	oldWC
+1934 World Cup	Seignid	B	oldWC
+1934 World Cup	Barbary	B	oldWC
+1934 World Cup	South Pelagonia	B	oldWC
+1934 World Cup	Karjania	C	oldWC
+1934 World Cup	Vicily	C	oldWC
+1934 World Cup	Aphirica del Nord	C	oldWC
+1934 World Cup	Varahmehr	C	oldWC
+1934 World Cup	Alemannia	D	oldWC
+1934 World Cup	Nichirin	D	oldWC
+1934 World Cup	Iriria	D	oldWC
+1934 World Cup	Divia	D	oldWC
+1934 World Cup	Elvester	E	oldWC
+1934 World Cup	Furan	E	oldWC
+1934 World Cup	Salishia	E	oldWC
+1934 World Cup	Kemet	E	oldWC
+1934 World Cup	Skjarnland	F	oldWC
+1934 World Cup	East Astriya	F	oldWC
+1934 World Cup	Ponurvia	F	oldWC
+1934 World Cup	Uj-Pannonia	F	oldWC
+1934 World Cup	Turulia	G	oldWC
+1934 World Cup	Great Ai	G	oldWC
+1934 World Cup	Hollosend	G	oldWC
+1934 World Cup	Shashanka	G	oldWC
+1934 World Cup	Askurias	H	oldWC
+1934 World Cup	Giathka	H	oldWC
+1934 World Cup	Auritania	H	oldWC
+1934 World Cup	Noradia	H	oldWC
+1934 Club World Shield	Toteham Lilywhite	H	oldUCL
+1934 Club World Shield	Shefford United	G	oldUCL
+1934 Club World Shield	Tyneside United	C	oldUCL
+1934 Club World Shield	Ayanami Sei-Hachiman	C	oldUCL
+1934 Club World Shield	Viridia Shikisen	B	oldUCL
+1934 Club World Shield	Kyōwa Naginomiya	A	oldUCL
+1934 Club World Shield	Sparta Amberdam	A	oldUCL
+1934 Club World Shield	HFC Zürmark	D	oldUCL
+1934 Club World Shield	FC Eisenfeld 02	F	oldUCL
+1934 Club World Shield	Åulot FK	G	oldUCL
+1934 Club World Shield	XIV. District JK	D	oldUCL
+1934 Club World Shield	Red Star Roudanjärvi	E	oldUCL
+1934 Club World Shield	Luzilbourg City	D	oldUCL
+1934 Club World Shield	Stade Bordigal	B	oldUCL
+1934 Club World Shield	Vätterna FF	E	oldUCL
+1934 Club World Shield	IS Gurtheden	F	oldUCL
+1934 Club World Shield	Szatmár SK	C	oldUCL
+1934 Club World Shield	Dobrezliemi Turulok	F	oldUCL
+1934 Club World Shield	Hapoel Eshkarot	A	oldUCL
+1934 Club World Shield	Hasmonea Eretz	B	oldUCL
+1934 Club World Shield	Esteghlāl Sabzavar	B	oldUCL
+1934 Club World Shield	Al-Shu'la Golzar	H	oldUCL
+1934 Club World Shield	Club Aviación	H	oldUCL
+1934 Club World Shield	Legio Augusta	H	oldUCL
+1934 Club World Shield	Astragalatiákos FC	A	oldUCL
+1934 Club World Shield	Yeniçeri Azmaşir	G	oldUCL
+1934 Club World Shield	CSKA Bramytolne	F	oldUCL
+1934 Club World Shield	Krylia Rudanii Kuybyshev	C	oldUCL
+1934 Club World Shield	FK Eichenhain	E	oldUCL
+1934 Club World Shield	Beining Zhonghang	D	oldUCL
+1934 Club World Shield	Club des Marins	G	oldUCL
+1934 Club World Shield	Atletico Olisibona	E	oldUCL
 1935 World Cup	Nichirin	A	wc1935
 1935 World Cup	Skjarnland	A	wc1935
 1935 World Cup	Neuhollmar	A	wc1935
@@ -63,38 +95,6 @@ PRESET	TEAM	GROUP	FORMAT
 1935 World Cup	Furan	H	wc1935
 1935 World Cup	Shivon	H	wc1935
 1935 World Cup	Barbary	H	wc1935
-1934 Club World Shield	Toteham Lilywhite		oldUCL
-1934 Club World Shield	Shefford United		oldUCL
-1934 Club World Shield	Tyneside United		oldUCL
-1934 Club World Shield	Ayanami Sei-Hachiman		oldUCL
-1934 Club World Shield	Viridia Shikisen		oldUCL
-1934 Club World Shield	Kyōwa Naginomiya		oldUCL
-1934 Club World Shield	Sparta Amberdam		oldUCL
-1934 Club World Shield	HFC Zürmark		oldUCL
-1934 Club World Shield	FC Eisenfeld 02		oldUCL
-1934 Club World Shield	Åulot FK		oldUCL
-1934 Club World Shield	XIV. District JK		oldUCL
-1934 Club World Shield	Red Star Roudanjärvi		oldUCL
-1934 Club World Shield	Luzilbourg City		oldUCL
-1934 Club World Shield	Stade Bordigal		oldUCL
-1934 Club World Shield	Vätterna FF		oldUCL
-1934 Club World Shield	IS Gurtheden		oldUCL
-1934 Club World Shield	Szatmár SK		oldUCL
-1934 Club World Shield	Dobrezliemi Turulok		oldUCL
-1934 Club World Shield	Hapoel Eshkarot		oldUCL
-1934 Club World Shield	Hasmonea Eretz		oldUCL
-1934 Club World Shield	Esteghlāl Sabzavar		oldUCL
-1934 Club World Shield	Al-Shu'la Golzar		oldUCL
-1934 Club World Shield	Club Aviación		oldUCL
-1934 Club World Shield	Legio Augusta		oldUCL
-1934 Club World Shield	Astragalatiákos FC		oldUCL
-1934 Club World Shield	Yeniçeri Azmaşir		oldUCL
-1934 Club World Shield	CSKA Bramytolne		oldUCL
-1934 Club World Shield	Krylia Rudanii Kuybyshev		oldUCL
-1934 Club World Shield	FK Eichenhain		oldUCL
-1934 Club World Shield	Beining Zhonghang		oldUCL
-1934 Club World Shield	Club des Marins		oldUCL
-1934 Club World Shield	Atletico Olisibona		oldUCL
 1935 Club World Cup	CSKA Radagorsk	A	cwc1935
 1935 Club World Cup	IK Malmhug	A	cwc1935
 1935 Club World Cup	Sepāh Kuhestan	A	cwc1935
@@ -159,6 +159,65 @@ PRESET	TEAM	GROUP	FORMAT
 1935 Club World Shield	FK Riege	H	cws1935
 1935 Club World Shield	Pas Nourabad	H	cws1935
 1935 Club World Shield	Hasmonea Eretz	H	cws1935
+1935 Nations League	Côte de Saumon		nl1935
+1935 Nations League	Cahaya		nl1935
+1935 Nations League	Eivorie		nl1935
+1935 Nations League	Uj-Pannonia		nl1935
+1935 Nations League	Auritania		nl1935
+1935 Nations League	Kienam		nl1935
+1935 Nations League	Sylezyjo		nl1935
+1935 Nations League	Divia		nl1935
+1935 Nations League	Shivon		nl1935
+1935 Nations League	East Astriya		nl1935
+1935 Nations League	Turulia		nl1935
+1935 Nations League	Shashanka		nl1935
+1935 Nations League	Arverne		nl1935
+1935 Nations League	Kinshū		nl1935
+1935 Nations League	Selmira		nl1935
+1935 Nations League	Sankt Gerold Island		nl1935
+1935 Nations League	Andam Islands		nl1935
+1935 Nations League	Dar Hadid		nl1935
+1935 Nations League	Skjarnland		nl1935
+1935 Nations League	Iriria		nl1935
+1935 Nations League	Furan		nl1935
+1935 Nations League	Neuhollmar		nl1935
+1935 Nations League	New Celyddon		nl1935
+1935 Nations League	Great Ai		nl1935
+1935 Nations League	Rudania		nl1935
+1935 Nations League	Southeast Aphirica		nl1935
+1935 Nations League	Guandong		nl1935
+1935 Nations League	Kemet		nl1935
+1935 Nations League	West Bangala		nl1935
+1935 Nations League	Hollosend		nl1935
+1935 Nations League	Askurias		nl1935
+1935 Nations League	Kullanmaan		nl1935
+1935 Nations League	Gonenite Islands		nl1935
+1935 Nations League	Livonia		nl1935
+1935 Nations League	Karjania		nl1935
+1935 Nations League	Barbary		nl1935
+1935 Nations League	Arunya		nl1935
+1935 Nations League	Ponurvia		nl1935
+1935 Nations League	Tierra Arcadia		nl1935
+1935 Nations League	Aphirica del Nord		nl1935
+1935 Nations League	Varahmehr		nl1935
+1935 Nations League	Salishia		nl1935
+1935 Nations League	Frederikka Islands		nl1935
+1935 Nations League	Napolyon Bonparterre Islands		nl1935
+1935 Nations League	Elvester		nl1935
+1935 Nations League	South Pelagonia		nl1935
+1935 Nations League	Dämmerung Islands		nl1935
+1935 Nations League	Noradia		nl1935
+1935 Nations League	Seignid		nl1935
+1935 Nations League	Kogelland		nl1935
+1935 Nations League	Perovska		nl1935
+1935 Nations League	El Magreb		nl1935
+1935 Nations League	Axerfreditenshin		nl1935
+1935 Nations League	Giathka		nl1935
+1935 Nations League	Nichirin		nl1935
+1935 Nations League	Vicily		nl1935
+1935 Nations League	E.S.U.		nl1935
+1935 Nations League	Alemannia		nl1935
+1935 Nations League	Cortesia		nl1935
 1936 Eastern Qualifiers	Alemannia		wcq1936e
 1936 Eastern Qualifiers	Nichirin		wcq1936e
 1936 Eastern Qualifiers	Karjania		wcq1936e
