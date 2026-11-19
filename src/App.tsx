@@ -11360,7 +11360,9 @@ export default function App() {
   }, [lgSeasonObj, lgMd]);
   // THE TEAMS PAGE (user, 11 October 2026): clubs or national sides, the search, filters and sort, the side in the card and
   // how far the list is scrolled. Declared before the address, which carries the view.
-  const [uxTmView, setUxTmView] = useState("clubs");
+  // Arterra is national sides so far, so its Teams list opens on them (Moukden and Kirin, 19 November 2026); Avium's on clubs.
+  const TM_VIEW0 = ARTERRA ? "nt" : "clubs";
+  const [uxTmView, setUxTmView] = useState(TM_VIEW0);
   const [uxTmQ, setUxTmQ] = useState("");
   const [uxTmNat, setUxTmNat] = useState("");
   const [uxTmLg, setUxTmLg] = useState("");
@@ -11383,7 +11385,7 @@ export default function App() {
                 if (reg.tab === "history" || reg.tab === "honours") segs.push("history"); }
       else if (reg.nation) segs.push("nations", reg.nation.toLowerCase());
     }
-    if (tab === "leagues" && reg.sec === "teams") { segs.push("teams"); if (uxTmView === "nt") segs.push("national-teams"); }
+    if (tab === "leagues" && reg.sec === "teams") { segs.push("teams"); if (uxTmView !== TM_VIEW0) segs.push(uxTmView === "nt" ? "national-teams" : "clubs"); }
     if (tab === "leagues" && reg.sec === "trades") { segs.push("trades"); if (reg.trSeason) segs.push(String(reg.trSeason)); }
     if (tab === "leagues" && reg.sec === "stadiums") segs.push("stadiums");
     if (tab === "leagues" && reg.sec === "managers") {
@@ -11511,7 +11513,7 @@ export default function App() {
       return;
     }
     if (s1 === "clubs" || s1 === "national-teams") { const tm = byCode(s1 === "national-teams", s2); if (tm) teamPage(tm, s3); else setReg(REG_HOME); return; }
-    if (s1 === "teams") { setReg({ ...REG_HOME, sec: "teams" }); setUxTmView(s2.toLowerCase() === "national-teams" ? "nt" : "clubs"); return; }
+    if (s1 === "teams") { setReg({ ...REG_HOME, sec: "teams" }); setUxTmView(s2.toLowerCase() === "national-teams" ? "nt" : s2.toLowerCase() === "clubs" ? "clubs" : TM_VIEW0); return; }
     if (s1 === "trades") { setReg({ ...REG_HOME, sec: "trades", trSeason: /^\d{4}$/.test(s2) ? +s2 : null }); return; }
     if (s1 === "stadiums") { setReg({ ...REG_HOME, sec: "stadiums" }); return; }
     if (s1 === "players") {
