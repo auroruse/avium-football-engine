@@ -18366,7 +18366,9 @@ export default function App() {
       const legs = l1 >= 0 && l2 >= 0 && r[l1] ? [String(r[l1]).match(/(\d+)\s*-\s*(\d+)/), String(r[l2]).match(/(\d+)\s*-\s*(\d+)/)] : null;
       return (
         <div key={k} className="ux-tie">{[0, 1].map(j => (
-          <div key={j} className={"ux-tie-s" + (won[j] ? " ux-won" : "")}>{uxArcCrest(nm[j])}<span className="ux-fx">{nm[j] || "–"}</span>
+          <div key={j} className={"ux-tie-s" + (won[j] ? " ux-won" : "")}>{uxArcCrest(nm[j])}<span className="ux-fx">{uxArcT(nm[j])
+            ? <button type="button" className="ux-btnreset ux-a" onClick={(e) => { e.stopPropagation(); openTeam(uxArcT(nm[j])); }}>{nm[j]}</button>
+            : nm[j] || "–"}</span>
             {legs && <small style={mono}>{legs.map(m => (m ? m[j + 1] : "–")).join(" ")}</small>}
             <b style={mono}>{g ? g[j + 1] : "–"}{pens && <small> ({pens[j + 1]})</small>}</b></div>))}</div>);
     };
