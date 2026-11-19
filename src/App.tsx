@@ -11509,6 +11509,7 @@ export default function App() {
       if (a === "head-to-head") { const k = (cs[1] || "").toLowerCase() === "national-teams" ? "nt" : "clubs";
         go({ page: "h2h", h2h: cs[2] && cs[3] ? { kind: k, a: cs[2].toUpperCase(), b: cs[3].toUpperCase() } : { kind: k } }); return; }
       if (a === "years") { const y = parseInt(cs[1], 10); go({ page: "years", year: Number.isFinite(y) ? y : null }); return; }
+      if (a === "afa-rankings" && ARTERRA) { go({}); return; }
       if (a === "afa-rankings") { const y = parseInt(cs[1], 10); go({ page: "afa", afaYear: Number.isFinite(y) ? y : null }); return; }
       const comp0 = UX_COMP_NAMES.find(c => compSlug(c) === urlSlug(cs[0])) || null;
       if (!comp0) { go({}); return; }
@@ -15812,7 +15813,8 @@ export default function App() {
       } else {
         const cur = reg.page === "h2h" ? "h2h" : reg.page === "afa" ? "afa" : reg.page === "years" || reg.year ? "years" : "overview";
         title = <h1>Competitions</h1>;
-        [["overview", "Overview"], ["years", "Years"], ["h2h", "Head To Head"], ["afa", "AFA Rankings"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id,
+        // The AFA Rankings are Avium's.
+        [["overview", "Overview"], ["years", "Years"], ["h2h", "Head To Head"], ...(ARTERRA ? [] : [["afa", "AFA Rankings"]])].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id,
           () => (id === "years" ? uxGoYear(null) : id === "afa" ? uxGoAfa(reg.afaYear || null)
             : regGo({ sec: "competitions", page: id === "h2h" ? "h2h" : null, h2h: id === "h2h" ? reg.h2h || null : null })))));
         if (cur === "years" && uxArcYears.length) {
