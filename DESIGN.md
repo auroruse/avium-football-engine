@@ -236,7 +236,8 @@ name over the season and its rises and falls, each an arrow up or down before th
 rating, the change), searchable, filtered by side and by rises or falls, sortable by any column, biggest rise first.
 There is no view of every batch at once (the user, 9 October 2026). **Sides**: each side's rises and falls (the arrows again) and net in the batch, highest net first; picking one
 filters Changes to it, picking it again clears it. A player's name opens his page, a side's name its own. The archive
-is each universe's own (`public/<universe>/pstats`); Arterra's is empty so far.
+is each universe's own (`public/<universe>/pstats`), and so is its calendar: Arterra's is the Arterra Cup alone
+(`ac/`, 2040 and 2042, from the organiser's scorination posts on the Lightbound board), Avium's the World Cup and the rest.
 
 **Competitions** (Moukden and Kirin, 9 October 2026) is the archive: every competition on file, every season of each and
 who won it. A competition's clubs today are its nation's page and its players are on Players, so a competition has no

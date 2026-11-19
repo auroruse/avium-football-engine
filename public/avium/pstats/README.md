@@ -106,6 +106,12 @@ The Winner column on a season's banner resolves in order: the top row of `## Fin
 `**Winner:**`/`**Champions:**` line; the bolded side of the report's last `Final`/`Grand Final`
 fixture. Every season currently filed resolves one.
 
+**Medals stated over the result.** When the organiser changed the honours after the event, the preamble says so
+in up to three lines: `**Winner: X**`, `**Runner-Up: X**`, `**Third: X**`. The matches stay as played; the Roll of
+Honour, the titles and each side's stage read the stated medals. Arterra's 2040 Cup (`public/arterra/pstats/ac/2040.md`)
+is the one case: Bassyria won the final, its player was banned out of character, and the medals went to Bjornifjordaland,
+Etarria and Choppyhausen.
+
 **The exporter writes this format directly.** `buildSeasonMd` in `src/App.tsx` decides the shape
 and `test/export.mjs` checks its output against the reader, so an exported season is dropped in as
 it comes — no retitling, no trailing champion line, no rewriting `(6-5p)` into `6-5 pens`. A season

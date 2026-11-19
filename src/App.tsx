@@ -2411,7 +2411,9 @@ function TeamCrest({ team, size = 22, style }) {
   const dim = num ? null : { width: size, height: `calc(${size} * 1.1)` };
   const wh = num ? { width: size, height: size * 1.1 } : {};
   if (code && !imgFailed) {
-    return <img src={`${import.meta.env.BASE_URL}${worldOf(team)}/badges/${code}.png`} alt="" {...wh} style={{ objectFit: "contain", flexShrink: 0, ...dim, ...style }} onError={() => setImgFailed(true)} />;
+    // A bare { code } (a former side named in a report) is this universe's own.
+    const w = team?.world || team?.league ? worldOf(team) : WORLD;
+    return <img src={`${import.meta.env.BASE_URL}${w}/badges/${code}.png`} alt="" {...wh} style={{ objectFit: "contain", flexShrink: 0, ...dim, ...style }} onError={() => setImgFailed(true)} />;
   }
   const home = team?.primaryColor || "var(--chrome-muted)";
   const away = team?.secondaryColor || team?.primaryColor || "var(--chrome-border)";
@@ -2776,7 +2778,9 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       // to the tournament it qualifies FOR. The folder names are the conference in
                       // lower case; the competition names match INTL_COMPS, which builds them off
                       // CONFERENCE_NAMES with " Conference" stripped.
-                      western: "Western WC Qualifiers", eastern: "Eastern WC Qualifiers" };
+                      western: "Western WC Qualifiers", eastern: "Eastern WC Qualifiers",
+                      // Arterra's own, filed under public/arterra/pstats.
+                      ac: "Arterra Cup" };
 // A league renamed since its folder was named answers to its name now.
 for (const k of Object.keys(PSTATS_COMP)) PSTATS_COMP[k] = LG.now.get(PSTATS_COMP[k]) || PSTATS_COMP[k];
 // A season folder names two-digit years and the archive reaches back over a century boundary:
@@ -2801,7 +2805,10 @@ const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 // stands in for a side retconned out of the world (East Kaukasos, Polabiny and Albinya on 9 October 2026, Morozia on the
 // 10th); their results stand. It is not a standing team, so it is numbered only within a tournament that had more than
 // one (IX1, IX2...), and is plain IX, Independent XI, everywhere else (Moukden and Kirin, 10 October 2026).
-const FORMER_TEAMS = { CAL: "Calveria", SLY: "Slytlia", CSB: "CSKA Bramytolne", IX: "Independent XI", IX1: "Independent XI 1", IX2: "Independent XI 2",
+// Arterra's are the Arterra Cup's entrants with no side in the engine; a code without a badge file gets the plain shield.
+const FORMER_TEAMS = ARTERRA ? { ASU: "Astrosun", AZR: "Azropa", BAS: "Bassyria", BJO: "Bjornifjordaland", CAR: "Carolinaca",
+  CHO: "Choppyhausen", CRO: "Croblade", FER: "Ferganistan", HOD: "Hodregal", NES: "NE Sigmabiber", NSB: "New Sigmabiber" }
+  : { CAL: "Calveria", SLY: "Slytlia", CSB: "CSKA Bramytolne", IX: "Independent XI", IX1: "Independent XI 1", IX2: "Independent XI 2",
   IX3: "Independent XI 3", IX4: "Independent XI 4" };
 const formerName = (code) => FORMER_TEAMS[code] || code;
 // A former side's badge outlives its preset row, so a report naming one still gets its crest.
@@ -3138,7 +3145,9 @@ const LB_OF_SLUG = Object.fromEntries(Object.entries(LB_SLUG).map(([k, v]) => [v
 // it rather than as a competition of its own. All three Karjanian divisions enter the Karjanian Cup,
 // the way both Nichirian ones enter the Shogun Cup.
 const LEAGUE_CUPS = Object.fromEntries(LG.cup);                // off each league's record (src/data/leagues.json)
-const INTL_COMPS = [
+// Each universe has its own calendar. Arterra's is the Arterra Cup alone, every nation's field.
+const WORLD_CUP = ARTERRA ? "Arterra Cup" : "World Cup";
+const INTL_COMPS = ARTERRA ? [{ name: "Arterra Cup", scope: "intl" }] : [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
   { name: "Club World Cup", scope: "clubs" },
@@ -3152,7 +3161,7 @@ const INTL_COMPS = [
 // two Avium conferences instead -- so CONFERENCE_NAMES no longer produces them and their thirteen
 // seasons apiece would drop off the rail entirely. They keep their own section under Miscellaneous:
 // no field, no roster, nothing but the record of what was played.
-const ARCHIVED_COMPS = ["CONSEAF Championship", "EUFA Championship", "PFA Championship", "VAFC Championship"];
+const ARCHIVED_COMPS = ARTERRA ? [] : ["CONSEAF Championship", "EUFA Championship", "PFA Championship", "VAFC Championship"];
 const COMP_SCOPE = Object.fromEntries([...INTL_COMPS.map(c => [c.name, c.scope]),
                                        ...ARCHIVED_COMPS.map(n => [n, "archive"])]);
 const railLeague = (t) =>
@@ -3278,9 +3287,9 @@ const UX_SEATS = [["", "All Seats"], ["club", "Clubs"], ["nt", "National Teams"]
 // row in view.
 const UX_ROW_H = 24;
 // The titles still contested: the four confederation championships are retired (ARCHIVED_COMPS).
-const UX_TITLES = ["World Cup", "Nations League", "Club World Cup", "Club World Shield"];
+const UX_TITLES = ARTERRA ? [WORLD_CUP] : ["World Cup", "Nations League", "Club World Cup", "Club World Shield"];
 // A national side's honours: every title it can win, the retired championships with them, in this order.
-const UX_HONOURS = ["World Cup", "Nations League", ...ARCHIVED_COMPS];
+const UX_HONOURS = ARTERRA ? [WORLD_CUP] : ["World Cup", "Nations League", ...ARCHIVED_COMPS];
 // The home's Leaders, in FM's order and words. GA (goals and assists) and GP (appearances) are added up from the boards.
 const UX_LEADERS = [["RTG", "Highest Average Rating"], ["G", "Most Goals"], ["A", "Most Assists"], ["GA", "Most Goal Contributions"],
   ["CC", "Most Chances Created"], ["DC", "Most Defensive Actions"], ["SV", "Most Saves"], ["GP", "Most Appearances"]];
@@ -3667,6 +3676,9 @@ function archResult(text, name) {
   if (!last) return null;
   return { stage: stageOf(last) };
   function stageOf(x) {
+    let stated = false;
+    for (const [lab, st] of MEDALS) { const n = reportMedal(text, lab); if (n) stated = true; if (n && archKey(n) === key) return st; }
+    if (stated && /^(grand\s+)?final$|3rd|third/i.test(x.stage)) return "Final";   // reached it, holds no medal
     if (/^(grand\s+)?final$/i.test(x.stage)) { const w = tournWinner(text); return !w ? "Final" : archKey(w) === key ? "Winner" : "Runner-up"; }
     if (/3rd|third/i.test(x.stage)) return x.won ? "Third" : "Fourth";
     if (/group/i.test(x.h2) || /^(group\b|round\s+\d+$)/i.test(x.stage)) return "Group stage";
@@ -3885,7 +3897,17 @@ function soleStandings(text) {
   }
   return found.length === 1 ? found[0] : null;
 }
+// MEDALS A REPORT STATES ITSELF, over what its matches say: `**Winner: X**`, `**Runner-Up: X**`, `**Third: X**`. The
+// matches stay as played. The 2040 Arterra Cup is the case: Bassyria won the final, its player was then banned out of
+// character, and the organiser gave the medals to Bjornifjordaland, Etarria and Choppyhausen (Arterra Cup History).
+const MEDALS = [["Winner", "Winner"], ["Runner-Up", "Runner-up"], ["Third", "Third"]];
+function reportMedal(text, label) {
+  const m = String(text || "").match(new RegExp("^\\*\\*" + label + ":\\s*([^*]+?)\\s*\\*\\*\\s*$", "mi"));
+  return m ? m[1] : null;
+}
 function tournWinner(text) {
+  const stated = reportMedal(text, "Winner");
+  if (stated) return stated;
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   let best = null;
   for (let i = 0; i < lines.length; i++) {
@@ -8053,14 +8075,12 @@ export default function App() {
     const natNames = new Map(intl.map(tm => [tm.code, tm.name]));
     const allClubs = worldTeams.filter(tm => !isIntlLeague(tm.league));
     const scopeTeams = (sc) => sc === "intl" ? intl : sc === "clubs" ? allClubs : intl.filter(tm => railLeague(tm) === sc);
-    // Every competition in INTL_COMPS is an Avium one -- the World Cup, the Nations League, the four
-    // confederation championships. Arterra has none filed yet, so its rail is the directory alone
-    // until somebody plays a tournament worth archiving.
+    // INTL_COMPS and ARCHIVED_COMPS are already this universe's own: Avium's calendar, or the Arterra Cup.
     return [
-      ...(world === "avium" ? INTL_COMPS : []).map(c => { const ts = scopeTeams(c.scope);
+      ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
         return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts),
                  caption: c.scope === "intl" || c.scope === "clubs" ? "International" : c.scope }; }),
-      ...(world === "avium" ? ARCHIVED_COMPS : []).map(n =>
+      ...ARCHIVED_COMPS.map(n =>
         ({ name: n, intl: false, arch: true, scope: "archive", nTeams: 0, avg: 0, caption: "Retired" })),
       ...clubLeagues.map(l => { const ts = worldTeams.filter(tm => tm.league === l), nat = natNames.get(LEAGUE_NAT[l]);
         // The tier is the section the card sits in, so the caption carries the nation alone; a
@@ -11343,7 +11363,7 @@ export default function App() {
   const compSlug = (c) => DIR_SLUG[c] || urlSlug(c);
   // Every competition a world's rail can carry, so an address can name one from the other world.
   const compsOf = (w) => [LG_ALL_NATS, LG_ALL_CLUBS, LG_ALL_PLAYERS,
-    ...(w === "avium" ? [...INTL_COMPS.map(c => c.name), ...ARCHIVED_COMPS] : []),
+    ...(w === WORLD ? [...INTL_COMPS.map(c => c.name), ...ARCHIVED_COMPS] : []),
     ...new Set(teams.filter(t => inWorld(t, w) && t.league && !isIntlLeague(t.league)).map(t => t.league))];
   // The faces a competition has: the same list its header draws chips for, default first.
   const facesOf = (c) => c === LG_ALL_PLAYERS ? ["players", "managers", "changelog", "hof"]
@@ -16448,7 +16468,7 @@ export default function App() {
     for (const { s, res } of record.rows) {
       const y = uxYearOf(s), r = byYear.get(y) || { y, league: null, cup: null, intl: null, wc: null, q: null, nl: null, ch: null };
       const x = { s, res };
-      if (isNT) { if (s.comp === "World Cup") r.wc = r.wc || x; else if (/WC Qualifiers$/.test(s.comp)) r.q = r.q || x;
+      if (isNT) { if (s.comp === WORLD_CUP) r.wc = r.wc || x; else if (/WC Qualifiers$/.test(s.comp)) r.q = r.q || x;
                   else if (s.comp === "Nations League") r.nl = r.nl || x; else if (ARCHIVED_COMPS.includes(s.comp)) r.ch = r.ch || x; }
       else if (COMP_SCOPE[s.comp] === "clubs") r.intl = r.intl || x;
       else if (cups.has(s.comp)) r.cup = r.cup || x;
@@ -16476,7 +16496,7 @@ export default function App() {
     // A national side's year: the World Cup, its qualifying group and the Nations League, each where the side finished.
     const finish = (x) => (x.res.league ? <span className="ux-posc"><b className={x.res.pos === 1 ? "ux-gold" : undefined} style={mono}>{ordinal(x.res.pos)}</b>
       {x.res.of && <span className="ux-dim" style={mono}>/{x.res.of}</span>}</span> : stage(x));
-    const NT_COLS = [["wc", "World Cup"], ["q", "Qualifying"], ["nl", "Nations League"]].filter(([k]) => years.some(r => r[k]));
+    const NT_COLS = [["wc", WORLD_CUP], ["q", "Qualifying"], ["nl", "Nations League"]].filter(([k]) => years.some(r => r[k]));
     // Who managed it that season (src/data/spells.js), both where a year had two.
     const mgrs = (r) => { const ms = [...new Set([r.league, r.cup, r.intl, r.wc, r.q, r.nl, r.ch].filter(Boolean).map(x => uxMgrAt(t, x.s)).filter(Boolean))];
       return <td>{ms.length ? ms.map((m, i) => <Fragment key={m.id}>{i > 0 && ", "}<button type="button" className="ux-btnreset ux-a" onClick={() => openManager(m)}>{m.name}</button></Fragment>)
@@ -17862,6 +17882,9 @@ export default function App() {
           us += h ? m.hg : m.ag; them += h ? m.ag : m.hg; opp = h ? m.away : m.home; if (m.pens) pens = h ? m.pens : [m.pens[1], m.pens[0]]; }
         Object.assign(out, { runner: opp, score: `${us}-${them}`, pens, aet: fin.some(m => m.aet) });
       } else if (!fin) { const st = soleStandings(text); if (st && out.champ && archKey(st[0]) === ck) out.runner = st[1] || null; }
+      // Medals stated over the final's own result: no final score unless that final was the stated winner's against the stated runner-up.
+      const ru = reportMedal(text, "Runner-Up");
+      if (ru && archKey(ru) !== archKey(out.runner || "")) Object.assign(out, { runner: ru, score: null, pens: null, aet: false });
     }
     uxSumMemo.current.set(s.id, out);
     return out;
