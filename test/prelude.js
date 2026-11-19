@@ -15,6 +15,9 @@ import { AFA_RANKINGS, AFA_YEARS, AFA_KEEP } from "../src/data/afa.js";
 import { isNational, owns, planSave } from "../src/data/rules.js";
 import { cartItems, withoutItem } from "../src/data/cart.js";
 import { fetchAtlas } from "../src/data/atlas.js";
+// The universe a copy of the app is (App.tsx, WORLD): the harnesses are Avium's.
+import { WORLD_NAME, scopeRecords } from "../src/data/worlds.js";
+import { setClockWorld } from "../src/data/icclock.js";
 import { arrangeBench, placeFor, vacate, without } from "../src/data/squads.js";
 import { GROUP_NAME, POSITIONS, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "../src/data/positions.js";
 // The repository, wherever it is checked out: every bundle built with this prelude sits in test/.
@@ -35,6 +38,9 @@ const playersRec = __rec("players.json"), managersRec = __rec("managers.json"),
   if (stale.length) throw new Error(`src/presets/${stale.join(", ")} no longer match the records in src/data. A sheet edited by hand: "node test/records.mjs import" brings it in; if the records were edited, "node test/records.mjs export" rewrites the sheets.`);
 }
 const stadiumsTSV = readFileSync(__root + "src/stadiums.tsv", "utf8");
+// Arterra's own grounds and archive (vite.config.js): none in a harness.
+const STADIUM_IMAGES_ARTERRA = [], STADIUM_EXT_ARTERRA = {}, PSTATS_FILES_ARTERRA = [];
+const STADIUM_EXT = {};
 const participantsTSV = readFileSync(__root + "src/participants.tsv", "utf8");
 
 // The stadium manifest is a Vite virtual module (see vite.config.js), and rebuild.sh strips every

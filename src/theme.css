@@ -405,3 +405,25 @@
    and adds the competition's own band to the match sidebar, and the chrome stays the standard one
    above. Nothing here on purpose -- a [data-theme] with no rules inherits :root, which is exactly
    what is wanted. Give it colours by adding a block here; nothing else needs to change. */
+
+/* ── ARTERRA'S OWN ACCENT (src/data/worlds.js; DESIGN.md, The two universes) ─────────────────────
+   The copy of the app that is Arterra's wears the two colours of Arterra's badge wherever Avium's wears its brand: the
+   badge's green as the accent, its gold where a champion is named, so nobody mistakes which universe is on screen.
+   On the root with its universe, which outranks a theme's own rule. */
+.app-root[data-universe="arterra"] {
+  --chrome-brand: #007c58;
+  --chrome-brand-11: #007c5811;
+  --chrome-brand-14: #007c5814;
+  --chrome-brand-1a: #007c581a;
+  --chrome-brand-20: #007c5820;
+  --chrome-brand-22: #007c5822;
+  --chrome-brand-33: #007c5833;
+  --chrome-brand-44: #007c5844;
+  --chrome-brand-66: #007c5866;
+  --chrome-brand-88: #007c5888;
+  --chrome-gold: #fad354;
+  --chrome-gold-11: #fad35411;
+  --chrome-gold-22: #fad35422;
+  --chrome-gold-44: #fad35444;
+  --chrome-gold-66: #fad35466;
+}

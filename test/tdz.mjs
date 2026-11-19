@@ -29,7 +29,9 @@ globalThis.MutationObserver = class { observe() {} disconnect() {} };
 globalThis.fetch = () => Promise.reject(new Error("no network in the TDZ harness"));
 
 const dir = new URL("../dist/assets/", import.meta.url);
-const entry = fs.existsSync(dir) && fs.readdirSync(dir).find(n => /^index-.*\.js$/.test(n));
+// The page's entry is the shell (src/main.tsx), which loads the app as a chunk of its own: App-<hash>.js is the module
+// scope this net is for.
+const entry = fs.existsSync(dir) && fs.readdirSync(dir).find(n => /^App-.*\.js$/.test(n));
 if (!entry) { console.log("no dist bundle -- run `npx vite build` first"); process.exit(1); }
 
 try {

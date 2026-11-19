@@ -8,7 +8,8 @@ export const DOCS = [
       "Every page has its own address. The browser's back and forward buttons work, the arrows beside the wordmark do the same, and any page can be sent to someone as a link.",
       { dl: [
         ["Search", "Finds nations, clubs, players, managers and competitions by the start of any word in the name, and a side by its code. The arrow keys move through the results and Enter opens one."],
-        ["Settings", "The gear: the colour theme, the Arterra switch, and this Documentation. With Arterra off, the app shows Avium only: no world switches, and no Arterra sides, players or managers in any list, search or picker. It is saved in your browser and changes nothing for anyone else. The overseer's also has Viewer Mode, which shows the app as someone signed out sees it."],
+        ["Settings", "The gear: the colour theme, the Universe switch, and this Documentation. The overseer's also has Viewer Mode, which shows the app as someone signed out sees it."],
+        ["Universe", "Avium and Arterra are two separate universes in one engine, and the Universe switch in Settings moves between them. Nothing is shared: each has its own nations, players, managers, matches, tournaments and archive, and no list, search, picker or match ever shows a side or a man of the other. Each keeps its place while you are in the other, so switching back returns you to the page you left, with a live match paused where it was and your tournament and cart as they were. Arterra runs on its own calendar, so ages there are counted in its own year, and it wears the green and gold of its badge. The app opens in the universe you last used, and a link opens in the universe it was copied from."],
         ["Sign In", "With a GitHub account, for the ACU's editors. Reading needs no account. See Editing."],
         ["Requests And Cart", "An editor's: what is waiting on an answer, and the changes not yet saved. See Editing."],
         ["Play Match", "The match screen. See Matches."],
@@ -17,7 +18,7 @@ export const DOCS = [
     { id: "registry", title: "Registry", body: [
       "Registry is the record of who exists today: every nation, club, player and manager. Its pages are Overview, Teams, Players, Managers and Rating Changes. Overview has five panels.",
       { dl: [
-        ["Nations", "Every national side ranked by rating. The switch in the title moves between Avium and Arterra, which are never listed together. It is gone while Arterra is off in Settings."],
+        ["Nations", "Every national side of the universe you are in, ranked by rating."],
         ["Your Nation", "When you are signed in as an editor, your nation: its rating, manager, style, ground and the titles it holds."],
         ["Leaders", "The season's best players: average rating, goals, assists, goal contributions, chances created, defensive actions, saves and appearances. The season is picked in the title."],
         ["Champions", "The current holder of every title still contested."],
@@ -62,7 +63,7 @@ export const DOCS = [
   ] },
   { id: "matches", title: "Matches", sections: [
     { id: "play-match", title: "Playing A Match", body: [
-      "Play Match, in the top bar, sets up a friendly, and a tournament's fixture opens here from its Live button. Pick each side by searching its name, with the leagues as groups and a switch between Avium and Arterra. The die picks a random side from every league in the world picked: a club for a club, a national side for a national side.",
+      "Play Match, in the top bar, sets up a friendly, and a tournament's fixture opens here from its Live button. Pick each side by searching its name, with the leagues as groups. Both sides are always of the universe you are in. The die picks a random side from every league: a club for a club, a national side for a national side.",
       { dl: [
         ["Venue", "Home Ground, Away Ground or Neutral, the default. A neutral ground can be named, and Swap Ends swaps the sides, the ground and a first leg's score."],
         ["Result", "Draw Allowed, or Extra Time And Penalties, the default."],
@@ -328,7 +329,7 @@ export const DOCS = [
       "Decline, Withdraw and Dismiss each ask twice.",
     ] },
     { id: "sheet", title: "The Sheet", body: [
-      "The Sheet is the registry as a spreadsheet. Each nation has a tab along the foot, yours first and then every nation with clubs; the rest are under All Nations, and Arterra's national sides share the ARTERRA tab while Arterra is on. Every tab can be read, and another nation's is locked. A tab is one table: the national side first, then the clubs league by league, each league under a strip with its badge and name. Clubs stand best first, sorted when the tab opens, so a row stays put while you work on it.",
+      "The Sheet is the registry as a spreadsheet. Each nation has a tab along the foot, yours first and then every nation with clubs; the rest are under All Nations. In Arterra, the national sides share one ARTERRA tab. Every tab can be read, and another nation's is locked. A tab is one table: the national side first, then the clubs league by league, each league under a strip with its badge and name. Clubs stand best first, sorted when the tab opens, so a row stays put while you work on it.",
       "The badge, code and name stay in place while the rest scrolls: OVR, XI, Bench and Value, worked out as men move; formation and time wasting; the manager; home and away kits; city, ground and capacity; and then the places, twenty-two for every side, eleven and a bench of eleven. Each place starts with its position in the side's formation, and on the bench its group, keeper, defenders, midfielders and forwards in that order. A man is a chip with his rating, his name, and his nation's code when he is not the tab's. One out of position, a substitute in another group's place too, shows the rating he plays the place at, ringed in red, with what it costs him. A manager's chip carries his style.",
       "One click opens any cell you can change: a list for formation and time wasting, a colour picker for a kit, a search for the city, a box for the rest. Enter or Tab keeps the change and Escape drops it. The arrow keys and Tab move around the sheet, typing on a cell starts on it, Enter on a chip opens his record, and Delete releases a man or sacks a manager. The bar over the grid shows the picked cell in full.",
       "A changed cell stays marked until the cart is saved, and an editor's change to a code, ground, capacity or city shows Requested until the overseer answers. Undo and Redo, beside the bar, or Ctrl+Z and Ctrl+Y, step back and forward through your changes.",
@@ -344,7 +345,7 @@ export const DOCS = [
       { dl: [
         ["Record", "The chip you clicked: his details, the sides he plays for, his traits and his value. Sub Out on a starter and Sub In on a substitute list the men he can change places with. Trade opens Trades with him in a deal; on another nation's man it reads Make An Offer. The overseer edits the record here and can retire a player."],
         ["Lineup", "The picked side on a pitch, with its bench under it and its formation at the top. Drag men around it, or between it and the sheet. Clicking a side's badge opens it here."],
-        ["Free Agents", "Every player and manager without a club, best first, on two tabs, Players and Managers, each with a search; a man who plays only for his national side is one. They are Avium's, or Arterra's on the Arterra tab. Drag one onto an open place to sign him, or onto a man to sign him in that man's place. Drag a man from the sheet onto this panel to release him, or a manager to sack him. New Player and New Manager are at the top, and new men in the cart without a side show first in the list."],
+        ["Free Agents", "Every player and manager without a club, best first, on two tabs, Players and Managers, each with a search; a man who plays only for his national side is one. They are always of the universe you are in. Drag one onto an open place to sign him, or onto a man to sign him in that man's place. Drag a man from the sheet onto this panel to release him, or a manager to sack him. New Player and New Manager are at the top, and new men in the cart without a side show first in the list."],
         ["Nationals", "With a national side picked: its men not called up, best first. Drag one up into the squad."],
       ] },
     ] },

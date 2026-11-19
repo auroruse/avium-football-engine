@@ -90,7 +90,7 @@ export function valueContext(teams, slotsFor, idOf) {
 // (src/data/positions.js), else the slot he fills.
 export function valueInputs(p, ctx, trends, at) {
   const club = ctx.clubOf.get(p.id) || null;
-  return { ovr: p.ovr, age: ageOf(p.born, at), pos: posList(p.pos)[0] || ctx.posOf.get(p.id) || null, trend: trends.get(nameKey(p.name)) || 0,
+  return { ovr: p.ovr, age: ageOf(p.born, at, p.world), pos: posList(p.pos)[0] || ctx.posOf.get(p.id) || null, trend: trends.get(nameKey(p.name)) || 0,
            leagueMean: club ? ctx.leagueMean.get(club.group) : null, club };
 }
 export const playerValue = (p, ctx, trends, at) => valueOf(valueInputs(p, ctx, trends, at));

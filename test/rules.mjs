@@ -273,7 +273,11 @@ console.log("deals (Trades, 11 October 2026)");
   ok("with one of theirs released it is an offer", !way.errors.length && way.requests[0]?.kind === "deal", way.errors);
   const own = plan(ED, { deals: [{ sides: [k(A), k(A2)], moves: [{ kind: "player", id: a[old(A, 12)], to: k(A2) }, { kind: "player", id: ids(A2)[old(A2, 12)], to: k(A) }] }] });
   ok("a deal between one's own clubs goes live", !own.errors.length && !own.requests.length && clubOf(own.apply, a[old(A, 12)]) === A2.id, own.errors);
-  const clubbed = new Set(rec.teams.filter(t => !["AVIUM", "ARTERRA"].includes(t.file)).flatMap(ids)), fa = rec.players.find(p => !p.retired && !clubbed.has(p.id));
+  const clubbed = new Set(rec.teams.filter(t => !["AVIUM", "ARTERRA"].includes(t.file)).flatMap(ids)), fa = rec.players.find(p => !p.retired && !clubbed.has(p.id) && p.world !== "arterra");
+  // The two universes never meet (src/data/worlds.js): a man of Arterra's is refused at an Avium club, whoever asks.
+  const art = rec.players.find(p => p.world === "arterra");
+  const cross = plan(OV, { deals: [{ sides: [k(A)], moves: [{ kind: "player", id: art.id, to: k(A) }, { kind: "player", id: a[old(A, 15)], to: null }] }] });
+  ok("a man of the other universe is refused", cross.errors.some(e => /belongs to Arterra/.test(e)) && !cross.apply, cross.errors);
   const sign = plan(ED, { deals: [{ sides: [k(A)], moves: [{ kind: "player", id: fa.id, to: k(A) }, { kind: "player", id: a[old(A, 15)], to: null }] }] });
   ok("a signing with a release goes live", !sign.errors.length && clubOf(sign.apply, fa.id) === A.id && clubOf(sign.apply, a[old(A, 15)]) === "free", sign.errors);
   // The first offer sent their keeper's place a midfielder's way: the bench keeper takes it, the midfielder the bench.

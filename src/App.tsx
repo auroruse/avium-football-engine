@@ -2,8 +2,8 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fra
 import headerImg from "./header.png";
 // Read off public/stadiums at build time -- see the stadium-manifest plugin in
 // vite.config.js. Adding a photograph is the whole job; there is no list to update.
-import { STADIUM_IMAGES, STADIUM_EXT } from "virtual:stadium-images";
-import { PSTATS_FILES } from "virtual:pstats";
+import { STADIUM_IMAGES, STADIUM_EXT, STADIUM_IMAGES_ARTERRA, STADIUM_EXT_ARTERRA } from "virtual:stadium-images";
+import { PSTATS_FILES, PSTATS_FILES_ARTERRA } from "virtual:pstats";
 // THE PLAYERS, MANAGERS AND TEAMS (src/data): one record a person, squads as links to players. Written back out as
 // the preset sheets just below the imports, and parsed exactly as the files were.
 import playersRec from "./data/players.json";
@@ -23,7 +23,8 @@ import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCos
 import { STYLE_LBL } from "./data/styles.js";
 import { AFA_RANKINGS, AFA_YEARS, AFA_KEEP } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
-import { ageOf, birthDateOk, icNow } from "./data/icclock.js";
+import { ageOf, birthDateOk, icNow, setClockWorld } from "./data/icclock.js";
+import { WORLD_NAME, scopeRecords } from "./data/worlds.js";
 import { rollSquad } from "./data/roll.js";
 import { readManLine } from "./data/menlines.js";
 // What a player is worth, worked out as it is shown (src/data/value.js, shared with test/values.mjs).
@@ -51,6 +52,43 @@ import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_P
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim/core";
+// THE UNIVERSE THIS COPY OF THE APP IS (src/data/worlds.js; DESIGN.md, The two universes). Avium and Arterra share the
+// engine and nothing else, and the seal is made here, once: a copy of the app is one universe's from its first line. The
+// page (src/Shell.tsx) holds a copy for each in a frame of its own and shows one, so every record, list, index, cache,
+// match and saved tournament below belongs to WORLD alone, and nothing of the other is in reach to leak. Opened without
+// the shell (the harnesses, a frame's own address), it is Avium unless the address says ?universe=arterra.
+const WORLD = (() => { try { return new URLSearchParams(window.location.search).get("universe") === "arterra" ? "arterra" : "avium"; } catch { return "avium"; } })();
+const ARTERRA = WORLD === "arterra";
+// What this universe keeps in the browser is its own: Avium's under the names it always had, Arterra's beside them.
+const ukey = (k) => (ARTERRA ? k + ":arterra" : k);
+// Its own time (src/data/icclock.js): every age and date of birth in this copy is read on this universe's clock.
+setClockWorld(WORLD);
+// The shell, when this copy is one of its frames. The address bar, Back and Forward are the shell's: a frame tells it
+// where it is (route), is told where to go (go), and asks it for the other universe (universe). `active` says whether
+// this copy is the one on screen: a live match waits while it is not.
+const SHELL = (() => { try { return window.parent !== window && new URLSearchParams(window.location.search).has("universe") ? window.parent : null; } catch { return null; } })();
+const shellSay = (m) => { try { SHELL?.postMessage({ afe: true, world: WORLD, ...m }, window.location.origin); } catch {} };
+const UNI = { active: true, subs: new Set(), onActive(f) { UNI.subs.add(f); return () => UNI.subs.delete(f); } };
+try { window.addEventListener("message", (e) => { const m = e.data;
+  if (e.origin !== window.location.origin || !m || m.afe !== true || e.source !== SHELL) return;
+  if (m.type === "active") { UNI.active = !!m.on; for (const f of UNI.subs) f(UNI.active); }
+  // An address from the shell (Back, Forward, a link typed in): this frame's own address is set without an entry of its
+  // own, and the app reads it as it reads any change of address.
+  if (m.type === "go" && typeof m.hash === "string" && m.hash !== window.location.hash) {
+    try { window.history.replaceState(null, "", m.hash || "#/"); window.dispatchEvent(new Event("hashchange")); } catch {} }
+}); } catch {}
+// A frame made while the other universe is on screen learns so by asking.
+shellSay({ type: "hello" });
+const goUniverse = (w) => { if (w === WORLD) return;
+  if (SHELL) shellSay({ type: "universe", to: w });
+  else { try { window.location.search = "?universe=" + w; } catch {} } };
+const HIST = () => { try { return SHELL ? window.top.history : window.history; } catch { return window.history; } };
+// What Avium alone has on file, and Arterra does not yet: the stadium list, the tournament fields, the AFA rankings, the
+// managers' history, the map. Each is empty in Arterra until it has its own.
+const STADIUMS_HERE = ARTERRA ? STADIUM_IMAGES_ARTERRA : STADIUM_IMAGES, STADIUM_EXT_HERE = ARTERRA ? STADIUM_EXT_ARTERRA : STADIUM_EXT;
+const PSTATS_HERE = ARTERRA ? PSTATS_FILES_ARTERRA : PSTATS_FILES, PSTATS_DIR = WORLD + "/pstats/";
+const AFA_HERE = ARTERRA ? {} : AFA_RANKINGS, AFA_YEARS_HERE = ARTERRA ? {} : AFA_YEARS;
+const ATLAS_HERE = ARTERRA ? { ...atlasRec, nations: {}, cities: {} } : atlasRec;
 // THE SHEETS, FROM THE RECORDS. Each preset sheet is written from src/data -- byte for byte the file in src/presets,
 // which `node test/records.mjs check` keeps true -- so every team builds exactly as it did when the app read the
 // files. The app no longer reads src/presets; those are copies for the tools that still read sheets.
@@ -58,9 +96,10 @@ export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim
 // over the records before anything is built from them, so every screen and every match plays them. What was saved but
 // is not in this build yet (the site takes a minute or two to redeploy) is laid under the cart the same way, and
 // dropped field by field once a build carries it, or after twenty minutes, so a later change by someone else shows.
-const DRAFT_KEY = "avium-records-draft", PENDING_KEY = "avium-records-published", PENDING_FOR = 20 * 60e3;
+const DRAFT_KEY = ukey("avium-records-draft"), PENDING_KEY = ukey("avium-records-published"), PENDING_FOR = 20 * 60e3;
 const readPatch = (k) => { try { const d = JSON.parse(localStorage.getItem(k)); return d && d.v === 1 && d.players ? d : null; } catch { return null; } };
-const RECORDS_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec, leagues: leaguesRec };
+// This universe's records, out of them all (src/data/worlds.js): everything below is built from these.
+const RECORDS_BUILT = scopeRecords({ players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec, leagues: leaguesRec }, WORLD);
 const RECORDS_BASE = (() => {
   const pend = readPatch(PENDING_KEY);
   if (!pend) return RECORDS_BUILT;
@@ -71,6 +110,15 @@ const RECORDS_BASE = (() => {
   return left ? applyDraft(RECORDS_BUILT, left) : RECORDS_BUILT;
 })();
 const RECORDS = applyDraft(RECORDS_BASE, readPatch(DRAFT_KEY));
+// THE REGISTRY'S REQUESTS ARE BOTH UNIVERSES' (the server keeps one list), so each copy takes its own: one naming a side
+// or a nation of the other is not this copy's to show. Arterra's are the ones that name something of Arterra's; Avium's
+// every one that names nothing of Arterra's (a request from before the two were sealed is Avium's).
+const reqHere = (() => {
+  const mine = new Set(RECORDS_BUILT.teams.map(teamKey)), myNats = new Set(RECORDS_BUILT.teams.filter(t => t.file === (ARTERRA ? "ARTERRA" : "AVIUM")).map(t => t.code));
+  const theirs = new Set(teamsRec.map(teamKey).filter(k => !mine.has(k))), theirNats = new Set(teamsRec.filter(t => t.file === (ARTERRA ? "AVIUM" : "ARTERRA")).map(t => t.code));
+  return (r) => { const keys = [r?.team, r?.other, ...(r?.sides || []), r?.rec?.side, ...Object.keys(r?.needs || {})].filter(Boolean), nats = [r?.rec?.nat, r?.rec?.nation].filter(Boolean);
+    return ARTERRA ? keys.some(k => mine.has(k)) || nats.some(c => myNats.has(c)) : !keys.some(k => theirs.has(k)) && !nats.some(c => theirNats.has(c)); };
+})();
 const SHEETS = sheetsFromRecords(RECORDS);
 // THE LEAGUES (src/data/leagues.js): each one's tier, cup and nation by name, the name it carries now for any it had, and
 // the name its clubs' IDs were made with, so a rename loses none of its seasons, its badge or a saved tournament's clubs.
@@ -2285,7 +2333,7 @@ function collegeFormat(n) {
 }
 const PARTICIPANT_PRESETS = (() => {
   const m = new Map();
-  for (const line of participantsTSV.split("\n").slice(1)) {
+  for (const line of (ARTERRA ? "" : participantsTSV).split("\n").slice(1)) {
     const [preset, team, group, format] = line.split("\t").map(c => (c || "").trim());
     if (!preset || !team) continue;
     if (!m.has(preset)) m.set(preset, { teams: [], groups: {}, format: null });
@@ -2953,10 +3001,9 @@ const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false, true);
 // art under public/arterra, and no clubs at all. Same sheet shape as AVIUM.tsv minus the
 // confederation column, so the metadata tail simply ends a field early and `conference` is null.
 const PRESET_ARTERRA = parsePresetTSV(arterraTSV, null, 1, false, true);
-// TWO WORLDS, ONE APP. Avium and Arterra are separate settings with separate art and separate
-// nations, and the toggles in the three pickers filter what each one LISTS -- never what is already
-// picked. That is the whole point: a fixture or a tournament can span both, so a cross-RP game is
-// two ticks in two tabs rather than a mode you have to leave.
+// TWO UNIVERSES, NEVER MIXED (Moukden and Kirin, 19 November 2026; the top of this file, WORLD). Avium and Arterra are
+// separate settings with separate art, nations and records, and a copy of the app holds one of them: the other's
+// national sheet arrives here as a header with no sides. No fixture, tournament, list or search spans the two.
 // DECLARED HERE, DIRECTLY UNDER THE PRESETS, because ARTERRA_RAIL below is built at module scope and
 // a const read before its own line is a temporal-dead-zone throw -- which is a black screen, not an
 // error anyone sees. esbuild rewrites these to `var` when it bundles, so the SSR smoke test read
@@ -3134,7 +3181,7 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leagueLogoCandidates = (lg, alts) => {
   const n = String(lg || "").normalize("NFC"), was = [...(alts || []), ...(LG.former.get(n) || [])].map(x => String(x).normalize("NFC"));
   const nat = LEAGUE_NAT[lg];
-  const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
+  const w = WORLD;
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
   // A conference, and a qualifying group, wear the conference's badge. INTL_COMPS builds "Eastern WC Qualifiers" by
   // stripping " Conference" off the conference name, and this is the inverse of that: the scope IS the conference. The
@@ -3190,7 +3237,7 @@ const LEAGUE_NAT = Object.fromEntries(PRESET_CLUBS.map(t => [t.league === MISC_L
 // THE REGISTRY'S SECTIONS AND PAGES (rebuilt around nations, 8 Oct 2026; the pages are in App's Registry block).
 const REG_HOME = { sec: "nations", nation: null, team: null, tab: null };
 // The AFA ranking's years, oldest first, and the one an address names (else the newest).
-const AFA_YEAR_LIST = Object.keys(AFA_RANKINGS).map(Number).sort((a, b) => a - b);
+const AFA_YEAR_LIST = Object.keys(AFA_HERE).map(Number).sort((a, b) => a - b);
 const uxAfaYearOf = (y) => (AFA_YEAR_LIST.includes(y) ? y : AFA_YEAR_LIST[AFA_YEAR_LIST.length - 1]);
 const REG_SECS = [["nations", "Nations"], ["competitions", "Competitions"], ["players", "Players"], ["managers", "Managers"]];
 const REG_TEAM_TABS = ["overview", "squad", "tactics", "history", "honours"];
@@ -3653,7 +3700,7 @@ const catalogOf = (avium, arterra, clubs, first = LG.first) => [
   ...avium.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
   ...arterra.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
                                                      ...(conference ? { continent: conference } : null) })),
-  ...clubs.map(t => ({ ...t, world: "avium" })),
+  ...clubs.map(t => ({ ...t, world: WORLD })),
 ].map(({ conference, nat, ...t }) => ({
   ...t,
   // A club's nation, kept for the roster's nationality fallback. Only the merged pool needs it --
@@ -4247,7 +4294,7 @@ const panelHead = { display: "flex", alignItems: "center", justifyContent: "spac
 // name its grounds — there is no tenant to carry them and no photo yet either. This file is the
 // deliberate record: STADIUM, NATION, CITY. It is authoritative where it speaks, because it was
 // written by hand for exactly this, and a tenant fills in whatever it leaves out.
-const STADIUM_ROWS = stadiumsTSV.split("\n").slice(1).map(l => l.split("\t").map(c => (c || "").trim()))
+const STADIUM_ROWS = (ARTERRA ? "" : stadiumsTSV).split("\n").slice(1).map(l => l.split("\t").map(c => (c || "").trim()))
   .filter(c => c[0]).map(([stadium, nation, city]) => ({ stadium, nation: nation || "", city: city || "" }));
 const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), r]));
 
@@ -4262,7 +4309,7 @@ const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), 
 // A ground's photograph by its name however the apostrophe was typed: a name saved from the app carries the curly one
 // ("Pensioners’ Bridge", 14 October 2026) while the file was written with the straight one, and the two never met.
 const stadiumKey = (n) => String(n || "").normalize("NFC").replace(/[\u2018\u2019\u02BC`\u00B4]/g, "'");
-const STADIUM_FILE_BY = new Map(STADIUM_IMAGES.map(n => [stadiumKey(n), n]));
+const STADIUM_FILE_BY = new Map(STADIUMS_HERE.map(n => [stadiumKey(n), n]));
 const hasStadiumImg = (n) => STADIUM_FILE_BY.has(stadiumKey(n));
 const stadiumSrcs = (shown) => { const name = STADIUM_FILE_BY.get(stadiumKey(shown)) || shown; return [name.normalize("NFC"), name.normalize("NFD")]
   // Percent-encoded AND raw. encodeURIComponent escapes "@" to %40, which is correct but is a
@@ -4272,7 +4319,7 @@ const stadiumSrcs = (shown) => { const name = STADIUM_FILE_BY.get(stadiumKey(sho
   // the browser encodes the spaces itself and leaves the "@" alone.
   .flatMap(n => [encodeURIComponent(n), n])
   // The extension the manifest found for this ground (JPEG or PNG); a name it does not know tries both JPEG spellings.
-  .flatMap(n => (STADIUM_EXT[name.normalize("NFC")] ? [STADIUM_EXT[name.normalize("NFC")]] : [".jpg", ".jpeg"]).map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`)); };
+  .flatMap(n => (STADIUM_EXT_HERE[name.normalize("NFC")] ? [STADIUM_EXT_HERE[name.normalize("NFC")]] : [".jpg", ".jpeg"]).map(ext => `${import.meta.env.BASE_URL}${WORLD}/stadiums/${n}${ext}`)); };
 const stadiumBg = (name) => stadiumSrcs(name).map(u => `url("${u}")`).join(", ");
 // A ground shown at its own aspect ratio has to be a real <img>: a background-image has no
 // intrinsic size, so a div can only ever be told a height. Same candidate list, walked on error
@@ -4548,20 +4595,6 @@ function UxShine() {
     return () => { document.removeEventListener("pointerover", over); document.documentElement.removeEventListener("pointerleave", leave); };
   }, []);
   return null;
-}
-// The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
-// selections, the two live-match slots and a tournament's participants all survive a switch, which
-// is what makes an Avium side against an Arterra one a normal thing to set up rather than a mode.
-function WorldToggle({ value, onChange, style, btnStyle }) {
-  return (<div style={{ display: "flex", gap: 3, flexShrink: 0, ...style }}>
-    {WORLDS.map(([id, label]) => { const on = value === id; return (
-      <button key={id} onClick={() => onChange(id)}
-        style={{ padding: "4px 8px", borderRadius: 6, fontFamily: "inherit", cursor: on ? "default" : "pointer",
-                 fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap",
-                 border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
-                 background: on ? "var(--chrome-brand-33)" : "transparent",
-                 color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", ...btnStyle }}>{label}</button>); })}
-  </div>);
 }
 // THE GOALS, PLAYED BACK RATHER THAN DRAWN. What used to sit on the post-match screen was a diagram
 // per goal -- the ball's path as a carry, a pass and a shot, three strokes on a cropped pitch -- and
@@ -4909,9 +4942,9 @@ const settledPhase = (phase, groups, ko, stage) =>
 // ─── TOURNAMENT SAVE SLOTS ───────────────────────────────────────────────────
 // Index holds metadata only (names, timestamps, progress); each tournament's payload
 // lives under its own key so switching slots reads one save instead of all of them.
-const SLOT_INDEX_KEY = "avium-tournament-slots";
-const SLOT_KEY = (id) => "avium-tournament-slot-" + id;
-const LEGACY_SESSION_KEY = "avium-tournament-session";
+const SLOT_INDEX_KEY = ukey("avium-tournament-slots");
+const SLOT_KEY = (id) => ukey("avium-tournament-slot-" + id);
+const LEGACY_SESSION_KEY = ukey("avium-tournament-session");
 const SLOT_FILE_KIND = "avium-tournament";
 const newSlotId = () => "s" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 function readSlotIndex() {
@@ -4978,8 +5011,17 @@ function unpackPayload(p) {
   delete out.__teams; delete out.__packed;
   return out;
 }
+// A SAVE HOLDING A SIDE OF THE OTHER UNIVERSE is never opened (src/data/worlds.js: "never mix"): one kept from before the
+// two were sealed, or a file brought over from the other. The names of those sides, for saying so.
+const foreignSides = (x, out = new Set(), depth = 0) => {
+  if (!x || typeof x !== "object" || depth > 14) return out;
+  if (Array.isArray(x)) { for (const v of x) foreignSides(v, out, depth + 1); return out; }
+  if (typeof x.name === "string" && (x.world || x.league) && ("squad" in x || "code" in x)) { if (worldOf(x) !== WORLD) out.add(x.name); return out; }
+  for (const v of Object.values(x)) foreignSides(v, out, depth + 1);
+  return out;
+};
 function readSlot(id) {
-  try { const r = JSON.parse(localStorage.getItem(SLOT_KEY(id))); return r ? unpackPayload(r) : null; } catch { return null; }
+  try { const r = JSON.parse(localStorage.getItem(SLOT_KEY(id))), p = r ? unpackPayload(r) : null; return p && !foreignSides(p).size ? p : null; } catch { return null; }
 }
 // Returns false on quota exhaustion so callers can surface it instead of silently losing a save.
 function writeSlot(id, payload) {
@@ -5320,7 +5362,7 @@ const shotName = (n) => {
 const shotChain = (name) => {
   const b = shotName(name);
   return [...new Set([b.normalize("NFC"), b.normalize("NFD")])]
-    .map((n) => `${import.meta.env.BASE_URL}avium/players/${encodeURIComponent(n)}.png`)
+    .map((n) => `${import.meta.env.BASE_URL}${WORLD}/players/${encodeURIComponent(n)}.png`)   // his own universe's picture; the blank one below is nobody's
     .concat(`${import.meta.env.BASE_URL}avium/players/placeholder.jpg`);
 };
 // A player badge as drawn in public/player-badges: the art carries its own tier (metal and pips), and the name rides
@@ -6240,7 +6282,7 @@ function atlasHull(pts) {
   for (const q of ps.reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
   return [...lo.slice(0, -1), ...up.slice(0, -1)];
 }
-function AtlasMap({ pins, card, onOpen, focus, radius = 10, ver = atlasRec.tiles }) {
+function AtlasMap({ pins, card, onOpen, focus, radius = 10, ver = ATLAS_HERE.tiles }) {
   const box = useRef(null), drag = useRef(null), wheelAcc = useRef(null), anim = useRef(0);
   const [vw, setVw] = useState({ w: 0, h: 0 });
   const [view, setView] = useState(null);                       // { s, cx, cy }: scale, and the world point at the centre
@@ -6453,11 +6495,23 @@ export default function App() {
   const [tab, setTab] = useState("leagues");
   const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
   useEffect(() => { if (!THEMES_ENABLED) return; try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
-  // ARTERRA ON OR OFF, each viewer's own and kept in the browser like the theme; on unless turned off (Moukden and
-  // Kirin, 10 October 2026). Off, the world is Avium alone: the world switches go, and the lists, pickers, search,
-  // addresses and the Editor drop Arterra. A match or tournament already holding an Arterra side plays on.
-  const [arterraOn, setArterraOn] = useState(() => { try { return localStorage.getItem("avium-arterra") !== "off"; } catch { return true; } });
-  useEffect(() => { try { if (arterraOn) localStorage.removeItem("avium-arterra"); else localStorage.setItem("avium-arterra", "off"); } catch {} }, [arterraOn]);
+  // THE UNIVERSE (the top of this file, WORLD): this copy of the app is one universe's, and holds nothing of the other.
+  // Where the code below still asks which it is, this is the answer; the switch between them is the shell's (goUniverse).
+  const arterraOn = ARTERRA;
+  // Whether this copy is the one on screen (the shell shows one universe at a time and keeps the other as it was left).
+  const [uniActive, setUniActive] = useState(() => UNI.active);
+  useEffect(() => UNI.onActive(setUniActive), []);
+  // What both universes share in this browser, kept in step when the other copy changes it: the theme and who is signed in.
+  useEffect(() => {
+    const on = (e) => {
+      if (e.key === "avium-theme" && UI_THEME_IDS.has(e.newValue)) setUiTheme(e.newValue);
+      if (e.key === SESSION_KEY) { const s = readSession(); setSession(s); if (!s) setScope(VIEWER); }
+      if (e.key === SCOPE_KEY && e.newValue) { try { const c = JSON.parse(e.newValue); if (c?.role) setScope(c); } catch {} }
+      if (e.key === "avium-viewer-mode") setViewMode(e.newValue === "on");
+    };
+    window.addEventListener("storage", on);
+    return () => window.removeEventListener("storage", on);
+  }, []);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [presetMsg, setPresetMsg] = useState("");
@@ -6499,7 +6553,7 @@ export default function App() {
     // Deliberately AVIUM_LEAGUE and not isIntlLeague: this is the pool that overwrites a club
     // player's OVR with his national figure, and Arterra has no clubs to feed. Widening it would
     // only let an Arterra name collide with an Avium one.
-    teams.forEach(t => { if (t.league !== AVIUM_LEAGUE || !t.squad) return; t.squad.forEach(p => { if (!p.name) return; const eff = p.ovr ?? t.skill; if (eff != null) m.set(p.fullName || p.name, eff); }); });
+    teams.forEach(t => { if (t.league !== INTL_LEAGUE[WORLD] || !t.squad) return; t.squad.forEach(p => { if (!p.name) return; const eff = p.ovr ?? t.skill; if (eff != null) m.set(p.fullName || p.name, eff); }); });
     return m;
   }, [teams]);
   const effTeams = useMemo(() => teams.map(t => {
@@ -6513,11 +6567,9 @@ export default function App() {
     return changed ? { ...t, squad } : t;
   }), [teams, natOvrMap]);
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
-  const [worldPick, setWorld] = useState("avium");
-  // With Arterra off the world stays Avium, whatever was picked before.
-  const world = arterraOn ? worldPick : "avium";
-  // A side the viewer can reach: any, or Avium's alone with Arterra off.
-  const sideShown = (t) => arterraOn || worldOf(t) === "avium";
+  // This copy's universe: every side it holds is one the viewer can reach.
+  const world = WORLD, setWorld = () => {};
+  const sideShown = (t) => worldOf(t) === WORLD;
   // Every picker lists out of this rather than out of `teams`. `teams` stays the whole roster, so
   // nothing selected, saved or already on the pitch is touched by a switch.
   const worldTeams = useMemo(() => teams.filter(t => inWorld(t, world)), [teams, world]);
@@ -6545,7 +6597,7 @@ export default function App() {
     const natOf = (t) => !t ? null : isIntlLeague(t.league) ? t : leagueNation(t.league);
     const byCode = new Map(teams.filter(t => isIntlLeague(t.league) && t.code).map(t => [t.code, t]));
     const groups = new Map();
-    for (const st of [...new Set([...STADIUM_IMAGES, ...STADIUM_ROWS.map(r => r.stadium)])]) {
+    for (const st of [...new Set([...STADIUMS_HERE, ...STADIUM_ROWS.map(r => r.stadium)])]) {
       const t = owner.get(st) || null;
       const meta = STADIUM_META.get(st.normalize("NFC"));
       const nat = (meta?.nation && byCode.get(meta.nation)) || natOf(t) || null;
@@ -7790,6 +7842,13 @@ export default function App() {
     }, 40);
   };
   useEffect(() => { if (meRunning) { meStop(); mePlay(); } }, [meSpeedIx]);
+  // A LIVE MATCH WAITS WHILE THE OTHER UNIVERSE IS ON SCREEN (the shell, src/Shell.tsx), and plays on from the same
+  // tick when this one comes back: "each keeps its place".
+  const meHeldUni = useRef(false);
+  useEffect(() => {
+    if (!uniActive) { if (meRunning) { meHeldUni.current = true; meStop(); } }
+    else if (meHeldUni.current) { meHeldUni.current = false; if (meRef.current && !meRef.current.ftDone) mePlay(); }
+  }, [uniActive]);
   useEffect(() => () => { if (meTimer.current) clearInterval(meTimer.current); }, []);
       // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
   // inside the 1350px scroll box are ever visible — mounting the rest is what made opening the
@@ -7863,10 +7922,10 @@ export default function App() {
     let dead = false;
     (async () => {
       const seasons = [], changelog = [], hof = [], winnersRaw = [], trades = [];
-      const mdFiles = new Set(PSTATS_FILES.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
-      await Promise.all(PSTATS_FILES.map(async (f) => {
+      const mdFiles = new Set(PSTATS_HERE.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
+      await Promise.all(PSTATS_HERE.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
-        const res = await fetch("avium/pstats/" + f).catch(() => null);
+        const res = await fetch(PSTATS_DIR + f).catch(() => null);
         if (!res || !res.ok) return;
         const text = await res.text();
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
@@ -7920,7 +7979,7 @@ export default function App() {
         let lg = codes.size ? detectLeague(codes, null) : null;
         if (!lg && s.md) {
           const path = s.id.replace(/\.tsv$/i, ".md");
-          const res = await fetch("avium/pstats/" + path).catch(() => null);
+          const res = await fetch(PSTATS_DIR + path).catch(() => null);
           if (res && res.ok) { const text = await res.text(); mdSeed[path] = text; lg = detectLeague(null, clubNamesIn(text)); }
         }
         if (lg) s.comp = lg;
@@ -9146,7 +9205,9 @@ export default function App() {
   const asViewer = viewMode && scope.role === "overseer";
   const overseer = scope.role === "overseer" && !asViewer, isEditor = scope.role !== "viewer" && !asViewer;
   useEffect(() => { if (asViewer && tab === "editor") setTab("leagues"); }, [asViewer, tab]);
-  const signIn = () => { window.location.href = `${REGISTRY}/login?return=${encodeURIComponent(window.location.href)}`; };
+  // Signing in leaves the page, so it is the whole page that goes and comes back (the shell's address, when there is one).
+  const signIn = () => { const top = (() => { try { return SHELL ? window.top : window; } catch { return window; } })();
+    top.location.href = `${REGISTRY}/login?return=${encodeURIComponent(top.location.href)}`; };
   const signOut = () => { try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SCOPE_KEY); } catch {}
     setSession(null); setScope(VIEWER); setAcctOpen(false); };
   useEffect(() => {
@@ -9161,7 +9222,8 @@ export default function App() {
   // ── Requests: changes waiting on another team's owner ──
   // Everyone's, as the server keeps them (src/data/requests.json): read on sign-in, when the page comes back into view
   // (at most once a minute) and after every answer. Every team in one is locked until it is settled.
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequestsAll] = useState([]);
+  const setRequests = (rs) => setRequestsAll(rs.filter(reqHere));
   const [inboxOpen, setInboxOpen] = useState(false);
   const [reqBusy, setReqBusy] = useState(null);                 // the request whose answer is on its way
   const [reqArm, setReqArm] = useState(null);                   // "<id>:decline" or "<id>:withdraw", the second step
@@ -9254,9 +9316,9 @@ export default function App() {
   // THE COLLEGE DRAFT (DESIGN.md, The ANCC, The draft): the drafts as the server keeps them (src/data/drafts.json), the one
   // being run, and the clubs in it this editor picks for. Its board is the Editor's Draft page, for the overseer and the
   // editors holding a pick; once it is over it is filed under its league.
-  const [drafts, setDrafts] = useState(draftsRec);
+  const [drafts, setDrafts] = useState(ARTERRA ? [] : draftsRec);
   const loadDrafts = useCallback(() => fetch(`${REGISTRY}/draft`).then(r => (r.ok ? r.json() : null))
-    .then(ds => { if (Array.isArray(ds)) setDrafts(ds); }).catch(() => {}), []);
+    .then(ds => { if (Array.isArray(ds) && !ARTERRA) setDrafts(ds); }).catch(() => {}), []);   // the college draft is Avium's
   // A drafted man shows his rating the moment he is picked (the user, 13 October 2026: "the OVR should be revealed after
   // drafting"), before the records that move him reach this page.
   const hiddenMen = useMemo(() => { const m = collegeMen(curRecs);
@@ -9731,7 +9793,7 @@ export default function App() {
     for (const s of (pstats?.seasons || []).filter(x => comps.includes(x.comp) && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
-      fetch("avium/pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
+      fetch(PSTATS_DIR + path).then(r => r.ok ? r.text() : Promise.reject())
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
@@ -9744,7 +9806,7 @@ export default function App() {
     const path = s.id.replace(/\.tsv$/i, ".md");
     if (lgMd[path] !== undefined) return;
     let dead = false;
-    fetch("avium/pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
+    fetch(PSTATS_DIR + path).then(r => r.ok ? r.text() : Promise.reject())
       .then(text => { if (!dead) setLgMd(m => ({ ...m, [path]: text })); })
       .catch(() => { if (!dead) setLgMd(m => ({ ...m, [path]: false })); });
     return () => { dead = true; };
@@ -9774,7 +9836,7 @@ export default function App() {
     if (!payload) { setSlotMsg("That save could not be read."); return; }
     const meta = tSlots.find(s => s.id === id);
     const name = meta?.name || "tournament";
-    const body = JSON.stringify({ kind: SLOT_FILE_KIND, v: 1, name, exported: new Date().toISOString(), payload: packPayload(payload) });
+    const body = JSON.stringify({ kind: SLOT_FILE_KIND, v: 1, world: WORLD, name, exported: new Date().toISOString(), payload: packPayload(payload) });
     const blob = new Blob([body], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -9792,7 +9854,10 @@ export default function App() {
         const j = JSON.parse(String(rd.result));
         // Accept both a wrapped export and a bare payload, so an older raw save still imports.
         const payload = unpackPayload(j && j.kind === SLOT_FILE_KIND ? j.payload : j);
-        if (!payload || typeof payload !== "object" || (!payload.tGroups && !payload.tKO && !payload.tournamentTeamIds)) throw new Error("not an Avium tournament save");
+        if (!payload || typeof payload !== "object" || (!payload.tGroups && !payload.tKO && !payload.tournamentTeamIds)) throw new Error("not a tournament save");
+        // One universe's tournament is never opened in the other.
+        const other = (j && j.kind === SLOT_FILE_KIND && (j.world || "avium") !== WORLD) || foreignSides(payload).size;
+        if (other) throw new Error(`that tournament is ${WORLD_NAME[ARTERRA ? "avium" : "arterra"]}'s`);
         const id = newSlotId();
         if (!writeSlot(id, payload)) throw new Error("browser storage is full");
         // The save imported is the one opened, as a switch would (Moukden and Kirin, 14 October 2026: "Your import just puts me
@@ -11002,7 +11067,7 @@ export default function App() {
     const point = (p) => { if (/^\d{4}$/.test(p)) return +p * 10 - 0.001;
       const after = p.startsWith("after:"), x = find(after ? p.slice(6) : p);
       return x ? uxWhen(x) + (after ? 0 : -0.001) : Infinity; };
-    return new Map(MANAGER_HISTORY.map(h => [h.side || "former:" + (h.former.key || h.former.code), { ...h, cuts: h.spells.map(([m, p]) => [m, point(p)]) }]));
+    return new Map((ARTERRA ? [] : MANAGER_HISTORY).map(h => [h.side || "former:" + (h.former.key || h.former.code), { ...h, cuts: h.spells.map(([m, p]) => [m, point(p)]) }]));
   }, [pstats]);
   // The manager a side had in an archive season: its listed one where it has a history, else its manager now; nobody
   // before tracking began, or in a spell nobody recorded.
@@ -11241,7 +11306,7 @@ export default function App() {
   // league) is kept in this browser, one a tab, until it is sent or cancelled: another tab, a record picked from the rail
   // or a reload puts it aside, and New brings it back as it was. A request the overseer is reviewing is not kept; it
   // reopens from Requests. `edNew` is the form open on this tab, and setEdNew(null) is done with it (sent or cancelled).
-  const ED_FORMS_KEY = "avium-editor-forms";
+  const ED_FORMS_KEY = ukey("avium-editor-forms");
   const [edForms, setEdForms] = useState(() => { try { const v = JSON.parse(localStorage.getItem(ED_FORMS_KEY));
     // (A New League or New Club form kept from before the sheet is dropped: the sheet makes clubs and leagues in its rows.)
     return v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([k, f]) => f && !f.review && (k === "players" || k === "managers"))
@@ -11356,7 +11421,7 @@ export default function App() {
     if (tab === "live" && meView === "setup") { const h = teamById(lmH), a = teamById(lmA); if (h && a) segs.push(urlSlug(h.name), urlSlug(a.name)); }
     if (tab === "docs") { segs.push((DOCS.find(p => p.id === docPage) || DOCS[0]).id); if (docSec) segs.push(docSec); }
     if (tab === "editor") segs.push(edSec);
-    return "#/" + segs.map(encodeURIComponent).join("/") + (world !== "avium" ? "?world=" + world : "");
+    return "#/" + segs.map(encodeURIComponent).join("/") + (ARTERRA ? "?world=arterra" : "");
   }, [tab, reg, teams, lgComp, lgSubEff, playerOpen, lgSeasonObj, lgSeasonView, lgTTab, lgRound, clOpen, tLeaderboard, docSec, docPage, edSec, world, uxManagers, tPage, tView, tSlots, tActiveSlot, meView, lmH, lmA, teamById, uxTmView]);
   // An address, opened. Anything it names that the app cannot place now is parked in routePend
   // for the resolver below. A name that matches nothing is dropped, and the bar is then rewritten
@@ -11366,7 +11431,7 @@ export default function App() {
     const qi = raw.indexOf("?");
     const segs = (qi < 0 ? raw : raw.slice(0, qi)).split("/").filter(Boolean)
       .map(x => { try { return decodeURIComponent(x); } catch { return x; } });
-    let w = arterraOn && new URLSearchParams(qi < 0 ? "" : raw.slice(qi + 1)).get("world") === "arterra" ? "arterra" : "avium";
+    const w = WORLD;
     let t = TAB_OF_SLUG[(segs[0] || "registry").toLowerCase()] || "leagues";
     if (t === "tournament" && !TOURNAMENTS_ENABLED) t = "leagues";
     routePend.current = null; routeReplace.current = true;
@@ -11527,11 +11592,14 @@ export default function App() {
     if (routeBoot.current) { routeBoot.current = false; return; }
     if (routePend.current) return;
     const cur = window.location.hash;
-    if (cur === routeHash) { routeReplace.current = false; routeLast.current = cur; return; }
+    if (cur === routeHash) { routeReplace.current = false; routeLast.current = cur; shellSay({ type: "route", hash: routeHash, replace: true }); return; }
     const strip = (h) => h.replace(/\/round-\d+(?=$|\?)/, "");
     const replace = routeReplace.current || strip(cur) === strip(routeHash);
     routeReplace.current = false; routeLast.current = routeHash;
-    try { window.history[replace ? "replaceState" : "pushState"](null, "", routeHash); } catch {}
+    // In the shell, the address bar and its history are the shell's: this frame keeps its own address in step without
+    // an entry of its own, and tells the shell, which makes the entry.
+    try { window.history[replace || SHELL ? "replaceState" : "pushState"](null, "", routeHash); } catch {}
+    shellSay({ type: "route", hash: routeHash, replace });
   }, [routeHash, routeKick]);
   // A Documentation page and section are part of the address: jumping to a section writes it, and opening an address
   // that names one scrolls there once the page has drawn. The contents light the section being read.
@@ -11757,7 +11825,7 @@ export default function App() {
     const need = regWant.filter(p => lgMd[p] === undefined && !regMdBusy.current.has(p));
     if (!need.length) return;
     need.forEach(p => regMdBusy.current.add(p));
-    Promise.all(need.map(p => fetch("avium/pstats/" + p).then(r => (r.ok ? r.text() : false)).catch(() => false)))
+    Promise.all(need.map(p => fetch(PSTATS_DIR + p).then(r => (r.ok ? r.text() : false)).catch(() => false)))
       .then(texts => {
         setLgMd(m => { const n = { ...m }; need.forEach((p, i) => { if (n[p] === undefined) n[p] = texts[i]; }); return n; });
         need.forEach(p => regMdBusy.current.delete(p));
@@ -11860,8 +11928,9 @@ export default function App() {
   const teamByArch = useMemo(() => { const m = new Map(); for (const t of teams) m.set(archKey(t.name), t); return m; }, [teams]);
   // The map's places as it is deployed now, so a city added to the map is on the Atlas and in the editors' city list
   // without a new build; the copy the app was built with until they arrive, and if they never do.
-  const [atlas, setAtlas] = useState(atlasRec);
+  const [atlas, setAtlas] = useState(ATLAS_HERE);
   useEffect(() => {
+    if (ARTERRA) return;                                        // the map is Avium's
     let live = true;
     fetchAtlas().then(a => { if (live) setAtlas(a); }).catch(() => {});
     return () => { live = false; };
@@ -14356,7 +14425,7 @@ export default function App() {
             {overseer && d.status === "waiting" && (
               <button type="button" className={"ux-btnreset ux-btn " + (drArm ? "ux-danger" : "ux-btn-pri")} disabled={!!why || drBusy} title={why || undefined}
                 onBlur={() => setDrArm(false)} onClick={() => { if (!drArm) { setDrArm(true); return; } setDrArm(false);
-                  drAct({ action: "start", order: drTables, stats: drSeason ? "public/avium/pstats/" + drSeason.id : null }); }}>
+                  drAct({ action: "start", order: drTables, stats: drSeason ? "public/" + PSTATS_DIR + drSeason.id : null }); }}>
                 {drArm ? "Confirm Start" : "Start Draft"}</button>)}
             {overseer && d.status === "running" && <button type="button" className="ux-btnreset ux-btn" disabled={drBusy} onClick={() => drAct({ action: "pause" })}>Pause</button>}
             {overseer && d.status === "paused" && <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={drBusy} onClick={() => drAct({ action: "resume" })}>Resume</button>}
@@ -14499,7 +14568,7 @@ export default function App() {
              rest: all.filter(n => !own.has(n.code) && !n.clubs.length).sort(byName), by: new Map(all.map(n => [n.code, n])), all: [...all].sort(byName) };
   }, [curRecs, scope]);
   const shTabNow = shTab === "ARTERRA" ? (arterraOn ? "ARTERRA" : null) : shTab && shNats.by.has(shTab) ? shTab : null;
-  const shTabIs = shTabNow || shNats.bar[0]?.code || null;
+  const shTabIs = shTabNow || shNats.bar[0]?.code || (ARTERRA ? "ARTERRA" : null);
   const shOpenTab = (code) => { shOrder.current.delete(code); setShTab(code); setShSel(null); setShEdit(null); setShFilt({}); setShFiltOpen(null); setShAll(false); setShMsg(""); };
   // A side's figures, as men move: its squad's mean, its eleven's, its bench's, and its men's transfer values together.
   const shMean = (ids) => { const v = ids.map(id => (id && typeof id === "object" ? id.ovr : recNow(id)?.ovr)).filter(x => Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
@@ -15594,8 +15663,8 @@ export default function App() {
   const renderUxTopBar = () => (
     <header className="ux-topbar">
       <img className="ux-wordmark" src={headerImg} alt="Avium Football Engine" />
-      <button type="button" className="ux-btnreset ux-navbtn" aria-label="Back" onClick={() => window.history.back()}>{uxIcon("back")}</button>
-      <button type="button" className="ux-btnreset ux-navbtn" aria-label="Forward" onClick={() => window.history.forward()}>{uxIcon("fwd")}</button>
+      <button type="button" className="ux-btnreset ux-navbtn" aria-label="Back" onClick={() => HIST().back()}>{uxIcon("back")}</button>
+      <button type="button" className="ux-btnreset ux-navbtn" aria-label="Forward" onClick={() => HIST().forward()}>{uxIcon("fwd")}</button>
       <nav className="ux-sections" aria-label="Sections">
         {[...UX_SECS, ...(session && isEditor ? [["editor", "Editor"]] : [])].map(([id, label]) => { const on = uxSecOn(id); return (
           <button key={id} type="button" className={"ux-btnreset ux-sec" + (on ? " ux-on" : "")} aria-current={on ? "page" : undefined}
@@ -15634,13 +15703,15 @@ export default function App() {
           {uxMenu === "settings" && (<>
             <div className="ux-scrim" onClick={() => setUxMenu(null)} />
             <div className="ux-menu" role="menu" aria-label="Settings" onKeyDown={e => { if (e.key === "Escape") setUxMenu(null); }}>
-              {THEMES_ENABLED && (
+              {THEMES_ENABLED && !ARTERRA && (
                 <label className="ux-menu-item">Theme
                   <select value={uiTheme} onChange={e => setUiTheme(e.target.value)}>
                     {UI_THEMES.map((th, i) => th ? <option key={th[0]} value={th[0]}>{th[1]}</option> : <option key={"r" + i} disabled>{"─".repeat(14)}</option>)}
                   </select></label>)}
-              <button type="button" role="menuitemcheckbox" aria-checked={arterraOn} className="ux-btnreset ux-menu-item" onClick={() => setArterraOn(v => !v)}>
-                Arterra<span className={"ux-tog" + (arterraOn ? " ux-on" : "")} aria-hidden="true"><i /></span></button>
+              <div className="ux-menu-item" role="group" aria-label="Universe">Universe
+                <span className="ux-seg">{WORLDS.map(([w, l]) => (
+                  <button key={w} type="button" className={"ux-btnreset" + (WORLD === w ? " ux-on" : "")} aria-pressed={WORLD === w}
+                    onClick={() => { setUxMenu(null); goUniverse(w); }}>{l}</button>))}</span></div>
               {scope.role === "overseer" && (
                 <button type="button" role="menuitemcheckbox" aria-checked={viewMode} className="ux-btnreset ux-menu-item" onClick={() => { closeCart(); closeInbox(); setViewMode(v => !v); }}>
                   Viewer Mode<span className={"ux-tog" + (viewMode ? " ux-on" : "")} aria-hidden="true"><i /></span></button>)}
@@ -15700,7 +15771,6 @@ export default function App() {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
       UX_HOME_PAGES.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoSec(id))));
-      if (cur !== "home" && arterraOn) right = <WorldToggle value={world} onChange={setWorld} />;
     } else if (tab === "leagues" && reg.sec === "competitions") {
       // A competition: its nation as the step up, its crest and name, its three pages, and on Season the season picked. The
       // section: Overview, Years (the year picked) and Head To Head.
@@ -15993,13 +16063,10 @@ export default function App() {
     const my = uxMy?.nt || null;
     const held = my ? uxTitles.filter(s => { const w = winnerOfSeason(s); return w && archKey(w) === archKey(my.name); }) : [];
     return (
-      <div className="ux-body" style={{ gridTemplateColumns: "300px 380px minmax(0, 1fr)" }}>
+      <div className="ux-body" style={{ gridTemplateColumns: ARTERRA ? "300px minmax(0, 1fr)" : "300px 380px minmax(0, 1fr)" }}>
         <div className="ux-col">
           {uxPanel("Nations",
-            arterraOn && <div className="ux-seg" role="group" aria-label="World">
-              {[["avium", "Avium"], ["arterra", "Arterra"]].map(([w, l]) => (
-                <button key={w} type="button" className={"ux-btnreset" + (world === w ? " ux-on" : "")} aria-pressed={world === w} onClick={() => setWorld(w)}>{l}</button>))}
-            </div>,
+            null,
             <>
               <label className="ux-sbox">{uxIcon("search", "ux-s")}
                 <input type="search" placeholder="Search Nations" aria-label="Search Nations" value={uxNatQ} onChange={e => setUxNatQ(e.target.value)} /></label>
@@ -16050,7 +16117,8 @@ export default function App() {
                   <td>{w ? <div className="ux-tc">{wt && <TeamCrest team={wt} size={16} />}<span>{w}</span></div> : <span className="ux-dim">&#8211;</span>}</td>
                 </tr>); })}</tbody></table></div>))}
         </div>
-        <div className="ux-col">
+        {/* The Atlas is the Avium Map: Arterra has no map of its own yet, and never shows Avium's. */}
+        {!ARTERRA && <div className="ux-col">
           {uxPanel("Atlas",
             <div className="ux-seg" role="group" aria-label="Show">
               {[["club", "Clubs"], ["nation", "National Teams"]].map(([k2, l]) => (
@@ -16061,7 +16129,7 @@ export default function App() {
               <AtlasMap pins={uxAtlasPins} focus={null} radius={0} ver={atlas.tiles} card={(p) => regTeamCard(p.team)}
                 onOpen={(p) => (p.kind === "nation" ? openNation(p.nation.code) : openTeam(p.team))} />
             </div></div>), true)}
-        </div>
+        </div>}
       </div>);
   };
 
@@ -16155,7 +16223,7 @@ export default function App() {
     const titles = isNT ? record.titles.filter(([c]) => UX_HONOURS.includes(c)) : record.titles;
     const finishes = isNT ? [] : record.rows.filter(r => r.s.comp === t.league && r.res?.league && r.res.pos && r.res.of).sort((a, b) => a.s.ord - b.s.ord);
     // A national side's place in the AFA ranking a year at a time (src/data/afa.js), and a club's league finishes.
-    const afa = isNT ? Object.entries(AFA_RANKINGS).map(([y, list]) => { const i = list.findIndex(([c]) => c === t.code);
+    const afa = isNT ? Object.entries(AFA_HERE).map(([y, list]) => { const i = list.findIndex(([c]) => c === t.code);
       return i < 0 ? null : { key: y, pos: i + 1, of: list.length, label: y, tip: [y, `${ordinal(i + 1)} of ${list.length}`, `${list[i][1]} Pts`] }; }).filter(Boolean) : [];
     const finItems = finishes.map(f => { const pts = parseInt(f.res.pts, 10);
       return { key: f.s.id, pos: f.res.pos, of: f.res.of, label: f.s.season, s: f.s,
@@ -16423,7 +16491,7 @@ export default function App() {
               <thead><tr><th>Season</th>{NT_COLS.map(([k, h]) => <th key={k}>{h}</th>)}<th className="ux-n">AFA</th><th>Manager</th></tr></thead>
               <tbody>{years.map(r => {
                 // Its place in the AFA ranking that year (src/data/afa.js), now its Overview shows its latest tournament instead.
-                const ai = (AFA_RANKINGS[r.y] || []).findIndex(([c]) => c === t.code);
+                const ai = (AFA_HERE[r.y] || []).findIndex(([c]) => c === t.code);
                 return (
                 <tr key={r.y}>
                   <td className="ux-dim" style={mono}>{r.y}</td>
@@ -16485,8 +16553,8 @@ export default function App() {
     const c1 = nt.primaryColor || "#2a3a50", ink = (lumOf(c1) ?? 0) > 0.55 ? "#101418" : "#ffffff";
     const conf = confLabel(String(nt.conference || CONF_BY_CODE.get(nt.code) || "")) || null;
     // Where it stands in the AFA ranking (src/data/afa.js), and how far it moved from the year before.
-    const afaYears = Object.keys(AFA_RANKINGS).map(Number).sort((a, b) => a - b);
-    const afaRank = (y) => { const i = (AFA_RANKINGS[y] || []).findIndex(([c]) => c === nt.code); return i < 0 ? null : i + 1; };
+    const afaYears = Object.keys(AFA_HERE).map(Number).sort((a, b) => a - b);
+    const afaRank = (y) => { const i = (AFA_HERE[y] || []).findIndex(([c]) => c === nt.code); return i < 0 ? null : i + 1; };
     const afaNow = afaYears.length ? afaRank(afaYears[afaYears.length - 1]) : null, afaThen = afaYears.length > 1 ? afaRank(afaYears[afaYears.length - 2]) : null;
     // Its last five internationals, oldest first, the way form is read.
     const ntKey = archKey(nt.name), ntComps = regRecordComps(nt);
@@ -17889,8 +17957,8 @@ export default function App() {
   // that year and the titles it won (src/data/afa.js, written by test/afa.mjs). A side new to the table reads New; in the
   // first year there is nothing to move from, so nobody does ("Move should just be – in 1932").
   const renderUxAfa = (y) => {
-    const list = AFA_RANKINGS[y] || [], det = AFA_YEARS[y] || {};
-    const before = new Map((AFA_RANKINGS[y - 1] || []).map(([c, v], i) => [c, { v, pos: i + 1 }]));
+    const list = AFA_HERE[y] || [], det = AFA_YEARS_HERE[y] || {};
+    const before = new Map((AFA_HERE[y - 1] || []).map(([c, v], i) => [c, { v, pos: i + 1 }]));
     const ntOf = (code) => teams.find(t => isIntlLeague(t.league) && worldOf(t) === "avium" && t.code === code) || null;
     return (
       <div className="ux-body" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
@@ -17908,7 +17976,7 @@ export default function App() {
                 <tr key={code}>
                   <td className={"ux-n" + (i === 0 ? " ux-gold ux-strong" : "")} style={mono}>{i + 1}</td>
                   <td className="ux-n" style={mono}>{mv ? <span className={"ux-facts-mv ux-" + (mv > 0 ? "up" : "down")}><UxArrow up={mv > 0} />{Math.abs(mv)}</span>
-                    : <span className="ux-dim">{was || !AFA_RANKINGS[y - 1] ? "\u2013" : "New"}</span>}</td>
+                    : <span className="ux-dim">{was || !AFA_HERE[y - 1] ? "\u2013" : "New"}</span>}</td>
                   <td><div className="ux-tc">{t && <TeamCrest team={t} size={16} />}{t
                     ? <button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(t)}>{t.name}</button> : <span>{code}</span>}</div></td>
                   <td className="ux-dim">{cf || "\u2013"}</td>
@@ -18935,7 +19003,6 @@ export default function App() {
     });
     return uxPanel("Sides", (
       <div className="ux-ph-ctl"><span className="ux-chip"><span style={mono}>{tournamentTeamIds.length}</span>&nbsp;Picked</span>
-        {arterraOn && <WorldToggle value={world} onChange={setWorld} />}
         <button type="button" className="ux-btnreset ux-btn" onClick={() => { setTournamentTeamIds([]); setPresetMsg(""); }}>Clear</button></div>), (<>
       <div className="ux-filters">
         <label className="ux-search">{uxIcon("search", "ux-s")}<input value={tSidesQ} onChange={e => setTSidesQ(e.target.value)} placeholder="Search Sides" aria-label="Search Sides" /></label>
@@ -19893,7 +19960,7 @@ export default function App() {
         : <span key="c" className="ux-mban-crest ux-none" />;
       const name = lock ? <span key="n" className="ux-mban-name"><SlideName text={t?.name || ""} /></span>
         : <UxSidePick key="n" label={away ? "Pick Away Side" : "Pick Home Side"} value={t?.id} groups={groupsBut(other)} onPick={it => set(it.k)}
-            placeholder="Search Sides" cls="ux-sp-big" bare slide head={arterraOn ? <WorldToggle value={world} onChange={setWorld} /> : null} />;
+            placeholder="Search Sides" cls="ux-sp-big" bare slide head={null} />;
       const dice = !lock && <button key="d" type="button" className="ux-btnreset ux-iconbtn ux-mban-dice" title="Random Side" aria-label="Random Side" onClick={() => randomFor(side)}>{uxIcon("dice")}</button>;
       const id = (
         <div key="i" className="ux-mban-id">
@@ -20170,11 +20237,11 @@ export default function App() {
     const slots = side ? pitchSlots(side.formation || "4-3-3") : [], roleOf = side ? rolesOf(side) : {};
     const roleFor = (p) => ROLE_NAME[roleOf[p.name]] || null;
     // Each side's newest season: a club's league finish, a national side's AFA place; and its last five, newest on the right.
-    const afaYear = Math.max(...Object.keys(AFA_RANKINGS).map(Number));
+    const afaYear = Math.max(...Object.keys(AFA_HERE).map(Number));
     const sideRows = sides.map(t => {
       const isNT = isIntlLeague(t.league), feed = uxSideFeed(t, null);
       const s = isNT ? null : (pstats?.seasons || []).filter(x => x.comp === t.league && x.md).sort((a, b) => b.ord - a.ord)[0] || null;
-      const res = s ? archOf(s, t.name) : null, afa = isNT ? (AFA_RANKINGS[afaYear] || []).findIndex(([c]) => c === t.code) + 1 || null : null;
+      const res = s ? archOf(s, t.name) : null, afa = isNT ? (AFA_HERE[afaYear] || []).findIndex(([c]) => c === t.code) + 1 || null : null;
       const rec = { p: feed.length, w: 0, d: 0, l: 0, gf: 0, ga: 0 };
       for (const f of feed) { rec[f.o] += 1; rec.gf += f.us; rec.ga += f.them; }
       return { t, isNT, s, res, afa, feed, rec, form: feed.slice(0, 5).reverse() };
@@ -20321,7 +20388,7 @@ export default function App() {
   const uxPl = uxPlayerName ? uxPlayerData(uxPlayerName) : null;
 
   return (
-    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", height: "100vh", padding: 0 }}>
+    <div data-theme={ARTERRA ? "default" : uiTheme} data-universe={WORLD} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", height: "100vh", padding: 0 }}>
       <style>{APP_CSS}</style>
       <div className="width-gate ux-gate" role="alert">
         <img src={headerImg} alt="Avium Football Engine" />
@@ -21194,7 +21261,7 @@ export default function App() {
             grew to its content, which on a page that cannot scroll meant a long enough squad pushed
             the export control off the bottom of the screen with no way to reach it. */}
         {tab === "utilities" && (<div style={{ height: ROSTER_PANEL_H, overflowY: "auto", scrollbarGutter: "stable", paddingRight: 4 }}>
-          {THEMES_ENABLED && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
+          {THEMES_ENABLED && !ARTERRA && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
               {UI_THEMES.map((t, i) => t ? <option key={t[0]} value={t[0]}>{t[1]}</option>

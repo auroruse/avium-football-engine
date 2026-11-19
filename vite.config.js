@@ -13,8 +13,8 @@ import path from 'node:path'
 // it was given), so the app asks for the one file that exists rather than guessing between them.
 const VID = 'virtual:stadium-images'
 const STADIUM_FILE = /\.(jpe?g|png)$/i
-const stadiumImages = () => {
-  const dir = path.resolve('public/avium/stadiums')
+const stadiumImages = (world = 'avium') => {
+  const dir = path.resolve(`public/${world}/stadiums`)
   if (!fs.existsSync(dir)) return { names: [], ext: {} }
   const ext = {}
   for (const f of fs.readdirSync(dir).filter(f => STADIUM_FILE.test(f)).sort()) {
@@ -28,14 +28,16 @@ const stadiumManifest = () => ({
   name: 'stadium-manifest',
   resolveId: (id) => (id === VID ? '\0' + VID : null),
   load: (id) => (id === '\0' + VID
-    ? (({ names, ext }) => `export const STADIUM_IMAGES = ${JSON.stringify(names)}; export const STADIUM_EXT = ${JSON.stringify(ext)};`)(stadiumImages())
+    // Each universe's own grounds (src/data/worlds.js): Avium's under the names the app always read, Arterra's beside them.
+    ? (({ names, ext }, b) => `export const STADIUM_IMAGES = ${JSON.stringify(names)}; export const STADIUM_EXT = ${JSON.stringify(ext)};`
+        + `export const STADIUM_IMAGES_ARTERRA = ${JSON.stringify(b.names)}; export const STADIUM_EXT_ARTERRA = ${JSON.stringify(b.ext)};`)(stadiumImages(), stadiumImages('arterra'))
     : null),
   // A photograph dropped in while the dev server is running invalidates the module, so the list
   // refreshes without a restart.
   configureServer(server) {
     server.watcher.add(path.resolve('public/avium/stadiums'))
     const bust = (f) => {
-      if (!/public[/\\]avium[/\\]stadiums[/\\]/.test(f)) return
+      if (!/public[/\\](avium|arterra)[/\\]stadiums[/\\]/.test(f)) return
       const mod = server.moduleGraph.getModuleById('\0' + VID)
       if (mod) server.moduleGraph.invalidateModule(mod)
       server.ws.send({ type: 'full-reload' })
@@ -47,8 +49,8 @@ const stadiumManifest = () => ({
 // Same trick for the player-stats archive: public/avium/pstats holds one TSV per competition-season
 // plus changelog.tsv, and the app needs the file list before it can fetch any of them.
 const PID = 'virtual:pstats'
-const pstatsFiles = () => {
-  const dir = path.resolve('public/avium/pstats')
+const pstatsFiles = (world = 'avium') => {
+  const dir = path.resolve(`public/${world}/pstats`)
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir, { recursive: true })
     .map(f => String(f).split(path.sep).join('/'))
@@ -60,12 +62,12 @@ const pstatsManifest = () => ({
   name: 'pstats-manifest',
   resolveId: (id) => (id === PID ? '\0' + PID : null),
   load: (id) => (id === '\0' + PID
-    ? `export const PSTATS_FILES = ${JSON.stringify(pstatsFiles())};`
+    ? `export const PSTATS_FILES = ${JSON.stringify(pstatsFiles())}; export const PSTATS_FILES_ARTERRA = ${JSON.stringify(pstatsFiles('arterra'))};`
     : null),
   configureServer(server) {
     server.watcher.add(path.resolve('public/avium/pstats'))
     const bust = (f) => {
-      if (!/public[/\\]avium[/\\]pstats[/\\]/.test(f)) return
+      if (!/public[/\\](avium|arterra)[/\\]pstats[/\\]/.test(f)) return
       const mod = server.moduleGraph.getModuleById('\0' + PID)
       if (mod) server.moduleGraph.invalidateModule(mod)
       server.ws.send({ type: 'full-reload' })

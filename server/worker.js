@@ -26,7 +26,8 @@ import { sheetsFromRecords } from "../src/data/sheets.js";
 import { owns, planSave, scopeOf, settleRequest } from "../src/data/rules.js";
 import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, startDraft, steerDraft } from "../src/data/collegedraft.js";
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
-import { TRADES_FILE, dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, trendsFrom } from "../src/data/trades.js";
+import { dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, tradesFile, trendsFrom } from "../src/data/trades.js";
+import { WORLDS, sealDraft } from "../src/data/worlds.js";
 import { icNow } from "../src/data/icclock.js";
 const NATIONAL_FILES = new Set(["AVIUM", "ARTERRA"]);
 import { sposFor } from "../src/engine/formations.ts";
@@ -102,15 +103,23 @@ async function readText(env, head, p, dflt) {
 }
 // THE TRADES LOG (src/data/trades.js): the moves a change makes, each man as he stood before it, added to the log in the
 // same commit; null when it moves nobody. The season is the latest World Cup on file.
+// Each universe's moves go in its own log, beside its own archive, dated by its own clock (src/data/worlds.js). Returns
+// the files to write, by path.
 async function tradeLog(env, head, rec, next, by) {
-  if (!tradeMoves(rec, next).length) return null;
-  const [old, changelog, wc] = await Promise.all([readText(env, head, TRADES_FILE, ""), readText(env, head, "public/avium/pstats/changelog.tsv", ""),
-    gh(env, `/repos/${env.REPO}/contents/public/avium/pstats/wc?ref=${head}`).catch(() => [])]);
-  const rows = parseTrades(old), now = new Date();
-  const season = latestWorldCup((Array.isArray(wc) ? wc : []).map(f => f.name)) ?? icNow(now).getUTCFullYear();
-  const add = tradeRows(rec, next, { season, now, by, first: rows.reduce((n, r) => Math.max(n, r.deal || 0), 0) + 1, trends: trendsFrom(changelog),
-    slotsFor: (f) => sposFor(String(f || "4-3-3").trim()) });
-  return add.length ? dumpTrades([...rows, ...add]) : null;
+  const out = {};
+  if (!tradeMoves(rec, next).length) return out;
+  for (const world of WORLDS) {
+    const dir = `public/${world}/pstats`, now = new Date();
+    if (!tradeRows(rec, next, { season: 0, now, world, slotsFor: (f) => sposFor(String(f || "4-3-3").trim()) }).length) continue;
+    const [old, changelog, wc] = await Promise.all([readText(env, head, tradesFile(world), ""), readText(env, head, `${dir}/changelog.tsv`, ""),
+      gh(env, `/repos/${env.REPO}/contents/${dir}/wc?ref=${head}`).catch(() => [])]);
+    const rows = parseTrades(old);
+    const season = latestWorldCup((Array.isArray(wc) ? wc : []).map(f => f.name)) ?? icNow(now, world).getUTCFullYear();
+    const add = tradeRows(rec, next, { season, now, by, world, first: rows.reduce((n, r) => Math.max(n, r.deal || 0), 0) + 1, trends: trendsFrom(changelog),
+      slotsFor: (f) => sposFor(String(f || "4-3-3").trim()) });
+    if (add.length) out[tradesFile(world)] = dumpTrades([...rows, ...add]);
+  }
+  return out;
 }
 async function readMain(env) {
   const head = await mainHead(env);
@@ -163,6 +172,8 @@ async function draftStep(env, head, rec, editors, drafts, login, a, now) {
   const r = runDraft(rec, d, { now, hand: BY_HAND, board, h: judge(rec),
     pick: a.action === "pick" ? { n: a.n, player: a.player, out: a.out ?? null, by: login } : null });
   if (r.errors) return r;
+  // A pick is sealed like any other change (src/data/worlds.js).
+  if (r.patch) { const z = sealDraft(rec, r.patch, applyDraft); if (z.problems.length) return { errors: z.problems }; }
   if (!r.patch && JSON.stringify(r.draft) === JSON.stringify(d0)) return { result: { draft: d0, apply: null } };
   const files = { [DRAFT_FILE]: dumpDrafts(drafts.map(x => (x.id === d0.id ? r.draft : x))), ...(r.patch ? filesFor(rec, applyDraft(rec, r.patch)) : null) };
   const own = a.action === "pick" ? 1 : 0, auto = r.made.slice(own), late = r.made.filter(n => r.draft.picks[n - 1].by === "clock");
@@ -260,8 +271,7 @@ async function handle(req, env) {
       if (!plan.apply && !plan.requests.length) return nothing;
       const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next), waiting = [...requests, ...plan.requests];
       if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify(waiting, null, 1) + "\n";
-      const log = plan.apply ? await tradeLog(env, head, rec, next, login) : null;
-      if (log) files[TRADES_FILE] = log;
+      if (plan.apply) Object.assign(files, await tradeLog(env, head, rec, next, login));
       const added = ["players", "managers", "teams", "leagues"].reduce((n, k) => n + (plan.apply?.add?.[k]?.length || 0), 0);
       const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length + added : 0;
       if (!Object.keys(files).length) return nothing;
@@ -293,8 +303,7 @@ async function handle(req, env) {
       if (s.errors?.length) { errors = s.errors; return { result: null }; }
       const left = s.request ? requests.map(x => (x.id === r.id ? s.request : x)) : requests.filter(x => x.id !== r.id);
       const files = { ...(s.apply ? filesFor(rec, applyDraft(rec, s.apply)) : null), "src/data/requests.json": JSON.stringify(left, null, 1) + "\n" };
-      const log = s.apply ? await tradeLog(env, head, rec, applyDraft(rec, s.apply), login) : null;
-      if (log) files[TRADES_FILE] = log;
+      if (s.apply) Object.assign(files, await tradeLog(env, head, rec, applyDraft(rec, s.apply), login));
       return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s ${r.kind === "deal" ? "offer" : "request"}`,
                result: { done: !!s.done, apply: s.apply || null, request: s.request, waiting: left } };
     });

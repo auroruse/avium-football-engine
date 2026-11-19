@@ -20,6 +20,7 @@ import { birthDateOk } from "./icclock.js";
 import { conferencesProblem, leagueNameFree, leagueRecord } from "./leagues.js";
 import { badgeOrder, traitsProblem } from "./badges.js";
 import { gradOk } from "./colleges.js";
+import { manWorld, nationWorlds, sealDraft, teamWorld, WORLD_NAME } from "./worlds.js";
 
 export const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const lc = (s) => String(s || "").toLowerCase();
@@ -62,7 +63,10 @@ const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 // given 11-man benches"). A club squad of sixteen (asked for before then, or kept on a form) takes its six new places open.
 export const PLACES = 22;
 const padPlaces = (sq) => { const out = Array.isArray(sq) ? [...sq] : []; while (out.length < PLACES) out.push(null); return out; };
-const world = (t) => (t.file === "ARTERRA" ? "arterra" : "avium");
+// THE TWO UNIVERSES (src/data/worlds.js). A code names one team in its universe; a new man is of his nation's, or of the
+// side or nation he is made for, and his date of birth is read on that universe's clock.
+const worldFor = (rec, nat, ctx) => { const natW = nationWorlds(rec.teams); return natW.get(nat) || ctx || "avium"; };
+const sideWorld = (rec, key) => { const t = key ? rec.teams.find(x => teamKey(x) === key) : null; return t ? teamWorld(t, nationWorlds(rec.teams)) : null; };
 // A NATION'S LEVEL: its national side's rating as the app shows it, the average of its squad's ratings to a tenth and
 // then to a whole number. An editor may make a player of another nation rated below it (user, 11 October 2026). Null
 // when the nation has no national side with a rated man.
@@ -103,7 +107,7 @@ const TEAM_FIELD = { name: "name", code: "code", home: "home colour", away: "awa
                      formation: "formation", style: "style", manager: "manager", squad: "squad", timeWasting: "time wasting", group: "league", file: "sheet",
                      removed: "removal" };
 const TIME_WASTING = ["Never", "Sometimes", "Constantly"];
-const codeClash = (teams, code, t) => teams.find(x => x !== t && x.code === code && world(x) === world(t));
+const codeClash = (teams, code, t) => { const natW = nationWorlds(teams); return teams.find(x => x !== t && x.code === code && teamWorld(x, natW) === teamWorld(t, natW)); };
 const tierOk = (v) => Number.isInteger(v) && v >= 0 && v <= 5;
 const cupOk = (v, leagues) => text(v, 50) && !(leagues || []).some(l => l.name.toLowerCase() === v.toLowerCase());
 const isNew = (v) => !!v && typeof v === "object" && !Array.isArray(v);
@@ -118,7 +122,7 @@ function valueProblems(rec, next, changes) {
       if (c.field === "name" && !text(c.to, 60)) bad("not a usable name");
       if (c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
       if (c.field === "nat" && !nationCode(c.to)) bad("not a nationality");
-      if (c.field === "born" && c.to != null && !birthDateOk(c.to)) bad("a date of birth is a real date, for a man at least 14");
+      if (c.field === "born" && c.to != null && !birthDateOk(c.to, undefined, manWorld(rec[c.kind].find(r => r.id === c.id)))) bad("a date of birth is a real date, for a man at least 14");
       if (c.field === "grad" && c.to != null && !gradOk(c.to)) bad("a graduation year is a year");
       if (c.field === "style" && c.to != null && !STYLE_NAMES.has(c.to)) bad("not a style");
       if (c.kind === "players" && c.field === "pos" && !posOk(c.to)) bad("a player has one or two positions");
@@ -226,7 +230,7 @@ function newProblems(rec, n, scope, over, h) {
   if (n.what !== "teams") {
     if (!nationCode(n.nat)) bad("not a nationality");
     else if (!(n.what === "managers" ? over || mgrNations(scope).includes(n.nat) : mine(n.nat))) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
-    if (!(n.born && birthDateOk(n.born))) bad("a date of birth is a real date, for a man at least 14");
+    if (!(n.born && birthDateOk(n.born, undefined, worldFor(rec, n.nat, sideWorld(rec, n.side))))) bad("a date of birth is a real date, for a man at least 14");
     if (n.grad != null && !gradOk(n.grad)) bad("a graduation year is a year");
     // An editor may leave the rating for the overseer, who sets it to let the man in.
     if (over ? !rating(n.ovr) : n.ovr != null && !rating(n.ovr)) bad("a rating is a whole number from 25 to 99");
@@ -249,14 +253,14 @@ function newProblems(rec, n, scope, over, h) {
     const nation = n.nation, clubs = rec.teams.filter(t => !isNational(t) && t.nation === nation);
     if (!clubs.length) bad("a new club belongs to a nation with a league"); else if (!mineClubs(nation)) bad("not a nation of yours");
     if (!TEAM_VALUE.code(n.code)) bad("not a usable code");
-    else if (rec.teams.some(t => t.code === n.code && world(t) === (clubs[0]?.file === "ARTERRA" ? "arterra" : "avium"))) bad(`the code ${n.code} is taken`);
+    else if (codeClash(rec.teams, n.code, { nation })) bad(`the code ${n.code} is taken`);
     for (const f of ["home", "away", "stadium", "location", "formation"]) if (!TEAM_VALUE[f](n[f])) bad(`not a usable ${TEAM_FIELD[f]}`);
     if (!clubs.some(t => t.group === n.group)) bad("not one of the nation's leagues");
     const { clubOf, mgrClubOf } = placesOf(rec), sq = Array.isArray(n.squad) ? n.squad : [];
     if ((sq.length !== PLACES && sq.length !== 16) || sq.slice(0, 11).some(v => !v)) bad("a new club needs twenty-two places, eleven of them filled");
     if (n.timeWasting != null && !TIME_WASTING.includes(n.timeWasting)) bad("not a usable time wasting");
     const seen = new Set();
-    for (const v of sq.filter(isNew)) newManProblems(rec, v, "players", scope, over, bad);
+    for (const v of sq.filter(isNew)) newManProblems(rec, v, "players", scope, over, bad, worldFor(rec, nation));
     for (const id of sq.filter(v => typeof v === "string")) {
       const p = rec.players.find(x => x.id === id), at = clubOf.get(id);
       if (!p || p.retired) { bad("a man in the squad is not available"); continue; }
@@ -264,7 +268,7 @@ function newProblems(rec, n, scope, over, h) {
       if (at && !owns(scope, rec.teams.find(t => teamKey(t) === at))) bad(`${p.name} is at another nation's club`);
     }
     // A manager made for the new club on the Sheet comes in it as a new man, the way a new league's clubs carry theirs.
-    if (isNew(n.manager)) newManProblems(rec, n.manager, "managers", scope, over, bad);
+    if (isNew(n.manager)) newManProblems(rec, n.manager, "managers", scope, over, bad, worldFor(rec, nation));
     else if (n.manager) { const m = rec.managers.find(x => x.id === n.manager), at = mgrClubOf.get(n.manager);
       if (!m) bad("no such manager"); else if (at && !owns(scope, rec.teams.find(t => teamKey(t) === at))) bad(`${m.name} manages another nation's club`); }
   }
@@ -273,13 +277,13 @@ function newProblems(rec, n, scope, over, h) {
 // A new man inside a request (a league's club, a list of new players): an editor's of their own nation, his rating left for
 // the overseer if they like, who must set it to let him in; or a player of another nation, rated below its level. Traits
 // within what his rating can afford.
-function newManProblems(rec, m, kind, scope, over, bad) {
+function newManProblems(rec, m, kind, scope, over, bad, ctx) {
   const w = m?.name || (kind === "players" ? "A new player" : "A new manager");
   if (!m || typeof m !== "object") { bad(`${w}: not a ${kind === "players" ? "player" : "manager"}`); return; }
   if (!text(m.name, 60)) bad(`${w}: not a usable name`);
   if (!nationCode(m.nat)) bad(`${w}: not a nationality`);
   else if (!over && !(kind === "managers" ? mgrNations(scope) : scope.nations).includes(m.nat)) { const why = kind === "players" ? foreignProblem(rec, m.nat, m.ovr) : "not a nationality of yours"; if (why) bad(`${w}: ${why}`); }
-  if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
+  if (!(m.born && birthDateOk(m.born, undefined, worldFor(rec, m.nat, ctx)))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
   if (kind === "players" && m.grad != null && !gradOk(m.grad)) bad(`${w}: a graduation year is a year`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
   if (kind === "players" && !posOk(m.pos)) bad(`${w}: a player has one or two positions`);
@@ -301,7 +305,7 @@ function placesForMen(t, men, h) {
 function batchProblems(rec, n, scope, over, h) {
   const out = [], men = Array.isArray(n.men) ? n.men : [];
   if (!men.length || men.length > 40) out.push("A list of new players holds one to forty");
-  for (const m of men) newManProblems(rec, m, "players", scope, over, (what) => out.push(what));
+  for (const m of men) newManProblems(rec, m, "players", scope, over, (what) => out.push(what), sideWorld(rec, n.side));
   if (n.side) {
     const t = rec.teams.find(x => teamKey(x) === n.side);
     if (!t) out.push("No such side");
@@ -322,7 +326,7 @@ function batchProblems(rec, n, scope, over, h) {
 function leagueProblems(rec, n, scope, over) {
   const out = [], bad = (who, what) => out.push(`${who}: ${what}`), L = n.name || "A new league";
   if (!text(n.name, 50)) bad(L, "not a usable name"); else if (!leagueNameFree(rec.leagues, n.name)) bad(L, `a league is already called ${n.name}`);
-  if (!rec.teams.some(t => t.file === "AVIUM" && t.code === n.nation)) bad(L, "not a nation of Avium");
+  if (!rec.teams.some(t => isNational(t) && t.code === n.nation)) bad(L, "not a nation");
   else if (!over && !clubNations(scope).includes(n.nation)) bad(L, "not a nation of yours");
   if (!tierOk(n.tier)) bad(L, "a tier is 1 to 5, or none");
   if (n.cup != null && !cupOk(n.cup, rec.leagues)) bad(L, "not a usable cup");
@@ -330,13 +334,13 @@ function leagueProblems(rec, n, scope, over) {
   if (!clubs.length || clubs.length > 40) bad(L, "a league starts with one to forty clubs");
   const { clubOf, mgrClubOf } = placesOf(rec), codes = new Set(), men = new Set(), mgrs = new Set();
   const ownedAt = (at) => !at || owns(scope, rec.teams.find(t => teamKey(t) === at));
-  const newMan = (m, kind, C) => newManProblems(rec, m, kind, scope, over, (what) => bad(C, what));
+  const newMan = (m, kind, C) => newManProblems(rec, m, kind, scope, over, (what) => bad(C, what), worldFor(rec, n.nation));
   for (const c of clubs) {
     if (!isNew(c)) { bad(L, "not a club"); continue; }
     const C = c.name || "A founding club";
     if (!TEAM_VALUE.name(c.name)) bad(C, "not a usable name");
     if (!TEAM_VALUE.code(c.code)) bad(C, "not a usable code");
-    else if (codes.has(c.code) || rec.teams.some(t => t.code === c.code && world(t) === "avium")) bad(C, `the code ${c.code} is taken`);
+    else if (codes.has(c.code) || codeClash(rec.teams, c.code, { nation: n.nation })) bad(C, `the code ${c.code} is taken`);
     codes.add(c.code);
     for (const f of ["home", "away", "stadium", "location", "formation"]) if (!TEAM_VALUE[f](c[f])) bad(C, `not a usable ${TEAM_FIELD[f]}`);
     if (!c.stadium) bad(C, "a club needs a ground");
@@ -475,7 +479,20 @@ const menLocks = (r) => [...(r.ins || []).map(m => (m.kind === "manager" ? "m:" 
 
 // WHAT A SAVED CART BECOMES. Returns { scope, errors, apply, requests }: `apply` is the part that goes live now (a
 // draft), `requests` the parts waiting on someone's answer. A cart with any error applies nothing.
-export function planSave(rec, editors, pending, login, cart, h, now = new Date().toISOString(), newId = () => crypto.randomUUID().slice(0, 8)) {
+// THE SEAL (src/data/worlds.js). Whatever a save or an answer would put live is sealed first: its new men are given their
+// universe, and nothing goes in that would put a man, a manager or a nationality of one universe in the other. An offer
+// or a trade between sides of the two is refused when it is asked, since nobody could ever accept it.
+const sealed = (rec, out) => { if (!out.apply || out.errors?.length) return out;
+  const z = sealDraft(rec, out.apply, applyDraft); return z.problems.length ? { ...out, errors: z.problems, apply: null } : { ...out, apply: z.d }; };
+export function planSave(rec, ...rest) {
+  const plan = sealed(rec, planSave0(rec, ...rest));
+  if (plan.errors.length) return { scope: plan.scope, errors: plan.errors, apply: null, requests: [] };
+  const natW = nationWorlds(rec.teams), by = new Map(rec.teams.map(t => [teamKey(t), t])), bad = [];
+  for (const r of plan.requests || []) { const ws = new Set([r.team, r.other, ...(r.sides || [])].filter(k => by.has(k)).map(k => teamWorld(by.get(k), natW)));
+    if (ws.size > 1) bad.push(`${r.teamName}: ${[...ws].map(w => WORLD_NAME[w]).join(" and ")} never trade`); }
+  return bad.length ? { scope: plan.scope, errors: bad, apply: null, requests: [] } : plan;
+}
+function planSave0(rec, editors, pending, login, cart, h, now = new Date().toISOString(), newId = () => crypto.randomUUID().slice(0, 8)) {
   const scope = scopeOf(editors, login), over = scope.role === "overseer";
   const none = { scope, errors: [], apply: null, requests: [] };
   if (scope.role === "viewer") return { ...none, errors: ["Not an approved editor"] };
@@ -652,7 +669,8 @@ const draftSizeOf = (d) => ["players", "managers", "teams", "leagues"].reduce((n
 // declined one stays, with its note, until its maker dismisses it), `apply` the draft to go live when the last answer is
 // in. A counter is the deal changed by a club it waits on, from that club's side: the new version, which every other club
 // then accepts again.
-export function settleRequest(rec, editors, request, login, action, h, extra = {}) {
+export function settleRequest(rec, ...rest) { return sealed(rec, settleRequest0(rec, ...rest)); }
+function settleRequest0(rec, editors, request, login, action, h, extra = {}) {
   const scope = scopeOf(editors, login), over = scope.role === "overseer";
   const teamBy = new Map(rec.teams.map(t => [teamKey(t), t]));
   const answersFor = Object.keys(request.needs || {}).filter(k => over || (k !== OVERSEER && owns(scope, teamBy.get(k))));

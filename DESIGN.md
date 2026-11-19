@@ -21,13 +21,43 @@ Home until Moukden and Kirin renamed it (9 October 2026). Players, Managers, Tea
 (its page bar: Overview, Teams, Players, Managers, Trades, Rating Changes; Moukden and Kirin, 9 October 2026; Teams 11 October
 2026, first after Overview). Custom Sides, the sides made in this browser, are gone (Moukden and Kirin, 10 October 2026).
 Registry stays lit on them, on a player's or a manager's page, and on a nation's and its clubs'
-pages. Search sits beside it, then the settings menu (the theme, the Arterra switch and the Documentation), Requests and the Cart for
+pages. Search sits beside it, then the settings menu (the theme, the Universe switch and the Documentation), Requests and the Cart for
 editors, and the account menu. **Tournaments** is the third section, after Competitions (below).
 
-**The Arterra switch** (Moukden and Kirin, 10 October 2026) is each viewer's own, kept in the browser and on unless
-turned off. Off, the world is Avium alone: the four world switches go (Registry's title and its Nations panel, the side
-picker, the tournament's Sides), and search, addresses and the Editor drop Arterra's sides, players and managers. A match
-or tournament already holding an Arterra side plays on.
+**The two universes** (Moukden and Kirin, 19 November 2026: "a app-wide toggle between Avium and Arterra, waterproof,
+separating the two universes in one engine"). Avium and Arterra share the engine and nothing else. This replaces the
+Arterra on/off switch of 10 October 2026 and its four world switches (Registry's title and Nations panel, the side
+picker, the tournament's Sides), under which a fixture or a tournament could hold sides of both. The answers given that
+day:
+
+- **Never mix.** A match, a tournament, a transfer or a list holds one universe's sides and men only.
+- **Each keeps its place.** Switching leaves the universe behind exactly as it was: its page, its live match (which
+  waits and plays on from the same tick), its open tournament, its cart. Switching back returns to it.
+- **Arterra is a full universe.** It is built to take clubs, leagues, transfers, an archive and a Hall of Fame of its own
+  (`public/arterra/pstats`, `public/arterra/stadiums`); a section with nothing in it yet shows empty.
+- **Its own time.** Arterra's dates are its own counter's (`src/data/icclock.js`: 28 July 2026 was 1 January 2043, four
+  times as fast, 365-day years). Ages and dates of birth in Arterra are read on it.
+- **Its own accent.** The same layout and the same wordmark (the same day: "you dont need a custom title"), with the
+  accent its badge's green and the champion's gold its badge's gold (`src/theme.css`, `[data-universe="arterra"]`;
+  "Accent should be yellow or green from Arterra's badge"). The colour themes are Avium's tournaments', so Arterra
+  has no theme menu.
+- **The switch is in Settings**, a Universe row with both names (the same day: "The switch can be in settings"). The app
+  opens in the universe last used, Avium the first time, and an address opens in its own universe (`?world=arterra` on
+  Arterra's).
+
+How it is sealed. The page is a shell (`src/Shell.tsx`) holding a copy of the app for each universe in a frame of its
+own, made the first time that universe is opened and kept from then on; it shows one. A copy is one universe's from its
+first line (`App.tsx`, `WORLD`): its records are cut down to that universe before anything is built from them
+(`src/data/worlds.js`, `scopeRecords`), so no list, index, search or cache in it can hold the other's. The address bar,
+Back and Forward are the shell's; a frame reports its address and is handed the ones that arrive. What a universe keeps
+in the browser (cart, saved tournaments, editor forms) is under its own keys; the theme and the sign-in are shared. A
+saved tournament holding a side of the other universe, or a save file exported from it, is refused.
+
+Where a record belongs: a national side by its sheet (AVIUM or ARTERRA); a club or league by its nation; a player or
+manager by `world: "arterra"` on his own record, set when he is made and never changed. National codes are never shared
+between the two, which keeps an editor's rights in one universe. The registry server seals every change before it
+commits (`sealDraft`, through `planSave` and `settleRequest`): a new man is given his universe, and a man, a manager or
+a nationality of one is refused in the other. Each universe's transfers go in its own log.
 
 **Viewer Mode** (Moukden and Kirin, 13 October 2026: "add a viewer mode in settings for the overseer so I can view the app
 as a normie") is the overseer's switch in the settings menu, kept in his browser: on, the app treats him as someone signed
@@ -206,7 +236,7 @@ name over the season and its rises and falls, each an arrow up or down before th
 rating, the change), searchable, filtered by side and by rises or falls, sortable by any column, biggest rise first.
 There is no view of every batch at once (the user, 9 October 2026). **Sides**: each side's rises and falls (the arrows again) and net in the batch, highest net first; picking one
 filters Changes to it, picking it again clears it. A player's name opens his page, a side's name its own. The archive
-is Avium's, so Arterra has none.
+is each universe's own (`public/<universe>/pstats`); Arterra's is empty so far.
 
 **Competitions** (Moukden and Kirin, 9 October 2026) is the archive: every competition on file, every season of each and
 who won it. A competition's clubs today are its nation's page and its players are on Players, so a competition has no
@@ -348,7 +378,7 @@ Round 2) is its one tab; at its right are **Sim To End** and **Kick Off**, and D
 The live match and Full Time follow below.
 
 **The banner** runs the width of the page over the chosen ground's photo. Each side has its crest at the outer edge, then
-its name, which opens its side picker (the Side picker below: every league a group, the Avium/Arterra switch, a rating on
+its name, which opens its side picker (the Side picker below: every league a group, a rating on
 each row), a die beside it for a random side from any league (a club for a club, a national side for a national side), its league, and its manager with his style in its
 colour and his rating. Between them: the ground with its city and capacity, then the venue switch (Home Ground, Away
 Ground or Neutral) centred under it with Swap Ends to its left ("home/away/neutral isnt centered", Moukden and Kirin, 10
@@ -470,8 +500,7 @@ appointing a manager brings them, and only the overseer sets a style directly.
 **The Sheet** (Moukden and Kirin, 12 October 2026: "the team, player, and league editor/creator can be merged into one
 entity – a Google Sheets clone") is the AFA Registry the records came from, rebuilt in the app's own theme: column
 letters over the columns, row numbers down the left, the picked cell's whole value in a bar over the grid, and the tabs
-along the foot. Every nation has a tab, and Arterra's national sides share one ARTERRA tab, last, while the Arterra switch
-is on. The editor's own nations come first, then every nation with clubs; nations with only a national side are reached
+along the foot. Every nation has a tab; in Arterra the national sides share one ARTERRA tab. The editor's own nations come first, then every nation with clubs; nations with only a national side are reached
 from All Nations at the end of the tab bar. Every tab can be read by every editor; only their own sides take changes, and
 another nation's tab shows its cells locked. A tab's header row wears its nation's colour.
 
@@ -524,9 +553,8 @@ Record: name, nationality, date of birth, rating, positions, traits, value and h
 and can retire him; an editor sees it locked but for his positions, which are asked for. **Free Agents** lists every
 player and manager without a club, as Trades and the server count them, so a man who plays only for his national side is
 one (the user, 12 October 2026: "national team-only free agents aren't shown for some reason? Make player and manager
-free agents separate tabs"), of the tab's world (Arterra's for the Arterra tab, Avium's otherwise; the same day: "why are
-arterra managers showing in avium new team????", which also took Arterra's men out of Trades and the new-club and
-new-league reviews): Players and Managers are its two tabs, best first, each with a search and its New button,
+free agents separate tabs"), of the universe the copy is (the same day: "why are arterra managers showing in avium new
+team????", since settled for good by the two universes above): Players and Managers are its two tabs, best first, each with a search and its New button,
 and new men in the cart without a side stand first, faint. Dragging one onto an empty place signs him, onto a man sends
 that man to free agency in his stead, and dragging a man onto the panel releases him. Nationals opens while a national side is
 picked: the nation's men playing abroad, best first, to drag up. Under a record stand its actions: **Sub Out** for a

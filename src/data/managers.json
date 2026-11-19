@@ -35,10 +35,10 @@
 {"id":"m0034","name":"Dennis PORSCHE","nat":"ALE","ovr":67,"born":"1885-05-17"},
 {"id":"m0035","name":"Walther HEPPENHEIMER","nat":"ALE","ovr":64,"born":"1885-09-04"},
 {"id":"m0036","name":"Thilo SCHWINGHAMMER","nat":"ALE","ovr":66,"born":"1901-02-03"},
-{"id":"m0037","name":"Thomas BALDWIN","nat":"GOA","ovr":88,"born":"1883-04-15"},
-{"id":"m0038","name":"Pavel YENOTOV","nat":"KAL","ovr":74,"born":"1883-02-02"},
-{"id":"m0039","name":"Enault VIRIE","nat":"OTL","ovr":78,"born":"1889-04-05"},
-{"id":"m0040","name":"Charles Bernard POLLARD","nat":"PZR","ovr":77,"born":"1887-09-20"},
+{"id":"m0037","name":"Thomas BALDWIN","nat":"GOA","ovr":88,"born":"1991-07-23","world":"arterra"},
+{"id":"m0038","name":"Pavel YENOTOV","nat":"KAL","ovr":74,"born":"1991-05-12","world":"arterra"},
+{"id":"m0039","name":"Enault VIRIE","nat":"OTL","ovr":78,"born":"1997-07-13","world":"arterra"},
+{"id":"m0040","name":"Charles Bernard POLLARD","nat":"PZR","ovr":77,"born":"1995-12-28","world":"arterra"},
 {"id":"m0041","name":"Gabin DE COURCELLES","nat":"ARV","ovr":83,"born":"1879-10-05"},
 {"id":"m0042","name":"Balthazar BARRIENTOS","nat":"ASK","ovr":84,"born":"1887-11-26"},
 {"id":"m0043","name":"Tristan SAINT-GERMAIN","nat":"ARV","ovr":78,"born":"1887-08-30"},
@@ -337,5 +337,5 @@
 {"id":"m0336","name":"Harald STÜCK","nat":"ALE","ovr":61,"born":"1889-05-06","style":"Catenaccio"},
 {"id":"m0337","name":"Mîm BARZA'ABBAD","nat":"DEM","ovr":74,"born":"1891-05-17","style":"Gegenpressing"},
 {"id":"m0338","name":"Willka QUCHA","nat":"ANT","ovr":78,"born":"1884-08-12","style":"La Nuestra"},
-{"id":"m0339","name":"Ghjorghju FIGARELLA","nat":"ETA","ovr":83,"born":"1888-06-24","style":"Vertical Tiki-Taka"}
+{"id":"m0339","name":"Ghjorghju FIGARELLA","nat":"ETA","ovr":83,"born":"1996-10-01","world":"arterra","style":"Vertical Tiki-Taka"}
 ]

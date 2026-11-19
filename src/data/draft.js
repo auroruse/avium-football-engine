@@ -43,6 +43,8 @@ const same = (f, a, b) => { if (f === "squad") { const x = norm(f, a), y = norm(
 // One player (or manager) record in the records' own key order; born, grad, pos, badges and retired only when they say
 // something.
 export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null),
+  // His universe (src/data/worlds.js), kept through every edit; no patch can set it.
+  ...(r.world === "arterra" ? { world: "arterra" } : null),
   ...(gradOk(r.grad) ? { grad: r.grad } : null),
   ...(posList(r.pos).length ? { pos: posList(r.pos) } : null),
   // A manager out of work keeps the style he would bring to a side (a manager in work plays his side's).

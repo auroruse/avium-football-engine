@@ -9,7 +9,9 @@ import { idOf, teamKey } from "./draft.js";
 import { posList } from "./positions.js";
 import { trendsOf, valueContext, valueInputs, valueOf } from "./value.js";
 
+// Each universe keeps its own log (src/data/worlds.js), beside its own archive.
 export const TRADES_FILE = "public/avium/pstats/trades.tsv";
+export const tradesFile = (world) => `public/${world === "arterra" ? "arterra" : "avium"}/pstats/trades.tsv`;
 export const TRADE_HEAD = ["DEAL", "SEASON", "DATE", "KIND", "ID", "NAME", "POS", "OVR", "AGE", "VALUE", "FROM", "FROM CLUB", "TO", "TO CLUB", "BY"];
 const isNat = (t) => t.file === "AVIUM" || t.file === "ARTERRA";
 
@@ -52,8 +54,10 @@ export function tradeDeals(moves) {
 // and the clubs he left and joined by key and by the name each had. A move is dated by the real instant it was made
 // (`now`): the sport runs out of step with the world's clock, its matches simmed whenever and taken to fall later in the
 // year in character (the user, 13 October 2026), so the world's date would say nothing.
-export function tradeRows(rec, next, { season, now = new Date(), by = "", first = 1, trends = new Map(), slotsFor }) {
-  const deals = tradeDeals(tradeMoves(rec, next));
+export function tradeRows(rec, next, { season, now = new Date(), by = "", first = 1, trends = new Map(), slotsFor, world = null }) {
+  // `world`: the moves of that universe's men alone, for its own log.
+  const of = (m) => ((m.kind === "player" ? rec.players : rec.managers).find(r => r.id === m.id)?.world === "arterra" ? "arterra" : "avium");
+  const deals = tradeDeals(tradeMoves(rec, next).filter(m => !world || of(m) === world));
   if (!deals.length) return [];
   const ctx = valueContext(rec.teams, slotsFor, idOf), P = new Map(rec.players.map(p => [p.id, p])), M = new Map(rec.managers.map(m => [m.id, m]));
   const before = new Map(rec.teams.map(t => [teamKey(t), t])), after = new Map(next.teams.map(t => [teamKey(t), t]));
@@ -61,7 +65,7 @@ export function tradeRows(rec, next, { season, now = new Date(), by = "", first 
   deals.forEach((d, i) => { for (const m of d) {
     const r = (m.kind === "player" ? P : M).get(m.id), v = m.kind === "player" ? valueOf(valueInputs(r, ctx, trends, now)) : null;
     rows.push({ deal: first + i, season, date, kind: m.kind, id: m.id, name: r.name, pos: m.kind === "player" ? posList(r.pos).join("/") : "",
-      ovr: r.ovr ?? "", age: ageOf(r.born, now) ?? "", value: v ?? "", from: m.from || "", fromClub: m.from ? before.get(m.from)?.name.trim() || "" : "",
+      ovr: r.ovr ?? "", age: ageOf(r.born, now, r.world) ?? "", value: v ?? "", from: m.from || "", fromClub: m.from ? before.get(m.from)?.name.trim() || "" : "",
       to: m.to || "", toClub: m.to ? after.get(m.to)?.name.trim() || "" : "", by }); } });
   return rows;
 }

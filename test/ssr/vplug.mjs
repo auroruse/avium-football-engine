@@ -8,11 +8,11 @@ export default {
     build.onResolve({ filter: /^virtual:/ }, a => ({ path: a.path, namespace: "v" }));
     build.onLoad({ filter: /.*/, namespace: "v" }, a => {
       if (a.path === "virtual:pstats")
-        return { contents: `export const PSTATS_FILES = ${JSON.stringify(walk(ROOT + "/public/avium/pstats").filter(f => /\.(tsv|md)$/i.test(f) && !/README/i.test(f)))};` };
+        return { contents: `export const PSTATS_FILES = ${JSON.stringify(walk(ROOT + "/public/avium/pstats").filter(f => /\.(tsv|md)$/i.test(f) && !/README/i.test(f)))}; export const PSTATS_FILES_ARTERRA = [];` };
       if (a.path === "virtual:stadium-images")
         { const fs2 = walk(ROOT + "/public/avium/stadiums").filter(f => /\.(jpe?g|png)$/i.test(f)).sort(), ext = {};
           for (const f of fs2) { const n = f.replace(/\.(jpe?g|png)$/i, "").normalize("NFC"); if (!ext[n]) ext[n] = f.slice(n.length); }
-          return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(Object.keys(ext))}; export const STADIUM_EXT = ${JSON.stringify(ext)};` }; }
+          return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(Object.keys(ext))}; export const STADIUM_EXT = ${JSON.stringify(ext)}; export const STADIUM_IMAGES_ARTERRA = []; export const STADIUM_EXT_ARTERRA = {};` }; }
       return { contents: "export default {};" };
     });
   },
