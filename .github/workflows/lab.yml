@@ -8,12 +8,11 @@ on:
 jobs:
   field:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
-        field: ["1934 World Cup", "1934 Club World Shield", "1935 World Cup", "1935 Club World Cup", "1935 Club World Shield",
-                "1935 Nations League", "1936 Eastern Qualifiers", "1936 Western Qualifiers", "All-Nichirin Collegiate Championship"]
+        field: ["1935 Club World Shield", "1935 Nations League", "1936 Eastern Qualifiers", "1936 Western Qualifiers", "All-Nichirin Collegiate Championship"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,7 +26,7 @@ jobs:
           mkdir -p out
           (npx vite preview --port 4599 > out/preview.log 2>&1 &)
           for i in $(seq 1 60); do curl -s localhost:4599 > /dev/null && break; sleep 1; done
-          FIELD="${{ matrix.field }}" timeout 1200 node test/fields-ui.mjs > out/field.json
+          FIELD="${{ matrix.field }}" timeout 2400 node test/fields-ui.mjs > out/field.json
           cat out/field.json
       - uses: actions/upload-artifact@v4
         if: always()

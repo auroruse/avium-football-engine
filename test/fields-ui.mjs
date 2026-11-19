@@ -27,8 +27,8 @@ const t0 = await text(), i0 = t0.indexOf("SIDES");
 const out = { field: FIELD, sides: t0.slice(i0, i0 + 160).replace(/ (Eastern|Western) Conference.*/, ""), steps: [], result: null, stuck: null };
 for (const b of ["Create Tournament", "Set Up Draw"]) if (await click(b)) { out.steps.push(b); break; }
 await sleep(2000);
-const ORDER = ["Sim All", "Proceed To Knockout", "Begin Draw", "Draw All", "Start Knockout", "Continue", /^Top \d+ By Ranking$/, "Confirm Byes", "Fill At Random"];
-for (let i = 0; i < 80; i++) {
+const ORDER = ["Sim All", "Proceed To Knockout", "Begin Draw", "Draw All", "Start Knockout", "Continue", "Confirm Byes", /^Top \d+ By Ranking$/, "Fill At Random"];
+for (let i = 0; i < 400; i++) {
   const bs = await btns(), t = await text();
   if (/SUMMARY|THROUGH THE PLAYOFF/.test(t) && !bs.includes("Sim All")) { out.result = (t.match(/(SUMMARY|THROUGH THE PLAYOFF).{0,260}/) || [""])[0]; break; }
   let pick = null; for (const o of ORDER) { pick = bs.find(b => (o instanceof RegExp ? o.test(b) : b === o)); if (pick) break; }
