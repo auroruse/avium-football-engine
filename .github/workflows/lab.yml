@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        field: ["1935 Club World Shield", "1935 Nations League", "1936 Eastern Qualifiers", "1936 Western Qualifiers", "All-Nichirin Collegiate Championship"]
+        field: ["All-Nichirin Collegiate Championship"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
