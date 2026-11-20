@@ -10,10 +10,12 @@
 //   national sides given a coach whose style fits theirs (Albers back at Kinshū; Rautinen and Sarelainen swapping
 //   Tierra Arcadia and Axerfreditenshin), since a manager owns the style his sides play. So are 12 October's, after it too:
 //   the Giathkik Premier League's founding clubs took two men out of work since then, Sonobe at Zoryansk Rangers and
-//   Ōkōchi at Svyatogorsk Spearmen. So are 27 October's, after it too: Elvester gave Tudor's place to Alferinho, out of
-//   work since, for Route One. Every other change in the sheets' history
+//   Ōkōchi at Svyatogorsk Spearmen. Every other change in the sheets' history
 //   is a cleanup and not canon, and so are 6 September's swaps at Spartak, Dynamo and ISS and 5 October's at Eivorie
-//   (Dæltun Leah has had Eivorie throughout).
+//   (Dæltun Leah has had Eivorie throughout). 27 October's Elvester move (Tudor out for Alferinho) was Claude's pick and
+//   never happened: Tudor has had Elvester throughout.
+// - 20 November 2026: Alferinho is back at Nichirin for the 1936 World Cup. Kanno, who took the side while he recovered
+//   from the Shin-Chukyo attack of July 1935, keeps the 1936 qualifiers.
 // Seasons are public/avium/pstats folders and seasons; sides are team records (src/data/teams.json); managers are
 // src/data/managers.json. test/tenures.mjs checks the three agree.
 export const TRACKED_FROM = 1932;
@@ -23,9 +25,8 @@ const EARLY_1935 = "after:wc/1935";   // their 2, 5 and 9 October 2026 moves
 export const MANAGER_HISTORY = [
   // National sides.
   { side: "t0065", name: "E.S.U.", spells: [["m0059", "1932"], ["m0060", "1933"]] },                    // Kanno; Van der Bilt before 1933
-  { side: "t0070", name: "Elvester", spells: [["m0064", "1932"], ["m0244", EARLY_1935]] },              // Tudor; Alferinho
-  { side: "t0063", name: "Nichirin", spells: [["m0061", "1932"], ["m0244", "after:wc/1933"], ["m0059", EARLY_1935]] },
-                                                                                                     // Tatara; Alferinho after the 1933 World Cup; Kanno
+  { side: "t0063", name: "Nichirin", spells: [["m0061", "1932"], ["m0244", "after:wc/1933"], ["m0059", EARLY_1935], ["m0244", "after:eastern/1936"]] },
+                                                                 // Tatara; Alferinho after the 1933 World Cup; Kanno; Alferinho again
   { side: "t0067", name: "Arverne", spells: [["m0041", "1932"], ["m0061", "after:wc/1933"]] },          // De Courcelles; Tatara
   { side: "t0094", name: "Salishia", spells: [[null, "1932"], ["m0041", "after:wc/1933"]] },            // nobody recorded; De Courcelles
   { side: "t0086", name: "Shashanka", spells: [[null, "1932"], ["m0059", "1933"], ["m0179", SEP_1934], ["m0193", EARLY_1935]] },
