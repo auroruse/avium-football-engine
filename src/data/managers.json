@@ -337,5 +337,6 @@
 {"id":"m0336","name":"Harald STÜCK","nat":"ALE","ovr":61,"born":"1889-05-06","style":"Catenaccio"},
 {"id":"m0337","name":"Mîm BARZA'ABBAD","nat":"DEM","ovr":74,"born":"1891-05-17","style":"Gegenpressing"},
 {"id":"m0338","name":"Willka QUCHA","nat":"ANT","ovr":78,"born":"1884-08-12","style":"La Nuestra"},
-{"id":"m0339","name":"Ghjorghju FIGARELLA","nat":"ETA","ovr":83,"born":"1996-10-01","world":"arterra","style":"Vertical Tiki-Taka"}
+{"id":"m0339","name":"Ghjorghju FIGARELLA","nat":"ETA","ovr":83,"born":"1996-10-01","world":"arterra","style":"Vertical Tiki-Taka"},
+{"id":"m0340","name":"Stepan Milanovich KOZHANY","nat":"OST","ovr":90,"born":"1994-01-01","world":"arterra"}
 ]
