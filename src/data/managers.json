@@ -338,5 +338,13 @@
 {"id":"m0337","name":"Mîm BARZA'ABBAD","nat":"DEM","ovr":74,"born":"1891-05-17","style":"Gegenpressing"},
 {"id":"m0338","name":"Willka QUCHA","nat":"ANT","ovr":78,"born":"1884-08-12","style":"La Nuestra"},
 {"id":"m0339","name":"Ghjorghju FIGARELLA","nat":"ETA","ovr":83,"born":"1996-10-01","world":"arterra","style":"Vertical Tiki-Taka"},
-{"id":"m0340","name":"Stepan Milanovich KOZHANY","nat":"OST","ovr":90,"born":"1994-01-01","world":"arterra"}
+{"id":"m0340","name":"Stepan Milanovich KOZHANY","nat":"OST","ovr":90,"born":"1994-01-01","world":"arterra"},
+{"id":"m0341","name":"Túpac TIKI","nat":"ANT","ovr":66,"born":"1882-02-02","style":"Tiki-Taka"},
+{"id":"m0342","name":"Sumaq WAYNA","nat":"ANT","ovr":70,"born":"1886-05-02","style":"La Nuestra"},
+{"id":"m0343","name":"Kusi YUPAN","nat":"ANT","ovr":75,"born":"1871-03-09","style":"Juego de Posición"},
+{"id":"m0344","name":"Amaru QURI YUPANQUI","nat":"ANT","ovr":72,"born":"1881-08-07","style":"Vertical Tiki-Taka"},
+{"id":"m0345","name":"Amaru INTI CHASKA","nat":"ANT","ovr":73,"born":"1893-05-15","style":"La Nuestra"},
+{"id":"m0346","name":"Illari RUMI WAMAN","nat":"ANT","ovr":69,"born":"1897-07-07","style":"Tiki-Taka"},
+{"id":"m0347","name":"Inti QHAPAK","nat":"ANT","ovr":80,"born":"1884-11-25","style":"La Nuestra"},
+{"id":"m0348","name":"Ch'aska MAYU","nat":"ANT","ovr":70,"born":"1880-06-13","style":"Vertical Tiki-Taka"}
 ]
