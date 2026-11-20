@@ -6,11 +6,15 @@
 //
 //   SHARD=i/n WC_MINUTES=70 node test/wc1936.mjs > out.jsonl
 //
-// The draw is test/wc1936-draw.json ({ groups: { A: [codes] ... } }). Workers fork one per core and play
+// The draw is test/wc1936-pickem.json ({ groups: { A: [codes] ... } }), the pick'em's own copy by code. Workers fork one per core and play
 // tournaments until WC_MINUTES is up, so a shard's output is whole tournaments however far it got. WC_N caps the
 // count per worker instead (a local check). Rules are the app's 1935 World Cup preset: neutral grounds, injuries
 // on, groups ranked on points, goal difference, goals scored, head-to-head, wins. Not carried between matches:
 // suspensions and injuries (every side picks from its full squad each time).
+//
+// Once the real World Cup is under way, the draw file's `fixed` ({ g: { A: [final order] }, ko: { r0: winner } }) holds
+// what is settled: those groups finish in that order and those ties go to that side, whatever the engine plays (the
+// matches are still played, so the award boards keep a full tournament's football), and the rest is simulated.
 import { fork } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { cpus } from "node:os";
@@ -30,7 +34,7 @@ const lots = (seed) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-function tournament(E, sides, draw, seed) {
+function tournament(E, sides, draw, seed, fixed = {}) {
   const rnd = lots(seed), stats = new Map();
   const play = (a, b, ko) => {
     const hT = sides[a], aT = sides[b];
@@ -63,7 +67,7 @@ function tournament(E, sides, draw, seed) {
     const h2h = (c, set) => res.reduce((s, [x, y, gx, gy]) => !set.has(x) || !set.has(y) ? s
       : s + (x === c ? (gx > gy ? 3 : gx === gy ? 1 : 0) : y === c ? (gy > gx ? 3 : gx === gy ? 1 : 0) : 0), 0);
     const key = (c) => [row[c].pts, row[c].gf - row[c].ga, row[c].gf];
-    order[g] = t.slice().sort((x, y) => {
+    order[g] = fixed.g?.[g] ? fixed.g[g].slice() : t.slice().sort((x, y) => {
       const kx = key(x), ky = key(y);
       for (let i = 0; i < 3; i++) if (kx[i] !== ky[i]) return ky[i] - kx[i];
       const tied = new Set(t.filter((c) => key(c).every((v, i) => v === kx[i])));
@@ -73,7 +77,9 @@ function tournament(E, sides, draw, seed) {
 
   const ko = {}, loser = {};
   const seedOf = (s) => order[s[1]][+s[0] - 1];
-  const tie = (id, a, b) => { const m = play(a, b, true); ko[id] = m.win; loser[id] = m.win === a ? b : a; return m; };
+  const tie = (id, a, b) => { const m = play(a, b, true); const f = fixed.ko?.[id];
+    if ((f === a || f === b) && f !== m.win) { [m.h, m.w] = [m.w, m.h]; m.win = f; }
+    ko[id] = m.win; loser[id] = m.win === a ? b : a; return m; };
   R16.forEach(([x, y], i) => tie("r" + i, seedOf(x), seedOf(y)));
   let fin = null;
   for (const id of ["q0", "q1", "q2", "q3", "s0", "s1", "f"]) {
@@ -95,17 +101,17 @@ function tournament(E, sides, draw, seed) {
     const d = (e[1].rt / e[1].gp - b[1].rt / b[1].gp) || (e[1].g - b[1].g) || (e[1].min - b[1].min);
     return d > 0 ? e : b;
   }, null);
-  return { g: order, ko, sc: fin, boot: top((s) => s.g * 1e6), ball: ball ? ball[0] : null, glove: top((s) => s.sv * 1e3 + s.g) };
+  return { g: order, ko, sc: fin, boot: top((s) => s.g), ball: ball ? ball[0] : null, glove: top((s) => s.sv * 1e3 + s.g) };
 }
 
 if (process.argv[2] === "worker") {
   const [, , , engine, drawPath, seed0, until, cap] = process.argv;
   const E = await import(pathToFileURL(engine).href);
-  const draw = JSON.parse(readFileSync(drawPath, "utf8")).groups;
+  const { groups: draw, fixed } = JSON.parse(readFileSync(drawPath, "utf8"));
   const sides = Object.fromEntries(E.PRESET_CATALOG.filter((t) => t.league === "Avium International").map((t) => [t.code, t]));
   for (const c of Object.values(draw).flat()) if (!sides[c]) throw new Error(c + " is not in the international preset");
   for (let k = 0; Date.now() < +until && k < +cap; k++) {
-    const t0 = Date.now(), out = tournament(E, sides, draw, (+seed0 + k * 2654435761) >>> 0);
+    const t0 = Date.now(), out = tournament(E, sides, draw, (+seed0 + k * 2654435761) >>> 0, fixed || {});
     process.send({ ...out, ms: Date.now() - t0 });
   }
   process.exit(0);
@@ -113,7 +119,7 @@ if (process.argv[2] === "worker") {
   const [si, sn] = (process.env.SHARD || "0/1").split("/").map(Number);
   const W = +(process.env.WC_WORKERS || cpus().length), until = Date.now() + +(process.env.WC_MINUTES || 60) * 60e3;
   const cap = +(process.env.WC_N || 1e9);
-  const engine = resolve(HERE, "../engine.mjs"), draw = resolve(HERE, "../wc1936-draw.json");
+  const engine = resolve(HERE, "../engine.mjs"), draw = resolve(HERE, "../wc1936-pickem.json");
   let live = W;
   for (let w = 0; w < W; w++) {
     const seed = (1936e6 + (si * 997 + w) * 7919 + sn) >>> 0;
