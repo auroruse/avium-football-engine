@@ -1,4 +1,4 @@
-STADIUM	NATION	CITY
+STADIUM	NATION	CITY	CAPACITY	HOSTS
 Trekker Stadium	ESU	Axiom
 Sahara Stadium	ESU	Nexus
 Foundry Municipal Stadium	ESU	Foundry
@@ -9,3 +9,11 @@ Cromsine Bowl	ESU	Cromsine
 Baker Stadium	ESU	Burghersville
 Bay Field	ESU	Hürth
 Starfield	ESU	Starfell
+Stadion Narodowy Corslawa	COR	Corslawa	85,000	1936 World Cup
+Stadion Jelgawa	COR	Jelgawa	60,000	1936 World Cup
+Niewielki Kopiec Arena	COR	Kretme	45,000	1936 World Cup
+Stadion Czółnów	COR	Czółnów	40,000	1936 World Cup
+Stadion Narodowy Bosgownie	COR	Bosgownie	38,000	1936 World Cup
+Arena 26 Gwiazd	COR	Pabžys	30,000	1936 World Cup
+Stadion Kresów	COR	Kresów	26,000	1936 World Cup
+Arena Gawła Tyszki	COR	Kasowice	24,000	1936 World Cup

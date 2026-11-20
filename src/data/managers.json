@@ -346,5 +346,13 @@
 {"id":"m0345","name":"Amaru INTI CHASKA","nat":"ANT","ovr":73,"born":"1893-05-15","style":"La Nuestra"},
 {"id":"m0346","name":"Illari RUMI WAMAN","nat":"ANT","ovr":69,"born":"1897-07-07","style":"Tiki-Taka"},
 {"id":"m0347","name":"Inti QHAPAK","nat":"ANT","ovr":80,"born":"1884-11-25","style":"La Nuestra"},
-{"id":"m0348","name":"Ch'aska MAYU","nat":"ANT","ovr":70,"born":"1880-06-13","style":"Vertical Tiki-Taka"}
+{"id":"m0348","name":"Ch'aska MAYU","nat":"ANT","ovr":70,"born":"1880-06-13","style":"Vertical Tiki-Taka"},
+{"id":"m0349","name":"Inti POMA","nat":"ANT","ovr":70,"born":"1887-12-19","style":"Counter-Attack"},
+{"id":"m0350","name":"Amaru RAQAY","nat":"ANT","ovr":77,"born":"1890-10-21","style":"Wing Play"},
+{"id":"m0351","name":"Puka SISA","nat":"ANT","ovr":82,"born":"1900-03-05","style":"Gegenpressing"},
+{"id":"m0352","name":"Sinchi TIKA","nat":"ANT","ovr":76,"born":"1888-04-04","style":"Wing Play"},
+{"id":"m0353","name":"Illapa QURI","nat":"ANT","ovr":68,"born":"1878-12-27","style":"Wing Play"},
+{"id":"m0354","name":"Wiraqucha SUMAQ","nat":"ANT","ovr":72,"born":"1885-04-16","style":"Gegenpressing"},
+{"id":"m0355","name":"Anta YAWAR","nat":"ANT","ovr":70,"born":"1897-09-01","style":"Counter-Attack"},
+{"id":"m0356","name":"Qhapaq WAYNA","nat":"ANT","ovr":77,"born":"1873-07-15","style":"Gegenpressing"}
 ]

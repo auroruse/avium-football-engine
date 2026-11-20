@@ -4324,10 +4324,12 @@ const panelHead = { display: "flex", alignItems: "center", justifyContent: "spac
 // Venues that exist without anyone playing there. A ground normally enters the picker by being
 // photographed, but Elysia hosts a World Cup and has no league, so nothing in the game would ever
 // name its grounds — there is no tenant to carry them and no photo yet either. This file is the
-// deliberate record: STADIUM, NATION, CITY. It is authoritative where it speaks, because it was
-// written by hand for exactly this, and a tenant fills in whatever it leaves out.
+// deliberate record: STADIUM, NATION, CITY, CAPACITY, HOSTS. It is authoritative where it speaks, because it was
+// written by hand for exactly this, and a tenant fills in whatever it leaves out. HOSTS names the field (src/participants.tsv)
+// whose tournament this ground hosts: loading that field brings its grounds as the host venues and its nation as the host
+// side (Cortesia's eight for the 1936 World Cup, 20 November 2026).
 const STADIUM_ROWS = (ARTERRA ? "" : stadiumsTSV).split("\n").slice(1).map(l => l.split("\t").map(c => (c || "").trim()))
-  .filter(c => c[0]).map(([stadium, nation, city]) => ({ stadium, nation: nation || "", city: city || "" }));
+  .filter(c => c[0]).map(([stadium, nation, city, cap, hosts]) => ({ stadium, nation: nation || "", city: city || "", cap: cap || null, hosts: hosts || "" }));
 const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), r]));
 
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
@@ -6569,6 +6571,11 @@ export default function App() {
     setPresetMsg([missing.length ? `${missing.length} not in the roster: ${missing.join(", ")}` : "",
                   p.gone?.length ? `No longer in the world, so its group plays a side short: ${p.gone.join(", ")}` : ""].filter(Boolean).join(". "));
     setTPresetName(name);
+    // A field with host grounds (src/stadiums.tsv HOSTS) is played at them, its nation the host side: every match is dealt
+    // a ground from the pool and the host has the advantage in its own.
+    const venues = STADIUM_ROWS.filter(r => r.hosts === name);
+    const hostSide = venues.length ? teams.find(t => isIntlLeague(t.league) && t.code === venues[0].nation) : null;
+    if (venues.length) setTHostVenueText(venues.map(v => [v.city, v.stadium].join("\t")).join("\n"));
     // A field and the format it is played under arrive together where the preset names one, so
     // loading the Shield does not also mean remembering to pick its format from the other menu.
     const fmt = p.config || (p.format && !T_PRESETS[p.format]?.divider ? T_PRESETS[p.format]?.config : null);
@@ -6576,6 +6583,7 @@ export default function App() {
       const next = { ...c, stages: null, ...(fmt ? { preQualified: [], koFirstOnly: false, ...fmt } : {}) };
       // A preset that names its groups fixes the allocation as well as the field.
       if (p.groups && !missing.length) { next.numGroups = Object.keys(p.groups).length; next.allocMode = "preset"; }
+      if (venues.length) Object.assign(next, { homeAdvGroup: "host", homeAdvKO: "host", homeAdvTeams: hostSide ? [hostSide.name] : [] });
       else if (next.allocMode === "preset") next.allocMode = "seed";
       return next;
     });
@@ -12577,7 +12585,7 @@ export default function App() {
       if (v && (g.capN == null || v > g.capN)) g.capN = v;
       (isIntlLeague(t.league) ? g.nts : g.clubs).push(t);
     }
-    if (world === "avium") for (const r of STADIUM_ROWS) if (!by.has(r.stadium)) by.set(r.stadium, { name: r.stadium, capN: null, clubs: [], nts: [], meta: r });
+    if (world === "avium") for (const r of STADIUM_ROWS) if (!by.has(r.stadium)) by.set(r.stadium, { name: r.stadium, capN: r.cap ? +r.cap.replace(/,/g, "") : null, clubs: [], nts: [], meta: r });
     const rows = [...by.values()].map(g => {
       const host = g.clubs[0] || g.nts[0] || null, meta = g.meta || STADIUM_META.get(g.name.normalize("NFC"));
       const natCode = (host && nationCodeOf(host)) || meta?.nation || null;
@@ -19952,7 +19960,7 @@ export default function App() {
     const gv = ground ? venueByName.get(ground) : null, gOwner = groundT || gv?.owner || null, gMeta = ground ? STADIUM_META.get(ground.normalize("NFC")) : null;
     const gNat = (gMeta?.nation && natTeamByCode.get(gMeta.nation)?.name) || natNameOf(gOwner);
     const gCity = gMeta?.city || gv?.city || gOwner?.city || "";
-    const gCap = venueCap(gOwner?.stadium || "");
+    const gCap = venueCap(gOwner?.stadium || "") || gMeta?.cap || null;
     const gImg = ground && hasStadiumImg(ground) ? ground : null;
     const own = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
     const groundGroups = (skip) => venueIndex.map(g => [g.name, g.venues.filter(v => !skip.has(v.stadium))
