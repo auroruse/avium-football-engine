@@ -9,7 +9,7 @@ import { availableParallelism } from "node:os";
 import { fileURLToPath } from "node:url";
 import { PRESET_CATALOG, RECORDS, buildPlayerIndex, pickNationalSquad, presetsFromRecords } from "./engine.mjs";
 
-const CODE = "ELV";
+const CODE = process.env.NT_CODE || "ELV";              // NT_CODE runs the same search for another side
 const idByName = new Map(RECORDS.players.map(p => [p.name.toLowerCase(), p.id]));
 const index = buildPlayerIndex(PRESET_CATALOG);
 const built = new Map();
@@ -49,7 +49,7 @@ if (process.argv[2] === "--elv-worker" && process.send) {
   process.on("disconnect", () => process.exit(0));
 } else if (process.argv[1] === me) {
   const [jobsF, wS, outF] = process.argv.slice(2);
-  let jobs = JSON.parse(readFileSync(jobsF ? jobsF : fileURLToPath(new URL("./elv-jobs.json", import.meta.url)), "utf8"));
+  let jobs = JSON.parse(readFileSync(jobsF || process.env.NT_JOBS || fileURLToPath(new URL("./elv-jobs.json", import.meta.url)), "utf8"));
   const [si, sn] = (process.env.SHARD || "0/1").split("/").map(Number);
   jobs = jobs.filter((_, i) => i % sn === si);
   const W = Math.max(1, Math.min(jobs.length, +(wS || 0) || availableParallelism()));
