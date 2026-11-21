@@ -2454,35 +2454,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "3fc3ea8a",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Yana YUCHIQA",
-  "rec": {
-   "name": "Yana YUCHIQA",
-   "nat": "ANT",
-   "born": "1915-02-19",
-   "pos": [
-    "CM"
-   ],
-   "ovr": 62,
-   "what": "players",
-   "side": "t0406",
-   "at": 18,
-   "badges": [],
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "d47b6a22",
   "kind": "new",
   "what": "players",
