@@ -14,7 +14,7 @@ import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { arrangeBench, placeFor, without } from "./squads.js";
 import { dealLocks, dealPlan, dealSides } from "./deals.js";
 import { STYLE_LBL } from "./styles.js";
-import { POS_ROLE, fitsPlace, posList } from "./positions.js";
+import { POS_ROLE, fitsPlace, posFitCost, posList } from "./positions.js";
 import { FORMATIONS } from "../engine/formations.ts";
 import { birthDateOk } from "./icclock.js";
 import { conferencesProblem, leagueNameFree, leagueRecord } from "./leagues.js";
@@ -366,6 +366,39 @@ function leagueProblems(rec, n, scope, over) {
     }
   }
   return out;
+}
+// A CLUB'S LEVEL FOR A MAN (Moukden and Kirin, 21 November 2026: "Club level: best starter at his position"): the rating
+// of the best starter at his position, the nearest position where nobody in the eleven plays his (as src/data/roll.js
+// finds the starters a bench man backs up). `skip` is a place left out (his own, for a man already in the eleven). Null
+// for an empty eleven.
+export function clubLevel(t, pos, h, skip = -1) {
+  const sq = squadIds(t), lab = h.labels(t), own = posList(pos);
+  let best = Infinity, at = [];
+  for (let k = 0; k < Math.min(11, sq.length); k++) { if (!sq[k] || k === skip) continue;
+    const c = posFitCost(own.length ? own : lab[k], lab[k]);
+    if (c < best) { best = c; at = [k]; } else if (c === best) at.push(k); }
+  return at.length ? Math.max(...at.map(k => h.ovr(sq[k]) ?? 0)) : null;
+}
+// SETTLING MANY AT ONCE (Moukden and Kirin, 21 November 2026, with 143 new men waiting from one save: one answer for a
+// whole approval). answers: [{ id, action: "accept" | "decline" | "withdraw", edits?, note? }], taken in order, each
+// against the records as the ones before it left them, exactly as if answered one after another; `judgeOf` gives how
+// squads are judged against those records. One that fails says why under its id and the rest go on. Returns { rec, the
+// records after all of them; applies, each draft that went live, in order; left, the requests still open; done, the
+// ids answered; errors, { id: [why] } }.
+export function settleMany(rec, editors, requests, login, answers, judgeOf) {
+  let cur = rec, left = requests;
+  const applies = [], done = [], errors = {};
+  for (const a of Array.isArray(answers) ? answers : []) {
+    const r = left.find(x => x.id === a?.id);
+    if (!r) { if (a?.id) errors[a.id] = ["No such request"]; continue; }
+    if (!["accept", "decline", "withdraw"].includes(a.action)) { errors[r.id] = ["Unknown action"]; continue; }
+    const s = settleRequest(cur, editors, r, login, a.action, judgeOf(cur), { edits: a.edits, note: a.note, others: left });
+    if (s.errors?.length) { errors[r.id] = s.errors; continue; }
+    left = s.request ? left.map(x => (x.id === r.id ? s.request : x)) : left.filter(x => x.id !== r.id);
+    if (s.apply) { cur = applyDraft(cur, s.apply); applies.push(s.apply); }
+    done.push(r.id);
+  }
+  return { rec: cur, applies, left, done, errors };
 }
 // The next free ID of a kind (p0001, m0001, t0001, l0001), counting the records and any added in this draft.
 const nextId = (rows, letter) => { const top = rows.reduce((m, r) => Math.max(m, Number(String(r.id).slice(1)) || 0), 0);

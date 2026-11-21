@@ -649,6 +649,70 @@ overseer, the new records waiting. A new record opens in the sheet where it stan
 overseer; Approve lets it in as edited, Reject sends it back with a note. The top bar's Cart and Requests stay as the
 quick view, and every change is saved from the cart, as before.
 
+**Requests sent together** (Moukden and Kirin, 21 November 2026, with 143 new men waiting from one editor's save, a card
+each: "I genuinely have 143 requests right now"). Requests one person made in one save are one group, and a group of four
+or more shows as one block in every list: what it holds ("143 New Players At 15 Clubs"), who sent it and when, and its new
+men a row each under their club (position, name, age, Eleven or Bench, rating). In the overseer's New Records the rating
+is a box in the row, a man rated over his club's level (below) is marked with the gap (+3), and each row, each club and
+the block has a tick; **Accept All** on the block, **Accept** on a club and **Accept Selected** (with **Decline**) over the
+list answer in one save, a hundred at a time (`POST /requests`, `settleMany` in `src/data/rules.js`: each answered as its
+own Accept would, in order, in one commit; one the rules refuse says why under its row and the rest go on). In Yours the
+block has **Withdraw All** and each row its own Withdraw. The top bar's list shows a block as one line with Open. A new
+man waiting for review stands faintly in the place he was asked for on the sheet, marked Waiting, so his editor
+sees what was sent. The words on screen never name the overseer: a thing waits For Review (the user, 21 November 2026:
+"Stop talking about the Overseer and just say its waiting for review"), and no screen carries a line of explanation or
+a prompt ("stop it with the AI slop prompts and text"). This is the first step of the Editor's redesign (the sheet is to go; edit where you read).
+
+#### The Editor, redesigned (proposed; mocked 21 November 2026, not built)
+
+Moukden and Kirin, 21 November 2026: "We need to rethink and redesign the entire editor ... Must be user-friendly and
+overseer-friendly", and, of the sheet, "I don't think in the sheet either actually. Everything needs to be more intuitive
+... a completely user-facing feature-rich editor with very connected and navigable interface." Until it is built the
+section above stands. Mocks, drawn from the app's own pages and Antiqa's real records: `design/mock/editor2-home.png`,
+`editor2-club.png`, `editor2-fill.png`, `editor2-inbox.png`.
+
+**Edit where you read.** The sheet goes, for the overseer too. The Registry's own pages are the editor: a club's, a
+player's, a manager's, a league's and a nation's page takes changes in place from whoever may change it, and looks as it
+does today to everyone else. On a page one edits, the page bar says Editing; each fact its editor may change carries
+Edit, and one that goes for review carries a lock and Request.
+
+**A club's page.** The squad list is where men are added: an open place is a row that takes a name (its position is the
+place's; Enter moves to the next open place), or a man from Free Agents or My Clubs. **Fill Open Places** takes a
+pasted list of names, one a line, for every open place at once, with ages drawn in a range and ratings Club Level,
+Typed or Blank, and shows each man in his place before he is added, marked Live or For Review. Picking a man opens his card beside
+the list: where he plays, his rating (locked), positions (Request Change), value, and what can be done with him: Swap,
+Move To Bench, Trade, Call Up, Release. **Checks** reads the club in words (Eleven
+Complete, Two Goalkeepers, 8 Open Places, No Badge). **Changes** replaces the cart on the page: what was done this
+sitting, each with Undo and marked Live or For Review, and Send. A run of clubs with
+the same thing to do (Open Places 3 Of 15) has Previous and Next Club.
+
+**The Editor section is a desk**: Home, Sent (the overseer: Inbox), Trades, Activity. **Home** is one's nation: New
+Player, New Club, New League and New Deal; To Do, each line a count and a button that starts it (Open Places 143 Fill,
+Missing Badges 16 Upload); one's sides as a ledger (OVR, XI, squad, open places, manager, shape, badge), never cards;
+Sent, Offers and the day's Activity. New Club and New League are guided, in steps, and the new club then
+opens as a page like any other with its Checks saying what is missing.
+
+**What goes live without the overseer** (the user, the same day, to the rule as proposed: "Your 3 others are good"): a
+new player rated at or under his club's level, and a ground, a city or a capacity, at once, each listed under Live
+with Undo. A code, a new club, a new league and a rating over the club's level stay requests. **A club's level for a
+man** is its best starter at his position (the user, the same day: "Club level: best starter at his position"), the
+nearest position where nobody in the eleven plays his (`clubLevel` in `src/data/rules.js`). By it 72 of Antiqa's 143 men
+of 21 November pass and 71 do not.
+
+**The Inbox** (the overseer's) lists what waits as one row a save, and under it, Live, what went in on its own. An
+opened save shows its clubs and its ratings' range, and its men under their clubs, each with his gap to the club's
+level (+3) and his rating in a box; beside it a Preview of the picked club: its eleven, its bench with the new
+men, and its eleven, bench and squad ratings before and after. Accept All, Accept by club or by tick, Decline, and one
+change for the lot (Cap At Level). **Activity** is every save, who and what, with Undo.
+
+**Also proposed:** a Player Finder (every man, filtered, acted on several at once); search that also runs commands; a
+card with actions on every name; Season Rollover (promotion and relegation from the filed tables in one step); rating
+changes pasted as a list; badge and portrait upload with a preview, as a request; a Discord note when a save arrives or
+is answered. **A phone** gets the Inbox and a club's page in one column (the app refuses under 756px today).
+
+**Order:** the requests relief (above, built); the club page and Home, the sheet retiring once they cover it; the Inbox,
+Activity and the rules for what goes live (server); the rest.
+
 ### The ANCC
 
 The All-Nichirin Collegiate Championship (Moukden and Kirin, 12 and 13 October 2026, over four rounds of questions) is

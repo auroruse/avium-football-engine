@@ -35,7 +35,7 @@ import editorsRec from "./data/editors.json";
 // and until then the copy it was built with (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
 import { fetchAtlas } from "./data/atlas.js";
-import { OVERSEER, clubNations, isNational, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
+import { OVERSEER, clubLevel, clubNations, isNational, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
@@ -9272,6 +9272,7 @@ export default function App() {
   const [reqMsg, setReqMsg] = useState({});                     // what the server said, by request
   const [reqSel, setReqSel] = useState(() => new Set());        // New Records ticked for Accept Selected
   const [reqRun, setReqRun] = useState(null);                   // Accept Selected under way: { done, n }
+  const [reqEdit, setReqEdit] = useState({});                   // the overseer's rating for a new man, typed in his row: { id: { ovr } }
   const loadRequests = useCallback(() => fetch(`${REGISTRY}/requests`).then(r => (r.ok ? r.json() : null))
     .then(rs => { if (Array.isArray(rs)) setRequests(rs); }).catch(() => {}), []);
   useEffect(() => {
@@ -9311,6 +9312,9 @@ export default function App() {
   const reqFor = useMemo(() => requests.filter(r => !r.declined && (overseer
     || Object.keys(r.needs || {}).some(k => !(r.approved || []).includes(k) && ownsKey(k)))), [requests, overseer, scope, recTeam]);
   const reqMine = useMemo(() => requests.filter(r => !!scope.login && String(r.by).toLowerCase() === scope.login.toLowerCase()), [requests, scope]);
+  // New men waiting on the overseer, by the place each was asked for ("<side>|<place>"): the sheet shows them there.
+  const reqWaitAt = useMemo(() => new Map(requests.filter(r => r.kind === "new" && r.what === "players" && !r.declined && r.rec?.side && Number.isInteger(r.rec.at))
+    .map(r => [r.rec.side + "|" + r.rec.at, r])), [requests]);
   // Who answers for a team: its nation's editors (and, for a club, anyone given its nation's clubs), as this build lists them.
   const ownersOfKey = (k) => { const t = recTeam.get(k); return t ? ownersOf(editorsRec, t) : []; };
   const natOptions = useMemo(() => {
@@ -9462,6 +9466,39 @@ export default function App() {
       return true;
     } catch (e) { setReqMsg(m => ({ ...m, [r.id]: String(e?.message || e) })); return false; }
     finally { setReqBusy(null); }
+  };
+  // MANY ANSWERS, ONE SAVE (Moukden and Kirin, 21 November 2026, with 143 new men waiting from one editor's save): the
+  // server takes them in order in one commit (POST /requests, src/data/rules.js settleMany), a hundred at a time. One it
+  // refuses says why in its row and the rest go on. A server that does not know the address yet answers them one by one.
+  const settleMany = async (answers) => {
+    if (reqBusy || reqRun || !session || !answers.length) return;
+    setReqArm(null); setReqRun({ done: 0, n: answers.length });
+    setReqMsg(m => ({ ...m, ...Object.fromEntries(answers.map(a => [a.id, null])) }));
+    const forget = (ids) => { setReqSel(o => { const n = new Set(o); for (const id of ids) n.delete(id); return n; });
+      setReqEdit(o => { const n = { ...o }; for (const id of ids) delete n[id]; return n; }); };
+    try {
+      for (let i = 0; i < answers.length; i += 100) {
+        const part = answers.slice(i, i + 100);
+        const res = await authed("/requests", { answers: part }), data = await res.json().catch(() => ({}));
+        if (res.status === 401) { signOut(); return; }
+        if (res.status === 404) {
+          for (const a of part) { const r = requests.find(x => x.id === a.id);
+            if (r && await settle(r, a.action, { edits: a.edits, note: a.note })) forget([a.id]);
+            setReqRun(x => x && { ...x, done: Math.min(x.n, x.done + 1) }); }
+          continue;
+        }
+        if (!res.ok) { const why = data.error || `The registry answered ${res.status}`;
+          setReqMsg(m => ({ ...m, ...Object.fromEntries(part.map(a => [a.id, why])) })); loadRequests(); return; }
+        let next = null;
+        for (const d of data.applies || []) next = landed(d);
+        if (next) showRecords(applyDraft(next, draft));
+        if (Array.isArray(data.waiting)) setRequests(data.waiting); else loadRequests();
+        setReqMsg(m => ({ ...m, ...Object.fromEntries(Object.entries(data.errors || {}).map(([id, e]) => [id, (e || []).join(" ")])) }));
+        forget(data.done || []);
+        setReqRun(x => x && { ...x, done: Math.min(x.n, i + part.length) });
+      }
+    } catch (e) { const why = String(e?.message || e); setReqMsg(m => ({ ...m, ...Object.fromEntries(answers.map(a => [a.id, m[a.id] || why])) })); }
+    finally { setReqRun(null); }
   };
   // ONE CHANGE as the cart and the requests show it, before and after. A squad shows who came in, who left, and each man
   // whose slot changed, read against the formation the team ends up in.
@@ -12859,18 +12896,98 @@ export default function App() {
       {rows.length > 0 && <div className="ux-rq-also">{rows.map(c => uxCbRow(c.field, FIELD_LBL[c.field] || c.field, renderChange(c, r.patch?.formation)))}</div>}
       <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r)}{uxReqActs(r, mine, remove)}</div>
     </div>); };
+  // A new record's review: its form, every field open to the overseer.
+  // (a New form of the same kind being made is put aside, so the review closes onto the sheet; New Player brings it back)
+  const uxNewReview = (r) => { const s = r.rec ? { ...r.rec, what: r.what } : r;
+    setTab("editor"); setEdSec(s.what === "batch" ? "players" : s.what); setEdFormOff(o => ({ ...o, [s.what === "batch" ? "players" : s.what]: true }));
+    const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
+    setEdNew(s.what === "leagues" ? edLgFromRec(s, meta)
+      : s.what === "batch" ? { kind: "players", mode: "many", side: s.side || null, list: (s.men || []).map(m => ({ ...m, ovr: m.ovr ?? "" })), ...meta }
+      : { ...s, kind: s.what, ...(s.what === "players" ? { pos: posList(s.pos)[0] || "", pos2: posList(s.pos)[1] || "" } : null),
+          ...(s.what === "teams" ? { ground: stripVenue(s.stadium || ""), cap: venueCap(s.stadium) || "", city: s.location || "" } : null), ...meta }); closeInbox(); };
+  // REQUESTS FROM ONE SAVE, TOGETHER (Moukden and Kirin, 21 November 2026: 143 new men from one editor's save stood as 143
+  // cards). Requests made by one person in one save are one group; four or more show as one block: what it is, who and
+  // when, and its new men as a row each under their club, the rating open to the overseer in the row, a rating over the
+  // club's level (its best starter at his position) marked with the gap. Its answers go in one save (settleMany).
+  const REQ_GROUP = 4;
+  const reqIsMan = (r) => r.kind === "new" && r.what === "players" && !!r.rec;
+  const reqGroups = (list) => { const m = new Map();
+    for (const r of list) { const k = r.by + "|" + r.at; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    return [...m.values()]; };
+  const reqTitle = (g) => { const men = g.filter(reqIsMan), sides = new Set(men.map(r => r.rec.side).filter(Boolean));
+    return men.length === g.length ? `${g.length} New Players` + (sides.size ? ` At ${sides.size} Club${sides.size > 1 ? "s" : ""}` : "") : `${g.length} Requests`; };
+  const reqAns = (r, action) => ({ id: r.id, action, ...(action === "accept" && reqEdit[r.id] ? { edits: reqEdit[r.id] } : null) });
+  // A club's level for a new man: its best starter at his position (src/data/rules.js clubLevel).
+  const reqLevel = (k, pos) => { const t = recTeam.get(k); return t ? clubLevel(t, pos, judge) : null; };
+  const uxArmBtn = (key, label, confirmLabel, run, pri) => { const on = reqArm === key;
+    return (
+    <button type="button" className={"ux-btnreset ux-btn" + (on ? " ux-arm" : pri ? " ux-btn-pri" : "")} disabled={!!reqBusy || !!reqRun}
+      onClick={() => (on ? run() : setReqArm(key))} onBlur={() => setReqArm(a => (a === key ? null : a))}>{on ? confirmLabel : label}</button>); };
+  const uxReqTick = (ids, label) => { const on = ids.filter(id => reqSel.has(id)).length, all = ids.length > 0 && on === ids.length;
+    return (
+    <button type="button" role="checkbox" aria-checked={all ? "true" : on ? "mixed" : "false"} aria-label={label} title={label} className="ux-btnreset ux-chkbtn"
+      disabled={!!reqRun || !ids.length} onClick={() => setReqSel(o => { const n = new Set(o); for (const id of ids) { if (all) n.delete(id); else n.add(id); } return n; })}>{uxCheck(all, on > 0)}</button>); };
+  // mode: "review" (the overseer's New Records: ticks, ratings, Accept), "mine" (one's own: Withdraw) or "for" (to answer).
+  const uxReqGroup = (g, mode) => {
+    const review = mode === "review", gid = g[0].by + "|" + g[0].at, open = g.filter(r => !r.declined);
+    const men = g.filter(reqIsMan), rest = g.filter(r => !reqIsMan(r));
+    const bySide = new Map(); for (const r of men) { const k = r.rec.side || ""; if (!bySide.has(k)) bySide.set(k, []); bySide.get(k).push(r); }
+    const manRow = (r) => { const s = r.rec, pos = posList(s.pos), age = s.born ? ageOf(s.born) : null, typed = reqEdit[r.id]?.ovr;
+      const lvl = s.side ? reqLevel(s.side, pos) : null;
+      const ovr = typed ?? (s.ovr > 0 ? +s.ovr : null), over = lvl != null && ovr != null && ovr > lvl, msg = reqMsg[r.id];
+      return (
+      <div key={r.id} className={"ux-rg-r" + (r.declined ? " ux-rg-dec" : "")}>
+        {review && (r.declined ? <span className="ux-rg-notick" /> : uxReqTick([r.id], "Select " + fullDisplayName(s.name)))}
+        <b className="ux-rg-pos" style={{ ...mono, color: POS_CLR[pos[0]] }}>{posText(pos) || "\u2013"}</b>
+        {review ? <button type="button" className="ux-btnreset ux-rg-name" title="Review" onClick={() => uxNewReview(r)}><SlideName text={fullDisplayName(s.name)} /></button>
+          : <span className="ux-rg-name"><SlideName text={fullDisplayName(s.name)} /></span>}
+        <span className="ux-rg-age" style={mono} title={s.born ? uxDate(s.born) : undefined}>{age ?? "\u2013"}</span>
+        <span className="ux-rg-pl">{Number.isInteger(s.at) ? (s.at < 11 ? "XI" : "Bench") : ""}</span>
+        <span className="ux-rg-st">{over && !r.declined && <span className="ux-rg-flag" style={mono} title={`Best Starter ${showOvr(lvl)}`}>+{ovr - lvl}</span>}</span>
+        {review && !r.declined
+          ? <input className={"ux-ed-in ux-rg-ovr" + (typed != null && typed !== s.ovr ? " ux-rg-set" : "")} type="number" min={25} max={99} style={mono}
+              aria-label={"Rating, " + fullDisplayName(s.name)} placeholder="Blank" disabled={!!reqRun} value={ovr ?? ""}
+              onChange={e => { const v = parseInt(e.target.value, 10);
+                setReqEdit(o => { const n = { ...o }; if (Number.isFinite(v)) n[r.id] = { ovr: v }; else delete n[r.id]; return n; }); }} />
+          : ovr != null ? uxBadge(ovr) : <span className="ux-rg-blank">Blank</span>}
+        {mode === "mine" && (r.declined ? uxReqArm(r, "withdraw", "Dismiss", "Confirm") : uxReqArm(r, "withdraw", "Withdraw", "Confirm"))}
+        {msg ? <span className="ux-rg-msg ux-bad" role="alert">{msg}</span>
+          : r.declined ? <span className="ux-rg-msg ux-bad">Declined By {r.declined.by}{r.declined.note ? <>: {r.declined.note}</> : null}</span> : null}
+      </div>); };
+    return (
+    <div key={gid} className="ux-rg">
+      <div className="ux-rg-h">
+        {review && uxReqTick(open.map(r => r.id), "Select All Of These")}
+        <span className="ux-rg-t"><b>{reqTitle(g)}</b>
+          <span className="ux-rq-by"><img src={uxGh(g[0].by)} alt="" />{g[0].by}<span className="ux-ed-dot">&middot;</span>{ago(g[0].at)}</span></span>
+        {open.length > 0 && <span className="ux-rg-acts">
+          {mode === "mine" ? uxArmBtn(gid + ":w", "Withdraw All", `Confirm Withdraw ${open.length}`, () => settleMany(open.map(r => reqAns(r, "withdraw"))))
+            : uxArmBtn(gid + ":a", "Accept All", `Confirm Accept ${open.length}`, () => settleMany(open.map(r => reqAns(r, "accept"))), true)}</span>}
+      </div>
+      {[...bySide].map(([k, rows]) => { const tm = k ? teamOfKey(k) : null, live = rows.filter(r => !r.declined);
+        return (
+        <div key={k || "none"} className="ux-rg-club" role="group" aria-label={tm ? tm.name : "No Side"}>
+          <div className="ux-rg-ch">
+            {review && uxReqTick(live.map(r => r.id), "Select " + (tm ? tm.name : "These"))}
+            {tm && <TeamCrest team={tm} size={18} />}
+            <b className="ux-rg-cn"><SlideName text={tm ? tm.name : "No Side"} /></b>
+            <span className="ux-rg-n"><span style={mono}>{rows.length}</span> New</span>
+            {review && live.length > 0 && <button type="button" className="ux-btnreset ux-btn ux-rg-ca" disabled={!!reqBusy || !!reqRun}
+              onClick={() => settleMany(live.map(r => reqAns(r, "accept")))}>Accept <span style={mono}>{live.length}</span></button>}
+          </div>
+          {rows.map(r => manRow(r))}
+        </div>); })}
+      {rest.map(r => (review && !r.declined ? (
+        <div key={r.id} className="ux-rq-pick">{uxReqTick([r.id], "Select For Accept Selected")}{uxReqBlock(r, false)}</div>) : uxReqBlock(r, mode === "mine")))}
+    </div>); };
+  // A list of requests: big groups as blocks, the rest as the cards they were.
+  const uxReqList = (list, mode, card) => reqGroups(list).flatMap(g => (g.length >= REQ_GROUP ? [uxReqGroup(g, mode)] : g.map(r => (card ? card(r) : uxReqBlock(r, mode === "mine")))));
   // A NEW RECORD asked for, from the server's request or the cart: who, his facts, and for the overseer Review.
   const uxNewBlock = (r, i, review, remove) => {
     const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : s.what === "leagues" ? "League"
       : s.what === "batch" ? "Players" : "Manager";
     const nat = s.nat ? natTeamByCode.get(s.nat) : null, joins = s.side ? teamOfKey(s.side) : null;
-    // (a New form of the same kind being made is put aside, so the review closes onto the sheet; New Player brings it back)
-    const open = () => { setTab("editor"); setEdSec(s.what === "batch" ? "players" : s.what); setEdFormOff(o => ({ ...o, [s.what === "batch" ? "players" : s.what]: true }));
-      const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
-      setEdNew(s.what === "leagues" ? edLgFromRec(s, meta)
-        : s.what === "batch" ? { kind: "players", mode: "many", side: s.side || null, list: (s.men || []).map(m => ({ ...m, ovr: m.ovr ?? "" })), ...meta }
-        : { ...s, kind: s.what, ...(s.what === "players" ? { pos: posList(s.pos)[0] || "", pos2: posList(s.pos)[1] || "" } : null),
-            ...(s.what === "teams" ? { ground: stripVenue(s.stadium || ""), cap: venueCap(s.stadium) || "", city: s.location || "" } : null), ...meta }); closeInbox(); };
+    const open = () => uxNewReview(r);
     return (
     <div key={r.id || "n" + i} className="ux-rq">
       <div className="ux-rq-h">
@@ -12916,10 +13033,18 @@ export default function App() {
 
   const renderUxRequests = () => {
     const forMe = reqFor.filter(r => !reqMine.includes(r));
+    const toPage = () => { closeInbox(); setTab("editor"); setEdSec("requests"); };
     const section = (title, list, mine) => list.length > 0 && (
       <div role="group" aria-label={title}>
         <div className="ux-drop-sec">{title}<b style={mono}>{list.length}</b></div>
-        {list.map(r => uxReqBlock(r, mine))}
+        {reqGroups(list).flatMap(g => (g.length >= REQ_GROUP ? [(
+          <div key={g[0].by + "|" + g[0].at} className="ux-rg ux-rg-line">
+            <div className="ux-rg-h">
+              <span className="ux-rg-t"><b>{reqTitle(g)}</b>
+                <span className="ux-rq-by"><img src={uxGh(g[0].by)} alt="" />{g[0].by}<span className="ux-ed-dot">&middot;</span>{ago(g[0].at)}</span></span>
+              <span className="ux-rg-acts"><button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={toPage}>Open</button></span>
+            </div>
+          </div>)] : g.map(r => uxReqBlock(r, mine))))}
       </div>);
     return (<>
       <div className="ux-scrim" onClick={closeInbox} />
@@ -13576,43 +13701,33 @@ export default function App() {
   const renderEdRequests = () => {
     const isNew = (r) => r.kind === "new", mineNow = reqMine.filter(r => r.kind !== "deal");
     const forMe = reqFor.filter(r => !reqMine.includes(r) && r.kind !== "deal" && !(overseer && isNew(r))), newRecs = overseer ? reqFor.filter(r => isNew(r) && !reqMine.includes(r)) : [];
-    const col = (title, list, ctl, row) => uxPanel(title, ctl || <b className="ux-drop-n" style={mono}>{list.length}</b>,
-      <div className="ux-drop-body">{list.length ? list.map(r => (row ? row(r) : uxReqBlock(r, reqMine.includes(r)))) : <div className="ux-empty">None</div>}</div>, true);
+    const col = (title, list, mode, ctl, card) => uxPanel(title, ctl || <b className="ux-drop-n" style={mono}>{list.length}</b>,
+      <div className="ux-drop-body">{list.length ? uxReqList(list, mode, card) : <div className="ux-empty">None</div>}</div>, true, null, list.length ? "" : "ux-ed-req-none");
     // ACCEPT SELECTED (Moukden and Kirin, 15 October 2026: "I need to be able to bulk-accept requests"; tick boxes, New Records
-    // only). Each ticked request is answered as its own Approve would answer it, one after another; one the registry refuses
-    // keeps its tick and shows why, and the rest go on.
+    // only). The ticked requests are answered in one save (21 November 2026), each as its own Accept would answer it, with
+    // the rating typed in its row; one the registry refuses keeps its tick and shows why, and the rest go on.
     const pickable = newRecs.filter(r => !r.declined), picked = pickable.filter(r => reqSel.has(r.id));
     const allOn = pickable.length > 0 && picked.length === pickable.length;
-    const flip = (id) => setReqSel(o => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-    const acceptSel = async () => {
-      if (!picked.length || reqRun) return;
-      setReqRun({ done: 0, n: picked.length });
-      for (const r of picked) {
-        const ok = await settle(r, "accept");
-        if (ok) setReqSel(o => { const n = new Set(o); n.delete(r.id); return n; });
-        setReqRun(x => x && { ...x, done: x.done + 1 });
-      }
-      setReqRun(null);
-    };
     const newCtl = (<>
       <b className="ux-drop-n" style={mono}>{newRecs.length}</b>
       {pickable.length > 0 && <span className="ux-rq-bulk">
         <button type="button" role="checkbox" aria-checked={allOn ? "true" : picked.length ? "mixed" : "false"} className="ux-btnreset ux-rq-all"
           disabled={!!reqRun} onClick={() => setReqSel(allOn ? new Set() : new Set(pickable.map(r => r.id)))}>{uxCheck(allOn, picked.length > 0)}Select All</button>
-        <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!picked.length || !!reqRun || !!reqBusy} onClick={acceptSel}>
-          {reqRun ? `Accepting ${Math.min(reqRun.done + 1, reqRun.n)} Of ${reqRun.n}` : picked.length ? `Accept ${picked.length} Selected` : "Accept Selected"}</button>
+        {picked.length > 0 && uxArmBtn("sel:d", `Decline ${picked.length}`, `Confirm Decline ${picked.length}`, () => settleMany(picked.map(r => reqAns(r, "decline"))))}
+        <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!picked.length || !!reqRun || !!reqBusy} onClick={() => settleMany(picked.map(r => reqAns(r, "accept")))}>
+          {reqRun ? `Saving ${reqRun.done} Of ${reqRun.n}` : picked.length ? `Accept ${picked.length} Selected` : "Accept Selected"}</button>
       </span>}</>);
     const newRow = (r) => (
       <div key={r.id} className="ux-rq-pick">
         <button type="button" role="checkbox" aria-checked={reqSel.has(r.id)} aria-label="Select For Accept Selected" className="ux-btnreset ux-chkbtn"
-          disabled={!!reqRun || !!r.declined} onClick={() => flip(r.id)}>{uxCheck(reqSel.has(r.id))}</button>
+          disabled={!!reqRun || !!r.declined} onClick={() => setReqSel(o => { const n = new Set(o); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}>{uxCheck(reqSel.has(r.id))}</button>
         {uxReqBlock(r, false)}
       </div>);
     return (
-      <div className="ux-body ux-ed-req">
-        {col("For You", forMe)}
-        {col("Yours", mineNow)}
-        {overseer && col("New Records", newRecs, newCtl, newRow)}
+      <div className={"ux-body ux-ed-req" + (overseer ? " ux-ed-req-ov" : "")}>
+        {col("For You", forMe, "for")}
+        {col("Yours", mineNow, "mine")}
+        {overseer && col("New Records", newRecs, "review", newCtl, newRow)}
       </div>);
   };
 
@@ -15054,6 +15169,15 @@ export default function App() {
       {shCollege(k) && <span className="ux-sh-nat ux-sh-yr" style={mono}>{"Y" + (yearOf(n.grad ?? gradFor(n.born ? ageOf(n.born) : null)) || 1)}</span>}
       <span className="ux-sh-tag">New</span>
     </span>);
+  // A NEW MAN WAITING ON THE OVERSEER, in the place he was asked for (21 November 2026: after a save the places read
+  // Open again, and their editor could not see what he had sent). Nothing in the cart, so nothing to edit: it only shows.
+  const shWaitChip = (k, i) => { const r = reqWaitAt.get(k + "|" + i); if (!r) return null;
+    return (
+    <span className="ux-sh-chip ux-sh-new ux-sh-wait" title="Waiting For Review">
+      <span className="ux-sh-rtg ux-sh-blank" style={mono}>{+r.rec.ovr > 0 ? showOvr(+r.rec.ovr) : "\u2013"}</span>
+      <span className="ux-sh-cn"><SlideName text={r.rec.name || "New Player"} /></span>
+      <span className="ux-sh-tag">Waiting</span>
+    </span>); };
   const shNewMgrChip = (n, k, inClub = false) => (
     <span className="ux-sh-chip ux-sh-mchip ux-sh-new" title="A New Manager, In The Cart"
       onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "mgr" }); shOpenEdit("managers", inClub ? { clubMgr: k } : { cart: n.id }, n); }}>
@@ -15193,8 +15317,8 @@ export default function App() {
                   else if (col.place != null) { const i = col.place, id = sq[i], nm = newAt.get(i), place = lab[i];
                     body = (<span className="ux-sh-pc"><span className="ux-sh-pl" style={{ color: POS_CLR[place] || "var(--ux-text-3)", ...mono }}>{place}</span>
                       {id ? shChip(id, k, i, place, nat ? t.code : t.nation, mine) : nm ? shNewChip(nm, k, i) : shClubMan(k, i) ? shNewChip(shClubMan(k, i), k, i)
-                        : <span className="ux-sh-open">{mine ? "Open" : "–"}</span>}
-                      {mine && !id && !nm && !shClubMan(k, i) && <button type="button" className="ux-btnreset ux-sh-plus" aria-label="New Player Here" title="New Player Here"
+                        : (shWaitChip(k, i) || <span className="ux-sh-open">{mine ? "Open" : "–"}</span>)}
+                      {mine && !id && !nm && !shClubMan(k, i) && !reqWaitAt.has(k + "|" + i) && <button type="button" className="ux-btnreset ux-sh-plus" aria-label="New Player Here" title="New Player Here"
                         onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); shPlusMan(k, i); }}>{uxIcon("plus", "ux-xs")}</button>}</span>); }
                   else body = <SlideName text={shText(t, c) || "–"} />;
                   return (
@@ -15304,7 +15428,7 @@ export default function App() {
                 {(() => { const own = id ? ownOfId(id) : [], shown = own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
                   return <span className="ux-sh-pl" style={{ color: POS_CLR[shown] || "var(--ux-text-3)", ...mono }}
                     title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` : undefined}>{shown}</span>; })()}
-                {id ? shChip(id, k, i, lab[i], isNational(T) ? T.code : T.nation, mine) : <span className="ux-sh-open">{mine ? "Open" : "–"}</span>}
+                {id ? shChip(id, k, i, lab[i], isNational(T) ? T.code : T.nation, mine) : (shWaitChip(k, i) || <span className="ux-sh-open">{mine ? "Open" : "–"}</span>)}
               </div>); })}
         </section>
       </div>);

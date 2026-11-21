@@ -9,6 +9,8 @@
 //   POST /save                     { cart }  -> { sha, applied, apply, requests, waiting } or 422 { errors }
 //   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" | "counter", edits?, note?, moves?, sides? }
 //                                  -> { sha, done, apply, request, waiting }
+//   POST /requests                 { answers: [{ id, action: "accept" | "decline" | "withdraw", edits?, note? }] }, many
+//                                  answered in one save -> { sha, done: [ids], errors: { id: [why] }, applies, waiting }
 //   GET  /draft                    the drafts (src/data/drafts.json)
 //   POST /draft                    { action: "pick", n, player, out? } the club on the clock's editor or the overseer;
 //                                  { action: "start", order, stats } | "pause" | "resume" | { action: "give", n, club } the
@@ -23,7 +25,7 @@
 // Secrets (wrangler secret put): CLIENT_SECRET, PRIVATE_KEY (the App's key, as GitHub gave it), SESSION_SECRET.
 import { applyDraft, draftChanges, dumpRecords, teamKey } from "../src/data/draft.js";
 import { sheetsFromRecords } from "../src/data/sheets.js";
-import { owns, planSave, scopeOf, settleRequest } from "../src/data/rules.js";
+import { owns, planSave, scopeOf, settleMany, settleRequest } from "../src/data/rules.js";
 import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, startDraft, steerDraft } from "../src/data/collegedraft.js";
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, tradesFile, trendsFrom } from "../src/data/trades.js";
@@ -290,6 +292,22 @@ async function handle(req, env) {
       return r;
     });
     return errors ? json({ errors }, 422) : json(result);
+  }
+  // MANY ANSWERS, ONE SAVE (src/data/rules.js settleMany): each as its own answer would be, in order, in one commit. One
+  // the rules refuse says why and the rest go on; nothing is committed when none goes through.
+  if (path === "/requests" && req.method === "POST") {
+    const { answers } = await body(req);
+    if (!Array.isArray(answers) || !answers.length || answers.length > 500) return json({ error: "Not a list of answers" }, 400);
+    const result = await withMain(env, async ({ head, rec, editors, requests }) => {
+      const s = settleMany(rec, editors, requests, login, answers, judge);
+      const result = { done: s.done, errors: s.errors, applies: s.applies, waiting: s.left };
+      if (!s.done.length) return { result };
+      const files = { ...(s.applies.length ? filesFor(rec, s.rec) : null), "src/data/requests.json": JSON.stringify(s.left, null, 1) + "\n" };
+      if (s.applies.length) Object.assign(files, await tradeLog(env, head, rec, s.rec, login));
+      const acts = [...new Set(answers.filter(a => s.done.includes(a.id)).map(a => a.action + "s"))].join(" and ");
+      return { files, message: `Registry: ${login} ${acts} ${s.done.length} request${s.done.length > 1 ? "s" : ""}`, result };
+    });
+    return json(result);
   }
   const m = path.match(/^\/requests\/([\w-]+)$/);
   if (m && req.method === "POST") {
