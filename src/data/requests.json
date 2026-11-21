@@ -3468,35 +3468,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "8d811c8e",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Qayra WAMARI",
-  "rec": {
-   "name": "Qayra WAMARI",
-   "nat": "ANT",
-   "born": "1912-07-16",
-   "pos": [
-    "ST"
-   ],
-   "ovr": 70,
-   "what": "players",
-   "side": "t0406",
-   "at": 21,
-   "auto": true,
-   "badges": []
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "038d32bb",
   "kind": "new",
   "what": "players",
