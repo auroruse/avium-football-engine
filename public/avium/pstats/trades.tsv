@@ -98,3 +98,11 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 39	1935	2026-11-21T09:23:03.340Z	player	p6539	Inti HUARAQ	RW	76	20	5900000			t0415	Pamananqa Llaqta	cornafiable
 40	1935	2026-11-21T09:24:04.096Z	player	p6537	Ch'aska HUMALA	LW/LM	78	21	8700000			t0404	FTK Maqarqa	cornafiable
 41	1935	2026-11-21T09:26:02.047Z	player	p6531	Puma QURI	CB	77	22	5000000			t0402	Chaqalay HFK	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6537	Ch'aska HUMALA	LW/LM	78	21	9100000	t0404	FTK Maqarqa	t0411	HFK Nawasqa	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6526	Qori SUPA	LW	85	25	33000000	t0407	Qahuaya Hukllachasqa	t0415	Pamananqa Llaqta	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6691	Kallpa CHASKA RUMI	LW	71	26	1500000	t0410	FK Yuchayurqu	t0411	HFK Nawasqa	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6702	Suyana PUKA	LW	69	18	1200000	t0411	HFK Nawasqa	t0415	Pamananqa Llaqta	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6746	Qori WAYRA	LW	73	29	1900000	t0415	Pamananqa Llaqta	t0410	FK Yuchayurqu	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	player	p6539	Inti HUARAQ	RW	76	20	6100000	t0415	Pamananqa Llaqta	t0404	FTK Maqarqa	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	manager	m0350	Amaru RAQAY		77	45		t0409	FK Quri Wamp'u	t0410	FK Yuchayurqu	cornafiable
+42	1935	2026-11-21T10:19:06.542Z	manager	m0351	Puka SISA		82	35		t0410	FK Yuchayurqu	t0409	FK Quri Wamp'u	cornafiable
