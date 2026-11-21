@@ -709,34 +709,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "db33bd44",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Ayllu KUNTUR",
-  "rec": {
-   "name": "Ayllu KUNTUR",
-   "nat": "ANT",
-   "born": "1911-04-11",
-   "pos": [
-    "CB"
-   ],
-   "ovr": 61,
-   "what": "players",
-   "side": "t0406",
-   "at": 13,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "45710683",
   "kind": "new",
   "what": "players",
