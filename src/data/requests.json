@@ -3131,35 +3131,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "b473e4ce",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Waqri QURI",
-  "rec": {
-   "name": "Waqri QURI",
-   "nat": "ANT",
-   "born": "1915-05-19",
-   "pos": [
-    "CM"
-   ],
-   "ovr": 70,
-   "what": "players",
-   "side": "t0406",
-   "at": 20,
-   "auto": true,
-   "badges": []
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "b4da77df",
   "kind": "new",
   "what": "players",
