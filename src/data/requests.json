@@ -3715,5 +3715,313 @@
    ]
   },
   "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "96bef6da",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Kawsay ILLARI",
+  "rec": {
+   "name": "Kawsay ILLARI",
+   "nat": "ANT",
+   "born": "1915-03-20",
+   "pos": [
+    "GK"
+   ],
+   "ovr": 68,
+   "what": "players",
+   "side": "t0406",
+   "at": 11,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "8437fd9d",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Qhilla WAMAN",
+  "rec": {
+   "name": "Qhilla WAMAN",
+   "nat": "ANT",
+   "born": "1917-06-23",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 70,
+   "what": "players",
+   "side": "t0406",
+   "at": 12,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "d9347fc7",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Ayllu KUNTUR",
+  "rec": {
+   "name": "Ayllu KUNTUR",
+   "nat": "ANT",
+   "born": "1905-06-26",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 68,
+   "what": "players",
+   "side": "t0406",
+   "at": 13,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "dc1e76e0",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Kawsay WAMARI",
+  "rec": {
+   "name": "Kawsay WAMARI",
+   "nat": "ANT",
+   "born": "1903-07-13",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 70,
+   "what": "players",
+   "side": "t0406",
+   "at": 14,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "fc199199",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Qhilla KUYA",
+  "rec": {
+   "name": "Qhilla KUYA",
+   "nat": "ANT",
+   "born": "1915-05-15",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 72,
+   "what": "players",
+   "side": "t0406",
+   "at": 15,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "d322a1ad",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Qhantay IKURI",
+  "rec": {
+   "name": "Qhantay IKURI",
+   "nat": "ANT",
+   "born": "1916-12-10",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 70,
+   "what": "players",
+   "side": "t0406",
+   "at": 16,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "2abe2372",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Tupan RUMIWA",
+  "rec": {
+   "name": "Tupan RUMIWA",
+   "nat": "ANT",
+   "born": "1917-04-24",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 69,
+   "what": "players",
+   "side": "t0406",
+   "at": 17,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "a8ac201f",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Yana YUCHIQA",
+  "rec": {
+   "name": "Yana YUCHIQA",
+   "nat": "ANT",
+   "born": "1903-06-21",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 73,
+   "what": "players",
+   "side": "t0406",
+   "at": 18,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "7314aeda",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Pumari CHASKA",
+  "rec": {
+   "name": "Pumari CHASKA",
+   "nat": "ANT",
+   "born": "1904-06-18",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 70,
+   "what": "players",
+   "side": "t0406",
+   "at": 19,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "89c927ad",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Waqri QURI",
+  "rec": {
+   "name": "Waqri QURI",
+   "nat": "ANT",
+   "born": "1903-08-12",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 68,
+   "what": "players",
+   "side": "t0406",
+   "at": 20,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-21T12:56:38.641Z",
+  "approved": [],
+  "id": "9ce393bd",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Qayra WAMARI",
+  "rec": {
+   "name": "Qayra WAMARI",
+   "nat": "ANT",
+   "born": "1910-07-09",
+   "pos": [
+    "ST"
+   ],
+   "ovr": 71,
+   "what": "players",
+   "side": "t0406",
+   "at": 21,
+   "badges": []
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
  }
 ]
