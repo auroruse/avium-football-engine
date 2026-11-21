@@ -2820,34 +2820,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "109cabd2",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Pumari CHASKA",
-  "rec": {
-   "name": "Pumari CHASKA",
-   "nat": "ANT",
-   "born": "1905-06-23",
-   "pos": [
-    "CM"
-   ],
-   "ovr": 62,
-   "what": "players",
-   "side": "t0406",
-   "at": 19,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "a3dcdb9c",
   "kind": "new",
   "what": "players",
