@@ -1834,34 +1834,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "edd47a4b",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Qhantay ILLARI",
-  "rec": {
-   "name": "Qhantay ILLARI",
-   "nat": "ANT",
-   "born": "1911-03-29",
-   "pos": [
-    "CM"
-   ],
-   "ovr": 62,
-   "what": "players",
-   "side": "t0406",
-   "at": 16,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "64e2f75b",
   "kind": "new",
   "what": "players",
