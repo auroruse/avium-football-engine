@@ -1047,34 +1047,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "7eb2cbff",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Kawsay WAMAN",
-  "rec": {
-   "name": "Kawsay WAMAN",
-   "nat": "ANT",
-   "born": "1909-01-05",
-   "pos": [
-    "CB"
-   ],
-   "ovr": 61,
-   "what": "players",
-   "side": "t0406",
-   "at": 14,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "21112c79",
   "kind": "new",
   "what": "players",
