@@ -145,34 +145,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "28852af0",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Kawsay ILLARI",
-  "rec": {
-   "name": "Kawsay ILLARI",
-   "nat": "ANT",
-   "born": "1905-03-01",
-   "pos": [
-    "GK"
-   ],
-   "ovr": 65,
-   "what": "players",
-   "side": "t0406",
-   "at": 11,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "9dffd387",
   "kind": "new",
   "what": "players",
