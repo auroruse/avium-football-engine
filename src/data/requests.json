@@ -1441,34 +1441,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "2d2d365b",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Qhilla KUNTUR",
-  "rec": {
-   "name": "Qhilla KUNTUR",
-   "nat": "ANT",
-   "born": "1915-07-31",
-   "pos": [
-    "CB"
-   ],
-   "ovr": 61,
-   "what": "players",
-   "side": "t0406",
-   "at": 15,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "6e72e238",
   "kind": "new",
   "what": "players",
