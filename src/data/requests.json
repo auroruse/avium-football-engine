@@ -2144,34 +2144,6 @@
   "by": "cornafiable",
   "at": "2026-11-21T10:19:06.542Z",
   "approved": [],
-  "id": "425dcb11",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Tupan RUMIQURI",
-  "rec": {
-   "name": "Tupan RUMIQURI",
-   "nat": "ANT",
-   "born": "1907-08-30",
-   "pos": [
-    "CM"
-   ],
-   "ovr": 62,
-   "what": "players",
-   "side": "t0406",
-   "at": 17,
-   "auto": true
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-21T10:19:06.542Z",
-  "approved": [],
   "id": "751156f2",
   "kind": "new",
   "what": "players",
