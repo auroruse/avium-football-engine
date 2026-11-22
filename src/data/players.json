@@ -6817,5 +6817,16 @@
 {"id":"p6877","name":"Qhuyay QUWUR","nat":"ANT","ovr":74,"born":"1906-09-03","pos":["ST"]},
 {"id":"p6878","name":"Sairi QURISKA YASWA","nat":"ANT","ovr":72,"born":"1903-02-12","pos":["ST"]},
 {"id":"p6879","name":"Wilaq RUMI POMA","nat":"ANT","ovr":71,"born":"1910-04-10","pos":["ST"]},
-{"id":"p6880","name":"Runtu QAYIKURO","nat":"ANT","ovr":80,"born":"1912-06-21","pos":["ST"]}
+{"id":"p6880","name":"Runtu QAYIKURO","nat":"ANT","ovr":80,"born":"1912-06-21","pos":["ST"]},
+{"id":"p6881","name":"Kawsay ILLARI","nat":"ANT","ovr":68,"born":"1915-03-20","pos":["GK"]},
+{"id":"p6882","name":"Qhilla WAMAN","nat":"ANT","ovr":70,"born":"1917-06-23","pos":["CB"]},
+{"id":"p6883","name":"Ayllu KUNTUR","nat":"ANT","ovr":68,"born":"1905-06-26","pos":["CB"]},
+{"id":"p6884","name":"Kawsay WAMARI","nat":"ANT","ovr":70,"born":"1903-07-13","pos":["CB"]},
+{"id":"p6885","name":"Qhilla KUYA","nat":"ANT","ovr":72,"born":"1915-05-15","pos":["CB"]},
+{"id":"p6886","name":"Qhantay IKURI","nat":"ANT","ovr":70,"born":"1916-12-10","pos":["CM"]},
+{"id":"p6887","name":"Tupan RUMIWA","nat":"ANT","ovr":69,"born":"1917-04-24","pos":["CM"]},
+{"id":"p6888","name":"Yana YUCHIQA","nat":"ANT","ovr":73,"born":"1903-06-21","pos":["CM"]},
+{"id":"p6889","name":"Pumari CHASKA","nat":"ANT","ovr":70,"born":"1904-06-18","pos":["CM"]},
+{"id":"p6890","name":"Waqri QURI","nat":"ANT","ovr":68,"born":"1903-08-12","pos":["CM"]},
+{"id":"p6891","name":"Qayra WAMARI","nat":"ANT","ovr":71,"born":"1910-07-09","pos":["ST"]}
 ]
