@@ -106,3 +106,9 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 42	1935	2026-11-21T10:19:06.542Z	player	p6539	Inti HUARAQ	RW	76	20	6100000	t0415	Pamananqa Llaqta	t0404	FTK Maqarqa	cornafiable
 42	1935	2026-11-21T10:19:06.542Z	manager	m0350	Amaru RAQAY		77	45		t0409	FK Quri Wamp'u	t0410	FK Yuchayurqu	cornafiable
 42	1935	2026-11-21T10:19:06.542Z	manager	m0351	Puka SISA		82	35		t0410	FK Yuchayurqu	t0409	FK Quri Wamp'u	cornafiable
+43	1936	2026-11-22T11:27:09.646Z	player	p6573	Ch'aska SALLQA	GK	71	21	1000000	t0400	FK Tombaq	t0403	FK Chaqalay Llaqta	cornafiable
+43	1936	2026-11-22T11:27:09.646Z	player	p6577	Sinchi CH'ASKA RUMI	CB	71	32	500000	t0400	FK Tombaq	t0401	Riqpa Hukllachasqa	cornafiable
+43	1936	2026-11-22T11:27:09.646Z	player	p6587	Qhapaq MAYTA	CB	69	23	800000	t0401	Riqpa Hukllachasqa	t0400	FK Tombaq	cornafiable
+43	1936	2026-11-22T11:27:09.646Z	player	p6606	Kuntur YUPAN	GK	68	23	510000	t0403	FK Chaqalay Llaqta	t0400	FK Tombaq	cornafiable
+44	1936	2026-11-22T11:27:09.646Z	player	p6790	Aruma QULLQI	CB	70	21	1000000	t0411	HFK Nawasqa	t0413	FK Piqwa Hukllachasqa	cornafiable
+44	1936	2026-11-22T11:27:09.646Z	player	p6717	Qori SISA	LB	68	22	700000	t0413	FK Piqwa Hukllachasqa	t0411	HFK Nawasqa	cornafiable

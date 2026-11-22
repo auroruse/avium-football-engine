@@ -1,1 +1,422 @@
-[]
+[
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "8056ebe3",
+  "kind": "pos",
+  "player": "p6854",
+  "teamName": "Arani RUMA",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "7052d9d1",
+  "kind": "pos",
+  "player": "p6800",
+  "teamName": "Pukay ILLARI",
+  "patch": {
+   "pos": [
+    "RB"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "a9e1b365",
+  "kind": "pos",
+  "player": "p6658",
+  "teamName": "Illapa WAMAN",
+  "patch": {
+   "pos": [
+    "DM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "b4e71d14",
+  "kind": "pos",
+  "player": "p6873",
+  "teamName": "Pumari WAQAR",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "05e1e272",
+  "kind": "pos",
+  "player": "p6852",
+  "teamName": "Tupan ILLARIQA",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "46fc8829",
+  "kind": "pos",
+  "player": "p6701",
+  "teamName": "Pukllay RUMI",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "271acf04",
+  "kind": "pos",
+  "player": "p6864",
+  "teamName": "Qhuychi RUMASKA",
+  "patch": {
+   "pos": [
+    "RW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "42efd320",
+  "kind": "pos",
+  "player": "p6691",
+  "teamName": "Kallpa CHASKA RUMI",
+  "patch": {
+   "pos": [
+    "CM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "1e7e56c6",
+  "kind": "pos",
+  "player": "p6855",
+  "teamName": "Qhilla KILLA KILLA",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "18641ee9",
+  "kind": "pos",
+  "player": "p6848",
+  "teamName": "Yurak WAMAL",
+  "patch": {
+   "pos": [
+    "RW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "a6f2653b",
+  "kind": "pos",
+  "player": "p6859",
+  "teamName": "Kallari HUWAKAR",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "b53d462e",
+  "kind": "pos",
+  "player": "p6885",
+  "teamName": "Qhilla KUYA",
+  "patch": {
+   "pos": [
+    "LB"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "e6123b8c",
+  "kind": "pos",
+  "player": "p6663",
+  "teamName": "Qhantati SALLQA",
+  "patch": {
+   "pos": [
+    "DM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "1366a34c",
+  "kind": "pos",
+  "player": "p6666",
+  "teamName": "Pacho QURI",
+  "patch": {
+   "pos": [
+    "CB"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "044d295b",
+  "kind": "pos",
+  "player": "p6865",
+  "teamName": "Tarpuy TUPAQ",
+  "patch": {
+   "pos": [
+    "CM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "a0f99881",
+  "kind": "pos",
+  "player": "p6877",
+  "teamName": "Qhuyay QUWUR",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "54341db8",
+  "kind": "pos",
+  "player": "p6626",
+  "teamName": "Pacha WAMAN",
+  "patch": {
+   "pos": [
+    "LW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "bc703c4b",
+  "kind": "pos",
+  "player": "p6863",
+  "teamName": "Yana YUNTUR",
+  "patch": {
+   "pos": [
+    "RW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "1bdcc00e",
+  "kind": "pos",
+  "player": "p6834",
+  "teamName": "Qantu WAMAQHA",
+  "patch": {
+   "pos": [
+    "RM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "2983c8dc",
+  "kind": "pos",
+  "player": "p6798",
+  "teamName": "Qhuri WAMAN",
+  "patch": {
+   "pos": [
+    "LM"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-22T11:27:09.646Z",
+  "approved": [],
+  "id": "40cd3147",
+  "kind": "pos",
+  "player": "p6841",
+  "teamName": "Qhantay QURIWOKA",
+  "patch": {
+   "pos": [
+    "RW"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ }
+]
