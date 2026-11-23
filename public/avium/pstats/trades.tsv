@@ -136,3 +136,22 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 48	1936	2026-11-23T16:21:00.913Z	player	p1330	Ealdwig READ	ST	76	27	5100000			t0413	FK Piqwa Hukllachasqa	cornafiable
 49	1936	2026-11-23T16:21:00.913Z	player	p6827	Qhilla QHAWAK	CM	71	25	1400000	t0415	Pamananqa Llaqta			cornafiable
 49	1936	2026-11-23T16:21:00.913Z	player	p3200	Emmett PRENDERGAST	CM	79	29	6600000			t0415	Pamananqa Llaqta	cornafiable
+50	1936	2026-11-23T19:08:51.337Z	player	p6672	Pumawilqa ANTA	GK	67	32	270000	t0409	FK Quri Wamp'u			cornafiable
+50	1936	2026-11-23T19:08:51.337Z	player	p6758	Qayra ANTA	GK	70	28	610000			t0409	FK Quri Wamp'u	cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p6828	Pukay ANTA	CM	67	29	530000	t0411	HFK Nawasqa			cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p6816	Alqa PUKA	CM	62	31	170000	t0411	HFK Nawasqa			cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p6699	Yupan QHAPAQ	CM	65	19	540000	t0411	HFK Nawasqa			cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p5351	Diego DELLA ROCCA	CM	74	22	2900000			t0411	HFK Nawasqa	cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p5243	Yūsei KIRIGAKURE	CM/AM	74	22	2900000			t0411	HFK Nawasqa	cornafiable
+51	1936	2026-11-23T19:08:51.337Z	player	p1439	Pater DYRDA	CM/DM	74	29	2100000			t0411	HFK Nawasqa	cornafiable
+52	1936	2026-11-23T19:08:51.337Z	player	p6759	Wilaq KILLA	GK	71	24	870000	t0412	Piqwa Llaqta			cornafiable
+52	1936	2026-11-23T19:08:51.337Z	player	p6714	Qhapaq PUKA	ST	62	30	250000	t0412	Piqwa Llaqta			cornafiable
+52	1936	2026-11-23T19:08:51.337Z	player	p6683	Tikari QURI ILLARI	GK	73	20	1700000			t0412	Piqwa Llaqta	cornafiable
+52	1936	2026-11-23T19:08:51.337Z	player	p6746	Qori WAYRA	LW	73	29	1800000			t0412	Piqwa Llaqta	cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6725	Inti SALLQA	ST	67	32	340000	t0413	FK Piqwa Hukllachasqa			cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6726	Túpac SALLQA	RW	67	20	820000	t0413	FK Piqwa Hukllachasqa			cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6724	Wari MAYU	LW	64	25	460000	t0413	FK Piqwa Hukllachasqa			cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6747	Kusi QULLQI	ST	68	31	520000	t0415	Pamananqa Llaqta	t0413	FK Piqwa Hukllachasqa	cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6877	Qhuyay QUWUR	LW	74	29	2400000			t0413	FK Piqwa Hukllachasqa	cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6849	Qhuyay QURIMA	ST	74	23	3400000			t0413	FK Piqwa Hukllachasqa	cornafiable
+53	1936	2026-11-23T19:08:51.337Z	player	p6863	Yana YUNTUR	RW	74	23	3100000			t0415	Pamananqa Llaqta	cornafiable
