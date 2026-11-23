@@ -112,3 +112,27 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 43	1936	2026-11-22T11:27:09.646Z	player	p6606	Kuntur YUPAN	GK	68	23	510000	t0403	FK Chaqalay Llaqta	t0400	FK Tombaq	cornafiable
 44	1936	2026-11-22T11:27:09.646Z	player	p6790	Aruma QULLQI	CB	70	21	1000000	t0411	HFK Nawasqa	t0413	FK Piqwa Hukllachasqa	cornafiable
 44	1936	2026-11-22T11:27:09.646Z	player	p6717	Qori SISA	LB	68	22	700000	t0413	FK Piqwa Hukllachasqa	t0411	HFK Nawasqa	cornafiable
+45	1936	2026-11-23T16:21:00.913Z	player	p6758	Qayra ANTA	GK	70	28	640000	t0408	FK Yuhuac			cornafiable
+45	1936	2026-11-23T16:21:00.913Z	player	p6842	Runtu ILLARI	CM	69	28	820000	t0408	FK Yuhuac			cornafiable
+45	1936	2026-11-23T16:21:00.913Z	player	p5808	Gennai HAGANE	GK	75	21	2700000			t0408	FK Yuhuac	cornafiable
+45	1936	2026-11-23T16:21:00.913Z	player	p6501	Bodruith ITHHÊRDUM	DM	77	28	4700000			t0408	FK Yuhuac	cornafiable
+46	1936	2026-11-23T16:21:00.913Z	player	p6674	T'ika MAYU	CB	69	23	800000	t0409	FK Quri Wamp'u			cornafiable
+46	1936	2026-11-23T16:21:00.913Z	player	p6837	Tarpuy SALLQA	CM	72	29	1400000	t0409	FK Quri Wamp'u			cornafiable
+46	1936	2026-11-23T16:21:00.913Z	player	p1486	Quang Diệu CAO	CB	76	23	4400000			t0409	FK Quri Wamp'u	cornafiable
+46	1936	2026-11-23T16:21:00.913Z	player	p5594	Kaname KUROGANE	CM	75	22	3700000			t0409	FK Quri Wamp'u	cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p6683	Tikari QURI ILLARI	GK	73	20	1800000	t0410	FK Yuchayurqu			cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p6746	Qori WAYRA	LW	73	29	1900000	t0410	FK Yuchayurqu			cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p6849	Qhuyay QURIMA	ST	74	23	3500000	t0410	FK Yuchayurqu			cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p6863	Yana YUNTUR	RW	74	23	3200000	t0410	FK Yuchayurqu			cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p1320	Sigeweard STROOD	GK	82	31	7400000			t0410	FK Yuchayurqu	cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p5528	Yoshimi TAKESHIMA	LW	76	21	5500000			t0410	FK Yuchayurqu	cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p1227	Karel ČERNÝ	ST	81	22	17000000			t0410	FK Yuchayurqu	cornafiable
+47	1936	2026-11-23T16:21:00.913Z	player	p6505	Nazran NIDINYINDÎN	AM/RW	81	25	14000000			t0410	FK Yuchayurqu	cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p6719	Mayta WAMAN	CB	70	19	1100000	t0413	FK Piqwa Hukllachasqa			cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p6877	Qhuyay QUWUR	LW	74	29	2500000	t0413	FK Piqwa Hukllachasqa			cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p6850	Sairi KUWAM	ST	71	27	1600000	t0413	FK Piqwa Hukllachasqa			cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p5810	Clifford BURHTUN	CB	75	22	3200000			t0413	FK Piqwa Hukllachasqa	cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p5258	Tsuna IBARAKI	LW	78	22	8100000			t0413	FK Piqwa Hukllachasqa	cornafiable
+48	1936	2026-11-23T16:21:00.913Z	player	p1330	Ealdwig READ	ST	76	27	5100000			t0413	FK Piqwa Hukllachasqa	cornafiable
+49	1936	2026-11-23T16:21:00.913Z	player	p6827	Qhilla QHAWAK	CM	71	25	1400000	t0415	Pamananqa Llaqta			cornafiable
+49	1936	2026-11-23T16:21:00.913Z	player	p3200	Emmett PRENDERGAST	CM	79	29	6600000			t0415	Pamananqa Llaqta	cornafiable
