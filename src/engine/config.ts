@@ -8,7 +8,28 @@ export const ME_HZ = 4, ME_DT = 1 / ME_HZ, ME_TPM = 60 * ME_HZ;
 // engine at this density produces far more football per minute than ninety real minutes' worth --
 // so rather than tune the life out of it to hit a per-90 scorecard, a match IS shorter and the clock
 // runs fast over it, which is how every football game you have played does it.
-export const ME_SIM_MIN = 18;
+// 18 -> 13 on 22 November 2026 (the user: fine with passing "more like EAFC instead of real football, and then we can
+// shorten the games"; "shorten the match after stage 3 is done"). With the passing, the headers and the ball in behind
+// rebuilt, the same fixtures scored 1.36 times what they did (80 matches over four pools, 10.70 goals to 14.55), so the
+// match is that much shorter and scores about what it scored. ME_LEN is what a rate that was set per match of eighteen
+// minutes is multiplied by to stay a rate per match: how fast legs tire, how often a foul is a card or an injury.
+// 13 -> 17 the same day, with the mistakes in (the user, having watched it at 13: "literally too good to be true right
+// now and every attack is a perfect tiki taka goal"). Hurried by the man on them, at pace and by their own level, sides
+// score about a fifth less a minute, and a defender who throws a leg at the ball squared across his own area takes more:
+// at 16 minutes League One scored 2.82 a match and the best national sides 2.50 (cloud, 1,200 fixtures a side each), and
+// with the last settings about 0.1 less. Seventeen puts League One back near 2.85.
+// 17 -> 18 the same day (cloud run 45055086971, 2,880 matches a level). Two things since took goals off: a shot the
+// keeper catches no longer comes back off him, and with the look (mind/decide.ts mindReady) men are challenged more, so
+// penalties were brought back down to one goal in ten (MT.boxTackleFoul, boxContactFoul). The look itself moved goals by
+// +0.03 (se 0.04). Measured at seventeen minutes before the penalties came down: League One 2.73, the twelve best
+// national sides 2.50; with them down about 2.60 and 2.42 by the earlier penalty arm; eighteen minutes puts those near
+// 2.75 and 2.56. By interpolation, not measured at eighteen.
+// 18 -> 15 on 24 November 2026 (cloud run 45484006483, test/mistab.mjs, 1,200 fixtures at each of 14-18 minutes): the
+// dribbler no longer runs past his ball (match.ts meMove) and the look was halved, and both made attacks work. A line
+// through the five lengths gives League One 2.81 and the sixteen best national sides 2.68 at fifteen (2.65 and 2.54 at
+// fourteen); fifteen puts League One on its mark and leaves the national sides about a tenth high.
+export const ME_SIM_MIN = 15;
+export const ME_LEN = 18 / ME_SIM_MIN;
 // Restart delays are written in real seconds -- nineteen for a throw, thirty-four for a corner -- and
 // they have to shrink with a compressed match or the ball is dead for most of it. Scaled by match
 // length alone the ball was in play 90% of the time, which is its own kind of wrong; this is set so
@@ -131,7 +152,7 @@ export const SP = {
   // A free kick nearer the goal than spShootRange in a straight line, from where the posts stand at least spShootAng degrees
   // apart, is struck at goal; any other is delivered (setpiece.ts meFkAtGoal). 12 degrees keeps every kick from the middle
   // out to 27 m and sends the box's corner (10) and anything wider in as a cross.
-  spShootRange: 27, spShootAng: 12,
+  spShootRange: 25, spShootAng: 14,
   spWall: 4, spWallDist: 9.15,
   // THE WALL IS A DECISION (user, 16 October 2026: "more natural positioning during all set pieces"). How many men go in
   // it came from a coin (spWall plus the routine), and a free kick just outside shooting range had none at all. Now by
@@ -143,6 +164,11 @@ export const SP = {
   // defence (spPenBackN men) and the other side's spPenUpN forwards wait near halfway. It was one bunched line ten metres
   // behind the spot, the two sides standing on each other, walked out of the box by the referee at nine metres a second.
   spPenGap: 1.15, spPenBackN: 2, spPenUpN: 1,
+  // The floor under an open-play penalty's wait, in slices (six seconds): the referee's whistle, the ball placed. The
+  // kick then goes when the area is clear and the taker is on his mark (match.ts meDead). And how far from the middle
+  // the pairs nearest the D stand: 8.9 puts them 10.85 m from the spot, clear of the ten metres the law keeps empty
+  // (8.2 was 10.28, inside the reach of the rule that walks a standing man out).
+  spPenMinT: 24, spPenEdgeY: 8.9,
   // A DEAD BALL IS WALKED TO. Everybody sprinted to every restart's mark, the length of the pitch to a kickoff included.
   // Not playing it quickly, a man goes at spWalkFar of his pace from beyond spWalkFarD of his mark and spWalkNear inside
   // it, until the restart has used spWalkHurry of its patience; the man on the ball, the keepers and a throw are exempt.
@@ -230,7 +256,7 @@ export const CFG = {
   // the centre, to a man in (or running into) the area -- within crossBoxX of the goal line and
   // crossBoxY of the centre -- and is flighted to arrive at crossZ, a head. A header from a cross is
   // worth crossHeadK of a shot from the same spot to the man deciding whether to cross it.
-  crossFromX: 32, crossFromY: 11, crossBoxX: 19, crossBoxY: 13, crossZ: 1.85, crossHeadK: 0.55,
+  crossFromX: 32, crossFromY: 11, crossBoxX: 19, crossBoxY: 13, crossZ: 1.85, crossHeadK: 2.6,   // 0.55 until the header was given its pace, 1.0 then; 2.6 with the goal mix (22 Nov 2026, below)
   // PASS AND MOVE: the give-and-go. A man who plays a short ball forward of his own third goes past
   // his marker for the return: wallP of the time, more for a side that passes short (wallShort per
   // step of passingDir) or plays with freedom (wallCre per step of creativity). The run is wallRunL
@@ -533,7 +559,14 @@ foulAggr: 0.25,
   // for its own flight, and the man it was for and the men contesting it read that flight (match.ts): the belief ran seven
   // points pessimistic on the ground (0.71 believed, 0.78 kept) and ten optimistic in the air (0.66, 0.56), so passCalH, a
   // ball in the air, joins it. Fitted 1.85 / 0.78 / 0.71 / -0.82; L keeps its figure, fitted on the few late passes.
-  passCal0: 1.85, passCalB: 0.78, passCalR: 0.71, passCalL: 13.78, passCalH: -0.82,
+  // passCal0 1.85 -> 2.30 and passCalH -0.82 -> -1.27 on 22 November 2026, PROVISIONAL, off eight traced matches of the
+  // best national sides with the firmer ball (passArrive*): the belief topped out at 0.86 whatever the pass, and balls to
+  // feet believed at 0.5-0.7, 0.7-0.85 and 0.85+ were kept 69%, 82% and 89% of the time. The same shift on every ground
+  // ball puts those at 0.70, 0.85 and 0.91; a ball in the air keeps the belief it had. Refit all five at the next
+  // calibration (test/ratings.mjs fit).
+  // ...and refitted on the cloud the same day (run 45021085859, 86,740 open-play passes of every league and the national
+  // sides on the rebuilt engine): 2.53 / 0.58 / 0.98 / 25.20 / -1.62. The late term keeps 13.78 as before (few passes are late).
+  passCal0: 2.53, passCalB: 0.58, passCalR: 0.98, passCalL: 13.78, passCalH: -1.62,
   // THE RESTART'S OWN BELIEF (mind/decide.ts mindRestart, 16 October 2026): whether his side still has the ball five
   // seconds after a throw, a goal kick or a deep free kick -- a restart is almost never cut out on its way (98% reached a
   // team-mate), and what a press takes is the ball the man receives under it. The open-play components plus a ball in the
@@ -664,6 +697,12 @@ foulAggr: 0.25,
   // caution for a deliberate handball that did not deny a goal.
   dogsoRed: 0.88, dogsoDanger: 0.34, dogsoCover: 1, spaDanger: 0.075, cardSpa: 0.30,
   handCardY: 0.45, flashP: 0.00044, flashViolent: 0.62,
+  // ADVANTAGE (match.ts meAdvOn, meAdvStep; the user, 24 November 2026: advantage in, and "it should expire after a
+  // bit"). A foul given outside the area, on a man at least advFrom metres up the pitch from his own goal line, is
+  // played on when he rides it: advRide of the time (0.42 measured 7.3 a match on the cloud, run 45299932594; 0.25 aims at four), less advPace for each metre a second the challenge came in at,
+  // more for a strong man. It runs advT slices (four seconds). The ball lost to the other side inside that brings play
+  // back for the free kick; after it the foul is gone and only the card remains, shown at the next stoppage.
+  advT: 16, advFrom: 35, advRide: 0.16, advPace: 0.04, advStrong: 0.25,
   // SUBSTITUTIONS. subFromTick is how far into the match before a manager makes a change for tired
   // legs -- an injury is replaced whenever it happens. subStamina is the level he goes at, and a man
   // carrying a knock is treated as this much more tired than he reads. subSamePos favours a like-for
@@ -687,9 +726,29 @@ foulAggr: 0.25,
   // not measured: real managers make about four of their five changes, and the usual gap from a starter to the man who
   // comes on for him is three or four points (League One 4.0, League Two 3.0, nations 3.0, the medians).
   subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8, subLegsW: [[73.2, 0.05], [79.6, 0.09], [84.5, 0.16]], subTolerance: 2,
+  // WHAT ELSE TAKES A MAN OFF (match.ts meCoachSubs; 23 November 2026, the rest of the manager rework; only in a match
+  // that has managers). All set by reasoning from what managers do, none of it swept.
+  //   subWon / subLost: [goals in front (behind), from the minute] at which a match is over: three up on the hour, two
+  //   up with a quarter of an hour left; three down from the 70th minute, unless the tie has to be settled tonight. In a
+  //   match that is over the gap to the reserve stops counting, and a man comes off for his legs or for being one of the
+  //   side's best: subWonStar points for each rating point he stands above the eleven's mean.
+  //   subPoorBar / subPoorPts: from the hour, a man whose match rating is under the bar is priced as the player he has
+  //   been today: subPoorPts rating points off him for each point of match rating under it. (On the hour one outfield man
+  //   in sixteen is under 6.3 and one in thirty-five under 6.0: 24 League One matches traced, 23 November.)
+  //   subRiskFrom / subRiskPts: a booked man who has fouled again since the booking is worth subRiskPts to take off, from
+  //   the break on (before the hour as well, the one change besides gone legs that is).
+  subWon: [[3, 60], [2, 75]], subLost: [[3, 70]], subWonStar: 1,
+  subPoorBar: 6.3, subPoorPts: 8, subRiskFrom: 46, subRiskPts: 4,
+  //   subChaseMin: one or two behind from this minute, a forward comes on for a man of the line the more attacking
+  //   neighbouring shape drops, and the side moves to that shape (manager.ts meShapeChase).
+  subChaseMin: 75,
+  // The corner's delivery, in a match with managers: the side's best man in the air among those it can reach is this
+  // much likelier to be the one it is aimed at (setpiece.ts).
+  spBestHead: 1.5,
   // Where a substitute comes on (match.ts meSub): this far from halfway on his own bench's side, this far inside the
-  // benches' touchline. Two and a half metres is where the Live Match draws each dugout's first man.
-  subEnterX: 2.5, subEnterIn: 0.5,
+  // benches' touchline. Ten and a half metres is the middle of his technical area as the Live Match draws it (user, 23
+  // November 2026: the replacement comes on from the technical area; it was 2.5, by the halfway line).
+  subEnterX: 10.5, subEnterIn: 0.5,
   // Stamina per metre run. Swept in test/stamsweep.mjs against what it does to the bench, because
   // the two are one question -- a threshold cannot fire if nobody ever gets near it:
   //   0.0026 -> half time 93.8, full time median 87.8, 0.29 subs a match   (what shipped)
@@ -1452,7 +1511,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // 11 Oct 2026 (user: through balls "struck way too powerfully for the receiver"): mostly the runner checking back onto
   // it (match.ts, thruRun, fixed). Softened to 2.0 as well, the ball sat in the lane longer and was cut out more: through
   // and space balls completed 74% -> 66% between the top twelve nations (cloud A/B). Back to 3.5, capped at 9.5.
-  thruOver: 3.5, thruVaMin: 6, thruVaMax: 9.5, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
+  // thruOver 3.5 -> 5, thruVaMin 6 -> 12, thruVaMax 9.5 -> 16 (22 November 2026, the user: "through balls barely work").
+  // A ball into a man's path was weighted to arrive at little more than his own pace, six metres a second across his
+  // run: traced among the best national sides, an opponent was first to one such ball in two, a man three metres off
+  // its line a third of the way along, while the passer gave it four chances in five. It is struck like a pass now.
+  thruOver: 5, thruVaMin: 12, thruVaMax: 16, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
   // How far a ball along the ground is ever played into space, and how long before a runner gets
   // there a ball over the top lands (so it is bouncing into his path, not dropping behind him).
   groundMaxD: 40, overLand: 0.15, overMinD: 14,
@@ -1531,8 +1594,30 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // struck at 12 m/s and still carries 8 when it arrives, 1.3 s later. Firmer than this and every
   // pass a receiver just missed ran on over the touchline: at 7 + 0.22 d, six passes a match went
   // out for throws and completion fell to 78.6%; here it is 82% with passes out as before.
-  passArriveLo: 5.5, passArriveK: 0.18, passArriveHi: 13,
-  passMaxV: 30, passNoiseDeg: 2.5, passNoiseSkill: 6.8, passNoisePress: 2.5,
+  // 5.5 + 0.18 d (cap 13) -> 9 + 0.30 d (cap 17) on 22 November 2026 (user: passing "abysmal", fine with it reading like
+  // EAFC). The old ball took 1.20 s over ten metres and 1.53 s over fifteen, and an opponent was first to one ball to
+  // feet in four: traced, seven in ten of those were men standing four to five metres off its line who crossed to it
+  // while it travelled. A professional's pass covers fifteen metres in about a second. Now 0.75 s, 0.96 s and 1.11 s
+  // over ten, fifteen and twenty.
+  passArriveLo: 9, passArriveK: 0.30, passArriveHi: 17,
+  // THE MISTAKES (user, 22 November 2026, after watching the rebuilt passing: "literally too good to be true right now
+  // and every attack is a perfect tiki taka goal"; asked where the mistakes should come from: pressure, rating and the
+  // speed of play; and the best sides to stay fluid only against weaker ones). Pressure: passNoisePress 2.5 -> 6.5 degrees
+  // a unit, the unit now each man closing by what he is (pressQLo..pressQHi, attributes.ts meDefQ), less pressMind of it
+  // for the most composed man on the ball. Rating: passNoiseSkill 6.8 -> 8, powerNoiseSkill 0.11 -> 0.13, judgeErr
+  // 0.06 -> 0.082, the least aware man's shoulder checks 0.14 -> 0.11 a second (MT.scanLo), and a defender reads a
+  // pass sooner the better he is (ttbAnticip 0.5 -> 0.9). Speed of play: a ball struck first time or on the move costs
+  // more (execNoiseDeg 7 -> 11, execPow 0.10 -> 0.145), the best pay more of it than they did (execSkill 0.6 -> 0.45),
+  // and a first-time finish loses more of the finisher (execShotLoss 0.45 -> 0.68). The first touch under a man:
+  // ftDp 0.30 -> 0.45. Set in two steps on the cloud (test/specs/mix.mjs): the first step cost half a goal a match at
+  // both levels, nearly all of it first-time goals; this one a fifth of a goal more; a step harder changed nothing.
+  // RETUNED 24 November 2026 (cloud, test/mistab.mjs, by situation): what nobody forced went back to where it was. The
+  // unpressed strike (passNoiseSkill 8 -> 6.8, powerNoiseSkill 0.13 -> 0.11), the choice (judgeErr 0.082 -> 0.06) and the
+  // look around (MT.scanLo 0.11 -> 0.14) cost goals without showing as mistakes made under a man; the touch under a man was
+  // eased (ftDp 0.45 -> 0.36) and a free man's touch made surer (ftFree 0.7). Pressure by who applies it, the first-time
+  // ball and the defenders' reading of a pass stay as set on the 22nd.
+  passMaxV: 30, passNoiseDeg: 2.5, passNoiseSkill: 6.8, passNoisePress: 6.5,
+  pressQLo: 0.4, pressQHi: 1.45, pressMind: 0.35,
   // Weight, trimmed 26 Aug 2026 as part of the completion rework: at 0.05 + 0.15 the mean player
   // put +-20% swings on the ball and the overrun tail fed the ran-past-the-receiver class above.
   // The skill slope stays meaningful -- weight is still the half of passing that separates levels.
@@ -1555,7 +1640,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // switches slowed to a real long pass's 20-25; crosses whipped (a floated one was headed away). Through balls firmed up (thruOver 1.5 -> 3.5, min 3.5 -> 6):
   // they left the foot at a median 10 m/s and a tenth at 6, and were rolled into defenders.
   loftK: { loft: [0.9, 0.035], over: [1.05, 0.042], driven: [1.0, 0.04], cross: [0.55, 0.027],
-           corner: [0.9, 0.035], throw: [0.6, 0.045], punt: [1.4, 0.036] },
+           // (corner [0.9, 0.035] until 23 November 2026: two seconds and more in the air, seven metres up, and dropped
+           // on the grass before anybody went up for it. Whipped now, about a second and two thirds to the spot.)
+           corner: [0.7, 0.03], throw: [0.6, 0.045], punt: [1.4, 0.036] },
   // How wide each kind of ball is of the aim, against an ordinary pass along the ground: a throw
   // leaves the hand where it is meant to, a cross is hit at pace across a body, a punt is a punt.
   kindNoise: { ground: 1, loft: 1.15, over: 1.15, driven: 1.1, cross: 1.3, corner: 1, throw: 0.55, punt: 1.7 },
@@ -1566,7 +1653,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // skill (execSkillLoss) and off a first-time shot (execShotLoss) so it knows what it is choosing.
   // It replaced a flat division of every quick pass's skill by 1.75, which charged a ball laid into
   // his stride exactly what it charged one driven at his shins.
-  execNoiseDeg: 7, execPow: 0.10, execSkillLoss: 0.55, execShotLoss: 0.45,
+  execNoiseDeg: 11, execPow: 0.145, execSkillLoss: 0.62, execShotLoss: 0.68,
+  execSkill: 0.45,     // how much of a first-time ball's cost in aim and weight the best passers do not pay (ball.ts)
   exD0: 0.02, exDv: 0.30, exVEasy: 5, exVSpan: 14, exDz: 0.35, exDa: 0.25, exDp: 0.20, exPressR: 2.5,
   // Receiving. Reach is a radius around the receiver against the ball's path this tick; a ball
   // quicker than your touch can handle squirts off you instead of sticking.
@@ -1586,6 +1674,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // comes off whoever it hits. Everything slower goes through the first touch below, where how hard
   // it is to take and how good he is decide it together, instead of one speed line for everybody.
   reach: 0.70, cutReach: 0.53, controlV: 17, controlVSkill: 6,
+  // The man a pass is played to (match.ts reachOf, 22 Nov 2026): his reach for it, and how far up the scale from a
+  // firm pass (12 m/s, 0) to a struck shot (26 m/s, 1) the ball's pace starts to take any of it away.
+  rcvReach: 0.90, rcvFast0: 0.6,
   // How far a defender throws himself at a shot: a leg out, a slide. See reachOf.
   // 0.60 -> 0.9 (12 October 2026): 13.6% of shots were blocked against a real 25-28%. With the shooter's own read of a
   // body in his way (MT.shotBlockK) it is 16-17%; a block is now as wide as the leg a defender actually throws out.
@@ -1600,7 +1691,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   //         with nobody near him;
   //   ftDp  a man on him, all of it inside a metre and none of it past 1 + ftPressR.
   ftD0: 0.05, ftDv: 0.35, ftVEasy: 6, ftVSpan: 12, ftDz: 0.30, ftChestZ: 0.45, ftDs: 0.25, ftDt: 0.25,
-  ftTurnLo: 0.35, ftDp: 0.30, ftPressR: 2.7,
+  ftTurnLo: 0.35, ftDp: 0.36, ftPressR: 2.7,
+  ftFree: 0.7,         // how much of all that (the man on him apart) a touch costs with nobody near him: 1 is all of it
   // The line a first touch takes costs ftTurnCost per radian per m/s of his pace to leave his run by.
   ftTurnCost: 0.008,
   // Whether it sticks at all: ftFailK * D^2 * (1 - ftFailTech * touch)^1.5, capped at ftFailMax. The
@@ -1655,7 +1747,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // the POPULATION mean held: outfielders average meTech(position) ~0.72, which the old pair put
   // at 0.98 of cutReach, and cutAntLo is set so the new pair puts it at exactly the same place.
   // Only the spread around the mean is new, so pass completion and possession are untouched.
-  cutAntLo: 0.404, cutAntW: 0.80,
+  // 0.404 / 0.80 -> 0.27 / 1.0 (22 November 2026, the mistakes): the same reach for League One's ordinary reader of the
+  // game, more for the best and less for the worst, so a good back line breaks up the passing a poor one lets through.
+  // boxCutK: in his own penalty area a man cutting out a pass throws a leg at it as he would at a shot. The ball
+  // squared across the area to a man with a tap-in was getting through a crowd: one goal in four was a first-time
+  // finish from inside eleven metres (cloud, 1,200 fixtures a side).
+  cutAntLo: 0.27, cutAntW: 1.0, boxCutK: 1.75,
   // THE OTHER TWO POSITIONING CHANNELS, moved onto the same band as the interception reach above.
   // `position` reaches the pitch three ways -- cutting a pass out, getting to a loose ball first,
   // and how reliably a ball played to him arrives -- and only the first was ever read over the
@@ -1702,6 +1799,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   pursueGain: 2.6,
   // How hard he can brake as he settles on his mark, a boot's length behind the ball (dribBehindD).
   recvBrake: 3.0,
+  // How sharply the man on the ball changes pace and line, in m/s a second, to stay a boot's length behind it
+  // (match.ts meMove). A change inside it is made in full in the slice.
+  carryAcc: 8,
   touchWin: 0.35,      // how much of an edge strength buys in a shoulder-to-shoulder for a loose ball
   // How much further a good tackler gets a foot in, in metres, when challenging a man in possession.
   // The carrier holds it out at touchStick + strength; this is the other half of that duel, and the
@@ -1765,13 +1865,33 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.76, rateOwnGoal: 0.85, rateSaveVol: 0.13,
+  rateSave: 0.65, gkExpPen: 0.78, rateOwnGoal: 0.85, rateSaveVol: 0.13,
   // A goal against, to each man of the side on the pitch, by his line (raw): SofaScore's defenders lose 0.28 a goal, its
   // midfielders 0.08 and its forwards nothing. Was 0.06 to the defenders alone.
   rateConcede: { DEF: 0.29, MID: 0.05, FWD: 0 },
   // The result, to every man who played, by his share of the match (raw, [won, drawn]): SofaScore's keeper +0.16 / +0.09
   // over a defeat, defender +0.11 / +0.08, midfielder +0.09 / +0.06, forward +0.27 / +0.12, net of everything else.
   rateResult: { GK: [0.17, 0.12], DEF: [0.07, 0.07], MID: [0.04, 0.01], FWD: [0.21, 0.06] },
+  // THE EVENT WEIGHTS, REBUILT FOR THE REBUILT GAME (user, 22 November 2026: "rebuild the rating system from a
+  // SofaScore-inspired system again, taking into consideration everything we have available in our engine. I expect the
+  // current one to be very attacker-biased"). The weights were fitted on 16 October to SofaScore's own, per event, for a
+  // match with 72 passes a side, 49 headers and ten tackles. The match now has 126 passes, six headers and six tackles,
+  // in thirteen minutes: read on 2,971 cloud matches before this, a full match was 6.67 for a defender, 7.00 for a
+  // midfielder and 7.01 for a forward, 8.0 or better for 1.8% of defenders and 9.4% of midfielders. A forward completes
+  // two and a half times the passes he did and a midfielder 1.6 times; a defender makes half the tackles, clearances and
+  // blocks and a sixth of the headers. Each weight is moved so that an ordinary match of that work is worth about what
+  // the October fit made it: a completed pass 0.023 -> 0.014 (and a metre of progress 0.0016 -> 0.0009), a clearance
+  // 0.035 -> 0.063, a block 0.12 -> 0.20, a duel won 0.066 -> 0.085, an interception 0.063 -> 0.080, a dribble 0.094 ->
+  // 0.13, being beaten 0.075 -> 0.10, losing the ball in a duel 0.062 -> 0.07. A header won is now a real contest for
+  // the ball where it was one of fifty knock-ons: 0.052 -> 0.20. And the ball in behind that reaches its man is paid
+  // for itself (rateThru), which nothing was: it is the pass the engine now plays twelve times a match.
+  rateThru: 0.08,
+  // The keeper's clean sheet (raw, match.ts meFinalise; 22 November 2026): 0.20 for the nought and 0.08 for each save
+  // in it, to eight of them, and a floor of 7.0 under a full match of it. With rateFin.GK.mid moved to keep the keepers'
+  // mean, a clean sheet with nothing to do reads 7.0, one with five saves a little over 8.0. This is above SofaScore's
+  // own keepers, whose clean sheets average 7.37 (ours will sit near 7.7): the user asked for it. SofaScore's breakdown
+  // by saves could not be pulled (its API refused the request), so the split by workload is set by reasoning.
+  rateCleanGK: 0.20, rateCleanSave: 0.08, rateCleanSaveMax: 8, rateCleanFloor: 7.0,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1804,12 +1924,15 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // (38767912910, 1,200 matches in all).
   // Re-derived 16 October 2026 with the ratings rebuilt on SofaScore's (5,932 matches of every league and the national
   // sides, cloud run 38829851976), and gkExpPen with it.
-  gkExp: [[0.05, 0.06], [0.10, 0.12], [0.20, 0.27], [0.30, 0.61], [0.40, 0.88], [0.60, 0.88], [1.01, 0.89]],
+  // Re-derived 22 November 2026 for the rebuilt game (2,971 matches of every league and the national sides at thirteen
+  // minutes, cloud run 45021080612), with gkExpPen (0.76 -> 0.78).
+  // Re-derived 23 November 2026 after the free kick, the corner and the swing were rebuilt (2,971 matches, cloud run 45084196754).
+  gkExp: [[0.05, 0.08], [0.10, 0.16], [0.20, 0.25], [0.30, 0.59], [0.40, 0.83], [0.60, 0.88], [1.01, 0.89]],   // cloud run 45084196754
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 0.58, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
+  rateError: 0.58, rateErrWin: 32, rateBlock: 0.20, rateClear: 0.063, rateKeyPass: 0.08,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1820,7 +1943,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // (the quickest, a throw, is taken eleven ticks after the ball died). Both are small on
   // purpose: they are how a deep midfielder finishes a 3-0 on 7.6 rather than on exactly what he
   // started with.
-  rateIntercept: 0.063, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
+  rateIntercept: 0.080, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
   // THE CHANCE IS THE CONTRIBUTION, not the goal. The build walk above only ran when the move
   // scored, so a winger who manufactured two goals of expected chances on the striker's blank
   // afternoon finished on par -- his rating tracked the statline, not the football. Every
@@ -1866,15 +1989,15 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ABOVE the 6.5 start, the left tail is thin, and the right tail is long and reaches 10. So the
   // routine positives are small and frequent, the routine punishments are smaller still, and only
   // goals, saves, errors and dismissals reach far from par.
-  ratePass: 0.023, ratePassProg: 0.0016, ratePassProgCap: 26, ratePassFail: 0.054,
+  ratePass: 0.014, ratePassProg: 0.0009, ratePassProgCap: 26, ratePassFail: 0.054,
   // A pass is PROGRESSIVE by the Wyscout rule: the gain toward the opponent's goal that counts
   // shrinks as play moves higher, so a defender lumping it forward from all that free grass does
   // not out-count a midfielder threading it in traffic. Both ends in own half: 28 m. Crossing
   // halves: 14 m. Both in the opponent's half: 9 m. Measured at a flat 10 m, DEF still topped the
   // table (2.4/match vs MID 1.5); tiered, the table belongs to the men who play forward.
   progOwn: 28, progCross: 14, progOpp: 9,
-  rateDuelWon: 0.066, rateDuelLost: 0.062, rateDribble: 0.094, rateBeaten: 0.075,
-  rateAerial: 0.052, rateShotOn: 0.05, rateShotOff: 0.018,
+  rateDuelWon: 0.085, rateDuelLost: 0.07, rateDribble: 0.13, rateBeaten: 0.10,
+  rateAerial: 0.20, rateShotOn: 0.05, rateShotOff: 0.018,
   // A chance is big when the model says roughly a third of them go in. Creating one is worth more
   // than the key pass it already scores; spurning one is a real cost, and it is charged whether the
   // keeper saved it or it went wide, exactly as it is in the systems this is modelled on.
@@ -1919,10 +2042,21 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and the national sides (cloud run 38829851976). Every position now has that shape: they had drifted to keepers 6.79
   // and forwards 7.08 with 11.6% of forwards' full matches at 8.0 or better.
   rateFin: {
-    GK:  { mid: 0.864, up: 0.921, dn: 0.740, tail: 1.295 },
-    DEF: { mid: 0.605, up: 1.048, dn: 0.831, tail: 1.304 },
-    MID: { mid: 0.647, up: 0.836, dn: 1.411, tail: 1.308 },
-    FWD: { mid: 0.902, up: 0.545, dn: 1.186, tail: 1.459 },
+    // Rebuilt 22 November 2026 with the event weights (see rateThru): the finish fitted on 2,971 matches of every league
+    // and the national sides on the rebuilt engine (cloud run 45021080612). Before it a full match read 6.67 for a
+    // defender and 7.01 for a forward; with it every position has the same shape (6.95, 7.7% at 8.0 or better, 1.4% at
+    // 9.0, 6.8% at 6.0 or under) and its own share of the best one in a hundred. The keeper's line includes his clean sheet.
+    // Refitted the same day on the seventeen-minute match with the mistakes in (2,971 matches, cloud run 45036587586):
+    // a longer match is more events a man, and unrefitted a full match read 7.09 with 11.8% at 8.0 or better.
+    // Refitted again the same day (2,971 matches, cloud run 45059651165) on the eighteen-minute match with the look: a
+    // quarter fewer passes a match, and a caught shot staying caught. 2.84 goals a match on these.
+    // Refitted 23 November 2026 (2,971 matches, cloud run 45084196754) after the free kick, the corner and the swing
+    // were rebuilt: more headed and set-piece goals, and unrefitted a keeper's full match was at 6.0 or under 8.8% of
+    // the time against 6.8%. 2.85 goals a match in League One on these.
+    GK:  { mid: 0.949, up: 0.760, dn: 0.663, tail: 1.370 },
+    DEF: { mid: 0.682, up: 0.958, dn: 0.740, tail: 1.431 },
+    MID: { mid: 0.854, up: 0.799, dn: 1.073, tail: 1.302 },
+    FWD: { mid: 1.128, up: 0.554, dn: 0.977, tail: 1.515 },
   },
 
   kickLock: 3,
@@ -1944,7 +2078,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // The drop-wait veto (zNext, in the aerial gate) is waived when an opponent stands inside this:
   // letting it fall to your feet in a crowd is how you get robbed, so a marked man attacks it
   // with his head -- which is most of the box at a corner.
-  headDuelR: 2.4,
+  headDuelR: 1.6,      // was 2.4, which nine balls in ten had a man inside (22 Nov 2026: see the header gate, match.ts)
+  // The header to a team-mate (match.ts meHeadPass): how near and how far he can find one, how free the man has to be
+  // where it reaches him, how far up the pitch out of his own third, and the error on it in degrees for the worst header.
+  headPassMin: 4, headPassMax: 18, headPassFree: 2.0, headPassRelief: 5, headPassNoise: 14,
   // A relief header is a clearance and travels like one: its loft. The old knock (vz 0.9) carried six to ten metres
   // against an 18 m aim -- a fifty-fifty on the edge of his own box. How hard it goes is the header's law (headE).
   headClearVz: 3.5,
@@ -1952,7 +2089,19 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // wins it with airDef, plus airStr of their strength gap over 99, plus or minus airGoalSide for being goal-side
   // of him or not, less airDist for every metre past 0.8 m he is from him. At 2.0 / 0.45 crosses into a deep block
   // still found their man 31% of the time; at 2.6 / 0.55, 26% (80 matches, 6 Oct 2026; real football ~20-25%).
-  airR: 2.6, airDef: 0.55, airStr: 1.0, airGoalSide: 0.10, airDist: 0.15,
+  // THE GOAL MIX (user, 22 November 2026: "the vast majority of goals are coming from a bunch of quick passes, low cross
+  // into box, tap-in. Almost never seeing any long shots/goals, headed goals, etc. Not even penalties"; asked what mix:
+  // real football's). Measured on the cloud, 1,200 fixtures a side in League One and among the twelve best national
+  // sides, each setting as an arm on the same fixtures (test/specs/mix.mjs): one goal in twenty was headed, one in
+  // twenty a penalty, more than one in four a first-time finish from inside eleven metres.
+  //   Headers: a cross is valued at crossHeadK 2.6 of the foot shot from where it lands (1.0) and the man attacking it
+  //   wins more of the duels (airDef 0.55 -> 0.38), heads at goal from 14.5 m (headShotR 12), and the cross itself is
+  //   led in front of goal (MT.crossLead and the rest). 0.16 headed goals a match became 0.33 in League One, one in
+  //   eight. Not the real one in six: half of real headed goals come from corners and free kicks, and a match here has
+  //   two corners, not ten, each costing thirty-five seconds of it.
+  //   Penalties: handP 0.016 -> 0.022, MT.boxTackleFoul 0.3 -> 0.45, MT.boxContactFoul 0.2 -> 0.32: one goal in ten.
+  //   The tap-in: boxCutK (above). 1.5 measured 0.66 a match, 2.0 measured 0.54; 1.75 is between.
+  airR: 2.6, airDef: 0.38, airStr: 1.0, airGoalSide: 0.10, airDist: 0.15,
   // What a header DOES. Inside headShotR of the goal he is attacking he heads it at goal, headAim of the way to the
   // post; anywhere else he heads it away from his own.
   // HOW HARD IS A COLLISION (ball.ts meHeadV; user, 15 October 2026: "Make header velocity dependent on two things.
@@ -1965,7 +2114,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // (2021: amateurs heading a pendulum ball, 6.4 standing, 8.3 running): (1 + 0.5) x 5 x 0.85 = 6.4. A knock-down is
   // nodded at headKnock of that, into an area rather than through it. Set by that study, not measured here; the old
   // pace of the knock-down and the flick was worth 0.19 goals a match between headV 12 and 15 (12 October 2026).
-  headShotR: 12, headAim: 0.8, headE: 0.5, headSnap: 5, headKnock: 0.5,
+  // headSnap 5 -> 7.5 (22 November 2026, the user: headers "slow as fuck and never pose a threat"): off the head at goal
+  // a median 14.1 m/s traced, half a struck shot's pace. The nod is now a real attack of the ball.
+  headShotR: 14.5, headAim: 0.8, headE: 0.5, headSnap: 7.5, headKnock: 0.5,
   // How far a header travels. Inside clearDepth of his own goal it is a clearance, aimed away;
   // beyond it, a knock-down aimed at the best man he can reach within headOut * 1.4.
   headOut: 18,
@@ -2347,7 +2498,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   ttbChangeMs: 700, ttbDrift: 0.35, ttbRadius: 0.28, ttbRadiusV: 0.329, ttbVmax: 0.94,
   // How much of that commitment lag `position` buys or costs, either side of an average player:
   // at 0.50 the best reader commits in 525 ms and the worst in 805.
-  ttbAnticip: 0.50,
+  ttbAnticip: 0.90,
   // Possession currency (team.cpp:319-326): the contest ratio smoothed hard and slew-limited, so a
   // full swing takes seconds. This is the hysteresis the entire AI keys off.
   possEmaAlpha: 0.118, possSlew: 0.125,
@@ -2630,7 +2781,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // misses over, as in the real game), 16% of all goals (13-20%); goals a match 2.76 -> 2.74, xG booked 0.140 a header
   // against 0.139 scored. The new pace at the old 11 / 3 put 37% of the ones on target in and headers at 21% of shots
   // scored (2.97 goals a match); 13 / 5.5 left them too accurate, 47% on target and 16% scored.
-  headNoise: 15, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 7,
+  // 15 -> 13, 0.5 -> 0.65 and 7 -> 5.5 (22 November 2026, the user: headers "rare and inaccurate"; fine with the game
+  // reading like EAFC over the real one): 41% of headers at goal were on the frame among the best national sides. 11 and
+  // 4.5 with the new pace scored 15 of 50 traced headers, which is too many. Set by reasoning, to be read at the next
+  // calibration.
+  // ...and 13 -> 11.5 with crossHeadK 0.75 -> 1.0 after the cloud's old-against-new (6,120 paired fixtures): headed goals
+  // had halved, 0.35 a match to 0.17, a sixteenth of all goals, with headers themselves down from a hundred a match to
+  // twelve. handP went 0.0085 -> 0.016 on the same reading: penalties had halved with the fouls.
+  headNoise: 11.5, headNoiseSkill: 0.65, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 5.5,
   // headSigma 0 keeps that triangular error; above 0 the error is a gaussian of headSigma times it, aimed headVz0 m/s up.
   // 1.1 (12 October 2026): headers on the frame 91% -> 56%, the real game's two in five of all headers once the
   // blocked ones are counted.
@@ -3003,6 +3161,9 @@ gkDiveV: 2.9,
   // October and the Dead Ball trait having moved it. Aim 0.72 alone took it to 82%, read 0.25 alone to 87%; together, aim
   // 0.66 and read 0.20 aim at the real 76-77%.
   spPenBack: 10, spPenSpread: 12, spPenAim: 0.66, spPenRead: 0.20, spPenReadSkill: 0.25,
+  // WHO TAKES A PENALTY IN A MATCH (setpiece.ts meSPBegin; the user's rule, 23 November 2026): the man who won it this
+  // often, otherwise any one of the side's best penPool strikers of a dead ball.
+  penWonTakes: 0.5, penPool: 3,
   // A SHOOTOUT KICK READS DIFFERENTLY, and the reason is positional rather than psychological.
   // The numbers above are right for open play and measurably so -- pensim puts an in-match penalty
   // at 73.6% scored and 19.8% saved against a real 76/19 -- but they are right there partly by
@@ -3055,12 +3216,39 @@ gkDiveV: 2.9,
   // quarter, and flattering the deep styles specifically. Every balance reading taken before this
   // is biased in that direction; do not compare across the fix.
   spPenXg: 0.75, spFkXg: 0.097,
-  // THE ARC OVER THE WALL. See meFkArc. zWall is bodyH plus how high the wall gets off the ground;
-  // spFkZ..spFkZ+spFkZVar is the band under the bar he tries to drop it into; spFkNear is how much
-  // further out than the wall the ball has to be for there to be an arc worth solving at all, and
-  // the two speed bounds are what a man can actually put through a dead ball.
-  spFkWallJump: 0.35, spFkZ: 1.25, spFkZVar: 0.90, spFkNear: 4,
+  // THE FREE KICK AT GOAL (ball.ts meFkStrike; 23 November 2026). He strikes it between spFkVMin and fkV0 + fkVSkill
+  // of his skill (never past spFkVMax), with spin fkSpin0 + fkSpinSkill of it to spend (radians a second of swing, and
+  // the same figure as top-spin's pull per metre a second of pace), fkCurlLo to fkCurlHi of that as swing and the rest
+  // as dip. It has to pass fkWallOver above the heads in the wall. His error: fkAim degrees of heading, fkLift metres a
+  // second of lift, fkSpinErr of the spin, each a floor plus what he lacks in skill. He goes for the wall's side of the
+  // goal fkNearP of the time, fkAimIn of the way from the middle to the post, between fkZ metres high (near: over the
+  // wall and down; far: anywhere). A walled free kick waits spFkWallMaxT slices at most for the ten yards, the wall
+  // within spFkWallTol of its marks, the keeper, and fkUpReady of his own men up. The keeper reads gkCurlRead of the
+  // swing at the strike, from the worst keeper to the best (keeper.ts). His skill for it is his shooting plus fkDeadK of
+  // DEAD BALL (badge), never past fkSkMax. Sized on free kicks staged out of live play, 300 a setting (not on matches):
+  // an ordinary taker scores 9% (3% before), the wall takes 26%, the keeper 27%, 21% miss; Dead Ball at level three 15%.
   spFkVMin: 13, spFkVMax: 30,
+  fkV0: 17, fkVSkill: 7, fkSpin0: 0.10, fkSpinSkill: 0.22, fkCurlLo: 0.35, fkCurlHi: 0.85, fkWallOver: 0.12, fkWallR: 0.65,
+  // RE-SIZED ON MATCHES (cloud run 45080909054, 17,280 of them): as first set a free kick scored one time in ten and
+  // there were 0.19 free kick goals a match where real football has about 0.07. Two in three of the kicks arriving
+  // over 1.8 m went in wherever they were placed, because the keeper stood two metres out and they dipped over him;
+  // he stands on his line now (spFkGkOut) and what scores is the top corner. Staged after, 600 kicks: 5% scored,
+  // wall 23%, saved 33%, off target 25%; Dead Ball at level three 11%. Fewer are shot at all (spShootRange 27 to 25,
+  // spShootAng 12 to 14).
+  fkAim0: 2.8, fkAimSkill: 12, fkLift0: 0.55, fkLiftSkill: 4, fkSpinErr0: 0.08, fkSpinErrSkill: 0.5,
+  fkNearP: 0.6, fkAimIn0: 0.45, fkAimInSkill: 0.30, fkZNear: [1.4, 2.2], fkZFar: [0.8, 2.1],
+  fkSkMax: 1.15, fkDeadK: 0.75,
+  // A BALL SWUNG INTO THE AREA (23 November 2026). A corner, a free kick crossed in and a cross from open play carry
+  // side-spin: delSpin0 radians a second for anybody (a metre or so of swing on a corner), plus delSpinDead for each
+  // unit of DEAD BALL's skill on a dead one and delSpinCross for each of CROSSER's on a cross, so the big swing is the
+  // specialist's. It is flighted to delHeadUnder below the top of the jump of the man it is for (never under crossZ,
+  // never over delHeadMax) instead of onto a standing man's forehead, where anybody beside him who jumps higher had it
+  // first. In an air duel the defender's chance falls by airSpin for each radian a second of swing on it: the men it
+  // was struck for know where it is going.
+  // A dead ball is delivered into a defence that has set itself and picked its men up: airSetDef on the defender's
+  // chance in the duel for it.
+  delSpin0: 0.05, delSpinDead: 0.45, delSpinCross: 0.15, delHeadUnder: 0.2, delHeadMax: 2.45, airSpin: 0.6, airSetDef: 0.55,
+  spFkWallMaxT: 100, spFkWallTol: 0.7, fkUpReady: 2, gkCurlRead: [0.8, 0.98], spFkGkOut: 0.7,
   // HANDBALL: how high the ball has to strike him to be arm rather than body, and how often the
   // referee gives it when it does.
   // Measured by forcing handP to 1: the geometry -- a ball striking an outfielder above waist
@@ -3074,7 +3262,7 @@ gkDiveV: 2.9,
   // against a real 0.06 (see MT.boxTackleFoul).
   // ...and 0.0085 the same day, with shotLaneK 0.65: shooting from range instead of carrying it in took penalties scored
   // from 0.19 a match to 0.14; this and MT.boxContactFoul 0.2 put them back at 0.19.
-  handMinZ: 0.85, handP: 0.0085,
+  handMinZ: 0.85, handP: 0.022,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
@@ -3544,7 +3732,20 @@ export const ME_HOME_ADV = {
   // refRoll is the referee at the foul roll (mind/duel.ts) and `duel` the crowd behind the host in a
   // 50-50, on his chance of winning it: 0.04 measured +0.09, 0.08 +0.49 (47/24/28), 0.06 is aimed at a
   // real +0.3. `nerves` (the visitor misjudging more) measured nothing and stays at 0.
-  tiltK: 0, nerves: 0, duel: 0.06, refRoll: 0.15,
+  // 24 Nov 2026: refRoll is read only with the old referee switched back on (globalThis.__refOff). The referee is a
+  // man on the pitch now and the crowd works on his doubtful calls: referee.ts ME_CALL.homePull.
+  // duel 0.06 -> 0.072 with it: the referee's share of the home advantage is smaller now that the crowd moves only his
+  // doubtful calls, and this dial makes it up. Cloud, 3,040 League One matches an arm on the same fixtures (run
+  // 45305381212), host goal difference: the old game +0.116 (se 0.032), the new at 0.064 +0.077, the new at 0.072 +0.113.
+  // (duelOld is what the old game switched back on plays with: globalThis.__refOff.)
+  // 24 Nov 2026, later: `duel` is now only on his chance of winning it (mind/duel.ts pWin), no longer in the chance he
+  // believes he has, which had the host trying 23.3 tackles a match to the visitor's 7.1. Cloud, 3,040 League One
+  // matches an arm (runs 45332817745 and 45332817448), host goal difference / xG difference / tackle % host-visitor:
+  //   as it was, 0.072     +0.113 / +0.170 / 71-60      neutral ground   +0.029 / +0.031 / 66-66
+  //   pWin only, 0.072     +0.086 / +0.103 / 74-58      0.100            +0.093 / +0.111 / 76-55
+  //   0.130                +0.113 / +0.109 / 79-52      0.160            +0.073 / +0.118 / 82-49
+  // On pWin alone the dial buys next to nothing in xG and only widens the gap in tackle %, so it stays at 0.072.
+  tiltK: 0, nerves: 0, duel: 0.072, duelOld: 0.06, refRoll: 0.15,
 };
 
 // SQUAD FIT, SPENT AS RATING. computeStyleFit says how well the squad can carry out the system it
@@ -3594,28 +3795,127 @@ export const ME_BADGES = {
   // readLook (share of read that also lengthens his look two moves ahead), crispRun (crisp, on any ball to a man on a run).
   // Measured: read at full strength took Vision from +0.6 to -2.7 (cloud, 10,080 matches) -- a man who follows this
   // engine's own values without error repeats their mistakes, so a share of his judgement noise stays.
+  // ONE POINT BUYS ABOUT THE SAME EVERYWHERE (22 November 2026, before the traits were dealt again; asked, the user: yes).
+  // Measured on the man who carries one (cloud runs 45055086971 and 45059646100): Composed 1.9 to 2.1 rating points and
+  // Short Passing 1.8 for one point, First Touch 0.2, Trickster 0.0 and Incisive 0.4 for two. Composed and Short Passing
+  // are about halved (at level three Composed is what it was at one). First Touch also shrugs off the man on him and the
+  // challenge, Trickster rides tackles and draws fouls, Incisive is read late: the levers the same runs showed are
+  // worth something, where a higher touch or dribbling figure was worth nothing. Not measured since.
+  // EVERY TRAIT MEASURED AGAIN, 23 November 2026 (user: "the bare minimum is that all positive traits add OVR and all
+  // negative traits subtract OVR"): cloud runs 45069957270, 45072401985 and 45074579913, 16,800 matches each, both sides
+  // of a match carrying their own placements (test/specs/traits4.mjs to traits6.mjs). Forty-eight of fifty-one read
+  // clear of the noise on the right side. Strengthened between the runs, each read as nothing first and clear after:
+  // Alert (now also tight and position, the mirror of Unaware), Slick (place), Vocal (the men near him pick up a runner
+  // sooner, mind/team.ts MT.callTight), Elusive (ride), Predatory (shoot, ftShot), Unselfish (plate: the shot off his pass
+  // is easier, match.ts mePlay), Aerial (air 22 to 28), Erratic (judge), Firm (wrists 0.7 to 1). Dead Ball's free kick
+  // read as a loss in all three; the free kick was rebuilt after them (ball.ts meFkStrike) and on staged kicks the trait
+  // now takes it from 9% to 15% scored, not yet measured over matches. Right side but not clear: Crosser (+0.4 on the man over two runs) and
+  // Quick (+0.8 over three). DESIGN.md has the table.
   rapid:       { pace: 20, run: { behind: 0.5 } },     // the runner in behind: goes beyond their last line, and wins the race
   quickstep:   { acc: 1.05, dash: 0.03 },              // the burst: runs with it into any grass in front of him
   relentless:  { drain: 0.5, press: 0.35, chase: 10 }, // presses first, further from his post, and keeps going all match
-  aerial:      { air: 22, aimAir: 0.08, spAir: 5 },    // the aerial threat: crosses and corners are aimed at him
+  aerial:      { air: 28, aimAir: 0.1, spAir: 5 },    // the aerial threat: crosses and corners are aimed at him
   strong:      { strength: 20, aimLong: 0.06 },        // the target man: long balls go up to him and he holds them up
-  firsttouch:  { touch: 20, recvPress: 0.8, wantIt: 0.02 }, // wants it under pressure: team-mates find him even when he is marked
-  trickster:   { drib: 0.35 },                         // takes men on: feints, cuts, the knock past a man
-  tikitaka:    { pShort: 0.5, passLen: -6, safe: 0.1, shortW: 0.01, place: 0.8, crisp: 0.8, touch: 18 }, // keeps it short and simple, into the right foot, and takes it already knowing the next one
-  incisive:    { pThru: 0.33, place: 0.8, crisp: 0.2 }, // the ball into a runner's path and over the top, away from his marker
+  firsttouch:  { touch: 20, recvPress: 0.8, wantIt: 0.02, resist: 0.6, ride: 0.08 }, // wants it under pressure: team-mates find him even when he is marked
+  trickster:   { drib: 0.35, ride: 0.1, draw: 0.3 },                      // takes men on: feints, cuts, the knock past a man
+  tikitaka:    { pShort: 0.28, passLen: -6, safe: 0.1, shortW: 0.01, place: 0.45, crisp: 0.45, touch: 10 }, // keeps it short and simple, into the right foot, and takes it already knowing the next one
+  incisive:    { pThru: 0.33, place: 0.8, crisp: 0.2, disguise: 0.12 }, // the ball into a runner's path and over the top, away from his marker
   longball:    { pLong: 0.43, passLen: 12, switchW: 0.03, place: 1.2, crisp: 0.8, touch: 12 }, // goes long: switches and diagonals, dropped onto the receiver's foot
   crosser:     { pCross: 0.6, crossDeep: 12, crossW: 0.02 }, // crosses early, from deep
-  finisher:    { shoot: 14, run: { box: 0.5 }, ftShot: 0.6 }, // gets into the box and hits it first time
-  longshot:    { range: 10, farShot: 0.35, farW: 0.04 }, // shoots from distance whenever he has room
-  deadball:    { dead: 0.2, setTaker: 1 },             // takes the corners, the free kicks and the penalties
-  vision:      { aware: 0.5, early: 0.5, runnerW: 0.015, read: 0.6, readLook: 0, crispRun: 0.6, touch: 15 }, // reads it better with time and options, receives it knowing the next ball; early to a runner
-  composed:    { mind: 0.2, calm: 1, noPanic: 0.04 },  // pressure does not hurry him: he keeps playing forward, strikes it clean, never panics it away
+  // FINISHER, LONG SHOT AND PREDATORY CUT TO ABOUT A THIRD (23 November 2026). Five League One seasons on the cloud (run
+  // 45086062957) against two with every trait stripped (45088260537): Finisher at level three took Hawthorne from 26
+  // goals a season to 44 (56 in one), at level two it was worth six to eight to a striker, Long Shot three with Dead
+  // Ball took Szabo from 16 to 30, and the league had three to five men on thirty goals where it had none or one.
+  // Sized for the best striker's Finisher to be worth about five goals a season, not eighteen. (shoot 14, box 0.5,
+  // ftShot 0.6; range 10, farShot 0.35; poach 0.8, box 0.4, shoot 5, ftShot 0.3 before.)
+  finisher:    { shoot: 5, run: { box: 0.25 }, ftShot: 0.25 }, // gets into the box and hits it first time
+  // LONG SHOT CURLS IT (23 November 2026; the user: "make long shot give holders the ability to curve shots outside of
+  // the box. Also make them more likely to attempt long shots"). From outside the box his strike carries curl rad/s of
+  // spin (ball.ts bsp), started at the keeper and bending away into the corner he picked; the keeper reads part of the
+  // swing as it is struck (gkCurlRead) and the rest is what beats him. More often from range because the curled shot is
+  // worth more (curlP, mind/decide.ts), not by a flat urge: range 8 and farW 0.08 measured no better than nothing, the
+  // goals the curl added given back on shots he should not have taken.
+  longshot:    { range: 6, farShot: 0.15, farW: 0.03, curl: 0.5, curlP: 0.6 }, // shoots from distance whenever he has room, and curls it
+  deadball:    { dead: 0.2, setTaker: 1 },             // takes the corners and the free kicks, and is one of the few who take penalties
+  vision:      { aware: 0.5, early: 0.5, runnerW: 0.015, read: 0.6, readLook: 0, crispRun: 0.6, touch: 15, see: 0.4 }, // reads it better with time and options, receives it knowing the next ball; early to a runner
+  composed:    { mind: 0.1, calm: 0.55, noPanic: 0.02 },  // pressure does not hurry him: he keeps playing forward, strikes it clean, never panics it away
   tackler:     { tackle: 6, tkBar: -0.12, foul: 1.4 }, // dives in, early and often, and gives away fouls for it
   interceptor: { position: 7, lane: 2, jump: 200 },    // leaves his man to sit in the lane, and gambles on cutting it out
   blocker:     { block: 0.5, blockLane: 1 },           // gets into the line of the shot and throws himself at it
   disciplined: { foul: 0.3, tkBar: 0.05, tackle: 4 },  // stays on his feet: picks his moment, and the tackles he makes are clean
   shotstopper: { lineReflex: 2, cmd: -0.3, gkSweep: 0.6 }, // stays on his line, and on it his reflexes are sharper (bronze, user)
-  commanding:  { cmd: 0.4, gkSweep: 1.4 },             // the sweeper-keeper: off his line for balls in behind and crosses (bronze, user)
+  // REWORKED 22 November 2026 (user: "Rework commanding, maybe increase collection range / reach when out?"). As first
+  // written it only made him come: for a tighter race, further, and higher behind his line, and twice it measured as a
+  // loss to his own side (cloud runs 45055086971 and 45059646100, about two rating points and one). Now the man who
+  // comes is the man who gets there: he reaches further for a cross or a loose ball in his area (claim, metres), further
+  // again for a ball at his feet once he is off his line (outReach, metres), and misjudges the race less (judge, the
+  // share of his error gone); he sweeps a little less far than before (1.4). Not measured since.
+  commanding:  { cmd: 0.4, gkSweep: 1.25, claim: 0.4, outReach: 0.45, judge: 0.6 },   // the sweeper-keeper: off his line for balls in behind and crosses, and he gets to them
+  // THE MIND AND THE KEEPER (22 November 2026), for what the engine has gained since: the look (mind/decide.ts mindReady),
+  // the memory of who he has had in sight (mind/perceive.ts), the catch and the parry. Written at level three (std 3)
+  // and set by reasoning; to be sized at the next calibration. New fields: scan (share more often he checks his
+  // shoulder), mem (seconds longer he counts a man he cannot see), find (share of the thought a man he is not looking
+  // at costs him, gone), see (share of the thought a pass that is hard to see costs him, gone: Vision's, at its std),
+  // memK (more a slice of having had the man in sight counts toward the pass), quick (share of the thought a short
+  // ball to feet takes, gone), ftPass (share of what striking it first time costs his pass, gone), hold (slices longer
+  // he keeps it with nobody on him), call (more often team-mates within MT.callerR of him are told "man on"), catch
+  // (share easier, or for a flaw harder, a ball is to hold), wrists (share of the fingertip that carries in, gone, and
+  // further his parry is pushed), release (share of the wait before he distributes, gone), gkThrow (surer his throw),
+  // penRead (more often he goes the right way at a penalty), slow (share more thought every pass takes: a flaw), set
+  // (slices longer before the ball is out of his feet: a flaw), selfCall (more often he knows of the man closing on
+  // his own blind side), noHurry (share of what being closed down takes off his thinking, gone: a flaw).
+  // (Cloud run 45055086971 sized these as first written: Man On +1.6 rating points on the man, Dictates Tempo +0.5,
+  // Shoulder Check nothing, Ball Watcher nothing, and two the wrong way: Pass And Move -3.1 (a ball let go sooner is a
+  // worse ball when nobody is on him) and Dwells On It +0.6 (taking longer made him better). Rewritten after it, and
+  // NOT measured since: Pass And Move is now First-Time Ball, the quality of the ball and not how soon it goes, and
+  // Dwells On It acts only when he is closed down.)
+  shouldercheck: { scan: 1.0, mem: 2.0, find: 1, selfCall: 0.5, mind: 0.1, tight: 0.3, position: 3 }, // checks his shoulder: he knows who is behind him, team-mate or the man closing on him
+  passandmove:   { ftPass: 0.9, crisp: 0.6, pShort: 0.45, place: 0.5 }, // First-Time Ball: no oftener than anyone, but struck as clean as a set one and easy to take
+  tempo:         { hold: 5, safe: 0.15, read: 0.5, mind: 0.15 }, // puts his foot on it: with nobody on him he waits for the right ball and picks it better
+  manon:         { call: 0.45 },                       // the talker: team-mates near him are told about the man closing on their blind side
+  safehands:     { catch: 0.4 },                       // holds what he reaches: fewer parries, fewer rebounds
+  strongwrists:  { wrists: 1 },                      // a firm hand: his parries go wide and away, not into the net or back to their striker
+  quickrelease:  { release: 0.8, gkThrow: 0.25, pLong: 0.8 }, // lets it go early and well: the throw or the kick that starts the break
+  penstopper:    { penRead: 0.2 },                     // reads the taker
+  // THE BALL, THE BODY, FINISHING AND DEFENDING (22 November 2026), for pressure by who is closing him down, the strike
+  // on the move, the leg thrown at a pass in the area and fouls in it. Level three; set by reasoning. New fields: resist
+  // (share of the pressure on his first touch, and most of it on his pass, gone), onRun (share of what striking it on
+  // the move or first time costs, gone), disguise (share of a defender's reach for his pass, gone: it is read late),
+  // draw (more often a challenge on him is given as a foul), ride (off a tackler's chance of winning it from him), poach
+  // (share of a strike's difficulty gone, and of the bar to hit it first time, inside the area off a ball that has just
+  // come loose), square (more a team-mate's better chance is worth to him; less for a flaw), harry (more his closing
+  // down hurries a man), boxCut (further he reaches for a pass in his own area), tight (sooner he reacts to his man's
+  // run, in shares of how unaware he is; later for a flaw), pAll (on his technique for every pass: a flaw).
+  pressresistant: { resist: 0.9, calm: 0.4 },                  // takes it and plays it with a man on him as if nobody were there
+  ontherun:      { onRun: 0.9 },                       // strikes it in his stride: the pass and the shot at a run cost him little
+  disguise:      { disguise: 0.25, pThru: 0.15 },      // shapes to play one ball and plays another: defenders read it late
+  drives:        { dash: 0.08, drib: 0.2 },            // carries it out and up the pitch whenever there is grass in front of him
+  drawsfoul:     { draw: 0.7, drib: 0.2, ride: 0.12 },            // gets his body in the way: challenges on him are fouls more often
+  ridestackles:  { ride: 0.20, strength: 8 },          // stays on his feet through the challenge
+  poacher:       { poach: 0.5, run: { box: 0.25 }, shoot: 2, ftShot: 0.12 },    // lives in the area: first to what comes loose there, and puts it away
+  squares:       { square: 0.1, crisp: 0.6, pShort: 0.3, pThru: 0.3, place: 0.8, plate: 0.6 }, // the ball to the man with the better chance, played so that he can hit it
+  closesdown:    { harry: 0.6, press: 0.3 },           // gets tight quickly: the man he closes is hurried more
+  lastditch:     { boxCut: 0.45, block: 0.2 },         // the leg thrown at the square ball and the shot in his own area
+  tightmarker:   { tight: 0.6, position: 4 },                    // stays with his man: he is not caught by the run in behind
+  // SIZED (cloud run 45059646100, rating points on the man, about +-0.5): Disguised Pass +3.5 and right; Closes Down
+  // +1.0, Last Ditch +0.8 (more on goals conceded), Press Resistant, On The Run, Drives Forward, Draws The Foul, Rides
+  // Tackles and Goal Poacher +0.6 to +0.8, all turned up after it; Tight Marker nothing (given positioning as well);
+  // Squares It -1.5 and Greedy +1.1, both the wrong way: this engine's passer already squares it as often as pays, so
+  // Squares It is now how well the square ball is played and Greedy also snatches at his chances. Flaws: Heavy Touch
+  // -7.3 (four times too much: touch -14 to -4), Runs Out Of Legs, Hot Head and Loses His Man about -0.7 (turned up),
+  // Gives It Away nothing (turned up). Composed +2.1 and Interceptor +6.1 as anchors against the first run's 1.9 and
+  // 4.6. Everything turned up or rewritten here is NOT measured since.
+  // FLAWS, written at level two (std 2): a man carries one at most and it gives its level back in points.
+  heavytouch:    { touch: -4 },                        // the ball gets away from him
+  givesaway:     { pAll: -0.4, resist: -0.5 },                      // loose in his passing
+  outoflegs:     { drain: 2.2 },                       // tires quickly
+  greedy:        { square: -0.3, farW: 0.06, calm: -0.5 }, // shoots when a team-mate is better placed, from anywhere, and snatches at it
+  hothead:       { foul: 2.2, tkBar: -0.14 },          // goes in when he should not, and gives away fouls
+  losesman:      { tight: -0.6, position: -5 },                    // switches off: late to his man's run
+  ballwatcher:   { scan: -0.8, mem: -2, aware: -0.3, tight: -0.4, position: -4 }, // watches the ball: rarely checks his shoulder, forgets who he cannot see, late to his man's run
+  dwells:        { noHurry: 1, ride: -0.12, set: 2 },  // dwells on it: closed down he takes as long as ever, and is robbed more easily
+  flaps:         { claim: -0.5, cmd: 0.3, judge: -0.8 },            // comes for crosses and does not get there
+  spills:        { catch: -0.45 },                      // does not hold what he reaches
 };
 
 // WHAT EACH SYSTEM COSTS AT THE DOOR, in rating points. The engine's physics under-charges
@@ -3976,53 +4276,59 @@ export const ME_RED_SAID = { second: "second yellow", dogso: "denying a goalscor
 // calf 10%, foot 7%, trunk 6%, head 4%, shoulder 3%.
 export const ME_INJURY = [
   // ── thigh: the most-injured part of a footballer, and the hamstring most of that ──
-  { id: "ham-strain",   part: "hamstring",   label: "Strain",            dur: [1, 2],   w: 95 },
-  { id: "ham-tear",     part: "hamstring",   label: "Tear",              dur: [4, 9],   w: 30 },
-  { id: "quad-strain",  part: "quadriceps",  label: "Strain",            dur: [1, 3],   w: 32 },
-  { id: "thigh-dead",   part: "thigh",       label: "Dead Leg",          dur: [1, 1],   w: 30 },
+  { id: "ham-strain",   part: "hamstring",   label: "Strain",            dur: [1, 2],   w: 95, how: "p" },
+  { id: "ham-tear",     part: "hamstring",   label: "Tear",              dur: [4, 9],   w: 30, how: "p" },
+  { id: "quad-strain",  part: "quadriceps",  label: "Strain",            dur: [1, 3],   w: 32, how: "p" },
+  { id: "thigh-dead",   part: "thigh",       label: "Dead Leg",          dur: [1, 1],   w: 30, how: "c" },
   // ── knee ──
-  { id: "knee-mcl",     part: "knee",        label: "Ligament Sprain",   dur: [3, 7],   w: 50 },
-  { id: "knee-bruise",  part: "knee",        label: "Contusion",         dur: [1, 2],   w: 20 },
-  { id: "knee-cart",    part: "knee",        label: "Cartilage Damage",  dur: [6, 14],  w: 14 },
-  { id: "knee-acl",     part: "knee",        label: "Cruciate Rupture",  dur: [30, 42], w: 8 },
+  { id: "knee-mcl",     part: "knee",        label: "Ligament Sprain",   dur: [3, 7],   w: 50, how: "cp" },
+  { id: "knee-bruise",  part: "knee",        label: "Contusion",         dur: [1, 2],   w: 20, how: "c" },
+  { id: "knee-cart",    part: "knee",        label: "Cartilage Damage",  dur: [6, 14],  w: 14, how: "cp", long: "comp", out: [2, 4], carry: 1 },
+  { id: "knee-acl",     part: "knee",        label: "Cruciate Rupture",  dur: [30, 42], w: 8, how: "cpa", long: "year", carry: 1 },
   // ── ankle ──
-  { id: "ank-sprain",   part: "ankle",       label: "Sprain",            dur: [2, 5],   w: 60 },
-  { id: "ank-lig",      part: "ankle",       label: "Ligament Damage",   dur: [6, 12],  w: 14 },
-  { id: "ank-frac",     part: "ankle",       label: "Fracture",          dur: [12, 20], w: 4 },
+  { id: "ank-sprain",   part: "ankle",       label: "Sprain",            dur: [2, 5],   w: 60, how: "cap" },
+  { id: "ank-lig",      part: "ankle",       label: "Ligament Damage",   dur: [6, 12],  w: 14, how: "ca", long: "comp", out: [1, 3], carry: 1 },
+  { id: "ank-frac",     part: "ankle",       label: "Fracture",          dur: [12, 20], w: 4, how: "c", long: "comp", out: [3, 5], carry: 1 },
   // ── calf and Achilles ──
-  { id: "calf-strain",  part: "calf",        label: "Strain",            dur: [2, 4],   w: 45 },
-  { id: "ach-tend",     part: "Achilles",    label: "Tendinitis",        dur: [3, 8],   w: 10 },
-  { id: "ach-rupt",     part: "Achilles",    label: "Rupture",           dur: [32, 44], w: 4 },
-  { id: "leg-frac",     part: "lower leg",   label: "Fracture",          dur: [18, 30], w: 3 },
+  { id: "calf-strain",  part: "calf",        label: "Strain",            dur: [2, 4],   w: 45, how: "p" },
+  { id: "ach-tend",     part: "Achilles",    label: "Tendinitis",        dur: [3, 8],   w: 10, how: "p" },
+  { id: "ach-rupt",     part: "Achilles",    label: "Rupture",           dur: [32, 44], w: 4, how: "p", long: "year", carry: 1 },
+  { id: "leg-frac",     part: "lower leg",   label: "Fracture",          dur: [18, 30], w: 3, how: "c", long: "year", carry: 1 },
   // ── groin and hip ──
-  { id: "groin-strain", part: "groin",       label: "Strain",            dur: [2, 5],   w: 50 },
-  { id: "add-tear",     part: "adductor",    label: "Tear",              dur: [5, 10],  w: 12 },
-  { id: "hip-imp",      part: "hip",         label: "Impingement",       dur: [4, 10],  w: 6 },
+  { id: "groin-strain", part: "groin",       label: "Strain",            dur: [2, 5],   w: 50, how: "p" },
+  { id: "add-tear",     part: "adductor",    label: "Tear",              dur: [5, 10],  w: 12, how: "p" },
+  { id: "hip-imp",      part: "hip",         label: "Impingement",       dur: [4, 10],  w: 6, how: "p" },
   // ── foot ──
-  { id: "foot-bruise",  part: "foot",        label: "Contusion",         dur: [1, 2],   w: 22 },
-  { id: "foot-sprain",  part: "foot",        label: "Sprain",            dur: [2, 4],   w: 12 },
-  { id: "meta-frac",    part: "metatarsal",  label: "Fracture",          dur: [9, 15],  w: 6 },
+  { id: "foot-bruise",  part: "foot",        label: "Contusion",         dur: [1, 2],   w: 22, how: "c" },
+  { id: "foot-sprain",  part: "foot",        label: "Sprain",            dur: [2, 4],   w: 12, how: "c" },
+  { id: "meta-frac",    part: "metatarsal",  label: "Fracture",          dur: [9, 15],  w: 6, how: "cp", long: "comp", out: [2, 3] },
   // ── head and face. A concussion is short and non-negotiable; nobody plays on. ──
-  { id: "concussion",   part: "head",        label: "Concussion",        dur: [1, 3],   w: 14 },
-  { id: "head-cut",     part: "head",        label: "Laceration",        dur: [1, 1],   w: 8 },
-  { id: "face-frac",    part: "cheekbone",   label: "Fracture",          dur: [2, 5],   w: 5 },
+  { id: "concussion",   part: "head",        label: "Concussion",        dur: [1, 3],   w: 14, how: "ac", carry: 1 },
+  { id: "head-cut",     part: "head",        label: "Laceration",        dur: [1, 1],   w: 8, how: "a" },
+  { id: "face-frac",    part: "cheekbone",   label: "Fracture",          dur: [2, 5],   w: 5, how: "a" },
   // ── trunk ──
-  { id: "back-strain",  part: "back",        label: "Strain",            dur: [2, 4],   w: 18 },
-  { id: "rib-bruise",   part: "ribs",        label: "Contusion",         dur: [1, 2],   w: 14 },
-  { id: "rib-frac",     part: "ribs",        label: "Fracture",          dur: [3, 6],   w: 5 },
+  { id: "back-strain",  part: "back",        label: "Strain",            dur: [2, 4],   w: 18, how: "pa" },
+  { id: "rib-bruise",   part: "ribs",        label: "Contusion",         dur: [1, 2],   w: 14, how: "ca" },
+  { id: "rib-frac",     part: "ribs",        label: "Fracture",          dur: [3, 6],   w: 5, how: "ca", carry: 1 },
   // ── shoulder ──
-  { id: "sh-sprain",    part: "shoulder",    label: "Sprain",            dur: [2, 4],   w: 12 },
-  { id: "sh-disloc",    part: "shoulder",    label: "Dislocation",       dur: [5, 10],  w: 5 },
-  { id: "clav-frac",    part: "collarbone",  label: "Fracture",          dur: [8, 14],  w: 3 },
+  { id: "sh-sprain",    part: "shoulder",    label: "Sprain",            dur: [2, 4],   w: 12, how: "ac" },
+  { id: "sh-disloc",    part: "shoulder",    label: "Dislocation",       dur: [5, 10],  w: 5, how: "ac", carry: 1 },
+  { id: "clav-frac",    part: "collarbone",  label: "Fracture",          dur: [8, 14],  w: 3, how: "ac", long: "comp", out: [2, 3], carry: 1 },
 ];
 // Anything past this is gone for the season on any ordinary calendar; used only to say so.
 export const ME_INJ_SEASON = 30;
 
-export function mePickInjury(rng) {
+// `cause` (24 November 2026): what did it, so the diagnosis fits the event -- "c" a challenge (a foul or a hard fair
+// tackle), "a" a clash in the air or a bad landing, "p" a pull with nobody near him. Each row's `how` says which it can
+// come from; with no cause given every row is in, as before. `long` marks the ones that outlast the competition
+// (DESIGN.md, long injuries): "comp" for `out` units of the calendar, "year" for the rest of the year. `carry`: he
+// goes off on a stretcher.
+export function mePickInjury(rng, cause) {
+  const rows = cause ? ME_INJURY.filter(v => v.how.includes(cause)) : ME_INJURY;
   let t = 0;
-  for (const v of ME_INJURY) t += v.w;
+  for (const v of rows) t += v.w;
   let r = rng.u() * t;
-  for (const v of ME_INJURY) { r -= v.w; if (r <= 0) return { sev: v, part: v.part }; }
-  const last = ME_INJURY[ME_INJURY.length - 1];
+  for (const v of rows) { r -= v.w; if (r <= 0) return { sev: v, part: v.part }; }
+  const last = rows[rows.length - 1];
   return { sev: last, part: last.part };
 }

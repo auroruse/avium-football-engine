@@ -24,11 +24,13 @@ export const MT = {
   callLo: 0.10,        // chance a slice that a team-mate shouts "man on" for him, an undrilled side...
   callDrill: 0.45,     // ...plus this much for a perfectly drilled one
   callR: 5.5,          // m; the shout is for a man this close
+  callerR: 25, callTight: 0.6,         // m; a team-mate with Man On (badge) is heard this far
   // ---- the body --------------------------------------------------------------------------------
   turnStill: 11.0,     // rad/s his body turns standing
   turnRun: 2.6,        // rad/s at a full sprint
   turnRunV: 8.0,       // m/s that counts as a full sprint for the turn
   runFaceV: 3.0,       // m/s above which his body faces where he is running
+  walkFaceV: 0.6,      // ...and at a dead ball, above which he faces the way he is walking (perceive.ts)
   openBody: 0.55,      // share of the angle toward their goal he opens up when he expects the ball
   openMax: 1.25,       // rad; most he opens up
   // ---- effort ----------------------------------------------------------------------------------
@@ -67,6 +69,19 @@ export const MT = {
   blockSlide: 0.45,    // share of the ball's distance from the middle the block slides toward it
   lineSlew: 5.2,       // m/s the back line moves at
   slotSlew: 6.5,       // m/s a man's spot in the block may move across
+  // THE THREAT (manager.ts meThreatPlan; mindDefend, mindAttack). Set by reasoning, 23 November 2026, then measured over
+  // whole League One seasons on the same dice (380 matches each): with no plan 2.98 goals a match and four men on thirty
+  // goals; as set here 2.68 and one (run 45150667531); the marker alone, without the screens and the second man, 2.79 and
+  // three (the same run); without the marker staying while we have the ball, 2.66 and three (run 45149033171).
+  thrAhead: 8,         // m in front of our block within which the marker has him...
+  thrLeash0: 16, thrLeash1: 12,   // ...and m across the pitch from the marker's own spot, plus this much for the full plan
+  thrPull0: 0.6,       // how far off his spot the marker goes for him at the least plan (the full plan: all the way)
+  thrPressOn: 0.35,    // the marker's head start to the ball when his man has it (share of his cost)...
+  thrPressOff: 1800,   // ...and what going to anybody else costs him (ms, at the full plan)
+  thrScreen: 1.5,      // how much more the lane into him is worth to a screening man
+  thrScreenMid: 1,     // whether one midfielder with nobody to mark screens him as well (1 or 0)
+  thrRest: 1,          // whether his marker stays on him while we have the ball (1 or 0)
+  thrSqz: 10,          // m further from our goal at which he is closed by two
   markPull: 0.55,      // how far a zonal defender leaves his spot for the man in it (0 spot, 1 man)
   markGoalSide: 1.4,   // m goal-side of his man a marker stands
   markBallSide: 0.35,  // share of a metre per metre of separation he leans toward the ball
@@ -119,7 +134,32 @@ export const MT = {
   shadowMaxD: 30,      // m; lanes longer than this are not worth a screen
   trigTouch: 1.25,     // m; a ball this far off the carrier's foot is a heavy touch, and a trigger
   trigEdge: 9,         // m from a touchline the carrier is trapped
+  // ---- showing for the ball ahead of it (mind/team.ts mindShow; 22 Nov 2026, set by reasoning) ----
+  showN: 2,            // men the side keeps open ahead of the ball
+  showFwd: 5,          // m forward of the ball a man has to be to count...
+  showFwdFinal: -1,    // ...and in the final third, where the ball that matters is square or pulled back
+  showMinD: 6,         // m from the ball, at least...
+  showMaxD: 26,        // ...and at most
+  showRoom: 2.4,       // m to the nearest opponent where he stands
+  showRisk: 0.35,      // the most of a race for the ball (mePassRisk) the pass to him may be
+  showReachLo: 8,      // m the poorest reader of the game will leave his cell by to find the spot...
+  showReachHi: 15,     // ...and the best
+  showApart: 7,        // m two such men keep between them
+  showTravel: 0.03,    // what a metre of that run costs against how good the spot is
+  showKeep: 14,        // slices a man holds a spot he was sent to before the side looks again
   // ---- runs ------------------------------------------------------------------------------------
+  cntShortD: 42,       // m from our goal inside which "few of them back" makes a ball just won a break
+  cntAhead: 4,         // of their outfielders goal-side of the ball, at most, for a ball just won to be a break (was 6)
+  jumpLo: 2,           // slices the most aware defender takes to react to a run in behind off him (mindTick)...
+  jumpHi: 5,           // ...and the least aware
+  jumpR: 4.5,          // m from the runner a defender has to be for it to be his man going
+  wrongBase: 1,        // slices a defender is wrong-footed by a move from a dribbler as good as he is a tackler (mind/duel.ts)...
+  wrongGap: 5,         // ...and more by this much per point the dribbler's skill is clear of his tackling...
+  wrongMax: 4,         // ...at most
+  wrongEff: 0.4,       // the share of his pace he has meanwhile
+  jumpHitLo: 1,        // slices the most aware defender takes to react to a ball struck into his man's run...
+  jumpHitHi: 3,        // ...and the least aware
+  jumpEff: 0.3,        // the share of his pace he has while he is still reacting
   runEvery: 2,         // slices between looking for a run
   runCool: 10,         // slices before the same man runs again
   throwStepIn: 5,      // m infield the thrower steps after a throw-in, to offer the return off the line (set by reasoning)
@@ -138,6 +178,13 @@ export const MT = {
   relShoulder: 3.5,    // ...standing no more than this far goal-side of their last line...
   relRoom: 16,         // ...with at least this much grass between that line and their goal (m)
   relMaxD: 65,         // m: the longest ball in behind a man will strike
+  boxMore: 1,          // men more than the old count sent into the box with the ball wide in the last third
+  crossLead: 0.85,     // share of his top pace a man is led at by a cross, toward the front of the six-yard box
+  crossAimD: 6,        // ...m off their goal line that run is aimed at
+  crossAimY: 0.5,      // ...and the share of his distance off the middle he keeps on the way
+  crossRunCos: 0.5,    // ...unless he is already running that way (cosine of his run to it) and faster
+  crossMeetD: 12.5,    // m off their goal line inside which a cross has to be met to be a cross
+  crossMeetY: 10,      // ...and m off the middle
   crossPress: 1.2,     // pressure on a crosser above which a crossing side plays whatever gets him out (plan.crossFirst)
   takeOnD: 40,         // m from goal inside which a side built on its dribblers takes men on (plan.takeOn)...
   takeOnSkill: 0.55,   // ...the dribbling (mind/duel.ts dribSkill) a man needs before he is held to it...
@@ -177,6 +224,55 @@ export const MT = {
   clrPress: 0.9,       // ...once he is being closed down this hard...
   clrFwd: 12,          // ...and a pass has to go this far forward to count as getting it out
   switchW: 0.008,      // what the room a switch finds is worth (CFG.switchW 0.02 was the first brain's)
+  // What he will play (mind/decide.ts, 22 November 2026; set by reasoning, to be read at the next calibration).
+  sureLo: 0.50,        // the least sure a pass may be for the poorest reader of the game...
+  sureHi: 0.74,        // ...and for the best (meMind 1, a rating of 84 and over)
+  sureDir: 0.05,       // off it for each step of More Direct passing, on it for Shorter
+  sureCre: 0.08,       // ...and for each step of creative freedom
+  surePress: 1.0,      // pressure on him above which he plays whatever he can
+  surePrize: 0.10,     // the chance a receiver has to have for the pass to be worth a risk
+  sureMin: 0.35,       // and the least sure even that ball may be
+  squareK: 0.8,        // of his own shot's worth per point of chance, for the pass to a man with a better one
+  squareRecv: 0.5,     // how much of the pressure on a man about to shoot first time still counts
+  onP: 0.80,           // how sure a forward ball has to be to be "on" for the most aware...
+  onPaw: 0.10,         // ...and how much surer for the least
+  onFwd: 6,            // m forward it has to go
+  onCarryP: 0.9,       // a run with it survives a forward ball being on only if it is this safe, and forward
+  forceP: 0.6,         // out of time on it, a pass less sure than this is not forced (match.ts, the on-ball step)
+  // THE LOOK (mind/decide.ts mindThink; user, 22 November 2026: "they're still passing too much - real players don't
+  // process things as fast as them", and "add some sort of memory, so that simple obvious passes won't require much
+  // thought, and the opposite for passes you have to kind of search for"). Set by reasoning and local traces; to be
+  // read at the next calibration.
+  // Halved 24 November 2026 (cloud, test/mistab.mjs): at 6.5 / 10.5 the first-time share fell from 25% to 10% and men were
+  // caught on the ball half as often again as in the engine of the 22nd; at half it is 19%, goals unchanged.
+  thinkLo: 3.25,       // slices the hardest pass to find takes the most aware man on the pitch to settle on...
+  thinkHi: 5.25,       // ...and the least aware
+  thinkEasy: 0.20,     // the share of that a short open ball to a man in front of him takes
+  thinkSee: 0.55,      // ...more for one that is hard to see (far, through a crowded lane, into a run: seeHard)
+  thinkDoubt: 0.9,     // ...per point he is unsure it arrives
+  thinkHigh: 0.15,     // ...for a ball in the air
+  thinkFind: 0.30,     // ...for a man he is not looking at (last seen longer ago than ftSeen)
+  thinkDrill: 0.15,    // ...less for the ball his side has rehearsed
+  thinkPress: 0.7,     // slices off per point of pressure on him: closed down he plays what he has already seen
+  thinkMin: 0,         // and never fewer than this
+  memK: 0.35,          // each slice he had the man in sight before the ball came counts this much toward it...
+  memCap: 8,           // ...up to this many slices
+  memGap: 3,           // slices he can look away from a man without starting that count again
+  touchSet: 2,         // slices from the touch that controls it to the earliest pass: the ball has to be set (first time aside)
+  ftSeen: 0.5,         // s: a man last seen longer ago than this is one he is not looking at
+  lookHold: 3,         // slices more on the ball before his time is up, for a man with nobody on him
+  ownMouthD: 9,        // m off his own goal line inside which a ball played back toward it may not be aimed...
+  ownMouthW: 7,        // ...within this far of the middle of the goal (the posts are 3.66 either side)
+  planOkP: 0.5,        // a ball the plan allows has to be this sure for the plan's limits to hold (else they yield)
+  thruBelief: 0.70,    // how much of his belief in a ground ball into a run is real (PROVISIONAL: refit the belief by kind)
+  // The ball in behind (mind/decide.ts, 22 Nov 2026; set by reasoning).
+  relGroundD: 34,      // m: the longest ball along the ground he will slide in behind for a man on their last line
+  relGroundRoom: 9,    // m of grass between that line and their goal it needs
+  behindP: 0.45,       // how sure a ball that puts a man clear has to be for the most aware to play it at once...
+  behindPaw: 0.15,     // ...and how much surer for the least
+  thruMarkR: 3.0,      // m: a defender goal-side of the runner this close, and...
+  thruStartV: 5,       // ...the runner going forward slower than this (m/s), and the ball in behind is not on
+  runPassD: 34,        // m from the man on the ball inside which a run in behind is worth making for him (mind/team.ts)
   blockK: 1.0,         // how much of blockRisk (a man in the way of the ball's first metres) he believes
   shotBlockK: 0.5,     // ...and of it in the way of a shot he could take now (mind/decide.ts; 12 Oct 2026)
   // ---- duels -----------------------------------------------------------------------------------
@@ -189,7 +285,11 @@ export const MT = {
   // (0.15 or 0.5 moved it by 0.03 either way: what was left was contact, 0.18 a match, and handballs, 0.10); contact at
   // 0.12 and CFG.handP at 0.0063 aim at the real 0.28. Contact 0.2 and handP 0.0085 the same day, when the long shot came
   // in (CFG.shotLaneK) and men carried it into the area less: penalties scored stayed at 0.19 a match.
-  boxTackleFoul: 0.3, boxCynFoul: 0.1, boxContactFoul: 0.2,
+  // (22 November 2026, cloud run 45055086971: with the look a man has the ball longer and is challenged more, and
+  // penalty goals went from 0.28 a match to 0.41 in League One, 15% of all goals. 0.45 and 0.32 before.)
+  // (Measured at these two on eighteen minutes, cloud run 45059646100: penalty goals 0.34 a match in League One, 12%
+  // of goals, and 0.26 among the national sides, 10%. Trimmed a ninth more for League One: 0.27 and 0.19 before.)
+  boxTackleFoul: 0.24, boxCynFoul: 0.1, boxContactFoul: 0.17,
   contactFoul: 0.05,   // a slice's chance a man tight on the carrier holds, pushes or climbs on him
   sepR: 3.2,           // m; team-mates closer than this ease apart (the shape does the real spacing)
   sepW: 0.25,

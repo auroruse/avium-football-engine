@@ -58,8 +58,10 @@ export function shotWarm(el) {
   for (const im of el.querySelectorAll("img")) { const s = im.currentSrc || im.src; if (s && !s.startsWith("data:")) dataURL(s); }
 }
 
-// The element as a PNG: `width` x `height` CSS pixels drawn at `scale`, its own position overridden by `rootStyle`.
-export async function shotBlob(el, { width, height, scale = 1, rootStyle = {}, background } = {}) {
+// The element as a PNG: `width` x `height` CSS pixels drawn at `scale`, its own position overridden by `rootStyle`, and any
+// custom property it inherits overridden by `vars` (Full Time passes --app-zoom: 1, or the window's zoom on .app-body, rebuilt
+// round the copy, would draw it that much smaller than its box).
+export async function shotBlob(el, { width, height, scale = 1, rootStyle = {}, vars = {}, background } = {}) {
   const fontText = fontCSS(el);
   const copy = el.cloneNode(true);
   for (const [k, v] of Object.entries(rootStyle)) copy.style.setProperty(k.replace(/[A-Z]/g, c => "-" + c.toLowerCase()), v);
@@ -90,6 +92,7 @@ export async function shotBlob(el, { width, height, scale = 1, rootStyle = {}, b
   for (const at of document.documentElement.attributes) if (at.name.startsWith("data-")) root.setAttribute(at.name, at.value);
   for (const p of INHERITED) root.style.setProperty(p, ps.getPropertyValue(p));
   for (let i = 0; i < es.length; i++) if (es[i].startsWith("--")) root.style.setProperty(es[i], es.getPropertyValue(es[i]));
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.style.width = width + "px"; root.style.height = height + "px"; root.style.overflow = "hidden";
   if (background) root.style.background = background;
   const style = document.createElement("style");

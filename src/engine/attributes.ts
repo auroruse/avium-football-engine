@@ -2,22 +2,33 @@
 import { CFG, DEFAULT_OVR, ME_BADGES } from "./config";
 import { FORMATIONS, formAtkW, sposFor } from "./formations";
 import { ownFor } from "../data/positions.js";
+import { BADGE_BY_ID, levelShare, traitId, traitLv } from "../data/badges.js";
 
 // A player's badges (config.ts ME_BADGES) merged into one set of effects, kept on him. A man with none gets the same
 // empty set, so every read of it adds nothing and multiplies by one.
 const NO_FX = Object.freeze({});
 const FX_MUL = { acc: 1, drain: 1, foul: 1 };
+// A TRAIT AT A LEVEL (22 November 2026; data/badges.js). The table is written at each trait's std level and a level
+// carries levelShare of it: an amount in proportion, a multiplier by its distance from one, a share never past the
+// whole (FX_SHARE), and a habit that is simply his or not (FX_FLAG) at any level. At its std a trait is the table
+// untouched, so a man who carried one before levels plays exactly as he did.
+const FX_ONE = { gkSweep: 1 };
+const FX_SHARE = { calm: 1, recvPress: 1, crisp: 1, crispRun: 1, read: 1, readLook: 1, early: 0.9, ftShot: 0.9, find: 1, see: 0.9, quick: 0.9, ftPass: 1, wrists: 1, release: 0.9,
+                   resist: 0.9, onRun: 0.9, disguise: 0.6, poach: 0.9, noHurry: 1, judge: 0.9, plate: 0.9 };
+const FX_FLAG = { setTaker: 1, blockLane: 1 };
+const fxAt = (k, v, f) => (f === 1 || k in FX_FLAG ? v : k in FX_MUL || k in FX_ONE ? 1 + (v - 1) * f : k in FX_SHARE ? Math.min(FX_SHARE[k], v * f) : v * f);
 export function meBadgeFx(p) {
   const b = p?.badges;
   if (!b || !b.length) return NO_FX;
   if (p._bfxB === b) return p._bfx;
   const fx = {};
-  for (const name of b) {
-    const e = ME_BADGES[name];
+  for (const key of b) {
+    const name = traitId(key), e = ME_BADGES[name];
     if (!e) continue;
-    for (const [k, v] of Object.entries(e)) {
-      if (v && typeof v === "object") { const o = (fx[k] = { ...(fx[k] || {}) }); for (const [m, w] of Object.entries(v)) o[m] = (o[m] ?? 0) + w; }
-      else fx[k] = k in FX_MUL ? (fx[k] ?? 1) * v : (fx[k] ?? 0) + v;
+    const f = levelShare(traitLv(key), BADGE_BY_ID[name]?.std ?? 1);
+    for (const [k, v0] of Object.entries(e)) {
+      if (v0 && typeof v0 === "object") { const o = (fx[k] = { ...(fx[k] || {}) }); for (const [m, w] of Object.entries(v0)) o[m] = (o[m] ?? 0) + w * f; }
+      else { const v = fxAt(k, v0, f); fx[k] = k in FX_MUL ? (fx[k] ?? 1) * v : (fx[k] ?? 0) + v; }
     }
   }
   p._bfxB = b; p._bfx = fx;
@@ -32,6 +43,7 @@ export function mePassBadge(p, k, d, high) {
   if (fx.pThru && (k === "through" || k === "space" || k === "over")) t += fx.pThru;
   if (fx.pLong && high && (k === "long" || k === "switch")) t += fx.pLong;
   if (fx.pCross && k === "cross") t += fx.pCross;
+  if (fx.pAll) t += fx.pAll;                           // GIVES IT AWAY (a flaw): every ball
   return t;
 }
 
@@ -165,6 +177,15 @@ export const meGkDiveV = (a) => CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmi
 // the shot was going in because it was a good chance, not because it was well struck.
 // Taken over the rating band a footballer occupies, like meGkSkill, because ME_COMPRESS deliberately
 // squeezes the scale and normalising over 0..99 would make everyone identical.
+// HOW MUCH OF A PRESENCE HE IS WHEN HE CLOSES A MAN DOWN (user, 22 November 2026: play "too good to be true", "every
+// attack is a perfect tiki taka goal"; mistakes to come from pressure, rating and the speed of play, and the best sides
+// to stay fluid only against weaker ones). Pressure was a count of bodies within six metres: a centre-half of the first
+// rank on a man's shoulder hurried him exactly as much as a tired winger jogging past. It is now each body by what he
+// is: pressQLo for a man who cannot tackle, 1 for League One's ordinary defender, pressQHi and beyond for the best.
+// Read off his tackling and his positioning, the two things a man closing down is doing.
+export const meDefQ = (p) => { const a = meAttrs(p);
+  // CLOSES DOWN (badge): he hurries a man more than his tackling says.
+  return (CFG.pressQLo + (CFG.pressQHi - CFG.pressQLo) * Math.max(0, Math.min(1.15, (0.75 * a.tackle + 0.25 * a.position - 48) / 40))) * (1 + (meBadgeFx(p).harry ?? 0)); };
 export const meMind = (p) => Math.max(0, Math.min(1, (meOvr(p) - 58) / 26 + (meBadgeFx(p).mind ?? 0)));
 
 // HOW HIGH HE CAN GET TO IT. There is no height attribute and no jump attribute, and adding an

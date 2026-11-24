@@ -27,10 +27,18 @@ function stepOnce(b) {
     const v2 = Math.max(0, v3 - CFG.ballDrag * v3 * v3 * BALL_SUB) / v3;
     b.bvx *= v2; b.bvy *= v2; b.bvz *= v2;
   }
+  // SPIN (23 November 2026; user: "real free kicks have curve when struck at the goal"). A ball struck with spin on
+  // it (meFkStrike) turns: side-spin swings its heading round at bsp radians a second, which is the sideways force of a
+  // spinning ball in proportion to its pace, and top-spin pulls it down at bdip times its pace. The spin is the
+  // flight's own and is gone at the first thing the ball meets: the ground here, a body in hitBodies, the next kick
+  // in meBallPredict. A ball without spin takes neither branch and flies exactly as it always did.
+  if (b.bsp) { const a = b.bsp * BALL_SUB, c = Math.cos(a), s = Math.sin(a), vx = b.bvx; b.bvx = vx * c - b.bvy * s; b.bvy = vx * s + b.bvy * c; }
+  if (b.bdip) b.bvz -= b.bdip * Math.hypot(b.bvx, b.bvy) * BALL_SUB;
   b.bx += b.bvx * BALL_SUB; b.by += b.bvy * BALL_SUB; b.bz += b.bvz * BALL_SUB;
   // ground: restitution minus a linear brake, never upward from nothing
   if (b.bz < CFG.ballR) {
     b.bz = CFG.ballR;
+    if (b.bsp || b.bdip) { b.bsp = 0; b.bdip = 0; }
     if (b.bvz < 0) {
       // The turf grips on a real impact: a bounce costs horizontal pace as well as vertical.
       if (b.bvz < -CFG.bounceMin) { b.bvx *= CFG.bounceGrip; b.bvy *= CFG.bounceGrip; }
@@ -155,6 +163,7 @@ function hitBodies(b, players, ctrl, skip, f) {
     if (vn - qn >= 0) continue;                        // already moving apart
     const inSpd = Math.hypot(b.bvx, b.bvy), qSpd = Math.hypot(vqx, vqy);
     if (!b.hitP) { b.hitP = q; b.hitV = inSpd; }       // he got a foot to it: that is the touch
+    if (b.bsp || b.bdip) { b.bsp = 0; b.bdip = 0; }
     const nv = (1 + CFG.bodyE) * qn - CFG.bodyE * vn;
     b.bvx += (nv - vn) * nx; b.bvy += (nv - vn) * ny;
     // A collision cannot invent pace. Without this every one of twenty-two men converging on a loose
@@ -201,6 +210,11 @@ export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
     const f = (i + 1) / n;
     const px = mp.bx, py = mp.by, pz = mp.bz;
     stepOnce(mp);
+    // WHERE THE BALL WAS BETWEEN SLICES, for a replay (App.tsx meSnap; user, 22 November 2026: replays "more detailed").
+    // Three points a slice, about a quarter, a half and three-quarters of the way through it, kept only when a viewer
+    // has asked (mp._rec): a ball drawn straight from one slice's end to the next cuts the corner of every bounce,
+    // deflection and first touch. Nothing reads it back; no harness sets the flag.
+    if (mp._rec && i + 1 < n && Math.floor((i + 1) * 4 / n) > Math.floor(i * 4 / n)) (mp._sub || (mp._sub = [])).push(mp.bx, mp.by, mp.bz);
     // Reaching it comes BEFORE bumping into it. A pass used to hit its own receiver's shins and
     // bounce off before anybody asked whether he had controlled it; a man who can play the ball
     // plays it at the edge of his reach, and only a man who cannot is merely in the way.
@@ -250,12 +264,12 @@ export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
 // only the new last slot is integrated, and an unchanged ball costs nothing. Exact, not approximate:
 // the full state (position and velocity) is kept per slot in mp._pS, and anything that differs in a
 // single bit -- a touch, a ricochet, a restart, a changed ball constant -- integrates afresh.
-const _pg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
+const _pg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0, bsp: 0, bdip: 0 };
 const _PK = ["ballDrag", "ballR", "bounceMin", "bounceGrip", "ballBounce", "ballBounceLin", "grassH", "ballFric", "ballFricLin"];
 const _pAt = (t, b) => Object.is(t[0], b.bx) && Object.is(t[1], b.by) && Object.is(t[2], b.bz)
                     && Object.is(t[3], b.bvx) && Object.is(t[4], b.bvy) && Object.is(t[5], b.bvz);
-const _pPut = (t, b) => { t[0] = b.bx; t[1] = b.by; t[2] = b.bz; t[3] = b.bvx; t[4] = b.bvy; t[5] = b.bvz; };
-const _pGet = (b, t) => { b.bx = t[0]; b.by = t[1]; b.bz = t[2]; b.bvx = t[3]; b.bvy = t[4]; b.bvz = t[5]; };
+const _pPut = (t, b) => { t[0] = b.bx; t[1] = b.by; t[2] = b.bz; t[3] = b.bvx; t[4] = b.bvy; t[5] = b.bvz; t[6] = b.bsp || 0; t[7] = b.bdip || 0; };
+const _pGet = (b, t) => { b.bx = t[0]; b.by = t[1]; b.bz = t[2]; b.bvx = t[3]; b.bvy = t[4]; b.bvz = t[5]; b.bsp = t[6]; b.bdip = t[7]; };
 export function meBallPredict(mp) {
   const g = _pg;
   const pred = mp.pred && mp.pred.length === PRED_SLOTS ? mp.pred : (mp.pred = []);
@@ -267,9 +281,11 @@ export function meBallPredict(mp) {
     // The ball has changed (a touch, a ricochet, a restart): the moment everybody's reading of it starts again
     // (meTimeToBallMs, seenMs).
     mp._pChg = mp.tick;
-    if (!S) S = mp._pS = Array.from({ length: PRED_SLOTS }, () => [0, 0, 0, 0, 0, 0]);
+    // ...and whatever spin the last flight had is gone, unless this IS the strike that put it on (meFkStrike).
+    if (mp._spinNew) mp._spinNew = false; else if (mp.bsp || mp.bdip) { mp.bsp = 0; mp.bdip = 0; }
+    if (!S) S = mp._pS = Array.from({ length: PRED_SLOTS }, () => [0, 0, 0, 0, 0, 0, 0, 0]);
     mp._pC = _PK.map(c => CFG[c]);
-    g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz;
+    g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz; g.bsp = mp.bsp || 0; g.bdip = mp.bdip || 0;
     for (let s = 0; s < PRED_SLOTS; s++) {
       if (s) for (let i = 0; i < per; i++) stepOnce(g);
       _pPut(S[s], g);
@@ -293,7 +309,7 @@ export function meBallPredict(mp) {
 // and usually falls between two slots. Stepped from the forecast's own slot states with the same integrator, every
 // CFG.airFineSub substeps, into one flat array: F[0] the count, then [t, x, y, z] per sample, t in seconds from now.
 // Built at most once a slice, and only when somebody asks.
-const _fg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
+const _fg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0, bsp: 0, bdip: 0 };
 let _fF = null, _fMp = null, _fAt = -1, _fB = NaN, _fZ = NaN;
 export function meBallFine(mp) {
   const S = mp._pS;
@@ -426,8 +442,13 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
   // it, quick tempo bought a firmer ball that arrived before the lane shut and cost nothing:
   // measured at +0.320 xG for Much Quicker, 3.3 standard errors, which is not an instruction but a
   // setting nobody would ever move off. Symmetric, so a patient side strikes it more precisely.
+  // ...AND STRIKING A MOVING BALL IS A SKILL TOO (22 November 2026). What a first-time ball costs in aim and weight was
+  // the same for every man on the pitch: traced among the best national sides, balls to feet played with time were kept
+  // 86% and the same balls first time 72%, three in ten of all of them. The best strikers of a ball lose execSkill of
+  // that cost; a poor one keeps it all.
+  const exK = 1 - CFG.execSkill * Math.max(0, Math.min(1, skill01));
   const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress
-                 + (tempo || 0) * CFG.tempoNoise + ex * CFG.execNoiseDeg)
+                 + (tempo || 0) * CFG.tempoNoise + ex * CFG.execNoiseDeg * exK)
               * kn * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
   // WEIGHT is a skill. The aim cone always was, and the power wobble sat at a flat 0.08 for all
@@ -436,8 +457,8 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
   // over-hit one runs through the receiver. Swept, the aim cone alone could not move completion at
   // the low bands at all (83% at slope 6 and 82% at slope 15) because a short recycling ball barely
   // misses at any angle. Anchored at 75 like every meTech site.
-  const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill + ex * CFG.execPow) * kn;
-  let vxy, vz;
+  const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill + ex * CFG.execPow * exK) * kn;
+  let vxy, vz, flightT = 0;
   // TEMPO IS WEIGHT ON THE BALL. Playing quickly is not merely deciding sooner -- it is striking
   // it harder, so it arrives before the lane closes. That is a genuine trade rather than a bonus:
   // a firmer ball spends less time interceptable but `pow` noise scales with it, so it runs
@@ -463,8 +484,14 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
     // the same share of the distance a ground ball's weight is out by, solved into a real flight.
     const L = meLoftFor(d * pow, kind, o?.zEnd, mp.bz);
     vxy = L.vxy; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5 * kn);
+    flightT = L.T;
   }
-  mp.bvx = Math.cos(ang) * vxy; mp.bvy = Math.sin(ang) * vxy; mp.bvz = vz;
+  // SWUNG IN (o.spin, radians a second; 23 November 2026, user: "crosses and corners should have spin"). A ball with
+  // side-spin flies an arc, and the chord of an arc lies half its turn round from where it set out: he strikes it
+  // that much off the line to his man and it comes round onto him.
+  const spin = type !== "ground" && type !== "clear" && o?.spin ? o.spin : 0, ang1 = ang - spin * flightT / 2;
+  mp.bvx = Math.cos(ang1) * vxy; mp.bvy = Math.sin(ang1) * vxy; mp.bvz = vz;
+  if (spin) { mp.bsp = spin; mp.bdip = 0; mp._spinNew = true; }
   mp.bz = Math.max(mp.bz, CFG.ballR);
   mp.gkPlan = null;                    // a new flight: the keeper reads it afresh
   meBallPredict(mp);
@@ -473,7 +500,7 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run, set01) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run, set01, curl) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
   // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
   // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
@@ -490,7 +517,7 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // How hard he hits it is a property of the man AND of the run he is on -- see meRun01. A free
   // kick is the exception: the pace is
   // part of the SOLUTION, because clearing a wall and staying under the bar is two constraints and
-  // an ordinary strike only has room for one. See meFkArc.
+  // an ordinary strike only has room for one. See meFkStrike.
   // ...AND ONLY FROM RANGE. Ungated this was worth +0.46 goals a match and put every one of them in
   // the wrong place: measured over 80 fixtures, the share of goals from outside the box did not move
   // (30.0% against 30.9%) and goals from 25 m+ did not move either (3 against 3). meRun01 reads
@@ -522,8 +549,11 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   const sigma = Math.max(CFG.shotNoiseMin, CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress
                  + runD * CFG.shotNoiseRun + (open ? CFG.shotNoiseOpen * (1 - (set01 || 0) * CFG.shotNoiseSet) : 0))
               * Math.PI / 180;
-  const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
+  // A CURLED STRIKE (Long Shot from outside the box): curl rad/s of spin, set off half its swing to the other side of
+  // the line so the bend brings it back onto it, as meKickBall does for a cross.
+  const ang = Math.atan2(dy, dx) + g2(rng) * sigma - (curl || 0) * T / 2;
   mp.bvx = Math.cos(ang) * v; mp.bvy = Math.sin(ang) * v;
+  if (curl) { mp.bsp = curl; mp.bdip = 0; mp._spinNew = true; }
   // ...and how badly he gets under it depends on WHO KICKED IT. This never consulted skill at all
   // while the lateral cone always did, so a 99-rated finisher ballooned a shot exactly as often as a
   // 20-rated one -- and a penalty, struck at full power over a short flight, went over the bar about
@@ -541,39 +571,6 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   mp.bz = Math.max(mp.bz, CFG.ballR);
   mp.gkPlan = null;
   meBallPredict(mp);
-}
-
-/** A FREE KICK HAS TWO CONSTRAINTS AND EVERY OTHER STRIKE HAS ONE. It has to pass ABOVE the wall
- *  nine metres in front of the ball, and still be UNDER the bar at the goal line -- and satisfying
- *  both fixes the PACE as well as the angle, which is why a free kick from twenty metres is clipped
- *  and one from thirty is hit. That was never solved: the strike picked a target height at the goal
- *  between one metre and two, aimed a plain parabola at it, and the four men standing in front of it
- *  played no part in the arithmetic at all. Whether it cleared them was therefore the elevation
- *  error and nothing else -- measured, the ball passed the wall plane at 0.81 m at the tenth
- *  percentile and 3.74 m at the ninetieth, and 54% of every free kick in the game was struck into
- *  somebody's legs. Half of them into the wall and half of them over everything is not a technique,
- *  it is a coin toss.
- *
- *  Quadratic drag makes the time to cover s metres (e^(k s) - 1)/(k v), so the RATIO of the time to
- *  the wall and the time to the goal is a constant r that does not depend on how hard he hits it.
- *  Pinning z(t) = z0 + vz t - 4.905 t^2 at both ends then leaves one unknown:
- *      t_goal = sqrt( (z0 + (zWall - z0)/r - zGoal) / (4.905 (1 - r)) ),   v = B / t_goal
- *  Returns [zGoal, v] for meShootBall, which re-derives the same launch from the pair. */
-export function meFkArc(d, z0, rng) {
-  const zg = CFG.spFkZ + rng.u() * CFG.spFkZVar;
-  const k = CFG.ballDrag, w = CFG.spWallDist, zw = CFG.bodyH + CFG.spFkWallJump;
-  // Nothing to clear: from inside about thirteen metres the wall is standing on the goal line, and
-  // once it is not comfortably nearer than the goal the solve has no answer anyway. v = 0 hands
-  // meShootBall back its own pace and the strike is the ordinary one.
-  if (d < w + CFG.spFkNear || zg >= zw) return [zg, 0];
-  const A = (Math.exp(k * w) - 1) / k, B = (Math.exp(k * d) - 1) / k, r = A / B;
-  const num = z0 + (zw - z0) / r - zg;
-  if (r >= 1 || !(num > 0)) return [zg, 0];
-  const t = Math.sqrt(num / (4.905 * (1 - r)));
-  // ...and a man can only strike a dead ball so hard and so softly. Clamped, the two constraints
-  // stop both being met and he hits the one he can: from close range that is a flatter ball into
-  // the wall, which is exactly what a free kick from eighteen metres without any dip on it does.
-  return [zg, Math.max(CFG.spFkVMin, Math.min(CFG.spFkVMax, B / t))];
 }
 
 /** A nudge rather than a kick: deflections, dispossessions, blocks. */
@@ -609,6 +606,77 @@ export function meHeadV(ux, uy, pvx, pvy, snap, dx, dy) {
   }
   if (best > 0) return { v: best, dx: ax, dy: ay };
   return fc > -2 ? { v: fv, dx: fdx, dy: fdy } : { v: (1 + e) * Math.max(0, snap), dx: ax, dy: ay };
+}
+
+// WHERE A BALL IN FLIGHT CROSSES THE LINE x = X, as it is actually going, spin and all: [y, z, seconds], or null if it
+// never gets there. For the keeper's read of a ball that bends (keeper.ts); a ball without spin is read as before.
+const _cg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0, bsp: 0, bdip: 0 };
+export function meBallCrossX(mp, X) {
+  const g = _cg; g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz; g.bsp = mp.bsp || 0; g.bdip = mp.bdip || 0;
+  const sg = Math.sign(X - g.bx) || 1;
+  for (let i = 0; i < 400; i++) {
+    const px = g.bx, py = g.by, pz = g.bz;
+    stepOnce(g);
+    if ((g.bx - X) * sg >= 0) { const f = (X - px) / ((g.bx - px) || 1e-9); return [py + (g.by - py) * f, pz + (g.bz - pz) * f, (i + f) * BALL_SUB]; }
+    if (g.bvx * sg <= 0.05) return null;
+  }
+  return null;
+}
+
+/** THE FREE KICK AT GOAL (23 November 2026). The user: "they don't actually wait for people to be in position before
+ *  striking, and a lot of them just go into the wall. Real free kicks have curve when struck at the goal." Traced over
+ *  forty of them before this: 27 struck before the wall was built, 35 with a defender inside ten yards, 19 into the wall,
+ *  one scored; and across three cloud runs a side with the Dead Ball specialist scored none at all, because the old kick
+ *  was a straight ball clipped at the keeper's side of the goal and only a mishit ever beat him.
+ *
+ *  He picks a corner (ty, tz) and strikes it with SPIN: side-spin that swings it (bsp) and top-spin that brings it down
+ *  (bdip), as much of each as he has the technique for. The launch is found by flying it: the heading and the lift that
+ *  bring this pace and this spin to the corner, by the same integrator the ball then flies on. It has to pass the wall,
+ *  over the heads in it by `margin` or round the end of it; the hardest strike that does is the one he plays, with more
+ *  dip before less pace, and from too close no strike does and it goes into them, as it does. Then his error: on the
+ *  heading, on the lift and on the spin, all smaller the better he strikes a dead ball.
+ *  o = { gx, ty, tz, sk, curl (+1 or -1), wall: [[x, y, how high he gets, his reach below head height], ...] }.  Returns what he hit: { v, w, dip, clear }. */
+const _kg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0, bsp: 0, bdip: 0 };
+export function meFkStrike(mp, rng, o) {
+  const x0 = mp.bx, y0 = mp.by, z0 = mp.bz, sg = Math.sign(o.gx - x0) || 1, d = Math.hypot(o.gx - x0, o.ty - y0);
+  const over = CFG.fkWallOver, zLow = CFG.bodyH + over;
+  // One flight of a candidate: where it crosses the goal line, and whether it passed the wall.
+  const fly = (h, vh, vz, w, dip) => { const g = _kg; g.bx = x0; g.by = y0; g.bz = z0; g.bvx = Math.cos(h) * vh; g.bvy = Math.sin(h) * vh; g.bvz = vz; g.bsp = w; g.bdip = dip;
+    let clear = true;
+    for (let i = 0; i < 400; i++) { const px = g.bx, py = g.by, pz = g.bz; stepOnce(g);
+      // A man in the way throws a leg or his body at it up to head height (m[3], his reach there) and gets up to head
+      // it as high as he can jump (m[2]) at fkWallR either side of him: match.ts, the reach of a man against a shot.
+      if (clear) for (const m of o.wall) { if (g.bz >= m[2] + over) continue; const dd = Math.hypot(g.bx - m[0], g.by - m[1]);
+        if (g.bz < zLow ? dd < m[3] : dd < CFG.fkWallR) { clear = false; break; } }
+      if ((g.bx - o.gx) * sg >= 0) { const f = (o.gx - px) / ((g.bx - px) || 1e-9); return { y: py + (g.by - py) * f, z: pz + (g.bz - pz) * f, t: (i + f) * BALL_SUB, clear }; }
+      if (g.bz <= CFG.ballR && i > 5) return { y: g.by, z: -1, t: i * BALL_SUB, clear, short: true }; }
+    return { y: g.by, z: -1, t: 4, clear, short: true }; };
+  // The heading and the lift that take pace v with this spin to his corner: corrected off five trial flights.
+  const solve = (v, w, dip) => { let h = Math.atan2(o.ty - y0, o.gx - x0) - w * d / v * 0.5, T = d / v, vz = (o.tz - z0) / T + 4.905 * T + dip * v * T * 0.5, r = null;
+    for (let it = 0; it < 6; it++) { const vh = Math.sqrt(Math.max(1, v * v - vz * vz)); r = fly(h, vh, vz, w, dip);
+      if (r.short) { vz += 1.2; continue; }
+      h -= Math.atan2(r.y - o.ty, d) * (sg > 0 ? 1 : -1); vz += (o.tz - r.z) / r.t; }
+    const vh = Math.sqrt(Math.max(1, v * v - vz * vz)); r = fly(h, vh, vz, w, dip);
+    return { h, vz, vh, ok: !r.short && Math.abs(r.y - o.ty) < 0.25 && Math.abs(r.z - o.tz) < 0.25, clear: r.clear }; };
+  const sk = o.sk, B = CFG.fkSpin0 + CFG.fkSpinSkill * sk;
+  const w = o.curl * B * (CFG.fkCurlLo + (CFG.fkCurlHi - CFG.fkCurlLo) * rng.u()), dipMax = Math.sqrt(Math.max(0, B * B - w * w));
+  const vTop = Math.min(CFG.spFkVMax, CFG.fkV0 + CFG.fkVSkill * sk);
+  let pick = null, last = null, pv = 0, pd = 0;
+  for (let v = vTop; v >= CFG.spFkVMin - 0.01 && !pick; v -= 1.5)
+    for (let k = 0; k <= 4 && !pick; k++) { const dip = dipMax * k / 4, cand = solve(v, w, dip); last = cand; pv = v; pd = dip; if (cand.ok && cand.clear) pick = cand; }
+  const c = pick || last;
+  // His error, with the tail a real strike has (as meShootBall's): the heading in degrees, the lift in metres a second,
+  // the spin a share.
+  const tri = () => Math.max(-3, Math.min(3, Math.sqrt(-2 * Math.log(Math.max(1e-9, rng.u()))) * Math.cos(2 * Math.PI * rng.u()))), lack = Math.max(0, 1 - sk);
+  const h = c.h + tri() * (CFG.fkAim0 + CFG.fkAimSkill * lack) * Math.PI / 180;
+  const vz = c.vz + tri() * (CFG.fkLift0 + CFG.fkLiftSkill * lack);
+  const sw = 1 + tri() * (CFG.fkSpinErr0 + CFG.fkSpinErrSkill * lack);
+  mp.bvx = Math.cos(h) * c.vh; mp.bvy = Math.sin(h) * c.vh; mp.bvz = vz;
+  mp.bsp = w * sw; mp.bdip = pd * sw; mp._spinNew = true;
+  mp.bz = Math.max(mp.bz, CFG.ballR);
+  mp.gkPlan = null;
+  meBallPredict(mp);
+  return { v: pv, w: mp.bsp, dip: mp.bdip, clear: !!pick };
 }
 
 export function meKnock(mp, rng, tx, ty, speed, vz) {

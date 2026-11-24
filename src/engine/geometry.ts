@@ -257,7 +257,15 @@ export function meOffsideLine(s, side) {
 // most of a second before he is at full speed in a new direction falls out of the model -- a man
 // running away from the ball is now genuinely further from it than one standing still.
 import { CFG, ME_DT } from "./config";
-import { meAerial, meAttrs, meSpeed } from "./attributes";
+import { meAerial, meAttrs, meDefQ, meSpeed } from "./attributes";
+// PRESSURE AS THE MEN APPLYING IT MAKE IT (attributes.ts meDefQ): mePressure with each man counted for what he is. What a
+// strike, a touch and a shot are hurried by. The decision's own read of pressure stays the count of bodies (mePressure):
+// a man sees that he is being closed down, not how good the man doing it is.
+export function mePressQ(s, side, x, y) {
+  const opp = s.players[meOther(side)]; let pr = 0;
+  for (const q of opp) { if (!q || q.off) continue; const d = Math.hypot(q.x - x, q.y - y); if (d < 6) pr += (6 - d) / 6 * meDefQ(q); }
+  return pr;
+}
 export function meTimeToBallMs(p, tx, ty, vmax, lagMul, seenMs) {
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT;      // per-slice displacement -> m/s
   const rawD = Math.hypot(tx - p.x, ty - p.y);

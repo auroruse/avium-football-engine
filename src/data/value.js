@@ -10,7 +10,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // Rating: dollars at each anchor, read between them on a log scale, so the top end climbs the way a market does.
 const BASE = [[35, 10e3], [40, 20e3], [50, 60e3], [60, 250e3], [70, 1.2e6], [75, 4e6], [80, 12e6], [87, 50e6], [93, 150e6]];
-function base(ovr) {
+export function valueBase(ovr) {
   let i = 1;
   while (i < BASE.length - 1 && ovr > BASE[i][0]) i++;
   const [a, va] = BASE[i - 1], [b, vb] = BASE[i];
@@ -21,7 +21,7 @@ function base(ovr) {
 // his age is worth more than the same rating at 27.
 const DECLINE = { 28: 0.9, 29: 0.8, 30: 0.68, 31: 0.55, 32: 0.43, 33: 0.33, 34: 0.25, 35: 0.18, 36: 0.13, 37: 0.09 };
 const YOUTH = { 17: 0.9, 18: 0.8, 19: 0.65, 20: 0.5, 21: 0.35, 22: 0.2, 23: 0.1 };
-function ageFactor(age, ovr, gk) {
+export function ageFactor(age, ovr, gk) {
   const a = gk ? age - 2 : age;
   if (a >= 38) return 0.06;
   if (a >= 28) return DECLINE[a];
@@ -50,7 +50,7 @@ const round2 = (v) => { if (!(v > 0)) return 0; const p = Math.pow(10, Math.floo
 export function valueOf({ ovr, age = null, pos = null, trend = 0, leagueMean = null }) {
   if (ovr == null || !Number.isFinite(+ovr)) return null;
   const g = posGroup(pos);
-  return round2(base(+ovr) * (age == null ? 1 : ageFactor(age, +ovr, g === "GK")) * POS[g] * trendFactor(trend) * leagueFactor(leagueMean));
+  return round2(valueBase(+ovr) * (age == null ? 1 : ageFactor(age, +ovr, g === "GK")) * POS[g] * trendFactor(trend) * leagueFactor(leagueMean));
 }
 
 // A name as both the archive and the records can be matched on: accents, case, spaces and punctuation dropped.

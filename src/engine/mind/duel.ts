@@ -13,6 +13,7 @@
 // where he came from and how hard. A beaten man is beaten: he has to turn and chase. And a side that
 // fouls on purpose to stop a break, does so.
 import { CFG, ME_DT, ME_HOME_ADV } from "../config";
+import { ME_CALL } from "../referee";
 import { meAttrs, meBadgeFx, meDefLow, meMind, meSpeed, meTech } from "../attributes";
 import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meOther, meThruCover } from "../geometry";
 import { meCarrierPos } from "../brain";
@@ -91,6 +92,13 @@ export function mindCarrier(s, side, i) {
         else if (dsk > 0.55 && mindRand(M) < 0.6) mv = { k: "feint", t: 3, sgn, sell: dsk };
         else mv = { k: "cut", t: 3, sgn };
         p.takeOns = (p.takeOns || 0) + 1;        // a take-on tried, whether or not anybody tackles
+        // THE BETTER MAN WRONG-FOOTS HIM (22 November 2026, the user: players "don't play like real players of their
+        // caliber"). Traced over 842 moves among the best national sides, a dribbler well clear of his man in skill went
+        // past him 23% of the time and one well short of him 30%: the move's pace and the defender's bite both carry
+        // skill, and neither decided anything. The defender now loses his feet for a moment as the move is made -- a
+        // slice against his equal, more the better the dribbler is than he is a tackler, none against a better man --
+        // and moves at wrongEff of his pace until he has them back (mind/team.ts, mindTick).
+        dq._wfT = mp.tick + Math.round(clamp(MT.wrongBase + (dsk - tackSkill(dq)) * MT.wrongGap, 0, MT.wrongMax));
       }
       if (mv) mv.at = mp.tick;
       p._mv = mv;
@@ -175,7 +183,10 @@ export function mindDuel(s, rng, out, foul) {
   // referee calls the visitor's challenges a little more readily and the host's a little less (`ref`).
   const hostSd = s.homeAdv === "home" || s.homeAdv === "away" ? s.homeAdv : null;
   const hSign = hostSd ? (def === hostSd ? 1 : -1) : 0;
-  const hDuel = hSign * (ME_HOME_ADV.duel || 0) * ME_HOME_ADV.k, hFoul = 1 - hSign * (ME_HOME_ADV.refRoll || 0) * ME_HOME_ADV.k;
+  // (The referee left the foul roll on 24 November 2026: whether a foul is GIVEN is his, from where he stood, and the
+  // crowd works on him there -- referee.ts meRefJudge. hFoul is now only how often a foul happens at all, ME_CALL.occK;
+  // with the old referee switched back on for an A/B it is the old lean.)
+  const hDuel = hSign * ((globalThis.__refOff ? ME_HOME_ADV.duelOld : ME_HOME_ADV.duel) || 0) * ME_HOME_ADV.k, hFoul = globalThis.__refOff ? 1 - hSign * (ME_HOME_ADV.refRoll || 0) * ME_HOME_ADV.k : ME_CALL.occK;
   const gx = meGoalX(atk);                                     // the goal we defend
   const inBoxC = (q) => Math.abs(q.x - gx) < CFG.gkBoxR && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW;
   const dBC = Math.hypot(mp.bx - c.x, mp.by - c.y);
@@ -211,9 +222,13 @@ export function mindDuel(s, rng, out, foul) {
     const covered = us.some((q, j) => j !== i && q && !q.off && q.pos !== "GK" && !((q._beat ?? 0) > 0)
       && Math.hypot(q.x - c.x, q.y - c.y) < MT.coverR
       && ((q.x - c.x) * ux + (q.y - c.y) * uy) / (ul * Math.max(0.1, Math.hypot(q.x - c.x, q.y - c.y))) > -0.2);
-    const pWin = clamp(0.12 + 0.52 * exposed + 0.34 * (tk - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel, 0.03, 0.9);
-    const pSeen = tkS === tk ? pWin
-      : clamp(0.12 + 0.52 * exposed + 0.34 * (tkS - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel, 0.03, 0.9);
+    const pWin = clamp(0.12 + 0.52 * exposed + 0.34 * (tk - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel
+                       - (meBadgeFx(c).ride ?? 0), 0.03, 0.9);                                 // RIDES TACKLES (the carrier's badge)
+    // ...but the crowd is not in his own estimate. It was, and the host's bar fell as the visitor's rose: the host tried
+    // 23.3 tackles a match to the visitor's 7.1 (14 a side on neutral ground), and most of the home edge came from a
+    // visitor who stopped tackling (cloud runs 45332817745 and 45332817448; ME_HOME_ADV in config.ts).
+    const pSeen = clamp(0.12 + 0.52 * exposed + 0.34 * (tkS - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0)
+                        - (tkS === tk ? (meBadgeFx(c).ride ?? 0) : 0), 0.03, 0.9);
     // HIS BAR. He goes when he likes his chances well enough; how well is temperament and the moment.
     // A side told to get stuck in goes sooner, a booked man later, a man delaying a break later still,
     // and a last man with the ball about to be past him has no bar at all.
@@ -237,18 +252,28 @@ export function mindDuel(s, rng, out, foul) {
     p._tkCool = CFG.tkCool;
     out.tackleTry = (out.tackleTry || 0) + 1;
     (out.tackleTrySide = out.tackleTrySide || { home: 0, away: 0 })[def]++;
-    if (rng.u() < pWin) { foul.won(p, i, c); return; }
+    const closeV = Math.max(0, ((p.vx || 0) * (c.x - p.x) + (p.vy || 0) * (c.y - p.y)) / Math.max(0.3, pick.dP) / ME_DT);
+    // Won cleanly -- unless the referee, badly placed, gives it against him anyway (a soft one).
+    if (rng.u() < pWin) { if (!globalThis.__refOff && foul.soft(p, c, closeV)) return; foul.won(p, i, c, closeV, slide); return; }
     // MISSED. Whether it is a foul is where he came from and how he came: from behind, on the floor,
     // at pace, and not good enough to be sure of it.
-    const closeV = Math.max(0, ((p.vx || 0) * (c.x - p.x) + (p.vy || 0) * (c.y - p.y)) / Math.max(0.3, pick.dP) / ME_DT);
     const pFoul = clamp(0.13 + 0.40 * behind + (slide ? 0.20 : 0) + 0.04 * closeV - 0.22 * tackSkill(p)
-                        + (st.tackling || 0) * 0.05, 0.03, 0.85) * (meBadgeFx(p).foul ?? 1) * (inBoxC(c) ? MT.boxTackleFoul : 1);
-    if (rng.u() < pFoul * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]); foul.commit(p, c, closeV); return; }
+                        + (st.tackling || 0) * 0.05, 0.03, 0.85) * (meBadgeFx(p).foul ?? 1) * (inBoxC(c) ? MT.boxTackleFoul : 1) * (1 + (meBadgeFx(c).draw ?? 0));   // DRAWS THE FOUL (the carrier's)
+    if (rng.u() < pFoul * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]);
+      if (foul.commit(p, c, closeV)) return;
+      // NOT GIVEN. He has gone through the man and the referee has waved it away: as often as not he comes out with
+      // the ball, and otherwise the carrier rides it and he is left behind like any man beaten.
+      if (rng.u() < ME_CALL.missWon) { foul.won(p, i, c, undefined, slide); return; } }
     // Beaten: committed and gone past, he has to turn and run.
     p._beat = slide ? CFG.tkBeatT + 6 : CFG.tkBeatT;
-    foul.beaten(p, c);
+    foul.beaten(p, c, slide);
     return;
   }
+  // THE MAN WHO HAS JUST FOULED, WITH ADVANTAGE PLAYED, does not go for him again while it runs. Left behind and beaten,
+  // he was the first man the foul on purpose looks for (a beaten man beside a break), so he hacked the same player a
+  // second later, took a booking for that and a second for the one in the referee's pocket: sendings-off rose by half
+  // with advantage on (cloud run 45299932594, 0.235 a match against 0.153).
+  const advMan = mp.adv && mp.adv.open ? mp.adv.q : null;
   // CONTACT. Most fouls in football are not tackles: a man tight on the carrier holds him, leans on him,
   // climbs on a man shielding it. A slice spent body to body is a chance of it -- more for a side told to
   // get stuck in, a defender who cannot tackle, a man coming from behind, a strong carrier who invites
@@ -257,20 +282,21 @@ export function mindDuel(s, rng, out, foul) {
     const inBox = Math.abs(c.x - gx) < CFG.gkBoxR && Math.abs(c.y - ME_HALF_W) < CFG.boxHalfW;
     const cs = meTech(meAttrs(c).strength);
     for (const p of us) {
-      if (!p || p.off || p.pos === "GK") continue;
+      if (!p || p.off || p.pos === "GK" || advMan === p) continue;
       const dP = Math.hypot(p.x - c.x, p.y - c.y);
       if (dP > 1.5) continue;
       const ux = gx - c.x, uy = ME_HALF_W - c.y, ul = Math.hypot(ux, uy) || 1;
       const front = ((p.x - c.x) * ux + (p.y - c.y) * uy) / (ul * Math.max(0.1, dP));
       const pC = MT.contactFoul * (1 + (st.tackling || 0) * 0.6) * (1.3 - tackSkill(p)) * (0.6 + cs)
-               * (front < -0.2 ? 1.6 : 1) * ((p.yc || 0) ? 0.5 : 1) * (inBox ? MT.boxContactFoul : 1) * (meBadgeFx(p).foul ?? 1);
+               * (front < -0.2 ? 1.6 : 1) * ((p.yc || 0) ? 0.5 : 1) * (inBox ? MT.boxContactFoul : 1) * (meBadgeFx(p).foul ?? 1) * (1 + (meBadgeFx(c).draw ?? 0));
+      // (A hold or a push the referee does not give is just play going on.)
       if (rng.u() < pC * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["contact", inBox]); foul.commit(p, c, 0.6); return; }
     }
   }
   // THE FOUL ON PURPOSE. A man who has just been beaten, or is chasing from behind, with the dribbler
   // breaking into space toward goal: a side that does this stops the break and takes the card.
   for (const p of us) {
-    if (!p || p.off || p.pos === "GK") continue;
+    if (!p || p.off || p.pos === "GK" || advMan === p) continue;
     const dP = Math.hypot(p.x - c.x, p.y - c.y);
     if (dP > 1.7) continue;
     const ux = gx - c.x, uy = ME_HALF_W - c.y, ul = Math.hypot(ux, uy) || 1;
@@ -282,6 +308,9 @@ export function mindDuel(s, rng, out, foul) {
     if (back > 3 || danger < 0.04) continue;
     const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2) * (meBadgeFx(p).foul ?? 1)
                * (inBoxC(c) ? MT.boxCynFoul : 1);
-    if (rng.u() < pCyn * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]); foul.commit(p, c, 1.5); return; }
+    if (rng.u() < pCyn * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]);
+      // (Not given, the trip has still done its work half the time: the ball is his.)
+      if (!foul.commit(p, c, 1.5) && rng.u() < ME_CALL.missWon) foul.won(p, us.indexOf(p), c);
+      return; }
   }
 }

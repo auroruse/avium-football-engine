@@ -12,7 +12,7 @@ import { meBadgeFx, meMind } from "../attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meOther } from "../geometry";
 import { MT } from "./tune";
 
-const NI = 22, NF = 5;            // men in the memory table, fields per man: x, y, vx, vy, tick
+const NI = 22, NF = 6;            // men in the memory table, fields per man: x, y, vx, vy, tick, tick this run of sightings began
 
 // Fixed slot in the memory table: home 0..10, away 11..21. Substitutes take the man's index with his
 // place in the array, which is how meSub already works.
@@ -53,7 +53,7 @@ function initMan(s, p, side, i) {
     for (let j = 0; j < ps.length; j++) {
       const q = ps[j], k = mindIx(sd, j) * NF;
       if (!q) continue;
-      m[k] = q.x; m[k + 1] = q.y; m[k + 2] = q.vx || 0; m[k + 3] = q.vy || 0; m[k + 4] = t;
+      m[k] = q.x; m[k + 1] = q.y; m[k + 2] = q.vx || 0; m[k + 3] = q.vy || 0; m[k + 4] = t; m[k + 5] = t;
     }
   }
 }
@@ -84,9 +84,16 @@ export function mindSense(s) {
       // ---- THE BODY ----------------------------------------------------------------------------
       const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v = Math.hypot(vx, vy);
       const toB = Math.atan2(by - p.y, bx - p.x), dB = Math.hypot(bx - p.x, by - p.y);
+      const wdx = p.x - (p._px ?? p.x), wdy = p.y - (p._py ?? p.y), wv = Math.hypot(wdx, wdy) / ME_DT;
       let want;
       if (onBall) want = p._drbA != null ? p._drbA : v > 0.5 ? Math.atan2(vy, vx) : toB;
       else if (p.pos === "GK") want = toB;
+      // AT A DEAD BALL HE FACES THE WAY HE WALKS (user, 22 November 2026: players "don't change direction during set
+      // events"). Below runFaceV a man faces the ball, which is right for a defender backing off in open play and wrong
+      // for one walking forty metres to a corner: the walk to a restart's mark is under that pace by design (spWalk*),
+      // so he went the whole way sideways or backwards. Read off the ground he actually covered this slice, because the
+      // referee's walk out of the area at a penalty moves him without giving him a velocity.
+      else if (mp.sp && wv > MT.walkFaceV) want = Math.atan2(wdy, wdx);
       else if (v > MT.runFaceV) want = Math.atan2(vy, vx);
       else {
         // Standing or shuffling he faces the ball -- and if his side has it and it may come to him, he
@@ -115,7 +122,8 @@ export function mindSense(s) {
         // forward on the half-turn -- and least with it at his own feet.
         const expect = ours && !onBall && p.pos !== "GK" && dB > 4 && dB < 32;
         const mult = onBall ? MT.scanOnBall : expect ? MT.scanRecv : 1;
-        const rateS = (MT.scanLo + (MT.scanHi - MT.scanLo) * aw) * mult;
+        // SHOULDER CHECK and BALL WATCHER (badges): how often is also his habit.
+        const rateS = (MT.scanLo + (MT.scanHi - MT.scanLo) * aw) * mult * Math.max(0.1, 1 + (meBadgeFx(p).scan ?? 0));
         if (p.pos !== "GK" && mindRand(M) < rateS * ME_DT) {
           p._scanSide = -p._scanSide;
           // Over a shoulder: the half of the pitch behind him relative to the ball, the half he
@@ -144,6 +152,8 @@ export function mindSense(s) {
           if (!seen && d < MT.hearR && mindRand(M) < MT.hearP * (0.4 + 0.6 * aw)) seen = true;
           if (!seen) continue;
           const k = mindIx(sd, j) * NF, e = d * nz;
+          // HOW LONG HE HAS HAD HIM IN SIGHT (mindThink): a glance away (memGap) does not start the count again.
+          if (tick - m[k + 4] > MT.memGap) m[k + 5] = tick;
           m[k] = q.x + gauss(M) * e; m[k + 1] = q.y + gauss(M) * e;
           m[k + 2] = (q.vx || 0) * (1 + gauss(M) * vz); m[k + 3] = (q.vy || 0) * (1 + gauss(M) * vz);
           m[k + 4] = tick;
@@ -154,7 +164,11 @@ export function mindSense(s) {
       // blind side. How often somebody shouts is how well drilled the side is.
       const target = onBall || (mp.flight && mp.fside === side && mp.fj === i);
       if (target) {
-        const callP = MT.callLo + MT.callDrill * drill;
+        // MAN ON (badge): a talker within callerR of him shouts it more often.
+        let talk = 0;
+        for (const tm of ps) { if (!tm || tm.off || tm === p) continue; const c = meBadgeFx(tm).call;
+          if (c > talk && Math.hypot(tm.x - p.x, tm.y - p.y) < MT.callerR) talk = c; }
+        const callP = MT.callLo + MT.callDrill * drill + talk + (meBadgeFx(p).selfCall ?? 0);   // (SHOULDER CHECK: he has looked for himself)
         const opp = s.players[meOther(side)], os = meOther(side);
         for (let j = 0; j < opp.length; j++) {
           const q = opp[j];
@@ -181,7 +195,8 @@ export function mindSeen(s, p, side, j) {
   return { x: Math.max(0.5, Math.min(PITCH_L - 0.5, m[k] + m[k + 2] * ext)),
            y: Math.max(0.5, Math.min(PITCH_W - 0.5, m[k + 1] + m[k + 3] * ext)),
            vx: age > MT.memFade ? m[k + 2] * 0.4 : m[k + 2],
-           vy: age > MT.memFade ? m[k + 3] * 0.4 : m[k + 3], age };
+           vy: age > MT.memFade ? m[k + 3] * 0.4 : m[k + 3], age,
+           known: s.mePos.tick - m[k + 4] <= MT.memGap ? m[k + 4] - m[k + 5] : 0 };
 }
 
 // THE WORLD AS HE SEES IT. A view of the state in which every other player stands where this man's
@@ -200,7 +215,7 @@ export function mindLens(s, side, i, at) {
   const key = mp.tick * 64 + mindIx(side, i) + (at ? 32 : 0);
   if (!at && p._lensK === key) return p._lens;
   const aw = mindAware(p);
-  const visMem = MT.visMemLo + (MT.visMemHi - MT.visMemLo) * aw;
+  const visMem = Math.max(1, MT.visMemLo + (MT.visMemHi - MT.visMemLo) * aw + (meBadgeFx(p).mem ?? 0));
   const visR = MT.visRangeLo + (MT.visRangeHi - MT.visRangeLo) * aw;
   const view = Object.create(s);
   view.players = { home: [], away: [] };
@@ -217,7 +232,7 @@ export function mindLens(s, side, i, at) {
       }
       const b = mindSeen(s, p, sd, j);
       const o = Object.create(q);
-      o.x = b.x; o.y = b.y; o.vx = b.vx; o.vy = b.vy; o._age = b.age;
+      o.x = b.x; o.y = b.y; o.vx = b.vx; o.vy = b.vy; o._age = b.age; o._known = b.known;
       if (sd === side && q.pos !== "GK" && (b.age > visMem || Math.hypot(b.x - sx, b.y - sy) > visR)) o.off = true;
       arr.push(o);
     }

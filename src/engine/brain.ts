@@ -1612,7 +1612,7 @@ export function meKeeperPos(s, side, i) {
   const judge = (salt) => {
     let h = (Math.imul(salt | 0, 2654435761) ^ Math.imul(i + 7, 40503)) >>> 0;
     h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
-    return ((h >>> 8) / 16777216 * 2 - 1) * (1 - gkk) * CFG.gkJudgeMs;
+    return ((h >>> 8) / 16777216 * 2 - 1) * (1 - gkk) * CFG.gkJudgeMs * (1 - (meBadgeFx(p).judge ?? 0));   // (COMMANDING, badge: he reads the race better)
   };
   // 0. A BALL OF OURS RUNNING INTO OUR NET, beyond the man it belongs to (match.ts, _ownIn), is his.
   if (mp._ownIn === side) {

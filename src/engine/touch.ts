@@ -11,7 +11,7 @@
 // ball moved, so the ball rolled free most of the time on whatever line it last had. On the old heavy
 // pitch it died before it got far; on real grass it ran over the touchline with nobody near him.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meBadgeFx, mePassBadge, meSpeed, meTech } from "./attributes";
+import { meAttrs, meBadgeFx, meDefQ, mePassBadge, meSpeed, meTech } from "./attributes";
 import { PITCH_L, PITCH_W, meOther } from "./geometry";
 import { meGroundSpeed } from "./ball";
 
@@ -122,6 +122,16 @@ const gauss = (rng) => {
 
 // The nearest opponent to (x, y), keepers included -- a keeper on you is as much a man on you as a
 // centre-half is.
+/** ...and what the nearest of them is worth as a presence (attributes.ts meDefQ): 1 with nobody there. */
+export function meTouchNearQ(s, side, x, y) {
+  let d = Infinity, w = 1;
+  for (const q of s.players[meOther(side)] || []) {
+    if (!q || q.off) continue;
+    const e = Math.hypot(q.x - x, q.y - y);
+    if (e < d) { d = e; w = meDefQ(q); }
+  }
+  return w;
+}
 export function meTouchNear(s, side, x, y) {
   let d = Infinity;
   for (const q of s.players[meOther(side)] || []) {
@@ -204,11 +214,13 @@ export function meFirstTouch(s, rng, side, p, px, py, pvx, pvy, z, reach, uAng) 
   const pv = Math.hypot(pvx, pvy);
   const fx = pv > 1.5 ? pvx / pv : -bdx, fy = pv > 1.5 ? pvy / pv : -bdy;
   const turn = (1 - (fx * ux + fy * uy)) / 2;
-  const press = clamp(1 - (near - 1) / CFG.ftPressR, 0, 1);
+  const press = clamp(1 - (near - 1) / CFG.ftPressR, 0, 1) * meTouchNearQ(s, side, px, py)    // ...by the man he is
+              * (1 - (meBadgeFx(p).resist ?? 0));                                              // PRESS RESISTANT (badge)
   // Turning is only hard with somebody there to turn into: ftTurnLo of it with nobody near.
   const turnD = turn * (CFG.ftTurnLo + (1 - CFG.ftTurnLo) * press);
-  let D = CFG.ftD0 + CFG.ftDv * clamp((vrel - CFG.ftVEasy) / CFG.ftVSpan, 0, 1.5) + CFG.ftDz * air
-          + CFG.ftDs * stretch * stretch + CFG.ftDt * turnD + CFG.ftDp * press;
+  // WITH NOBODY ON HIM HE TAKES IT WITH CARE (ftFree): the ball's pace, height and line cost a free man less.
+  let D = (CFG.ftD0 + CFG.ftDv * clamp((vrel - CFG.ftVEasy) / CFG.ftVSpan, 0, 1.5) + CFG.ftDz * air
+          + CFG.ftDs * stretch * stretch + CFG.ftDt * turnD) * (CFG.ftFree + (1 - CFG.ftFree) * Math.min(1, press)) + CFG.ftDp * press;
   // INTO THE RIGHT FOOT (badges: crisp). A ball of his kind from a passer known for it arrives the way the receiver
   // wants it, and is that much easier to take.
   const kb = mp.kickBy?.[0], pk = mp._passK;

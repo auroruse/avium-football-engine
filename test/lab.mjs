@@ -48,7 +48,7 @@ const KS = ["feet", "thru", "long", "sw", "over", "cross", "gk", "flick"];
 const passBook = () => ({ n: 0, ok: 0, d: 0, fwd: 0, long: 0, back: 0, high: 0, own60: 0, set: 0,
   kn: Object.fromEntries(KS.map(k => [k, 0])), kok: Object.fromEntries(KS.map(k => [k, 0])) });
 const ORG = ["feet", "thru", "long", "cross", "hdr", "solo", "set"];
-const shotBook = () => ({ n: 0, xg: 0, d: 0, hdr: 0, fast: 0, xgFast: 0,
+const shotBook = () => ({ n: 0, xg: 0, d: 0, hdr: 0, fast: 0, xgFast: 0, nFar: 0, gFar: 0, gTap: 0, gFt: 0, hdrN: 0,
   org: Object.fromEntries(ORG.map(k => [k, 0])), oxg: Object.fromEntries(ORG.map(k => [k, 0])) });
 const r4 = (v) => Number.isFinite(v) ? Math.round(v * 1e4) / 1e4 : 0;
 
@@ -187,6 +187,11 @@ export function play(E, hT, aT, seed) {
   for (const r of globalThis.__shots) {
     const S = SH[r.side]; if (!S) continue;
     S.n++; S.xg += r.xg; S.d += r.d; if (r.hdr) S.hdr++;
+    // the goal mix (22 November 2026): shots and goals with the foot from outside the area, first-time goals from
+    // inside eleven metres (the tap-in), every first-time goal, and headers at goal
+    if (r.hdr) S.hdrN++;
+    else { if (r.d > 16.5) { S.nFar++; if (r.out === "goal") S.gFar++; }
+           if (r.out === "goal" && r.ft) { S.gFt++; if (r.d < 11) S.gTap++; } }
     if ((r.pt ?? -1) >= 0 && r.pt < 40) { S.fast++; S.xgFast += r.xg; }
     const f = r.hdr ? "hdr" : (r.from || "-");
     const g = f === "hdr" ? "hdr" : f === "cross" ? "cross" : f === "through" || f === "space" || f === "over" ? "thru"
@@ -218,6 +223,7 @@ export function play(E, hT, aT, seed) {
       cLong: r4((S.kok.long + S.kok.sw + S.kok.over) / ((S.kn.long + S.kn.sw + S.kn.over) || 1)), cCross: r4(S.kok.cross / (S.kn.cross || 1)),
       carry: out.carriesSide?.[sd] ?? 0, drib: sum("dribbles"), tko: sum("takeOns"), disp: sum("duelLost"), aer: sum("aerials"),
       sh: out.shots[sd], sot: out.onTarget[sd], xgps: r4(H.xg / (H.n || 1)), shd: r4(H.d / (H.n || 1)), hdr: r4(H.hdr / (H.n || 1)),
+      sh_far: H.nFar, g_far: H.gFar, g_tap: H.gTap, g_ft: H.gFt, sh_hdr: H.hdrN,
       fast: H.fast, xgFast: r4(H.xgFast), g_hdr: GF[sd].hdr || 0, g_pen: GF[sd].pen || 0, g_foot: GF[sd].foot || 0, g_oth: (GF[sd].ns || 0) + (GF[sd].sp || 0),
       g_ns: GF[sd].ns || 0, g_sp: GF[sd].sp || 0,
       g_fk: GF[sd].fk || 0, fkTry: FK.filter(f => f.side === sd).length, fkD: r4(FK.filter(f => f.side === sd).reduce((t, f) => t + f.d, 0)),

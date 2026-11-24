@@ -55,9 +55,10 @@ export const ownersOf = (editors, t) => [...new Set([
   ...(isNational(t) ? [] : Object.entries(editors?.clubs || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u))])];
 
 // What an editor may change on a team of their own outright, and what goes to the overseer as a request.
-// A side's ground is its editors' outright (Moukden and Kirin, 26 October 2026: "Let editors change their own grounds directly").
-const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "stadium", "formation", "style", "manager", "squad", "timeWasting"]);
-const BY_REQUEST = new Set(["code", "location"]);
+// A side's ground is its editors' outright (Moukden and Kirin, 26 October 2026: "Let editors change their own grounds directly"),
+// and its city and capacity with it (21 November 2026, the editor rethought: "a ground, a city or a capacity, at once").
+const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting"]);
+const BY_REQUEST = new Set(["code"]);
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 // EVERY SQUAD HAS TWENTY-TWO PLACES, a club's as a national side's (Moukden and Kirin, 12 October 2026: "clubs will also be
 // given 11-man benches"). A club squad of sixteen (asked for before then, or kept on a form) takes its six new places open.
@@ -149,7 +150,7 @@ function valueProblems(rec, next, changes) {
 
 // Whether a set of changed teams still adds up: squads the same size, no man twice in one squad or at two clubs, eleven
 // starters each, nobody retired.
-function squadProblems(rec, next, keys, h) {
+export function squadProblems(rec, next, keys, h) {
   const out = [], base = new Map(rec.teams.map(t => [teamKey(t), t])), retired = new Set(next.players.filter(r => r.retired).map(r => r.id));
   const known = new Set(next.players.map(r => r.id));
   const clubs = new Map();
@@ -379,6 +380,10 @@ export function clubLevel(t, pos, h, skip = -1) {
     if (c < best) { best = c; at = [k]; } else if (c === best) at.push(k); }
   return at.length ? Math.max(...at.map(k => h.ovr(sq[k]) ?? 0)) : null;
 }
+// WHAT GOES LIVE WITHOUT THE OVERSEER (Moukden and Kirin, 21 November 2026, the editor rethought: "Your 3 others are good"):
+// an editor's new player rated at or under his side's level for him, made into one of their own sides. A man with no
+// rating, or rated over it, waits for the overseer as before. `t` is the side as it stands.
+export const liveNewMan = (t, m, h) => !!t && rating(m?.ovr) && posOk(m.pos) && (() => { const lvl = clubLevel(t, m.pos, h); return lvl != null && m.ovr <= lvl; })();
 // SETTLING MANY AT ONCE (Moukden and Kirin, 21 November 2026, with 143 new men waiting from one save: one answer for a
 // whole approval). answers: [{ id, action: "accept" | "decline" | "withdraw", edits?, note? }], taken in order, each
 // against the records as the ones before it left them, exactly as if answered one after another; `judgeOf` gives how
@@ -681,13 +686,23 @@ function planSave0(rec, editors, pending, login, cart, h, now = new Date().toISO
   }
 
   // New records: the overseer answers an editor's; the overseer's own go straight in.
+  const sideNow = (k) => (k ? applyDraft(rec, live).teams.find(t => teamKey(t) === k) : null);
   for (const n of news) {
     // Checked against the records as they will stand once this cart is in: a place it opens is a place he can take.
     const probs = newProblems(applyDraft(rec, live), n, scope, over, h);
     if (probs.length) { errors.push(...probs); continue; }
     const fields = Object.fromEntries(Object.entries(n).filter(([f]) => f !== "id"));
-    if (over) { const made = createDraft(rec, live, fields, h); if (made.errors.length) errors.push(...made.errors);
-      else { live = made.d; for (const t of live.add?.teams || []) touched.add(teamKey(t)); } continue; }
+    const make = (f) => { const made = createDraft(rec, live, f, h); if (made.errors.length) { errors.push(...made.errors); return false; }
+      live = made.d; for (const t of live.add?.teams || []) touched.add(teamKey(t)); if (f.side) dealt.add(f.side); return true; };
+    if (over) { make(fields); continue; }
+    // An editor's new man at or under his side's level goes in now; a list's men who pass go in now, the rest wait.
+    if (n.what === "players" && n.side && liveNewMan(sideNow(n.side), fields, h)) { make(fields); continue; }
+    if (n.what === "batch" && n.side) {
+      const T = sideNow(n.side), pass = (fields.men || []).filter(m => liveNewMan(T, m, h)), rest = (fields.men || []).filter(m => !pass.includes(m));
+      if (pass.length && !make({ ...fields, men: pass })) continue;
+      if (!rest.length) continue;
+      fields.men = rest;
+    }
     requests.push({ ...base, id: newId(), kind: "new", what: n.what, teamName: n.name, rec: fields, needs: { [OVERSEER]: editors?.overseers || [] }, locks: menLocks({ rec: fields }) });
   }
   if (over || dealt.size) errors.push(...squadProblems(rec, applyDraft(rec, live), over ? new Set([...touched, ...dealt]) : dealt, h));

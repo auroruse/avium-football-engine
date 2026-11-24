@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="Shot Stopper (bronze)">
+<defs>
+<linearGradient id="mbronze" x1="0.21" y1="0.09" x2="0.79" y2="0.91"><stop offset="0" stop-color="#e0a071"/><stop offset="0.26" stop-color="#a05f2c"/><stop offset="0.5" stop-color="#4f2a12"/><stop offset="0.74" stop-color="#a05f2c"/><stop offset="1" stop-color="#e0a071"/></linearGradient>
+<filter id="sbronze" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1" stdDeviation="0.9" flood-color="#000" flood-opacity="0.5"/></filter>
+</defs>
+<path d="M50 5 L88.97 27.5 L88.97 72.5 L50 95 L11.03 72.5 L11.03 27.5 Z" fill="#4f2a12" stroke="#4f2a12" stroke-width="7" stroke-linejoin="round"/>
+<path d="M50 9 L85.51 29.5 L85.51 70.5 L50 91 L14.49 70.5 L14.49 29.5 Z" fill="url(#mbronze)" stroke="url(#mbronze)" stroke-width="4" stroke-linejoin="round"/>
+<path d="M50 14.5 L80.74 32.25 L80.74 67.75 L50 85.5 L19.26 67.75 L19.26 32.25 Z" fill="none" stroke="#e0a071" stroke-opacity="0.55" stroke-width="1.2" stroke-linejoin="round"/>
+<g filter="url(#sbronze)"><circle cx="71" cy="29" r="6.4" fill="#ffffff"/><path d="M71 26.31 L73.56 28.17 L72.58 31.17 L69.42 31.17 L68.44 28.17 Z" fill="#1d2026"/><rect x="38.5" y="31" width="5.8" height="18" rx="2.9" fill="#ffffff"/><rect x="45.4" y="31" width="5.8" height="18" rx="2.9" fill="#ffffff"/><rect x="52.3" y="31" width="5.8" height="18" rx="2.9" fill="#ffffff"/><rect x="59.2" y="31" width="5.8" height="18" rx="2.9" fill="#ffffff"/><rect x="37.5" y="44" width="28" height="23" rx="7" fill="#ffffff"/><g transform="rotate(-38 33 56)"><rect x="29.5" y="46" width="7" height="17" rx="3.5" fill="#ffffff"/></g><rect x="40" y="68.5" width="23" height="6" rx="2" fill="#ffffff"/><circle cx="50" cy="85.5" r="2.4" fill="#ffffff"/></g>
+</svg>

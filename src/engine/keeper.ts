@@ -16,7 +16,7 @@
 import { CFG, ME_DT } from "./config";
 import { meAttrs, meBadgeFx, meGkDiveV, meGkLow, meGkReact, meGkSkill, meSpeed } from "./attributes";
 import { ME_HALF_W, meGoalX, meKeeperIx, meOther } from "./geometry";
-import { GOAL_HALF_W } from "./ball";
+import { GOAL_HALF_W, meBallCrossX } from "./ball";
 
 /** Plan the keeper's save against the shot `sh`, struck by sh.side with the ball already launched
  *  (mp.bvx/bvy set). Stores sh.gk: who he is, where he set himself, where he dives to, when he goes
@@ -86,7 +86,12 @@ function planFor(s, dsd, t0) {
   // No plan leaves him to turn and chase it back (brain.ts).
   if ((k.x - mp.bx) * sg < -0.5) return null;
   if (between && mp.bvx * sg > 0.5) {
-    const tC = (k.x - mp.bx) / mp.bvx, yC = mp.by + mp.bvy * tC;
+    const tC = (k.x - mp.bx) / mp.bvx;
+    let yC = mp.by + mp.bvy * tC;
+    // A BALL WITH SPIN ON IT DOES NOT FLY STRAIGHT (ball.ts). He sees the line it starts on and reads only part of the
+    // swing as it is struck, more the better he is (CFG.gkCurlRead): the rest of the bend is what beats him.
+    if (mp.bsp || mp.bdip) { const cr = meBallCrossX(mp, k.x);
+      if (cr) yC += (cr[0] - yC) * (CFG.gkCurlRead[0] + (CFG.gkCurlRead[1] - CFG.gkCurlRead[0]) * gkk); }
     // ...and he does not go for one that is going wide. The frame, as it looks from the ball, cut
     // at his depth: a ball crossing his line outside that (by more than he could need) is missing.
     const r = (k.x - mp.bx) / (gx - mp.bx);

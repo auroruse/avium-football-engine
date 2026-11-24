@@ -437,6 +437,373 @@ the men on the pitch and the bench, each at his listed rating with what coaching
 pick a man, then his replacement, and the change is made at the next stoppage. Tactics shows each instruction as a switch
 lit at the option nearest the one in force, since the managers move them during a match, with From The Dugout under it.
 
+**Replays and Save GIF (22 November 2026).** Asked: "saving replays as a gif, with the game, scorer, minute, assister if
+applicable. Replays should also be longer and maybe more detailed." Answers: the button on both the live replay and the
+Full Time highlights; up to fifteen seconds of play; smoother motion, names and pass lines, ball height and a slow-motion
+finish, all four; the GIF framed on the attacking half with the caption below. A replay runs back to where the side won the
+ball, fifteen seconds at most, the last second at half pace. The button is a round arrow, titled Save GIF, beside the
+replay's own. No library: `src/gif.ts` writes the GIF.
+
+Three corrections the same day, in the user's words. "Hate the styling. Do player name that fades away after the touch, and
+no tracking lines in the gif." Then: "The non-gif replay should just look like before and the in-game replay should be
+fullscreen and full detail like a game." Then: "why do names only show up once per player? The GIF is also way too slow,
+not fluid enough, and the ball is too big, and it all looks too fucking arcady instead of a proper professional replay."
+So there are three drawings and they are not to be merged:
+
+- **The Full Time highlights** are drawn as they were before any of this: dots, the yellow ball trail, one ball. Only the
+  Save GIF button is new there.
+- **The in-game replay** is not an inset. It takes the whole pitch and is drawn by the match's own `dot()` from the tape:
+  kit, keeper, surname, the way each man faces, the reach ring on the man with the ball, the ball at its real size. The
+  word Replay in the corner, progress along the bottom touchline, and three round buttons: Save GIF, play again, close.
+- **The GIF** is 648 by 546 in the match's turf and markings, goal at the top, the view sliding up with the ball. Men are
+  small dots with a nose for the way they face, the keeper in his own colour; the ball is small with a shadow. No trail
+  and no pass lines. A man's name comes up over him every time he touches the ball (`meTouchLog`: held at his feet, or
+  played first time), holds a moment and fades. Twenty-five pictures a second at the speed of play (see the fourth
+  correction below; at sixteen pictures a second it had been "way too slow", and at twice the speed "a bit too fast"). Under the pitch, a bar ("make it look like a
+  real highlight reel. Also redesign info UI to have team logos and scorer portrait"): the scorer's portrait in a ring of
+  his side's colour, the minute, his name and Assist with the name on the left; crest, code, the score in a white box,
+  code, crest on the right, the competition under them. Crests and portraits are found the way `TeamCrest` and
+  `PlayerShot` find them, with the same fallbacks (a plain shield, the placeholder face).
+
+A fourth, the same evening: "Why is the replay so much faster than the match? Make all replays the same speed as the
+match. Also, the in-match replay should be an option to open, not something instant. Come on. You know better. This isn't
+professional." So:
+
+- **A replay is never staged.** A goal no longer freezes the match and plays itself back. The match plays on; Replay in
+  the corner of the pitch opens the last goal's, and the arrow on a goal's line in the feed opens that goal's. The match
+  waits while one is open and carries on from the same instant when it is closed.
+- **Every replay runs at the speed of the match.** In the match, at the speed it is being watched at; in the Full Time
+  highlights and the GIF, at the speed of play. No slow-motion finish anywhere (it had been asked for with the first
+  design and went with this).
+
+The rule behind both: nothing takes the screen from the match unasked, and nothing shown of the match moves at a speed
+the match does not.
+
+Players in both the replay and the GIF move on a curve through the tape's four positions a second (`meManAt`), because
+straight lines between them made every turn a corner. The tape keeps each man's facing and the last deliberate touch for
+this (`meSnap` fc, tk).
+
+**The broadcast's graphics (22 November 2026).** Asked: "implement better match graphics & animations. PL-style.
+Goalscorer, H2H, all of the other PL animations that come off of the scoreboard. Replay will be a popup there too."
+Everything the broadcast says beyond the score is a plate that comes out from under the scorebug, holds, and goes back in
+(`MatchGfx`, `.ux-gfx-*`). One at a time, on the wall clock, never stopping the match.
+
+- **Goal.** The bar is wiped with GOAL in the scoring side's kit colour, from that side, and the score rolls as the wipe
+  clears. Under that side: the scorer's portrait, surname and minute; Penalty, Own Goal, Second Goal or Hat-Trick; Assist
+  and the name; and **Replay**, which is where a replay is opened from now (the pitch-corner button is gone; the feed's
+  arrows stay for earlier goals). Nine seconds.
+- **Card, change, missed penalty.** Under the side concerned: the card and the name (a red with its reason, a second
+  yellow as both cards); up to three changes on one plate, the man coming on over the man going off.
+- **Numbers.** Possession, Shots, Passes, On Target, xG, Corners, one at a time at set minutes, the two values either
+  side of the label over a bar in the sides' colours.
+- **Head To Head** at the kick-off: each side's wins, the draws, a three-way bar; First Meeting when there is none. The
+  same record Play Match's Head To Head panel shows.
+- **The interval.** While a break waits for Continue: the scorers each side and five numbers.
+- **On the bar itself.** A red mark by a side's code for each man sent off; added time comes out of the clock; Replay as
+  a tag while a replay is up.
+
+Shape and colour are the scorebug's own: its dark plate, its title face, its diagonal on the inner end of a one-sided
+plate, the side's colour on the outer edge (lifted when too dark to show). A goal or a red card cuts in on a number.
+At four times speed or faster only goals, cards and changes show; at eight times, goals and red cards. Nothing from
+before the match was opened is shown. Class names carry their own prefix (`ux-gfx-s`, `ux-gfx-r`): `.ux-side > span`
+already fades its text and caught the first build.
+
+**The sidebar, the feed and the cut to a replay (22 November 2026).** With a crop of a goal's line, its replay arrow hanging
+below the name: "There should be a screen-wide animation when opening the replay. Also remove live stats from sidebar and
+fix alignment issue here. So feed and ratings should just both be there. Also, improve feed: Have headings like 'Injury',
+'Foul', 'Yellow Card', etc. and the player portrait/name below instead of stuffing it all on one line." Then, of the first
+build: "No everything needs to be more neatly aligned."
+
+- **The sidebar** is the ground, Feed, Ratings, Momentum, Top Player, the controls. No Feed/Ratings switch and no Live
+  Stats: the numbers are the scorebug's plates and the Stats panel. The feed takes the slack and scrolls; the ratings give
+  way first in a short window.
+- **A feed row is one grid, the same for every row** (`.ux-fd-row`): the minute set to its right edge, the icon, the
+  text, the side's code in a box of fixed width. Line one is the minute, the icon, the heading and the code. The man is
+  on the line under the heading and starts where the heading starts, portrait then name then what there is to add
+  (Assist and a name, a red card's reason, Time Wasting, an injury, On and Off for a change, which is two lines). A
+  restart with nobody to name is its heading alone. A goal's replay button sits under the side's code, centred on it.
+  A long name slides; what is said about the man gives way first. Icons are drawn (`tlIcon`), never emoji.
+- **The cut to a replay and back** (`.ux-wipe`, `meWipeGo`): two slanted panels on the scorebug's diagonal cross the
+  whole picture, the scoring side's colour then the dark plate, the word Replay between them. The picture changes while
+  they cover it and the replay starts as they clear. Not shown under reduced motion.
+
+**The sidebar, Subs and Tactics again (23 November 2026).** With a screenshot of the sidebar: "Ratings on the sidebar should
+only show the active men (red card if applicable), not subbed off men, or else the feed gets squished", "The sidebar, except
+the stadium banner, can definitely use a visual overhaul", "Make substitutions drag and drop with a save button", "Have the
+tactics screen be more detailed about every aspect of the manager's decisions."
+
+- **Ratings** list the eleven on the pitch only: place, surname with any card, a stamina gauge filled from the bottom, the
+  rating. A man sent off stays, greyed; a man taken off leaves for the one who came on.
+- **The sidebar's look** is the scorebug's: heads in the title face behind a tick on its slant with a rule to the edge, each
+  side's code on a plate in its kit (`.ux-fd-side`, `.ux-lr-head`), the controls and the speeds as square plates cut on the
+  same diagonal, focus drawn inside the plate. No rounded corners in the sidebar or the panels over the pitch.
+- **Subs** is a draft. A bench man is dragged onto the man he replaces (or the other way), and the two change places in the
+  lists, the one coming on edged in the win colour, the one going off greyed on the bench in the loss colour, each with an
+  undo. A click on one row then on a row in the other list does the same. Save hands the draft to the queue the next stoppage
+  plays and closes the panel; Clear empties it; closing without saving drops it. The draft opens on what is already queued.
+- **Tactics** reads the engine's own state, a column a side: Game Plan (style and the one on his record when he switched, his
+  read of theirs, formation and his own, stakes, aggregate, sitting deeper or going wider, intent as a meter off the chase,
+  individual orders), Touchline (the four settable orders), Instructions (the rest, with an arrow where he has moved one off
+  his style's sheet), Style by phase, Marking (danger man, marker and how tight, weak link), Set Pieces (who corners are aimed
+  at, who marks their best in the air, the box at corners, the penalty pool), Roles, Changes (made, windows, the men he is
+  weighing on meCoachSubs's own thresholds), and the whole of From The Dugout. The pre-match read is kept on `s.mgrRead`
+  (manager.ts), which nothing in the engine reads.
+- **Tactics, second pass** (the user: "From the Dugout to the top", "Color-code instructions (offensive/defensive)", "Height
+  of everything in both columns need to match", "Marking, set pieces, roles: no player portraits, arrange more neatly.
+  Roles: surname only"). From The Dugout leads. The panel is one table of two columns (`.ux-tc-table`), a cell a row a side,
+  the shorter list padded, so every row stands level with its partner. Every setting is drawn in the attacking shapes'
+  colour or the defensive shapes' (`--ui-attack`, `--ui-form-defensive`, as FORM_CLR) by which way it leans, plain at the
+  middle; intent and the approach bars use the same two. No portraits anywhere in the panel: a man is his position then his
+  name in fixed columns; set pieces are a row each (Corners Aimed At, Their Best In Air, Marked By, Box At Corners, and the
+  penalty pool a name a row); roles are surname and role in fixed columns.
+- **Third pass** (the user: "Remove 'Winner Or One Of', their best in air, marked by (from display, not code). Rename Corners
+  Aimed At -> Corner Target. From the Dugout should have a set height and be scrollable"). Set Pieces shows Corner Target,
+  Box At Corners and the penalty pool under Penalties; the other two are still worked out in App.tsx. From The Dugout is a
+  168px box that scrolls, level on both sides. The marker's tightness (the plan's level, 0 to 1) is a percentage in a fixed column, not a
+  bar ("Blue line -> numerical value").
+- **Small fixes.** A side's code sits in the middle of its plate above the 2px edge, the letter-spacing given back on the
+  left ("Align code properly"). The Top Player's counts are G, A and SV after the figure, in the position's face ("Replace
+  stuff like '1 Goal' with G, A, SV, etc. in the same font as position").
+
+**Phones, goal cards and the replay from Full Time (23 November 2026).** "Someone said that they were able to use the app
+on mobile, horizontal? Shouldn't be able to happen." The gate now also covers a touch screen whose short side is under
+600px (a phone on its side; the smallest tablet sideways is 744 tall), and reads "The engine needs a desktop, or a tablet
+held sideways". Then: "'The Goals:' should only highlight the path of the SHOT. Indicate passes better (dots?), and there
+should be a replay button, like in matches." A goal card (GoalReplay, on Full Time and in Stats) is a still of the move: the
+shot alone is a line, gold, along the ball's flight; each pass the scoring side played before it is a chain of white dots
+with a dot on the passer, read off the engine's own events kept on every taped frame (`snap.ev`: pass, head, shot). The
+card no longer plays under the pointer; its round button (the feed's own) opens the goal's full-pitch replay, wipe and
+all, over Full Time too, at normal speed whatever speed the match ended at. Mocks for the Full Time redesign are
+`design/mock/fulltime-a.png` and `fulltime-b.png` (`node design/mock/fulltime.mjs <match.json>`), not built.
+
+**The mistakes and the goal mix (22 November 2026).** After watching the rebuilt passing: "Passes. Great. Pretty accurate
+at the top level", then "you might want to nerf players' field awareness and/or reaction time and/or touch quality and/or
+pass quality dynamically based on OVR, field state, stamina, or something? It's literally too good to be true right now and
+every attack is a perfect tiki taka goal", and "the vast majority of goals are coming from a bunch of quick passes, low
+cross into box, tap-in. Almost never seeing any long shots/goals, headed goals, etc. Not even penalties." Asked: mistakes
+come from Pressure, Rating and Speed Of Play (Tiredness was offered and not picked); the best sides stay Fluid Vs Weak
+Only; the goal mix is Real Football.
+
+- **Pressure is who, not how many.** A man closing down counts for his tackling and positioning (`meDefQ`, `mePressQ`):
+  it hurries the pass, the first touch and the shot, and a composed man is hurried less. This is what makes a good
+  defence break up a top side's passing and a poor one let it through. The decision still sees only that he is being
+  closed down.
+- **Speed of play and rating.** A ball struck first time or on the move costs more aim and weight, and more of a
+  first-time finish; lower-rated men pass, judge and look around worse; better defenders read a pass sooner and reach
+  further for it.
+- **Retuned 24 November 2026: mistakes are forced, not given away.** Measured by situation (`test/mistab.mjs`), the round
+  moved pass completion by about a point in every situation; what it visibly added was first touches lost under a man
+  (4.8% to 8.8% within two metres) and passes cut out. The parts nobody forces went back to where they were: the
+  unpressed strike (`passNoiseSkill`, `powerNoiseSkill`), the choice of pass (`judgeErr`) and the look around
+  (`MT.scanLo`). The touch under a man was eased (`ftDp` 0.36, 5.5% within two metres) and a free man's touch made surer
+  (`ftFree` 0.7: 1.8% lost to 0.9%). Pressure by who applies it, the first-time ball and the defenders' reading of a pass
+  stay. Goals at 18 minutes: League One 2.82, the sixteen best national sides 2.63 (1,200 fixtures).
+- **The dribbler stays behind his ball (24 November 2026).** He was given the ball's pace on top of closing the gap to a
+  mark that already allowed for it, so he ran past it and carried it at his side or behind him. He now covers exactly the
+  gap (`match.ts` meMove) and makes small corrections in full (`carryAcc`). With the look halved the same day, attacks
+  worked better and the match went to fifteen minutes: League One 2.81, the best national sides 2.68.
+- **The tap-in is defended.** In his own area a defender throws a leg at a pass as he does at a shot (`boxCutK`). This,
+  not the passer's valuation of the square ball, is what moves it: valuing the square ball less was measured and did
+  nothing.
+- **Headers come from crosses put in front of goal.** A cross is led toward the front of the six-yard box and is only on
+  when it can be met inside about twelve metres; any ball dropping at head height in front of goal is headed at it; the
+  man attacking a cross wins more of the duels. Corners were left alone: a match has two, each costs thirty-five seconds,
+  and that is why headed goals reach one in eight and not the real one in six.
+- **Penalties** by more fouls and handballs in the area, to about one goal in ten.
+- **The match is seventeen minutes.** Mistakes cost about a fifth of the scoring a minute; the match was thirteen
+  minutes for the too-perfect build and eighteen before any of this. (Eighteen again later the same day: see the
+  sizing run below.)
+
+Measured as arms on the same fixtures, League One and the twelve best national sides, 1,200 fixtures a side each
+(`test/specs/mix.mjs`, two rounds). Do not tune any of it on local samples: sixty matches swing by 0.3 goals.
+
+**The keeper's own goals and the look (22 November 2026).** With three saved replays: "why are there so many instances of
+the goalkeeper palming the ball into their own net???", and "you still haven't addressed the fact that there are too many
+passes. You added error, sure, but they're still passing too much - real players don't process things as fast as them.
+But don't nerf accuracy or whatnot any further." Then, mid-work: "Maybe add some sort of memory? So that simple obvious
+passes won't require much thought, and the opposite for passes you have to kind of search for."
+
+- **A caught ball stays caught.** Two of the three replays were own goals by the keeper. Traced: a keeper who won the
+  catch on a hard shot fell through to the line that makes a pass too fast for an outfielder's feet squirt off him, so
+  the "save" came off him at a third of its pace toward a random point, now and then over his own line. Four in thirty
+  internationals before, none in forty after. The catch already prices how hard the ball came.
+- **Nothing is led into his own goal mouth.** The other keeper own goal was a ball rolled out to a defender running
+  back toward his own goal, led into his path a metre off the line between the posts (`ownMouthD`, `ownMouthW`).
+- **Left alone:** a parry that still carries in (the fingertip rule, `gkGrazeP`), about one goal in twenty-five, credited
+  to the shooter. It is the real "got a hand to it"; say if it should go too.
+- **The look (`mindReady`, mind/decide.ts).** Every pass on a man's menu carries the thought it takes: little for a short
+  open ball to a man in front of him; more for far, through a crowded lane, into a run, in the air, doubtful, or to a
+  man he is not looking at; all of it longer for a less aware player, shorter when he is closed down. Memory pays part
+  of it in advance: each slice he has had that man in sight before the ball arrives (a sixth field in the memory table,
+  mind/perceive.ts) counts toward it. A first-time pass is one already paid for. After a controlling touch the earliest
+  pass is two slices on (`touchSet`), and a man with nobody on him has three more slices before his time is up
+  (`lookHold`). Nothing about how the ball is struck changed.
+- **Measured locally, thirty matches a level, same fixtures:** passes a minute of play 25.9 to 19.7 in League One and
+  27.8 to 21.0 among the twelve best national sides (a real match runs 16 to 17); first-time passes from a quarter of
+  all passes to a tenth; mean time on the ball about 1.2 s (measured in the real game: about 1.1); passes kept 80.2% to
+  83.3% and 78.2% to 82.1%. Goals and xG were inside the noise of thirty matches and have NOT been re-centred: that
+  needs a cloud run, and the six allowed were already used.
+
+**The dressed pitch (22 November 2026).** "Let's make the field and graphics look a lot better. Ideas? No more boring
+dots and lines." Asked: Dressed Top-Down (not a follow camera, not a tilted view), names over every player, one house
+look for every ground. A head and shoulders drawn from above was tried and rejected on sight: "Figures look goofy just
+use dots."
+
+- **Players stay dots:** kit colour, a soft shadow, a nose the way he faces, his reach ring when he has the ball, a
+  small card beside a booked man. Drawn at 0.5 m, nearly twice his body, because at true size he is six pixels.
+- **The ball** has a shadow that moves away from it as it rises and a streak behind it when it is struck hard. A pass
+  no longer gets a line drawn for it; a challenge, a block or a save is a small ring on the grass.
+- **The ground:** a dark speckled stand fills whatever the window leaves round the pitch, with boards along the far
+  side and behind each goal line (a plain mark on each, never a word), a darker apron of grass, light falling away to
+  the corners, worn goalmouths, nets seen from above that bulge when a goal goes in, corner flags and technical areas.
+  Colours are `--ui-turf-*`, `--ui-stand*`, `--ui-board-*`, `--ui-net`, `--ui-flag` in theme.css.
+- **One ground for every picture** ("Match the GIF and Full Time highlights too"): `PitchGround` draws it for the live
+  pitch, the replay on it and the Full Time highlights; the saved GIF paints the same ground on its canvas in flat
+  colours (no light across it, which 256 colours would band; plain grass at its two-metre sides, the stand and boards
+  behind the goal line), with the shadows and the ball's streak.
+
+**Effects (22 November 2026).** "I feel like headers, shots, tackles, blocks, and saves can have special effects." Asked:
+all five groups, at full strength (one level, no setting), and the keeper may stretch along his dive ("Keeper can
+stretch"); the dots, at 0.5 m, were "a bit too big" and are 0.4.
+
+- **How it works.** The engine lists every event of a slice when the viewer asks (`out.fx`, match.ts `meEvt`; a harness
+  never does, and results are unchanged). `meFxMake` turns a slice's list into records against the state as the slice
+  left it; `meFxPrims` is what a record draws at an age (rings, lines, dots, in pitch metres); `meFxMan` is what the
+  records do to a man. A record's clock is in slices, so an effect runs at the speed of whatever shows it: the live
+  pitch, the replay (the tape's frames carry their records) and the saved GIF, which paints the same primitives.
+- **Shots:** a ring at the boot, larger and brighter the harder it is struck; the frame flashes and trembles when it is
+  hit; rings through the net after it bulges; cameras going off in the stand behind that goal and along the far side.
+- **Headers:** the dot lifts off its shadow and lands; the man he beat lifts with him and drops first; a tick at the ball.
+- **Tackles:** a slide draws the dot out along its line and leaves a scuff on the grass that fades over a few seconds
+  (a slide is the duel's own call, carried on the event; it used to be guessed from the gap between the two men, and
+  three standing tackles in four were drawn as slides);
+  a standing tackle is a small burst between the two men; a foul is a ring in the warning colour.
+- **Blocks:** a short bar square to the shot, and the blocker takes a step back along it.
+- **Saves:** the keeper's dot drawn out along his dive, only with a shot on its way (the engine lengthens him whenever
+  he moves quickly, and a keeper running is not diving); a catch is a ring closing on the ball in his yellow, a parry a
+  burst of it.
+- **Rules:** white and the keeper's yellow only, each over in about half a second of play, nothing stops or shakes the
+  match; none of it for someone who has asked for less motion. The replay and the GIF hold their last frame while
+  what the goal set off plays out.
+
+**Traits by level, in families, with flaws (22 November 2026).** "We have a few new things now. Thinking delay, first
+touch error, passing error, etcetera. We should redesign badges to cover everything new we have, more comprehensively, to
+cover different player archetypes with combinations and such." Asked after a brainstorm: Levels; flaws In; Mind and
+Keeper first; and "have some better names though: some of these don't sound football related at all or are too simple."
+
+- **A trait has a level, one to three, and costs it.** The metals are now the levels (bronze, silver, gold), not a rank
+  of one trait against another. A man spends his rating's budget (unchanged: 2, 3, 4, 6) on a few traits high or several
+  low; the cap on how many he carries is gone. Stored as a key: `vision` is Vision at the level its effect is written
+  at (`std`), `vision:3` at three (`src/data/badges.js`).
+- **Nobody who already had traits changed.** Each of the first twenty-two has for its std what it used to cost, so every
+  man carries his at that level, has spent what he had, and plays as before (golden identical). Below std a level is a
+  share in proportion; above it the effect grows half as fast (`levelShare`), a share never past the whole, a habit that
+  is his or not at any level (`attributes.ts`).
+- **A flaw** costs him in play, at level one or two, and gives its level back in points. One a man.
+- **Families:** Mind, Ball, Body, Finishing, Defending, Keeper. The pickers and the Traits table group by them.
+- **The Traits page in the documentation** ("Organize the traits better in the documentation"; it was two long
+  paragraphs and one table of fifty-one rows): the rules as a short list (Levels, Cost, Budget, Spending, Flaws, Pairs,
+  Older Traits, In The App), one trait drawn at each level and as a flaw, then a table a family under its own heading,
+  the family's flaws last and marked Flaw.
+- **Mind, new:** Shoulder Check (scans more, remembers longer, a man out of sight costs no time to find), Pass And Move
+  (the short ball to feet needs no thought, first time and clean, then he runs on), Dictates Tempo (waits longer with
+  nobody on him, minds losing it, picks better), Man On (team-mates near him get the shout). Vision also needs less
+  time for a pass that is hard to see. Flaws: Ball Watcher, Dwells On It.
+- **Keeper, new:** Safe Hands (holds more), Strong Wrists (parries wide, the fingertip that carries in is rarer), Quick
+  Release (lets it go sooner, surer throw, better long kick), Penalty Stopper. Flaws: Flaps At Crosses, Spills It.
+- **Names: one describing word.** Two rounds were thrown out: plain nouns (Scanner, Tempo, Distributor: "don't sound
+  football related at all or are too simple") and then commentator's phrases (Shoulder Check, Man On, Dwells On It,
+  Flaps At Crosses: "Trait names still need work... What even are those"). Asked with all three lists in front of him,
+  he chose One-Word Adjectives, the register of Rapid, Aerial, Relentless, Composed and Commanding. Everything below
+  that names a new trait by an older name means: Alert (Shoulder Check), Slick (Pass And Move, First-Time Ball),
+  Patient (Dictates Tempo), Vocal (Man On), Unaware (Ball Watcher), Hesitant (Dwells On It), Unflappable (Press
+  Resistant), Fluent (On The Run), Deceptive (Disguised Pass), Driving (Drives Forward), Elusive (Draws The Foul),
+  Clumsy (Heavy Touch), Wasteful (Gives It Away), Sturdy (Rides Tackles), Unfit (Runs Out Of Legs), Predatory (Goal
+  Poacher), Unselfish (Squares It), Greedy, Tenacious (Closes Down), Desperate (Last Ditch), Tight (Tight Marker),
+  Reckless (Hot Head), Dozy (Loses His Man), Assured (Safe Hands), Firm (Strong Wrists), Quick (Quick Release), Clutch
+  (Penalty Stopper), Erratic (Flaps At Crosses), Nervous (Spills It). The ids in the data keep the first names.
+- **Combinations are not bonuses.** A pair multiplies through the match itself (a man who has had more team-mates in
+  sight has more of every pass already paid for). No number is added for holding a named pair.
+- **Art:** one picture a level, `public/player-badges/<id>-<level>.svg`; a flaw in dull red iron with hollow pips.
+- **Not sized.** The new effects are set by reasoning. A sixteen-match trace with a trait on every man shows the
+  direction for Pass And Move (first-time passes 9% to 15%), Dwells On It (passes a match 298 to 268), Safe Hands
+  (parries 4.3 to 2.4) and Spills It (4.3 to 6.4); Shoulder Check and Dictates Tempo showed nothing clear. Sizing them,
+  and the old traits against the new passing errors, is a cloud run that has not been asked for yet.
+- **The other four families, the same day** ("Go ahead, then do the other four families"). Ball: Press Resistant (his
+  touch and pass with a man on him), On The Run (the strike at a run or first time), Disguised Pass (defenders read it
+  late), Drives Forward, Draws The Foul; flaws Heavy Touch, Gives It Away. Body: Rides Tackles; flaw Runs Out Of Legs.
+  Finishing: Goal Poacher (what comes loose in the area), Squares It; flaw Greedy. Defending: Closes Down (the man he
+  closes is hurried more), Last Ditch (the leg at the square ball and the shot in his own area), Tight Marker (reacts
+  sooner to his man's run); flaws Hot Head, Loses His Man. Fifty-one traits in all, ten of them flaws. Twelve-match
+  traces show the direction for Disguised Pass (passes lost 49 to 40), Draws The Foul (fouls 20 to 28), Rides Tackles
+  (tackles tried 30 to 14), Hot Head (fouls 20 to 26) and, faintly, Closes Down and Gives It Away; Press Resistant and
+  On The Run showed nothing clear. These seventeen were built after the sizing run was started and are not in it.
+- **The sizing run (cloud 45055086971, 31,680 matches; `test/specs/traits2.mjs`).**
+  - *The look and goals.* 2,880 paired matches a level. League One 2.73 goals a match with the look, +0.03 (se 0.04)
+    from it; the twelve best national sides 2.50, -0.02 (se 0.04). Passes a match 345 to 260 and 385 to 288 (a
+    quarter fewer); passes kept +2.9 and +3.0 points; xG +0.29 and +0.28. A man on the ball longer is challenged more:
+    penalty goals 0.28 to 0.41 in League One (15% of goals) and 0.23 to 0.32. Headed goals, goals from outside the
+    area and first-time goals each fell a little.
+  - *Acted on, by interpolation, not measured again:* fouls in the area back down (`boxTackleFoul` 0.45 to 0.27,
+    `boxContactFoul` 0.32 to 0.19) for penalties at one goal in ten, and the match eighteen minutes again, which puts
+    League One near 2.75 and the national sides near 2.56.
+  - *The traits, in rating points on the man who carries one (about +-0.5 for an outfield placement, +-1.4 for a
+    keeper's).* Man On +1.6. Dictates Tempo +0.5. Shoulder Check and Ball Watcher nothing. Pass And Move -3.1: a ball
+    let go sooner with nobody on him is a worse ball. Dwells On It +0.6: taking longer made him better, so it was no
+    flaw. Safe Hands and Shot Stopper about +2, Flaps At Crosses about -2, the other keeper traits inside the noise.
+  - *Rewritten after it, and not measured since:* Pass And Move became First-Time Ball (how clean the ball is, not how
+    soon it goes); Dwells On It acts only when he is closed down, and he is robbed more easily; Ball Watcher is also
+    late to his man's run; Shoulder Check also knows of the man closing on his own blind side; Dictates Tempo a little
+    more of everything.
+  - *The old traits against what they cost,* same units: Interceptor 4.6, Quick Step 3.2, Finisher 2.3 (more on goals
+    than on chances), Rapid about 2, Aerial 1.3 to 1.8, Strong 0.9 (all cost three); Disciplined 1.5, Relentless 0.8,
+    Vision 0.8, Incisive 0.4, First Touch 0.2, Trickster 0.0, Long Shot about 0 (cost two); Composed 1.9, Short Passing
+    1.8, Tackler 1.4, Long Ball 1.3, Crosser -0.3, Dead Ball -0.4 (cost one). Commanding measured -2 on its keeper.
+    Composed and Short Passing are now worth more than they cost and First Touch, Trickster and Incisive less; nothing
+    was repriced, because a price change would put existing players over or under their budgets.
+- **The second sizing run and the ratings (cloud 45059646100 and 45059651165; "Go ahead with both runs").**
+  - *Eighteen minutes, measured:* League One 2.84 goals a match (se 0.03), the twelve best national sides 2.56; penalty
+    goals 12% and 10% of goals (0.34 and 0.26 a match), the lower fouls in the area having taken 0.11 and 0.08 off
+    them. Trimmed a ninth more after it (`boxTackleFoul` 0.24, `boxContactFoul` 0.17), not measured.
+  - *The four families,* rating points on the man: Disguised Pass +3.5; Closes Down +1.0; Last Ditch +0.8 on chances and
+    about +2 on goals conceded; Press Resistant, On The Run, Drives Forward, Draws The Foul, Rides Tackles and Goal
+    Poacher +0.6 to +0.8; Tight Marker nothing. Squares It -1.5 and Greedy +1.1, both the wrong way round: the passer
+    already squares it as often as pays. Flaws: Heavy Touch -7.3 (far too much), Runs Out Of Legs, Hot Head and Loses
+    His Man about -0.7, Gives It Away nothing.
+  - *The rewritten five:* First-Time Ball -0.3 (was -3.1 as Pass And Move), Dwells On It -0.4 (was +0.6), Shoulder
+    Check, Dictates Tempo and Ball Watcher still nothing: this engine pays little for seeing more.
+  - *Keepers,* two runs together: Safe Hands about +4, Strong Wrists about +2, Spills It about -3, the rest inside
+    the noise; Commanding negative in both.
+  - *Turned up or rewritten after it, by reasoning, not measured:* every trait that read under +1 (and Heavy Touch
+    down to a quarter); Squares It is now how well the square ball is played; Greedy also snatches at his chances;
+    Tight Marker, Loses His Man and Ball Watcher move a man's positioning; Shoulder Check and Dictates Tempo carry a
+    little judgement.
+  - *Ratings refitted* (`rateFin`, `gkExp`, `gkExpPen`) on 2,971 matches of the eighteen-minute build; the check on
+    the same matches holds every par.
+- **Commanding reworked** ("Rework commanding, maybe increase collection range / reach when out?"). It only made the
+  keeper come, for tighter races and further, and measured as a loss to his side in both runs. It now also makes him
+  get there: more reach for a cross or a loose ball in his area, more again for a ball at his feet once he is off his
+  line, a better read of the race, and a little less sweep. Every keeper who carries it changes with it. Not measured.
+- **The deal (`test/traits2.mjs`; asked and answered 22 November 2026).** One point at 70 to 74 (`budgetOf`); everyone
+  rated 70 and over dealt again, each keeping the trait he is best known for, never at a lower level while his points
+  reach; a flaw on one man in five under 90 (level two for the quarter of each flaw's men it fits most, nobody under
+  75); and first, one point made to buy about the same everywhere: Composed and Short Passing about halved, First
+  Touch, Trickster and Incisive given the levers the runs showed are worth something. The rest of each man's places by
+  the first deal's min-cost flow (position, record, age, variety), every trait held by as many men as every other.
+  The 90s are dealt one by one outside the flow, a trait they were given by hand staying unless something fits
+  clearly better ("90s can be changed if there's more fitting stuff"). `test/traits-picks.json`, when it exists, is
+  the user's own word for a man and is written exactly. As a dry run: 3,264 men, 2,765 changed, every trait on 116 to
+  117 of them and each keeper trait on 87 to 88, 648 flaws.
+- **Written the same day, as a full fresh deal.** Shown that list, the user gave twenty-eight players as archetypes
+  ("Here are the required player archetypes. Distribute traits accordingly") and then "You can reallocate all traits
+  mate": nobody's old traits are kept, except by the four 90s he did not name. The twenty-eight are in
+  `test/traits-picks.json`, one line a man, and are written exactly; a re-run cannot lose them. 3,264 men carry traits
+  (649 a flaw), every outfield trait on 121 or 122 of them across all three levels, each keeper trait on 91, 30% of
+  traits crossing position. After a merge with other editors' saves, run the script again rather than resolve
+  players.json by hand.
+- **Still to do:** The registry's server
+  checks traits with the same rules file, so it needs redeploying before an editor can save a trait at a level.
+
 Kept as they were: the players are dots with surnames (asked: As Now); the goal replay waits until it is closed and can
 be played again; after the whistle the buttons are New and Replay, or Import, Replay and Abandon for a tournament's
 fixture.
@@ -444,41 +811,58 @@ fixture.
 ### Full Time
 
 The page a result is screenshotted from, carrying every fact of the match (Moukden and Kirin, 10 October 2026: "full time
-should be optimized for screenshots to show all match info"). It fills the window at one scale, drawn on a 1600 by 1092
-design. Top down:
+should be optimized for screenshots to show all match info"). On the screen it fills the window at one scale, drawn on a
+1600 by 1092 design at the least: a wider window gives the middle and the timeline more room, a taller one the goals.
 
-**The banner** puts the result over the ground's photo, like Play Match's, the whole of it: every ground is a 5:1
-panorama, so the banner is a fifth of the page's width tall (user, 11 October 2026: "show the full stadium image
-uncropped"), and the page grew from 900 to 1092 for it rather than squeeze the squads; with no photo the kit colours run out from
-each half under a shade that keeps white text readable on a light kit. Over the score, the competition and round
-(1935 World Cup · Group A, Round 1; Friendly; Friendly · Second Leg); under it FULL TIME, AET, the shootout or the
-aggregate, then the ground, its city and its nation. Each side has its crest, its name, its code with its eleven's OVR and
-its shape, and its manager with his style.
+**Redesigned 23-24 November 2026** in the live sidebar's language ("Redesign the post-match screen in the same style you
+redesigned the sidebar with. Give me mocks first after asking questions"; answers: rearranging allowed, two directions, the
+first one taken). The mock it was approved from is `design/mock/fulltime.mjs` (`fulltime-a.png`; `fulltime-a-many.png` and
+`fulltime-a-twenty.png` are the same match with 20 goals, 14-6 and 20-0, made up to test the banner). The rulings on the way:
+"MANY malaligned elements", "Momentum, possession, on/off the ball (rename) need to have uniform heights and match the height
+of the player list", "City name and nation next to stadium", "Drop the scoreboard; replace formation with code, move badges
+back to where they are currently", "top of score always needs to be lined up with the top of the team names", "I expect max
+goals to be around 20", four scorers a column, "The cards are meant to be fucking adjustable", "where's the download for the
+goals???".
 
-The board fills the photo (user, 12 October 2026: the photo "had too much space that wasn't being used"; the photo itself
-stays whole, "that's the scene"). Crests, names and managers are half again their old size and the score nearly twice.
-Over a tournament's fixture the competition's own mark (the theme's art) is drawn large, the competition and round under
-it; a friendly has the word alone ("Remove the theme banner from friendlies"). The score is set in the names' face
-(Barlow Condensed), its figures' tops level with the names' capitals and their feet on the code line's baseline, and FULL
-TIME sits level with the manager lines (user, 12 October 2026). So every name keeps one line: one too long for its half is
-narrowed to fit, never shrunk, cut or wrapped, and so is a manager line. The shootout, extra time and the aggregate
-share one line under that, over the ground. Not picked: the scorers in the banner, the timeline over the pitch, headline numbers, kits, the half-time score and date, team
-ratings.
+- **Every line in the title face is trimmed to its capitals** (`text-box: trim-both cap alphabetic`), so a code, a minute or a
+  head centred in its box is centred on its letters.
+- **The banner** (306 tall), over the ground's photo or the two kits: each side's crest at its outer edge, its name, its
+  manager with his style, and its code with its eleven's OVR. The crest's drawn art is exactly as tall as those three lines,
+  from the name's capitals to the code's foot, its top on theirs: every crest file pads its art differently, so FtCrest
+  measures the drawn part of each file once and draws the file to it ("the badge height is meant to match the text next to
+  it", then "not fucking aligned"). The two sit about the banner's middle. The photo or the kits stop 16 pixels short of the
+  banner's foot under a veil that is solid there: painted to the foot, they showed through its last part-covered line of
+  pixels as a seam ("Visible seam in the fade"). The score sits on the centre line, its top level with the tops
+  of the names; the competition over it (a tournament's theme mark beside the words); FULL TIME under it, with AET, the
+  shootout and the aggregate on the same line. Under all of that, the scorers: a line each with all his minutes (P for a
+  penalty, OG), four to a column, columns going out from the centre (home's set to it from the left, away's from the
+  right), five a side at most, so twenty goals to one side fit. The ground, its city and nation along the foot.
+- **The timeline**: one line from kick-off to the last whistle; each event on a stem from its minute, home's above and
+  away's below, its minute on a plate in the side's kit centred on the stem and what happened beside it, turned back from
+  the right edge. A side's events within a minute and a half share a label. A label goes out a lane until it touches no
+  other label, its stem passes through none nearer the line, and it covers no stem from further out; a side too crowded
+  for names shows minutes and icons only; past that a label joins its neighbour. Goals, cards, missed penalties and
+  injuries, never changes. As tall as its lanes.
+- **The sheets** either side (470 wide): a plate in the side's kit with its crest, name and code; the column heads; the
+  starters, a rule, the changes with the minute each came on or went off, the unused bench greyed; a row each at 17
+  pixels. The top player has a star by his name.
+- **The numbers** between them, every row on one of the sheets' row lines: On The Ball and Off The Ball (they were "with
+  the ball" and "without it") on the sheets' last lines, Possession three lines above their head, Momentum taking the rest,
+  so the column ends with the player list however long it is. Where the benches are short, the band runs on past the
+  sheets as empty row lines until the starters and the numbers' rows fit, and the numbers end on the last of them. Heads one height (26) everywhere, the sheets' plates too. A
+  tournament's Played Live count sits in the line Off The Ball leaves under Reds.
+- **The goals**: a card each, as big as the strip allows (one row, or two or three when that makes every card bigger): the
+  minute's plate, the scorer and who made it, the score, then the move (GoalReplay: the passes as dots, the shot a gold
+  line) with Save GIF in its corner and the replay button under it. A narrow card names the scorer alone, a tiny one puts
+  the score in the pitch's corner. Past what a card can show a move at, the goals are a list, five across: minute, scorer,
+  score, Save GIF, replay.
 
-Then the timeline (cards, injuries and missed or saved penalties, never substitutions); the team sheets either side, with
-the minute beside every man who came on or went off; between them the momentum chart, possession, the seventeen numbers
-and the Played Live count under Reds for a tournament's fixture; and every goal along the bottom, playing on hover. The
-middle column fills from the foot (user, 12 October 2026: "Move the possession bar down and add the momentum graph on top
-of it with when the goals came. Make sure the bottom of the stats lines up with the bottom of the lineups regardless of
-bench size"): the numbers' last line is level with the longer sheet's last man and possession sits over them. The chart
-keeps one height (90 design pixels) whatever the window ("they need to stay the same height regardless": a wide window's
-taller photo had squeezed it flat), its bars on a square root, each goal a dot at its side's edge with its minute; the
-numbers' rows give instead (18 to 30 pixels), and anything they cannot take lies over the possession bar. The top player is a star
-by his name in his sheet, no longer a card of his own.
-
-**Copy Image** sits with the buttons, which keep out of the picture until the mouse moves. It copies the page to the
-clipboard as a 1920 by 1310 picture whatever the window's shape, without the buttons, ready to paste into Discord, and so
-does Command-C (Ctrl-C) with nothing selected. The momentum chart, not picked on 10 October, was asked for on 12 October.
+**Copy Image** sits with the buttons, which keep out of the picture until the mouse moves, and so does Command-C (Ctrl-C)
+with nothing selected. It draws the page at a fixed 1600 by 1092 whatever the window and takes it 1920 by 1310, without
+the buttons (user, 24 November 2026: "make sure the copyable match report matches the displayed thing EXACTLY", then "I
+asked for the copied report to be fixed dimensions"): the same page as the screen's, laid out at the design size. The
+window's zoom, carried into the copy, had drawn it 2.5% small inside its own frame; the copy now sets --app-zoom to 1
+(shot.js `vars`).
 
 ### Editor
 
@@ -663,7 +1047,7 @@ sees what was sent. The words on screen never name the overseer: a thing waits F
 "Stop talking about the Overseer and just say its waiting for review"), and no screen carries a line of explanation or
 a prompt ("stop it with the AI slop prompts and text"). This is the first step of the Editor's redesign (the sheet is to go; edit where you read).
 
-#### The Editor, redesigned (proposed; mocked 21 November 2026, not built)
+#### The Editor, redesigned (mocked 21 November 2026; built 24 November 2026)
 
 Moukden and Kirin, 21 November 2026: "We need to rethink and redesign the entire editor ... Must be user-friendly and
 overseer-friendly", and, of the sheet, "I don't think in the sheet either actually. Everything needs to be more intuitive
@@ -712,6 +1096,22 @@ is answered. **A phone** gets the Inbox and a club's page in one column (the app
 
 **Order:** the requests relief (above, built); the club page and Home, the sheet retiring once they cover it; the Inbox,
 Activity and the rules for what goes live (server); the rest.
+
+**Built 24 November 2026** (the user: "Build then."). Edit on one's own side's page (`renderUxClubEdit`) with the squad
+list taking names (Enter on to the next open place; a name alone takes the place's position and the side's level),
+Free Agents, My Clubs or a national side's Nationals per place, Fill Open Places (a typed rating kept in every mode but
+Blank), the man's card (Swap, drag and drop, Move To Bench, Trade, Call Up, Release, positions asked for, the overseer's
+rating in place), Checks, Changes with Undo and Send, Kits, Stadium and Manager edited in place, Previous and Next Club
+over one's sides with open places. A place a waiting request's new man stands in is not open and shows him faintly. The
+desk: Home (nation, To Do, the ledger, Sent or Inbox, Offers, Activity), the overseer's Inbox (saves, the opened save
+by club with ratings in boxes and Cap At Level, Preview before and after, Live with Undo), Activity (Everyone or Mine,
+Undo), Trades, Draft, and the Sheet last. The server: `liveNewMan` in `src/data/rules.js` puts an editor's new man at or
+under his side's level live, a list's passing men live and the rest as a request; a city goes live with the ground; every
+live save, answer and undo is logged in `src/data/activity.json` (`src/data/activity.js`: fields from and to and the
+records added, so an undo puts the fields back and drops the records while nothing has touched them since), `GET
+/activity` and `POST /activity/<id>` on the worker. **Not yet built:** New Club and New League in steps (Home's buttons
+open the Sheet's), Missing Badges and badge upload, the Player Finder, command search, Season Rollover, pasted rating
+changes, the Discord note, and a phone's one-column Inbox and club page.
 
 ### The ANCC
 
@@ -821,12 +1221,26 @@ come, Give To.
 
 ### Documentation
 
-Written for the ACU's editors and readers (Moukden and Kirin, 10 October 2026): every screen and how the engine plays a
+Written for Avium's editors and readers (Moukden and Kirin, 10 October 2026). Arterra is named once, as another roleplay
+the engine also serves, and the ACU never; the overseer is named once and is Kirin after it; nothing that states the
+obvious (24 November 2026). It covers every screen and how the engine plays a
 match, in plain terms with few numbers. It opens from the settings menu. Its pages
-are tabs in the page bar (The App, Matches, Styles And Managers, Ratings, Tournaments, Editing). Each page lists its
+are tabs in the page bar, from first use to how the engine works (Moukden and Kirin, 23 November 2026: "reorganized, more
+intuitively, from beginner to in-depth mechanics"): Basics, Browsing, Matches, Tournaments, Editing, then Players,
+Tactics, The Engine. Each page lists its
 sections in a Contents panel on the left, lit as they are read, and reads in one panel beside it: the prose held to about
-820px, the tables the panel's width. A page and a section are part of the address. The text is `src/docs.js`; what can
-be read off the engine (the playstyles) is read live, so it cannot drift from what the engine plays.
+820px, the tables the panel's width. A page and a section are part of the address, and a section keeps its id when it
+moves, so an address copied before the reorganisation still opens it (`DOC_MOVED` for the renamed pages). The text is
+`src/docs.js`; what can be read off the engine is drawn live (`docLive`), so it cannot drift from what the engine plays.
+
+A visual is a drawing of the thing, never prose cut into labelled boxes ("visuals instead of text walls", then, of a
+draft that had turned paragraphs into bold-label lists, "What It Shows" tables, captioned boxes and numbered steps with
+titles: "classic AI slop labeling, descriptions, and bolded headings"). Explanation is short plain paragraphs under a
+plain noun heading. A list of terms is used only where each term is a name the app itself uses (a button, a setting, a
+panel), and a table only where the rows have real columns. Drawn from the engine: the screen with its bars numbered,
+the positions on a pitch, every formation with and without the ball, the points a rating gives for traits, the match
+rating's scale, value by rating and by age, what each style pays at kick-off as bars, the minute each of a manager's
+moves can first happen, and the distances in front of goal that decide a header, a free kick and a wall.
 
 ---
 
@@ -1134,3 +1548,240 @@ on panels, no hover lift. No panel without a question to answer.
   rebuilding Tournaments keeps those names.
 - `design/mock/build.mjs` writes the mockups in `design/mock/` from the real records and season archive. Every new
   screen is mocked there and approved before it is built.
+
+## Every trait measured again (23 November 2026)
+User: "re-measure the traits. The bare minimum is that all positive traits add OVR and all negative traits subtract OVR." Then, of an 85-minute run: "I dont have 85 minutes. Be more efficient. Do you even need so many samples". Three short cloud runs instead, 16,800 matches and about 20 minutes each (45069957270 all 51 traits; 45072401985 the 15 it could not call, strengthened; 45074579913 the last six). Specs test/specs/traits4.mjs to traits6.mjs.
+- Both sides of a match draw their own placements, so a match reads each placement twice; squads are stripped of their dealt traits first. Traits at level three, flaws at two, on the positions they are dealt to.
+- The yardstick is five rating points on one line at a time (keeper, defence, midfield, attack); a rating point on one man came out at 0.011 to 0.018 goals a match.
+- Read by chances (xG both ways) for most; by goals for and xG against for the finishing ones; by xG for and goals against for the keeper's, Blocker and Desperate; Clutch by penalty goals conceded alone. The two one-sided readings need each side's own placements as regressors: off the difference of the two sides they both collapse to the mean of net goals and net xG (caught on Blocker).
+- Dead Ball: a side with the specialist scored no free kicks at all (0.02 to 0.03 fewer a match in all three runs), aim capped and keeper delayed notwithstanding. A free kick here goes in by its scatter, so a truer strike is a saved one. The trait now leaves the free kick at goal alone; its penalties are worth 0.012 goals a match. The free kick model itself is the open fault.
+
+Rating points on the man who carries it (level three; flaws level two):
+
+| Family | Trait | Worth | +/- | Verdict |
+|---|---|---|---|---|
+| Mind | Alert | +2.3 | 0.3 | clear |
+| Mind | Composed | +1.8 | 0.1 | clear |
+| Mind | Vision | +1.1 | 0.3 | clear |
+| Mind | Vocal | +1.1 | 0.4 | clear |
+| Mind | Slick | +0.7 | 0.2 | clear |
+| Mind | Patient | +0.5 | 0.2 | clear |
+| Ball | Deceptive | +3.1 | 0.4 | clear |
+| Ball | Short Passing | +2.4 | 0.2 | clear |
+| Ball | Long Ball | +2.3 | 0.2 | clear |
+| Ball | Unflappable | +2.0 | 0.3 | clear |
+| Ball | First Touch | +1.9 | 0.2 | clear |
+| Ball | Incisive | +1.5 | 0.4 | clear |
+| Ball | Driving | +1.2 | 0.3 | clear |
+| Ball | Trickster | +1.1 | 0.3 | clear |
+| Ball | Elusive | +1.0 | 0.2 | clear |
+| Ball | Fluent | +0.9 | 0.3 | clear |
+| Ball | Crosser | +0.4 | 0.2 | right side, not clear |
+| Ball | Dead Ball | +0.8 | 0.2 | ok (read by penalty goals; free kick at goal untouched now) |
+| Body | Quick Step | +3.4 | 0.3 | clear |
+| Body | Strong | +2.3 | 0.6 | clear |
+| Body | Aerial | +1.7 | 0.3 | clear |
+| Body | Rapid | +1.6 | 0.2 | clear |
+| Body | Relentless | +1.2 | 0.1 | clear |
+| Body | Sturdy | +0.9 | 0.2 | clear |
+| Finishing | Finisher | +5.6 | 0.6 | clear |
+| Finishing | Predatory | +3.7 | 0.6 | clear |
+| Finishing | Long Shot | +2.3 | 0.2 | clear |
+| Finishing | Unselfish | +1.8 | 0.3 | clear |
+| Defending | Interceptor | +4.9 | 0.5 | clear |
+| Defending | Disciplined | +3.1 | 0.2 | clear |
+| Defending | Tight | +2.8 | 0.3 | clear |
+| Defending | Desperate | +2.6 | 0.4 | clear |
+| Defending | Tenacious | +2.0 | 0.2 | clear |
+| Defending | Tackler | +2.0 | 0.2 | clear |
+| Defending | Blocker | +1.5 | 0.4 | clear |
+| Keeper | Shot Stopper | +4.4 | 0.8 | clear |
+| Keeper | Assured | +2.3 | 0.8 | clear |
+| Keeper | Clutch | +1.8 | 0.2 | clear |
+| Keeper | Firm | +1.7 | 0.8 | clear |
+| Keeper | Commanding | +1.1 | 0.5 | clear |
+| Keeper | Quick | +0.8 | 0.6 | right side, not clear |
+| FLAW Mind | Unaware | -3.3 | 0.2 | clear |
+| FLAW Mind | Hesitant | -0.4 | 0.1 | clear |
+| FLAW Ball | Wasteful | -1.8 | 0.1 | clear |
+| FLAW Ball | Clumsy | -1.3 | 0.1 | clear |
+| FLAW Body | Unfit | -1.3 | 0.1 | clear |
+| FLAW Finishing | Greedy | -1.3 | 0.4 | clear |
+| FLAW Defending | Dozy | -3.5 | 0.3 | clear |
+| FLAW Defending | Reckless | -1.1 | 0.2 | clear |
+| FLAW Keeper | Erratic | -4.1 | 1.0 | clear |
+| FLAW Keeper | Nervous | -1.9 | 0.8 | clear |
+
+## The free kick at goal, rebuilt (23 November 2026)
+
+User: "Fix the free kick model. I've noticed that they don't actually wait for people to be in position before striking, and a lot of them just go into the wall. Real free kicks have curve when struck at the goal."
+
+Traced first (scratch fk.mjs: free kicks staged in shooting range out of live play, League One squads without traits). Of 40 before the change: 27 struck before the wall was built, 35 with a defender inside ten yards, struck 6 seconds after the whistle on average; 19 into the wall, 14 saved, 1 scored. The old kick was a straight ball aimed at the far side, where the keeper stands, clipped to clear heads by 0.35 m when a man in the wall heads a ball up to 2.6 m.
+
+- **The wait** (setpiece.ts meSPReady). A free kick with a wall is held until nobody is inside ten yards, the wall is on its marks, the keeper is set and two of the taker's men are up; 25 seconds at most (spFkWallMaxT). Other free kicks are as they were. A run-up now gets its fourteen slices from when it starts, which also mends a penalty forced late being struck with the taker three metres off the ball.
+- **Spin** (ball.ts stepOnce). A ball can carry side-spin (its heading swings at bsp radians a second) and top-spin (pulled down at bdip times its pace). Gone at the first bounce, body or kick. The forecast carries it, so everyone reads the real path. A ball without spin flies bit for bit as before.
+- **The strike** (ball.ts meFkStrike). He picks a corner, the wall's side six times in ten, and the launch that takes this pace and spin there is found by flying it on the ball's own integrator. It must pass every man in the way at the height he can jump to; the hardest strike that does is played, with more dip before less pace. Then his error on heading, lift and spin.
+- **The keeper** (keeper.ts planFor) reads 80% to 98% of the swing at the strike, by his rating.
+- **Dead Ball** is back on the free kick: three quarters of it onto his skill there, capped at 1.15.
+
+Staged, 300 kicks a setting, after: wall on its marks at 297 of 300 strikes, struck 12 seconds after the whistle on average. Scored 9%, wall 26%, saved 27%, off target 21%, blocked further on 10%. With Dead Ball at level three on the takers: scored 15%. Not measured over matches: goals a match should rise by roughly a tenth of a goal, and Dead Ball's worth is unmeasured.
+
+## Corners headed, and swing on every ball into the area (23 November 2026)
+
+User: "Crosses and corners should have spin, but maybe more spin should be gated behind traits. Also players barely head off of crosses or corners. Crosses I get if it's a low cross but corners..."
+
+Traced first (scratch ck.mjs: corners staged out of live play, 300 to 500 a setting). Before: the ball hung for 2.4 seconds and went seven metres up; 46% of corners came down to the grass with nobody having gone up; the man it was for stood 2.4 m from where it landed; a defender had the first touch on 78%; one corner in 300 was headed at goal.
+
+Causes: only an open-play cross was met in the air by the meeting law (pass.ts meMeetAir), a corner's attackers chased it on the old reach model; the target's run lasted six slices against a ten-slice flight; it was flighted to 1.85 m, a standing forehead, where any neighbour who jumps higher has it first; a free kick crossed in was a floated pass landing at its man's feet.
+
+- **Delivery**: whipped (loftK.corner 0.7 + 0.03 d: a second and two thirds to the spot, five metres up), to 0.2 m under the top of its man's jump. A free kick into the area is struck the same way. The runs last as long as the flight.
+- **Meeting**: a corner, a long throw or a free kick into the area is met in the air by the attacking side on the cross's law.
+- **Swing** (ball.ts meKickBall o.spin): 0.05 rad/s for anybody, plus 0.45 for each unit of Dead Ball on a dead ball and 0.15 for each of Crosser on a cross, so at level three either trait swings it about four times as far. The strike is turned half the swing off its line so the ball comes round onto its man.
+- **The duel**: a dead ball into a set defence gives the defender +0.55 (airSetDef); swing takes 0.6 of its rad/s off him (airSpin).
+
+Staged after, 500 corners: headed at goal 25% (5% scored), defence heads or clears first 54%, 1% untouched. Dead Ball at level three on everyone: headed at goal 27%, attackers win 31% of the duels against 24%. Per corner that is more goals than a real corner (about 3%), in a match that has a fifth of a real match's corners. Not measured over matches; open-play crosses were not staged at all, only given swing.
+
+## Before release: measured over matches, and what it changed (23 November 2026)
+
+User: "Sure, go", then "Keep going until everything looks good... I expect season-wide stats to be normal when I wake up tomorrow."
+
+Spec test/specs/rel1.mjs (League One as the sheet has it, and the twelve strongest national sides, three sets of dice each), test/reltests.mjs (tournament, pool and card tests on the cloud), test/ratings.mjs split dumps, test/season.mjs (whole seasons).
+
+- **First run (45080909054, 17,280 matches)**: League One 3.03 goals a match against 2.84 before the free kick and corner were rebuilt. Headed goals 0.45 (0.33 before: normal now). Free kick goals 0.19, one kick in ten, where real football has about 0.07: too many.
+- **Why**: two in three free kicks arriving above 1.8 m went in, from the middle of the goal as often as a corner, because the keeper stood two metres out and they dipped over him. He stands on his line for a free kick at goal now (CFG.spFkGkOut); what scores is the top corner. Accuracy re-sized on 600 staged kicks (5% scored, Dead Ball at level three 11%), and fewer are shot at all (spShootRange 27 to 25, spShootAng 12 to 14).
+- **Second and third runs (45084192944, 45085974311)**: League One 2.85 and 2.88 goals a match, national sides 2.67. Of League One's goals: headed 0.45 (15%), penalties 0.27 (9%), free kicks 0.10 (3.5%), from outside the area 0.46 (16%). Draws 23%. Yellows 2.84, reds 0.17 a match.
+- **Ratings** (dump run 45084196754): keepers had drifted (8.8% of full matches at 6.0 or under against 6.8%). rateFin and gkExp re-derived; all pars and the keeper balance hold on the same records.
+- **Tests on the cloud** (45085978679): tournament and cards pass. Pool passes all but its check for the built worker chunk, which the cloud does not build.
+- **Substitutions** (user: "make subbed/injured players walk to their technical area smoothly, vice versa for their replacement"): the man replaced jogs to his side's technical area and an injured man is walked there; a man sent off goes down the tunnel at halfway; the replacement comes on from the technical area (CFG.subEnterX 10.5), two together side by side. Watched headless in a live match.
+
+## Whole seasons, and the finishing traits cut (23 November 2026, overnight)
+
+test/season.mjs plays League One seasons on the cloud (380 matches, four runners a season, five seasons a run), in the lab's way, the app's own way ("app": src/sim/core.ts simPositionalMatch with the home side's advantage, injuries on and the managers), on the engine without traits ("strip"), or as the app is published ("pub": the last commit's engine and records, built in a temporary copy). Read by scratch seasonsum.mjs. No lay-offs or bans between matches in any of them: every man is back for the next one.
+
+| | Published app | New, first | New, after the cut |
+|---|---|---|---|
+| Goals a match | 2.58 to 2.84 | 2.85 to 2.94 | 2.72 to 2.93 |
+| Top scorer | 33 to 41 | 39 to 56 | 34 to 45 |
+| Third best scorer | 29 to 33 | 29 to 33 | 28 to 32 |
+| Most assists | 15 to 21 | 21 to 32 | 21 to 27 |
+| Best average rating | 8.23 to 8.41 | 7.89 to 8.10 | 7.95 to 8.19 |
+| Champions' points | 66 to 76 | 80 to 87 | 81 to 90 |
+| Bottom side's points | 30 to 35 | 18 to 26 | 19 to 32 |
+| Draws | 26 to 31% | 20 to 26% | 22 to 25% |
+
+("New, first" was played the lab's way, the other two the app's way.)
+
+- **Finisher was far too strong.** Per player against the same seasons with traits stripped: Finisher at level three took Hawthorne from 26 goals a season to 44, at level two it was worth six to eight to a striker, Long Shot three with Dead Ball took Szabo from 16 to 30. Finisher, Long Shot and Predatory cut to about a third (config.ts). Measured after (run 45089366727): Finisher +3.5 rating points on the man, Predatory +3.6, Long Shot +0.4, all still clear.
+- **A side's top scorer takes 35 to 40% of its goals and ten or so men reach twenty** in every version, the published one included: forwards score 55 to 60% of all goals in this engine. Not changed.
+- **The table is more spread** than the published app's (champions 81 to 90 points against 66 to 76), nearer a real league's.
+- **A direct free kick goal no longer credits an assist**: the walk back through the touches went past the taker's own strike to whoever had passed to the man fouled.
+- Home sides win 40% and away sides 37% in both versions; 0.7 injuries a match in both.
+
+**Final round (runs 45094136652, 45094142452, 45094149079, 45094155667).** League One 2.80 goals a match, national sides 2.54; headed 0.43, penalties 0.28, free kicks 0.10; draws 24.5%. Ratings: all pars and the keeper balance hold on a fresh dump. Tournament and card tests pass; the pool test passes all but its check for the built worker chunk, which the cloud does not build. Five more app-way seasons: top scorer 34 to 45, most assists 20 to 27.
+
+## Long Shot curls it (23 November 2026)
+
+The user: "make long shot give holders the ability to curve shots outside of the box. Also make them more likely to
+attempt long shots." From outside the box a holder's strike carries spin (config.ts `longshot.curl`, 0.5 rad/s at level
+two): it starts toward the keeper and bends away into the corner he picked, and the keeper reads only part of the bend
+(`gkCurlRead`). Measured on the cloud (run 45138190966, the same fixtures with the curl on and off): shots from outside
+the box scored 6.4% against 3.3%, went wide 19% against 35%.
+
+A flat urge to shoot (range 8, farW 0.08) gave the curl's goals straight back: two 5-minute trait runs read it at -0.5
+and +0.0 rating points. So the holder shoots more because the curled shot is worth more to him: `curlP` raises the
+chance he puts on a shot from outside the box (mind/decide.ts), 0.6 at level two, and range and farW are back at 6 and
+0.03. Run 45140373150: Long Shot +3.4 ±0.6 rating points at level three, net goals +0.22 a match on its placement. The
+readout reads xG for some traits, and xG does not see curl, so read Long Shot by net goals.
+
+One League One season the app's way after it (run 45141304200): 2.88 goals a match, top scorer 45 (Hawthorne), third
+best 30, champions 95, bottom 18. All inside or at the edge of the ranges the five seasons before it gave.
+
+## Managers: every line on the table, and the man to mark (23 November 2026)
+
+**Where the goals are** (run 45146812880, one League One season the app's way, the goals in order of the clock; read by scratch goalstate.mjs and conc.mjs). Hawthorne's 46: ten penalties, eleven scored when his side was already two or more up (nine of them after the hour), 98% of the minutes, 46% of his side's goals. Across the league a side's first scorer takes 37% of its goals, strikers score half of all goals and the two wingers together about 5%; nine of the twenty clubs play one striker.
+
+**Every line on the table** (the user: "in a WC match, Cahaya rested all of its players after already being eliminated from the group stage, which shouldn't happen"). A group match was measured against one line, the top qualifying place, and a side that could no longer reach it was a dead rubber: it changed every man it had a reserve for and coasted. That caught far more than Cahaya: every league side out of the title race, every side fighting the drop, and in the 1936 qualifiers (whose "advance" zone is the playoff places, from eighth) every side that could not finish first. computeGroupStakes (App.tsx) now measures a side against every line between two zones and takes the most urgent one still open; inside the places that go through, first against second is seeding, worth a proper side and never a must-win; a place among the best placed is never settled inside its own group; a side already qualified has nothing on any match. A settled side is one of two things. Through, with a knockout to come: "rest", up to eight changes, the most tired first, the keeper among them. Out, or a league place fixed: "free", the first-choice side, and in its last match simply the best eleven it has that day. No match is a must-win with more than two still to play after it. Over two legs, three or four down is a tie to be won (it was a dead rubber); only five down is given up; three up lets him change a few. A Swiss draws its rounds one at a time, so its matches left are counted off the format (groupRemAfter): every Swiss match used to read as the side's last. Checked by scratch stakes.mjs over a World Cup group, a league of twenty, the qualifiers, every knockout case and a Swiss; test/tourn.mjs and test/pool.mjs pass.
+
+**The man to mark** (the user: "opposing teams need to be aware of who the star/threatening players on the other team are every match, and attempt to shut them down"). src/engine/manager.ts meThreatPlan: before kick-off each manager names the opponent's most dangerous man (rating where he plays, the scoring traits, goals a match in the competition so far, which the tournament passes in as p.tg and p.tm, and his goals today) and, when he stands clear of the back line set against him, gives him a marker, the best defender who plays where he does. A poorer manager names the wrong man more often; everybody looks again at half time, a manager of 65 or better as soon as his side concedes, and at once if the man or the marker goes off. On the pitch (mind/team.ts, THE THREAT): the marker is his and nobody else's inside a leash, goal-side and tight, follows his runs, takes him in the box, goes to the ball only when clearly the man to go, and stays goal-side of him while his own side has the ball; one midfielder with nobody to mark stands in the lane into him; he is closed by two ten metres sooner. The marker's spot is left empty: nothing scales a chance. Off at set pieces, and off wherever a match has no managers (the lab, golden: identical across all 24).
+
+Measured on whole seasons, same dice (runs 45149033171, 45150667531; the no-plan season is 45146812880's): goals a match 2.98 with no plan, 2.68 as shipped, 2.79 with the marker alone; men on thirty goals 4, 1, 3; on twenty-five 8, 5, 7; a side's first scorer 37%, 35%, 38% of its goals. Traced over nineteen matches, the marked striker took the ball 17.8 times a match against 21.9 and the nearest defender to him in the last third stood 3.1 m off against 3.7. **It does not bring the top scorer into line**: Hawthorne 46 with no plan, 41 as shipped, 44 with the marker alone, one season each (about six either way). His open-play goals in the box did not fall (9 against 10 in the trace); what fell was his team-mates' (3 against 11), who score through him. What is left of the top scorer is not marking's to fix: Finisher at level three (33 with every trait stripped), penalties (nine of the 41), a starter never rested or taken off with the match won, and one striker taking half his side's goals.
+
+test/season.mjs: every goal in order of the clock (G); "appnt", the app's way with no man marked; SEASON_MT, the second brain's tuning a season ("key=value+key=value", commas between seasons). src/sim/core.ts calls globalThis.__simTick each tick when a harness sets it.
+
+**No set penalty taker** (the user, the same day: "Maybe Hawthorne just shouldnt be taking every penalty?", then "Do a mix of the person who won the penalty or a random player in the team good at finishing, no set penalty taker"). The best striker of a ball took every penalty his side won, so they were all one man's: Hawthorne ten of 46, Galanis twelve of 27. In a match the man who won it now takes it half the time (CFG.penWonTakes), when he is still on and is not the keeper; otherwise, and for a handball, any one of the side's three best at it (CFG.penPool; Dead Ball counts toward being one of them), drawn off the restart's own seed (setpiece.ts meSPBegin; match.ts meFoulCommit names the man fouled). A shootout keeps its order. Golden: with the old rule replayed through the new code (penWonTakes 0, penPool 1) all 24 were identical; under the new rule fixtures 0, 1, 5, 14 and 22 moved, all five among the eight with a penalty (0, 1, 5, 8, 10, 14, 18, 22), and it was re-recorded.
+
+One season with both in (run 45153157295, same dice): 2.61 goals a match, Hawthorne 33 (four penalties), then 26 and 24; a side's first scorer 32% of its goals; six men on twenty goals, two on twenty-five, one on thirty; champions 82 points, bottom 25; most assists 19.
+
+
+## Managers: the rest of the rework (23 November 2026)
+
+The user, after the release check: "Build the rest except managers who differ." Five behaviours from the brainstorm, all only in a match that has managers (`s.managers`), so the lab and the 24 reference matches are untouched (golden identical, nothing re-recorded). Each can be switched off for a measurement through `globalThis.__mgrOff` (`won`, `poor`, `respect`, `memo`, `sp`); test/season.mjs takes them a season at a time as `SEASON_OFF`.
+
+**A match that is over** (match.ts meCoachSubs, config.ts `subWon`, `subLost`, `subWonStar`). Three up from the hour or two up from the 75th minute, on the aggregate in a second leg, the gap to the reserve stops counting: a man comes off for his legs or for standing above the eleven's mean, the best first. The same three down from the 70th minute, unless the tie has to be settled that night. The dugout log reads "Match won: legs saved" or "Match gone: legs saved" with his name.
+
+**A poor game, and a booked man still fouling** (the same function; `subPoorBar`, `subPoorPts`, `subRiskFrom`, `subRiskPts`). From the hour a man whose match rating is under 6.3 is priced as the player he has been that day, eight rating points off him for each point under the bar; on the hour one outfield man in sixteen is under 6.3 (24 matches traced). A booked man who has fouled again since the card (match.ts meFoulCommit keeps `_fl` and `_flYc`) is worth four points to take off from the 46th minute, the one change besides gone legs made before the hour. Both scale with the manager's rating.
+
+**Respect** (manager.ts `ME_RESPECT`, meRespect). Away from home or on neutral ground, a manager whose eleven stands four rating points or more below theirs (a point more if they are at home) drops his line and his press, a full step each at twelve points. Behind, the chase lifts it; a must-win side never starts with it. Measured (run 45177480046, League One's bottom seven against its top five, every fixture six times, 420 matches an arm on the same dice): applied at both grounds the weaker side took 0.545 points a match against 0.564 without (each +-0.05) and conceded 2.23 against 2.10. By ground: away 0.60 against 0.45, at home 0.49 against 0.68 (+-0.07 each). So it is the away side's plan only. On neutral ground it is unmeasured. A lean toward the cautious neighbouring style was built with it and changed no match of the 420, so it was taken out.
+
+**The last meeting** (App.tsx lastMeeting, carried on the match's stakes as `last` and `lastSc`; core.ts flipUrg turns it round for a second leg). A manager who has met this opponent in the same tournament reads its style right, counts four points of respect for each goal beyond two he lost by, and has the men who scored against him watched (`ME_THREAT.vsW`, four points a goal; he no longer misnames such a man). An open two-leg tie is not a meeting: the first leg is already read as a deficit. The season harness plays every match alone, so this is traced on single matches and unmeasured in bulk.
+
+**Corners** (mind/team.ts spCorner, setpiece.ts, `spBestHead`). Defending, the markers take their men by rank in the air, best on best; traced on twelve matches the best marker stood on the best header at 96% of corners against 36% before. Attacking, the delivery is one and a half times likelier to be aimed at the side's best header among the men it can reach.
+
+One League One season with all of it but respect (run 45176557365, season two; same dice as run 45153157295): 2.71 goals a match against 2.61, 3.67 changes a side against 3.43, Hawthorne 28 in 75 minutes a match against 33 in 90, nobody on thirty goals, two on twenty-five, six on twenty, the top four on 80, 79, 78 and 75 points, yellows 2.73 a match, reds 65.
+
+**The last four** (the user, the same evening: "Put the rest in. If Hawthorne falls further we can adjust pens to 75% takers / 25% winner"). Switches `favour`, `chase`, `weak` in `__mgrOff`.
+
+- **The favourite's answer** (manager.ts `ME_RESPECT.favWidth`). The manager across from a side set up with respect expects the deep block and plays a step wider at their full plan. Run 45207043332 (the top five at home to the bottom seven, every fixture twelve times, 420 matches an arm): the weaker side took 0.407 points a match against it and 0.479 without (each +-0.045), conceding 2.31 against 2.23. In the favourite's favour, inside the noise. The same run puts sitting deep away at 0.48 points a match on 420 matches, against 0.45 without it on the earlier 210: about level, and the +0.15 read from 210 matches was mostly noise.
+- **Chasing it with a forward** (manager.ts meShapeChase, match.ts meCoachSubs, `subChaseMin`). One or two behind from the 75th minute, once a match and likelier the better the manager: the best forward on the bench who fits comes on for the least of the men in the line the more attacking neighbouring shape drops, and the side moves to that shape with him furthest forward. 52 times in a season of 380 matches. The docs no longer say a manager never changes formation to chase. Its worth is unmeasured: it fires too rarely to read in one season.
+- **The weak link** (manager.ts meWeakPlan, `ME_WEAK`; called from match.ts meChase). A defender four points below the rest of his back line, counting a stand-in out of position, a booking (three points) and legs under 70, has the play aimed at his part of the final third by legs added to the side's own pass pattern (`s.plan.zones`). Read at the first minute, at the break and when the plan is replaced. 244 times a season, a third of all sides. Unmeasured in isolation.
+- **Eased back** (App.tsx managerSelect, `BACK_FIT`; `injAt` and `injLen` written where a match's injuries are filed). A man in his first match back from two matches or more out starts on 75 stamina at most, until he has played a minute since. Resting men before a harder fixture was already in managerSelect (its look at the next opponent and the run of fixtures).
+
+One League One season with everything in (run 45206950897, same dice): 2.78 goals a match, 3.69 changes a side, yellows 2.80 a match, reds 63, Hawthorne 32 (three penalties) in 75 minutes a match, then 26, 24, 21; one man on thirty goals, two on twenty-five, six on twenty; champions 91, bottom 23. The same season with the winner of a penalty taking a quarter of them (`penWonTakes` 0.25): Hawthorne 31, three penalties again. He did not fall, and the split made no difference to him, so `penWonTakes` stays at 0.5.
+
+test/season.mjs: `SEASON_ONLY` ("A+B_vs_C+D", only the fixtures between the two lists), `SEASON_HOME` (the first list at home only), `SEASON_REP` (each fixture that many times), `SEASON_CFG` (the engine's settings a season, as SEASON_MT), and every line carries the dugout log (`L`).
+
+## The referee, the touchlines and injuries (24 November 2026)
+
+The user's brief: "a rework to injuries, which are rudimentary right now at best, as well as a referee in-match with improved reworked dynamic decisions based on home advantage, his field position, etc., linemen (cosmetic), coaches in the technical area walking around (cosmetic; shouting effects when he gives instructions)". Five steps, in this order. Only a step marked built is built.
+
+**The user's answers.** Referees are anonymous: a temperament rolled for each match, never a named roster. Wrong calls are in, at low rates. Advantage is in, and "it should expire after a bit". The injury total stays where it is, spread across the new causes once it is measured. On the referee: "make sure his AI is realistic, doesn't glitch with the players, avoids players and the ball". On the physios: "ensure the physios' animations are also realistic".
+
+**Step 1: the figures on the pitch. Built.**
+- **The referee** (`src/engine/referee.ts`, `ME_REF`; stepped at the head of `meTick`). A man the engine moves, kept in `mePos.ref` and never in `s.players`, so nothing passes to him, marks him or finds him in a search. He works a diagonal: above the ball in the left half of the screen and below it in the right, all match, six metres behind the move, out of the penalty areas except at a penalty, with a place of his own at every dead ball. He reads a pass at the man it is going to, walks when he already has his view, picks a spot with nobody standing on it, gives a berth to each man and to the ball, and steps off the line of a man or a ball coming at him. He takes no dice and writes to nothing but himself: all 24 golden fixtures are identical with him running.
+- **Measured** (`test/refprobe.mjs`, six matches): 17 metres from the ball at the median in open play, top speed 7.3 metres a second, no slice over 8, never inside a penalty area. He is within 0.8 metres of a player in 0.17% of slices, about eight times a match, nearly all of them a single slice as a man runs past. On screen, sampled every drawn frame for forty seconds at double speed, no figure moved more than 0.57 metres between two frames.
+- **The assistants and the coaches** (`src/engine/touchline.ts`, `ME_TL`; kept on the app's match object as `m.tl`, stepped after the tick while a match is watched). Drawn only: nothing in the engine reads them. As the screen shows it, the assistant on the near touchline has the left half and the one on the far touchline the right, the whole match (the second half is only drawn mirrored, so in the engine's coordinates the crew's diagonal turns over at the break, on `mp.h2`; the far assistant used to run the top left in the first half, under the scorebug), each level with the second-last defender or the ball, 0.6 metres off that line at the median. A flag goes up for offside, along the line for a throw, down at a corner, in at a goal kick, and he walks the goal line to the edge of the area for a penalty. A coach stands back when the match is going his way and comes to the edge and follows play when it is not. Each new line in the manager log (`out.mgrLog`) brings him to the front with three arcs and the order over the pitch (`ME_TL_TAG`: Change Of Style, New Orders, Orders Lifted, Team Talk, Man Marking, Game Plan, Substitution, Change Of Shape, Reshuffle); a card against his side gets the arcs with no words.
+- **Drawn** on the live pitch and in the full-pitch replay (the tape's frames carry all five as `of`), and the referee and assistants in the saved GIF. They walk off and back at every break with the players. The referee and the assistants are striped dots (the user: "Refs/linemen should have striped referee dots"), in `--ui-official` on `--ui-official-edge`; a coach is a dark dot ringed in his side's colour. The technical areas are 0.4 metres deeper so a coach can stand clear of the assistant running past.
+
+**Step 2: the referee's decisions. Built and measured.** (`referee.ts` `meRefJudge`, `meRefView`, `ME_CALL`; every foul of the second brain goes through it from `meDuelHooks.commit` in match.ts, and so does the handball.)
+- **Two questions.** The challenge decides whether there was a foul (mind/duel.ts, as before, without the crowd). The referee decides whether it is given. His view of the spot is full inside 17 metres and falls to 0.42 by 44, less 0.13 for each body standing in his line of sight and 0.08 when he is at a run. How plain the offence was rises with the pace the man came in at. The doubt is what both leave: (1 - view) x (1 - plain), counted 1.6 times in the penalty area.
+- **Three outcomes.** A real foul is missed on half the doubt (feed: Waved Away; half the time the man who did it comes out with the ball). A fair tackle is whistled on 0.18 of how poorly he saw it, 0.15 as often in the area (feed: Soft Foul; a free kick and at most a booking). Otherwise it is given.
+- **The crowd** works on the doubt alone (`homePull` 0.7, times how much this referee listens): more of the host's fouls missed and more of the visitor's fair tackles whistled, and the reverse less. On the discretionary cards it leans by how far from plain the offence was. The flat fifteen per cent on every foul roll (`ME_HOME_ADV.refRoll`) is retired.
+- **Temperament and patience.** Strictness (0.84 to 1.18), readiness with a card (0.78 to 1.22) and how much he hears the crowd (0.55 to 1.45) come off the match's drawing seed. In the first twelve minutes a booking is 0.8 as likely; a man's third foul and each after is a quarter likelier to be booked, to 1.6. A foul that puts its man off the field is 1.35 times as likely to be booked, one that needs the physio 1.15.
+- **He goes to it.** For six slices after he blows he runs to within three metres of the spot, then takes his place for the restart.
+- **The switch.** `globalThis.__refOff` plays the whole old game on the same bundle: the old referee, no advantage, the old injuries, the old home dial. With it on, all 24 golden fixtures were identical to the baseline as it stood before this rework; the baseline was then re-made for the new game (every fixture moves, because the foul roll takes different dice) and repeats.
+- **Measured against the old game** (`test/refab.mjs`, cloud run 45305381212: every ordered League One pair, the listed home side as host, 3,040 matches an arm on the same seeds). Old, then new: goals a match 2.776 and 2.782; fouls 20.65 and 20.61; yellows 2.859 and 2.859; reds 0.162 and 0.169; penalties 0.378 and 0.363; host goal difference +0.116 and +0.113 (se 0.032), results 40.3/24.3/35.5 and 40.3/23.7/36.0. The new game also has 0.78 fouls a match not given, 0.27 soft ones given, and 3.3 advantages of which 0.9 are brought back. The host commits as many fouls as the visitor now (10.3 and 10.4, against 9.2 and 11.4): the old referee took a flat share off every roll.
+- **Home advantage kept whole** (config `ME_HOME_ADV.duel` 0.06 to 0.072): the referee's share is smaller now that the crowd moves only his doubtful calls, and at 0.064 the host goal difference read +0.077; the home side's edge in a duel makes it up.
+
+**Step 3: advantage. Built and measured.** (match.ts `meAdvOn`, `meAdvStart`, `meAdvStep`; config `advT`, `advFrom`, `advRide`, `advPace`, `advStrong`; switch `__advOff`.) A foul given outside the area, on a man 35 metres or more up the pitch from his own goal line, is played on when he rides it: 0.16 of the time, less for a challenge at pace, more for a strong man. It counts as a foul; the card is decided at once and kept in his pocket, and a red for denying a goal becomes a booking once play has run. The window is 16 slices, four seconds. The other side getting the ball under control inside it brings play back for the free kick. After it, or at any dead ball, the advantage is over and the card comes out at that stoppage. Feed: Advantage. The man who fouled does not go for the same player again while it runs: left beaten beside a break, he was the first man the foul on purpose looks for, and sendings-off rose by half until he was stopped (0.235 a match against 0.153, cloud run 45299932594).
+
+**Step 4: injuries in the match. Built and measured.** (`src/engine/injury.ts`, `ME_HURT`; the figures in `touchline.ts` `meTlCare`.)
+- **Four levels.** A knock he runs off with play going on. Fine: treated and back. Hurt: treated, back, and carrying it for the rest of the match (slower, first on the manager's list, and at a sprint it can go again, which ends his match). Off: he cannot continue, with a diagnosis. A head injury is always off.
+- **The stoppage.** Anything past a knock stops play: a foul's own free kick, or in open play a dropped ball to the side that had it (in a penalty area, to that area's goalkeeper). The whole timetable is worked out once by the engine as `mp.treats`: the physio runs on from his technical area at 1.75 metres a slice (never longer than 36 slices), kneels 10, 14 or 16 slices by level, and they leave by the nearest way off the field at a walk, or on a stretcher with two bearers for the rows of the table marked `carry`. The restart waits until he is off the field (`sp.minT`), or for a goalkeeper, who is treated where he lies, until he is up.
+- **A man short.** A player treated is out of play, not replaced, and waved back on from where he left 8 slices later if he is fine and 44 if he is hurt. A man who cannot continue is replaced at that dead ball as before.
+- **Drawn** from the timetable only, so a match nobody watches takes exactly as long: the man lying flat in his side's colour, the physio a pale dot with a cross, the bearers either end of him; a man coming back waits at the touchline with the physio; a man who is finished is taken round the outside of the pitch to his bench.
+- **The card.** The foul is judged knowing what it did (above).
+- **Feed and tags.** Every injury line names what he has: the injury itself for a man who goes off, and for one who carries on, is treated or plays on hurt a lesser one by what did it (`ME_KNOCK`: an ankle knock, a dead leg, hamstring tightness), picked off the moment and the man so naming it spends no dice. The ratings list tags a man Treatment, Hurt or Knock.
+- **Full time.** An Injuries list over The Goals, a row a man: the minute, the man, the injury, and the games it costs him (`injLen`, settled by the engine when he goes off, so the tournament records the same number), ROS for a long injury, Doubtful for a man who played on hurt. A match played live and imported had been dropping the diagnosis on the way into the tournament (a random one to five games, and no long injury filed); it carries it now.
+- **Player page.** A long injury on file is a warning row over Season Stats: the injury, and Out Until the competition he is back for.
+
+**Step 5: causes, risk and what follows. Built and measured.**
+- **Causes** (`ME_HURT`): a foul (per foul given a free kick, more at pace); a fair tackle won at pace; two men up for the same ball; and a pull, per slice a man is sprinting, 3 times as likely on empty legs, 7% likelier for each year past 29, 1.6 times in a first match back and 1.4 times for a man who came into the match doubtful. The diagnosis is drawn from the rows that cause can produce (config.ts `ME_INJURY` `how`: c a challenge, a the air, p a pull), so a trip is a knee or an ankle and a pull is a hamstring.
+- **The total is where it was.** Cloud, 3,040 League One matches an arm (run 45305381212): 0.71 men hurt a match against the old game's 0.72, and 0.126 lost against 0.121. By cause: fouls 0.35, tackles 0.10, the air 0.095, pulls 0.16. Treated off the field 0.29 a match; playing on hurt 0.13.
+- **Doubtful** (App.tsx `managerSelect`, `DOUBT_FIT`, `hurtAt`): a man who played on hurt starts his side's next match on 88 stamina at most and goes into it likelier to pull something, until he has played a minute since. The competition's Unavailable list names him Doubtful.
+- **Age** reaches the engine on each squad entry (`attachRecords`), from the record's date of birth.
+
+**Long injuries. Built.** (`src/data/longout.js`; the user: "really bad injuries causing players to miss the entire year or a set number of tournaments".)
+- **Where they live.** In the season's Player Stats sheet, as a block beside the leaderboards headed `# INJURED POS TEAM INJURY AT ID`: the man, his side, the injury by its id in the table, how far through his side's matches it came (0 to 1) and his record's id. The leaderboard reader never takes it for a board (it looks for PLAYER). The app reads every filed season's sheet at start, so filing the season is all it takes; a row can be typed in or deleted by hand. A friendly never makes one.
+- **The year** runs World Cup, then League And Cup (everything else), then Club World Cup and Shield, then Nations League, then World Cup Qualifiers (the user: "these should have different weights"), counted as 2, 6, 2, 1 and 1 of its 12 units (`LONG_SLOTS`). A filed season is placed by its folder and year; the qualifiers close the year before the World Cup they are named for, and a league written across two years belongs to the year it starts in. A competition being played is placed by the year and the words in its name ("1936 World Cup", "League One 35-36"), or this year if it has none.
+- **How long** (config.ts `ME_INJURY` `long`, `out`): cartilage 2 to 4 units, ankle ligaments 1 to 3, a broken ankle 3 to 5, a broken foot 2 to 3, a collarbone 2 to 3, from the moment it happened, the man's own place in the range settled by his name. A cruciate, an Achilles or a broken leg: the rest of the year, and from its second half the next World Cup as well.
+- **Who is left out** (App.tsx `longIdx`, `tLongOut`, into `tUnavail`): with Long Injuries on in setup (it is by default, beside Injuries, Suspensions and Tiredness), every man in a competition's squads with a long injury on file misses the share of it his lay-off still covers: counted in his side's matches where the format says how many there are, the whole of it otherwise when more than a quarter is covered. The Unavailable list names him Long Injury with what it is; his page shows a warning row over Season Stats with the injury and the competition he is back for, for as long as the archive has not got past it.

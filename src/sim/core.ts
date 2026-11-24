@@ -345,7 +345,9 @@ export function createMatchState() {
 
 // The second leg is played with the sides swapped into the home and away slots, so what a tie is
 // worth to each of them has to be swapped with them. Urgency follows the men, not the slot.
-export const flipUrg = (u) => u ? { home: u.away ?? 0, away: u.home ?? 0 } : u;
+export const flipUrg = (u) => u ? { home: u.away ?? 0, away: u.home ?? 0,
+  ...(u.last ? { last: { home: u.last.away, away: u.last.home } } : null),
+  ...(u.lastSc ? { lastSc: { home: u.lastSc.away, away: u.lastSc.home } } : null) } : u;
 
 export function quickPenShootout(rng) {
   let h = 0, a = 0;
@@ -621,7 +623,8 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   if (st.preLog) out.mgrLog = { home: [...(st.preLog.home || [])], away: [...(st.preLog.away || [])] };
   // out.min is what a goal stamps its minute from; without it every scorer reads 0'.
   for (let t = 0; t < ME_MATCH_TICKS + meAdded(st); t++) {
-    out.min = meMinute(t); out.add = meAddedMin(t); meTick(st, r, out); }
+    out.min = meMinute(t); out.add = meAddedMin(t); meTick(st, r, out);
+    if (globalThis.__simTick) globalThis.__simTick(st, out); }                     // a harness watching the pitch; the app never sets it
   const ftH = out.goals.home, ftA = out.goals.away;
   let et = null, pen = null;
   // Extra time is a third of a match, the same proportion thirty minutes is of ninety, and then
@@ -657,7 +660,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   // engine object. The object itself carries the brain's memory and plans, about 160KB a match in a tournament's save,
   // so a group stage of 32 sides ran out of browser storage in its second round.
   const PD = ["name", "fullName", "pos", "ovr", "ovr0", "sub", "_onAt", "_offAt", "mins", "goals", "assists", "rating", "yc", "rc",
-              "rcVariant", "inj", "injSev", "injPart", "passOk", "prog", "cc", "defActs", "saves", "stamina"];
+              "rcVariant", "inj", "injSev", "injPart", "hurt", "passOk", "prog", "cc", "defActs", "saves", "stamina"];
   const pdOf = (p) => { const o = {}; for (const k of PD) if (p[k] !== undefined) o[k] = p[k]; return o; };
   return { ftHome: ftH, ftAway: ftA, et, pen,
            cards: { home: cardsOf("home"), away: cardsOf("away") },

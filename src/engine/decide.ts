@@ -5,7 +5,7 @@ import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGrou
 import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "./ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
 import { meTouchNear } from "./touch";
-import { meMind, meTech } from "./attributes";
+import { meDefQ, meMind, meTech } from "./attributes";
 import { meOppDist } from "./brain";
 import { meSpeed } from "./attributes";
 import { meTick } from "./match";
@@ -177,7 +177,7 @@ export function meShotSit(s, side, p, tx, ty) {
     if (d >= CFG.sitFar) continue;
     const close = Math.min(1, (CFG.sitFar - d) / (CFG.sitFar - CFG.sitNear));
     const front = d > 0.05 ? Math.max(0, (dx * ux + dy * uy) / d) : 1;
-    pr += close * (CFG.sitBehind + (1 - CFG.sitBehind) * front);
+    pr += close * (CFG.sitBehind + (1 - CFG.sitBehind) * front) * meDefQ(q);   // each by the man he is
   }
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v = Math.hypot(vx, vy);
   const body = v > 0.5 ? Math.min(1, v / CFG.sitRunV) * (1 - (vx * ux + vy * uy) / v) / 2 : 0;

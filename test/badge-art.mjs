@@ -1,6 +1,7 @@
-// PLAYER BADGE ART. One SVG per badge in ME_BADGES (src/engine/config.ts): its own icon, struck in white on the metal of
-// its tier -- the same gold, silver and copper the OVR chips are struck in (App.tsx OVR_METAL), with the same white ink
-// and shadow -- and the tier marked again in pips along the foot, so colour is never the only signal.
+// PLAYER BADGE ART. One SVG per badge in ME_BADGES (src/engine/config.ts) per level: its own icon, struck in white on
+// the metal of its level -- the same gold, silver and copper the OVR chips are struck in (App.tsx OVR_METAL), with the
+// same white ink and shadow -- and the level marked again in pips along the foot, so colour is never the only signal.
+// A flaw is struck in a dull red iron with hollow pips. Written as <id>-<level>.svg, and <id>.svg at the trait's std.
 //   node test/badge-art.mjs [outDir=public/player-badges] [sheet.svg]
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -10,9 +11,10 @@ const METAL = {
   gold:   { hi: "#f2d067", mid: "#b5860f", lo: "#5f4405", pips: 3 },
   silver: { hi: "#cdd5dd", mid: "#8b949c", lo: "#4d555c", pips: 2 },
   bronze: { hi: "#e0a071", mid: "#a05f2c", lo: "#4f2a12", pips: 1 },
+  flaw:   { hi: "#c9807a", mid: "#8a3630", lo: "#3f1512", pips: 0 },
 };
 // The tiers as measured (8 Oct 2026, five cloud runs pooled): worth to the man who carries the badge.
-import { TIER, NAME } from "../src/data/badges.js";   // the one table: the app reads it too
+import { BADGES, BADGE_BY_ID, LEVEL_TIER, TIER, NAME, maxLevelOf } from "../src/data/badges.js";   // the one table: the app reads it too
 export { TIER, NAME };
 
 const W = 5.2, INK = "#ffffff", DARK = "#1d2026";
@@ -105,13 +107,92 @@ const ICON = {
     `<rect x="37.5" y="44" width="28" height="23" rx="7" fill="${INK}"/>`,
     `<g transform="rotate(-38 33 56)"><rect x="29.5" y="46" width="7" height="17" rx="3.5" fill="${INK}"/></g>`,
     `<rect x="40" y="68.5" width="23" height="6" rx="2" fill="${INK}"/>`].join(""),
+  // --- the Mind (22 November 2026) ---
+  // Over his shoulder: a head, and the look that swings round behind it.
+  shouldercheck: () => [dot(46, 44, 9), line("M26 76 Q46 58 66 76"), line("M60 34 Q78 34 76 54", 4), head(75.5, 57, -0.1, 1, 7.5, 0.62, 4)].join(""),
+  // Gives it, and goes.
+  passandmove: () => [dot(28, 66, 5.4), line("M36 64 L62 56", 4), head(65, 55, 0.95, -0.3, 7.5, 0.62, 4), ball(72, 53, 5.4),
+    dash("M30 56 Q34 34 52 28", 4), head(55, 27, 0.95, -0.3, 7.5, 0.62, 4)].join(""),
+  // The metronome.
+  tempo: () => [line("M36 76 L45 28 H55 L64 76 Z"), line("M50 70 L62 38", 4), dot(60, 43, 4.4), line("M41 62 H59", 3)].join(""),
+  // The shout.
+  manon: () => [dot(30, 50, 8), line("M46 40 Q54 50 46 60", 4), line("M56 33 Q68 50 56 67", 4), line("M66 26 Q82 50 66 74", 4)].join(""),
+  // --- the Keeper ---
+  // In both hands.
+  safehands: () => [ball(50, 42, 10.5), line("M27 40 Q27 68 50 68 Q73 68 73 40", 6.4)].join(""),
+  // Off the palm, and wide.
+  strongwrists: () => [`<rect x="40" y="28" width="9" height="44" rx="4.5" fill="${INK}"/>`, dash("M78 30 L54 46", 4), line("M54 54 L74 70", 4),
+    head(76.5, 72, 0.78, 0.62, 7.5, 0.62, 4), ball(63, 39, 5.6)].join(""),
+  // Out of his hands, early.
+  quickrelease: () => [dot(27, 60, 6.4), line("M27 67 V78", 4), line("M30 55 L42 42", 4), line("M22 38 H30", 3.2), line("M19 46 H28", 3.2),
+    dash("M46 38 Q62 22 76 42", 4), head(77.5, 45, 0.55, 0.83, 7.5, 0.62, 4), ball(46, 37, 5.6)].join(""),
+  // Goes the right way.
+  penstopper: () => [line("M22 72 V32 H78 V72", 4), dot(50, 76, 2.8), ball(33, 45, 7), `<rect x="43" y="36" width="7" height="20" rx="3.5" fill="${INK}"/>`,
+    line("M60 60 L50 50", 3.4), `<g opacity="0.6">${dash("M50 72 L38 52", 3)}</g>`].join(""),
+  // --- flaws ---
+  // Eyes on the ball, and nothing else.
+  ballwatcher: () => [line("M26 38 Q50 18 74 38 Q50 58 26 38 Z", 4.4), dot(50, 39, 7), `<circle cx="50" cy="41" r="3" fill="${DARK}"/>`,
+    `<g opacity="0.7">${dash("M50 50 V60", 3)}</g>`, ball(50, 70, 7.4)].join(""),
+  // Time runs.
+  dwells: () => [line("M36 26 H64 L50 49 L64 72 H36 L50 49 Z", 4.6), fill("M43 66 H57 L50 56 Z"), ball(76, 68, 5.6)].join(""),
+  // Up for it, under it.
+  flaps: () => [ball(63, 27, 7.4), `<g opacity="0.7">${dash("M26 36 Q46 12 74 40", 3)}</g>`, line("M38 76 L44 46", 5), line("M56 76 L52 48", 5),
+    line("M40 44 L36 38", 3.2), line("M53 45 L55 38", 3.2)].join(""),
+  // Through his hands.
+  spills: () => [line("M28 34 Q28 54 43 58", 6), line("M72 34 Q72 54 57 58", 6), ball(50, 70, 7.6), line("M44 54 L46 60", 3), line("M56 54 L54 60", 3)].join(""),
+  // --- the Ball, the Body, Finishing, Defending (22 November 2026) ---
+  // Two men on him, and he has it.
+  pressresistant: () => [dot(50, 40, 7.5), ball(50, 60, 6.4), line("M18 50 H32", 4.4), head(34.5, 50, 1, 0, 7.5, 0.62, 4.4), line("M82 50 H68", 4.4), head(65.5, 50, -1, 0, 7.5, 0.62, 4.4),
+    `<g opacity="0.7">${line("M36 72 Q50 79 64 72", 3)}</g>`].join(""),
+  // In his stride.
+  ontherun: () => [line("M19 42 H29", 3.4), line("M16 51 H28", 3.4), line("M19 60 H29", 3.4), dot(41, 46, 7), line("M41 54 L47 66", 4.4), ball(56, 68, 5.6),
+    line("M62 63 L77 44", 4.4), head(78.5, 42, 0.62, -0.79, 7.5, 0.62, 4.4)].join(""),
+  // Shapes one way, plays the other.
+  disguise: () => [dot(27, 64, 5.6), `<g opacity="0.75">${dash("M34 58 L60 36", 3.6)}</g>`, `<g opacity="0.75">${head(62.5, 34, 0.76, -0.65, 6.5, 0.62, 3.2)}</g>`,
+    line("M35 66 H68", 4.6), head(71, 66, 1, 0, 8, 0.62, 4.6)].join(""),
+  // Up the pitch with it.
+  drives: () => [`<g opacity="0.6">${line("M20 76 H62", 2.6)}</g>`, dot(32, 60, 6.8), ball(45, 67, 5.2), line("M52 60 L71 35", 5.2), head(72.8, 32.6, 0.6, -0.8)].join(""),
+  // The whistle.
+  drawsfoul: () => [`<circle cx="41" cy="57" r="13.5" fill="${INK}"/>`, `<circle cx="41" cy="57" r="5" fill="${DARK}"/>`, `<rect x="41" y="43.5" width="36" height="11" rx="3" fill="${INK}"/>`,
+    line("M28 34 L24 27", 3.2), line("M41 31 V23", 3.2), line("M54 34 L58 27", 3.2)].join(""),
+  // Still on his feet.
+  ridestackles: () => [dot(55, 33, 7.4), line("M55 42 V60"), line("M55 60 L47 76"), line("M55 60 L65 76"), line("M19 71 L41 66", 5.6), ball(76, 71, 5.2)].join(""),
+  // On the line, waiting.
+  poacher: () => [`<g opacity="0.5">${["M38 28 V52", "M50 28 V52", "M62 28 V52", "M26 40 H74"].map(d => line(d, 1.6)).join("")}</g>`, line("M26 54 V28 H74 V54"),
+    ball(50, 60, 6.2), dot(50, 74, 4.8)].join(""),
+  // To the man who is free.
+  squares: () => [line("M30 28 H70", 4.4), line("M30 28 V36", 4.4), line("M70 28 V36", 4.4), dot(27, 62, 6.4), dot(73, 62, 6.4), line("M36 62 H58", 4.4), head(61, 62, 1, 0, 7.5, 0.62, 4.4)].join(""),
+  // Gets there.
+  closesdown: () => [ball(71, 56, 5.4), dot(64, 44, 6.4), line("M18 50 H42", 5.2), head(45, 50, 1, 0), line("M24 34 L33 41", 3.2), line("M24 66 L33 59", 3.2)].join(""),
+  // On the line, at full stretch.
+  lastditch: () => [line("M74 24 V76", 4.6), `<g opacity="0.5">${line("M74 24 H82", 3)}</g>`, ball(60, 60, 6.4), line("M20 72 L50 63", 6.2), line("M52 50 L56 46", 3.2), line("M48 46 L49 40", 3.2)].join(""),
+  // Nowhere to go.
+  tightmarker: () => [dot(43, 50, 9.5), ring(59, 50, 10.5, 4.4), line("M28 30 L34 36", 3.2), line("M28 70 L34 64", 3.2)].join(""),
+  // --- flaws ---
+  // Away from him.
+  heavytouch: () => [`<rect x="20" y="60" width="24" height="10" rx="4.5" fill="${INK}"/>`, `<g opacity="0.75">${dash("M40 56 Q54 26 68 38", 3.4)}</g>`, ball(73, 42, 6.6)].join(""),
+  // To them.
+  givesaway: () => [dot(26, 64, 5.8), line("M33 60 L58 46", 4.4), head(60.5, 44.6, 0.87, -0.5, 7.5, 0.62, 4.4), ring(71, 39, 7.6, 3.6), line("M66 34 L76 44", 3), line("M76 34 L66 44", 3)].join(""),
+  // Nothing left.
+  outoflegs: () => [line("M24 36 H68 V64 H24 Z", 4.6), `<rect x="69" y="44" width="6" height="12" rx="2" fill="${INK}"/>`, `<rect x="30" y="42" width="8" height="16" rx="1.5" fill="${INK}"/>`].join(""),
+  // His, and nobody else's.
+  greedy: () => [line("M34 24 H74", 4.4), line("M34 24 V32", 4.4), line("M74 24 V32", 4.4), dot(30, 68, 6.4), ball(41, 62, 4.8), line("M43 55 L52 36", 5), head(53, 33.4, 0.42, -0.9),
+    `<g opacity="0.6">${ring(70, 66, 6, 3)}</g>`].join(""),
+  // The red mist.
+  hothead: () => [fill("M50 22 C57 35 69 42 67 58 C66 70 58 77 50 77 C42 77 34 70 33 58 C32 49 39 45 41 36 C45 43 48 40 50 22 Z"),
+    `<path d="M50 50 C53 56 58 58 57 65 C56 70 53 72 50 72 C47 72 44 70 43 65 C43 60 47 58 50 50 Z" fill="${DARK}"/>`].join(""),
+  // Gone.
+  losesman: () => [dot(31, 62, 7), `<g opacity="0.7">${line("M41 62 H49", 3)}</g>`, ring(56, 46, 6.2, 3.4), line("M62 41 L75 30", 4.4), head(77, 28.2, 0.76, -0.65, 7.5, 0.62, 4.4),
+    `<g opacity="0.7">${dash("M40 54 L48 50", 3)}</g>`].join(""),
 };
 
-export function badgeSvg(id, tier = TIER[id], px = 128) {
-  const m = METAL[tier], g = `m${tier}`, sh = `s${tier}`;
+export function badgeSvg(id, tier = BADGE_BY_ID[id].flaw ? "flaw" : TIER[id], px = 128, level = null) {
+  const m = METAL[tier], g = `m${tier}`, sh = `s${tier}`, np = level ?? m.pips;
   const pipX = (n, k) => 50 + (k - (n - 1) / 2) * 7.5;
-  const pips = Array.from({ length: m.pips }, (_, k) => `<circle cx="${f(pipX(m.pips, k))}" cy="85.5" r="2.4" fill="${INK}"/>`).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}" role="img" aria-label="${NAME[id]} (${tier})">
+  const pips = Array.from({ length: np }, (_, k) => tier === "flaw"
+    ? `<circle cx="${f(pipX(np, k))}" cy="85.5" r="2.1" fill="none" stroke="${INK}" stroke-width="1.3"/>`
+    : `<circle cx="${f(pipX(np, k))}" cy="85.5" r="2.4" fill="${INK}"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}" role="img" aria-label="${NAME[id]} (${tier === "flaw" ? "flaw " + np : tier})">
 <defs>
 <linearGradient id="${g}" x1="0.21" y1="0.09" x2="0.79" y2="0.91"><stop offset="0" stop-color="${m.hi}"/><stop offset="0.26" stop-color="${m.mid}"/><stop offset="0.5" stop-color="${m.lo}"/><stop offset="0.74" stop-color="${m.mid}"/><stop offset="1" stop-color="${m.hi}"/></linearGradient>
 <filter id="${sh}" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1" stdDeviation="0.9" flood-color="#000" flood-opacity="0.5"/></filter>
@@ -126,9 +207,13 @@ export function badgeSvg(id, tier = TIER[id], px = 128) {
 if (fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const out = process.argv[2] || "public/player-badges", sheet = process.argv[3];
   mkdirSync(out, { recursive: true });
-  for (const id of Object.keys(ICON)) writeFileSync(join(out, `${id}.svg`), badgeSvg(id) + "\n");
+  for (const id of Object.keys(ICON)) {
+    const b = BADGE_BY_ID[id];
+    for (let lv = 1; lv <= maxLevelOf(id); lv++) writeFileSync(join(out, `${id}-${lv}.svg`), badgeSvg(id, b.flaw ? "flaw" : LEVEL_TIER[lv], 128, lv) + "\n");
+    writeFileSync(join(out, `${id}.svg`), badgeSvg(id, b.flaw ? "flaw" : LEVEL_TIER[b.std], 128, b.std) + "\n");
+  }
   if (sheet) {
-    const ids = Object.keys(TIER), cols = 5, cw = 172, ch = 172;
+    const ids = (process.env.SHEET_IDS ? process.env.SHEET_IDS.split(",") : Object.keys(TIER)), cols = +(process.env.SHEET_COLS || 5), cw = 172, ch = 172;
     const rows = Math.ceil(ids.length / cols);
     const cells = ids.map((id, i) => {
       const x = (i % cols) * cw, y = Math.floor(i / cols) * ch;

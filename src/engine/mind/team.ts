@@ -24,7 +24,7 @@
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "../config";
 import { meAttrs, meBadgeFx, meSpeed } from "../attributes";
 import { meHungarian } from "../assignment";
-import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine,
+import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, mePassRisk,
          meOther, mePressure, meTimeToBallMs } from "../geometry";
 import { meCarrierPos, meKeeperPos } from "../brain";
 import { MT } from "./tune";
@@ -170,9 +170,16 @@ function mindPhase(s, side) {
     // ...and it lasts while they are still short: a break from our own box is seventy metres, and the window a break
     // from midfield needs ran out with the ball at our own thirty-metre line. A side that does not break (possWon
     // -1) has no window to stretch.
-    P.short = back <= MT.cntBack;
+    // (Few of them back near their own goal is "short" only for a ball won deep: with the ball in midfield against a
+    // block standing at midfield nobody is near their goal, and that is a settled side, not one caught out.)
+    P.short = back <= MT.cntBack && bD < MT.cntShortD;
     const win = counterWin(st) * (P.short ? MT.cntShortX : 1);
-    if (mp.tick - P.won < win && (ahead <= 6 || P.short) && bD < 88) ph = "counter";
+    // ...AND ONLY WHILE THEY ARE OUTNUMBERED OR SHORT (22 November 2026). Six of their ten outfielders goal-side of the
+    // ball is most of a settled block, so any ball won in midfield was a "counter" for the whole window: traced among
+    // the best national sides, three-quarters of all the time a side had the ball it was countering, every forward
+    // sprinting to their last line and nobody within thirty metres ahead of the man on it. A break is on with cntAhead
+    // of them or fewer between the ball and their goal, or with few of them back at all.
+    if (mp.tick - P.won < win && (ahead <= MT.cntAhead || P.short) && bD < 88) ph = "counter";
     else ph = bD < MT.buildTo ? "build" : bD < MT.finalFrom ? "progress" : "final";
   } else {
     let behind = 0, near = 0;
@@ -224,6 +231,37 @@ export function mindTick(s, rng, out) {
     if (mp.side === side) mindAttack(s, side);
     else mindDefend(s, side);
   }
+  // THE RUNNER'S JUMP (22 November 2026, the user: "through balls barely work"). A man who goes in behind chose the
+  // moment and is facing where he is going; the man marking him has to see it, turn and go. Here the marker moved off
+  // with him in the same slice at the same pace, goal-side: traced, an opponent was first to half of all balls played
+  // in behind, and half of those were the runner's own marker, who had stood 2.3 m from him as it was struck. For the
+  // first slices of a run in behind (jumpLo for the most aware defender, jumpHi for the least: his reading of the game,
+  // which is his rating) the men within jumpR of the runner are still reacting.
+  for (const side of ME_SIDES) {
+    if (mp.side !== side) continue;
+    for (const q of s.players[side]) {
+      if (!q || q.off) continue;
+      // ...and again, more briefly, as a ball into his run is struck: the runner knew it was coming, his marker did not.
+      const run = q._run === "behind" && q._goT != null && (q._runT ?? 0) > 0 ? mp.tick - q._goT : 99;
+      const hit = q._thruT != null ? mp.tick - q._thruT : 99;
+      if (run >= MT.jumpHi && hit >= MT.jumpHitHi) continue;
+      for (const o of s.players[meOther(side)]) {
+        if (!o || o.off || o.pos === "GK" || Math.hypot(o.x - q.x, o.y - q.y) > MT.jumpR) continue;
+        // (TIGHT MARKER, badge: sooner. LOSES HIS MAN, a flaw: later.)
+        // (VOCAL, badge: a talker within MT.callerR of him has already told him of the runner; MT.callTight of his call.)
+        let told = 0;
+        for (const tm of s.players[meOther(side)]) { if (!tm || tm.off || tm === o) continue; const c = meBadgeFx(tm).call;
+          if (c > told && Math.hypot(tm.x - o.x, tm.y - o.y) < MT.callerR) told = c; }
+        const un = clamp(1 - mindAware(o) - (meBadgeFx(o).tight ?? 0) - told * MT.callTight, 0, 1);
+        if (run < Math.round(MT.jumpLo + (MT.jumpHi - MT.jumpLo) * un) || hit < Math.round(MT.jumpHitLo + (MT.jumpHitHi - MT.jumpHitLo) * un)) {
+          o._eff = Math.min(o._eff ?? 1, MT.jumpEff);
+          if (globalThis.__fire) globalThis.__fire.jump = (globalThis.__fire.jump || 0) + 1;      // behaviour audit: does it bite
+        }
+      }
+    }
+  }
+  // ...and a defender a dribbler has wrong-footed (mind/duel.ts) is getting his feet back.
+  for (const o of s.players[meOther(mp.side)] || []) if (o && !o.off && (o._wfT ?? 0) > mp.tick) o._eff = Math.min(o._eff ?? 1, MT.wrongEff);
   // The keeper and the man on the ball, as the first brain places them.
   for (const side of ME_SIDES) {
     const ps = s.players[side];
@@ -319,8 +357,10 @@ function mindAttack(s, side) {
   // is the box run that goes with the cross.
   if ((ph === "final" || (ph === "progress" && bD > 64) || ph === "counter") && Math.abs(mp.by - ME_HALF_W) > 12) {
     const nearS = mp.by < ME_HALF_W ? -1 : 1;
-    const boxN = 2 + ((st.width || 0) > 0 ? 1 : 0) + ((st.width || 0) > 1 ? 1 : 0) + (ph === "final" ? 1 : 0);
-    const spots = [[99.5, nearS * 2.5], [98.5, -nearS * 4.5], [94, 0], [87.5, -nearS * 3]];
+    // One more than there was (boxMore, 22 November 2026): traced, 1.6 attackers in the area when a cross came down
+    // against three defenders, so a cross had nobody to find in front of goal and was not played.
+    const boxN = 2 + MT.boxMore + ((st.width || 0) > 0 ? 1 : 0) + ((st.width || 0) > 1 ? 1 : 0) + (ph === "final" ? 1 : 0);
+    const spots = [[99.5, nearS * 2.5], [98.5, -nearS * 4.5], [94, 0], [96, -nearS * 8], [87.5, -nearS * 3]];
     const cand = cells.filter(c => !c.run && c.r.rest < 0.7 && Math.abs(c.p.y - mp.by) + Math.abs(depthOf(side, c.p.x) - bD) > 6)
                       .sort((a, b) => ((b.r.run.box || 0) - (a.r.run.box || 0))
                                       || (Math.hypot(depthOf(side, a.p.x) - 95, a.p.y - ME_HALF_W) - Math.hypot(depthOf(side, b.p.x) - 95, b.p.y - ME_HALF_W)));
@@ -352,6 +392,18 @@ function mindAttack(s, side) {
         c.y = clamp(c.y, 16, PITCH_W - 16);
         c.prio += 2; have++;
       }
+    }
+  }
+  // ---- THE THREAT, WHILE WE HAVE THE BALL (manager.ts, meThreatPlan) ----
+  // His marker does not go forward and leave him. Traced over nineteen matches with the plan on, the nearest defender
+  // stood 4.5 m from the marked man two seconds before each goal he scored, against 3.1 m the rest of the time: he
+  // scored on the break, with his marker upfield. While the man stays between the ball and our goal the marker stands
+  // goal-side of him, as one of the men kept back.
+  const TH = MT.thrRest && !mp.sp ? s.threat?.[side] : null;
+  if (TH && TH.q && !TH.q.off && s.players[meOther(side)].includes(TH.q)) {
+    const c = cells.find(c0 => c0.p === TH.m), qd = depthOf(side, TH.q.x);
+    if (c && !c.run && qd < bD - 6 && Math.abs(TH.q.y - c.y) < MT.thrLeash0 + MT.thrLeash1 * TH.lvl + 6) {
+      c.d = clamp(qd - 2.5, 4, 101); c.y = TH.q.y + (ME_HALF_W - TH.q.y) * 0.1; c.prio += 4; c.thr = true;
     }
   }
   // ---- NOBODY ON TOP OF ANYBODY ----
@@ -406,6 +458,13 @@ function mindAttack(s, side) {
   for (const c of cells) {
     const p = c.p;
     if (c.run) { mindRunTarget(s, side, p, g); continue; }
+    if (c.thr) {                                                     // THE THREAT: on his man, not looking for the ball
+      setTarget(p, xAt(side, c.d), c.y, 0.6);
+      p._duty = "hold"; p._closing = false;
+      const dt = Math.hypot(p.x - p._tx, p.y - p._ty);
+      p._eff = (dt > 6 ? MT.effRun : MT.effJog) * (0.86 + 0.14 * mindAware(p));
+      continue;
+    }
     if ((mp.tick + c.i) % MT.refineEvery === 0) {
       let best = 0, bdx = p._rdx || 0, bdy = p._rdy || 0, first = true;
       for (const [ox, oy] of REF) {
@@ -453,6 +512,15 @@ function mindAttack(s, side) {
   // When he has fewer than two open short options, the nearest men who are free to come do, to the spot
   // on that angle with the clearest lane, and the shape around them stays as it was.
   if (carrier && carrier.pos !== "GK") supportTriangle(s, side, carrier, cells, g);
+  // ---- SOMEBODY TO PLAY IT FORWARD TO (mindShow) ----
+  // For the man on the ball, and for the man a pass is on its way to, so the next ball is on as he takes this one.
+  {
+    const pp = mp.passPending;
+    const anc = carrier && carrier.pos !== "GK" ? { x: carrier.x, y: carrier.y, p: carrier }
+      : mp.flight && mp.fside === side && mp.fj >= 0 && ps[mp.fj] && !ps[mp.fj].off && ps[mp.fj].pos !== "GK" && pp && pp.ax != null
+        ? { x: pp.ax, y: pp.ay, p: ps[mp.fj] } : null;
+    if (anc) mindShow(s, side, anc, cells, g, ph);
+  }
   // The keeper sweeps behind the line his side's deepest men are holding.
   (mp.blk[side] = mp.blk[side] || { line: 20, cy: ME_HALF_W, depth: 20 }).line = clamp(deepest === 99 ? bD - 25 : deepest, 6, 60);
   mindRuns(s, side, ph, g, carrier);
@@ -616,6 +684,103 @@ function supportTriangle(s, side, c, cells, g) {
   }
 }
 
+// SHOWING FOR THE BALL, AHEAD OF IT (22 November 2026, the user: "no real team cohesion", "bump this up to EAFC-quality
+// play"). The shape gives every man a cell and lets him drift four and a half metres round it for a lane, and the
+// triangle above asks only for two short options of any kind, which the men level with the ball and behind it nearly
+// always are. Nothing asked for a ball FORWARD. Traced among the eight best national sides with the ball in midfield:
+// one team-mate within thirty metres ahead of it, nobody at all two slices in five, and of the men who were there two
+// in three stood where a defender was on the line between them and the ball -- they were free (4.7 m from the nearest
+// opponent) and could not be found. So a forward pass to feet was on one slice in twenty, moves broke after two
+// passes, and three shots in five came from a man who had carried it there himself.
+// The side now keeps showN men open ahead of the ball. A man counts if he is far enough forward, in range, onside,
+// free where he stands and the ball to him is one the passer would believe in (mePassRisk, the race the passer's own
+// belief is built on). When there are too few, the men best placed to do it leave their cells for the nearest spot
+// that is all of those things -- into the gap between two defenders, off the shoulder of the man screening them, into
+// the pocket in front of the back line -- and hold it for as long as it stays open. Rest defence, men on runs and the
+// men filling the box are left alone. How far a man will go to find the spot, and how often he looks, are his reading
+// of the game: the best find it every time, the rest are a stride late.
+function mindShow(s, side, anc, cells, g, ph) {
+  const mp = s.mePos, dir = meDir(side), M = mp.mind;
+  const fin = ph === "final";
+  const fwdMin = fin ? MT.showFwdFinal : MT.showFwd;
+  // Is (x, y) a ball the man at the anchor can play forward? Returns how good, or -1.
+  const W = globalThis.__show;                           // harness-only: why a spot was turned down
+  const rate = (x, y) => {
+    const fx = (x - anc.x) * dir, L = Math.hypot(x - anc.x, y - anc.y);
+    if (fx < fwdMin || L < MT.showMinD || L > MT.showMaxD) { if (W) W.rGeo++; return -1; }
+    if (x < 2 || x > PITCH_L - 2 || y < 2 || y > PITCH_W - 2) { if (W) W.rPitch++; return -1; }
+    if (depthOf(side, x) > g.off - 0.8) { if (W) W.rOff++; return -1; }
+    const room = roomAt(s, side, x, y);
+    if (room < MT.showRoom) { if (W) W.rRoom++; return -1; }
+    const risk = mePassRisk(s, side, anc.x, anc.y, x, y, 0, false);
+    if (risk > MT.showRisk) { if (W) W.rRisk++; return -1; }
+    if (W) W.rOk++;
+    return (1 - risk) + Math.min(7, room) * 0.06 + Math.min(18, fx) * 0.012;
+  };
+  // Who already is one, and who has been sent to be.
+  let have = 0;
+  const spots = [];
+  const cand = [];
+  for (const c of cells) {
+    const p = c.p;
+    if (p === anc.p) continue;
+    if (p._shw && (mp.tick - p._shw.t > MT.showKeep || c.run || p._chk)) p._shw = null;
+    if (c.run || p._chk) { if (c.run && rate(p._rx ?? p.x, p._ry ?? p.y) >= 0) have++; continue; }
+    if (p._shw) {
+      // He keeps the spot he was sent to while it is still a ball: a pocket abandoned the moment it wobbles is no option.
+      if (rate(p._shw.x, p._shw.y) >= 0) { have++; spots.push(p._shw); continue; }
+      p._shw = null;
+    }
+    if (rate(p.x, p.y) >= 0) { have++; spots.push({ x: p.x, y: p.y }); continue; }
+    if (c.r.rest >= 0.7 || c.box) continue;
+    cand.push(c);
+  }
+  // Re-send the men already sent, whatever else happens below.
+  const send = (p, sp) => {
+    setTarget(p, sp.x, sp.y, 1);
+    p._duty = "show"; p._closing = true;
+    const d = Math.hypot(p.x - sp.x, p.y - sp.y);
+    p._eff = d > 6 ? MT.effSprint : d > 2 ? MT.effRun : MT.effJog;
+  };
+  for (const c of cells) if (c.p._shw) send(c.p, c.p._shw);
+  if (W) { W.calls++; W["have" + Math.min(3, have)]++; W.cand += cand.length; W[ph] = (W[ph] || 0) + 1; }
+  if (have >= MT.showN) return;
+  // EVERY SPOT AHEAD OF THE BALL THAT IS A BALL, on a three-metre grid, and for each of the men who could go, the best
+  // of them inside the ground his reading of the game lets him cover for it. (Looking round each man instead, eight ways
+  // at three distances, found nothing three times in five: a quarter of the ground ahead of the ball is a spot, with a
+  // man within ten metres of one three times in five, but rarely on one of the bearings tried.)
+  const grid = [];
+  for (let fx = fin ? -1 : MT.showFwd + 1; fx <= 24; fx += 3) for (let ly = -21; ly <= 21; ly += 3) {
+    const x = anc.x + dir * fx, y = anc.y + ly;
+    if (spots.some(q => Math.hypot(q.x - x, q.y - y) < MT.showApart)) continue;
+    const r = rate(x, y);
+    if (r >= 0) grid.push({ x, y, r });
+  }
+  const opts = [];
+  if (grid.length) for (const c of cand) {
+    const p = c.p, aw = mindAware(p);
+    if ((mp.tick + c.i) % (aw > 0.75 ? 1 : aw > 0.4 ? 2 : 3) !== 0) continue;
+    const reach = MT.showReachLo + (MT.showReachHi - MT.showReachLo) * aw;
+    let best = null, bs = -Infinity;
+    for (const q of grid) {
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d > reach) continue;
+      const sc = q.r - d * MT.showTravel;
+      if (sc > bs) { bs = sc; best = q; }
+    }
+    if (best) opts.push({ c, sp: best, sc: bs });
+  }
+  if (W) { W.short++; W.opts += opts.length; if (!opts.length) W.none++; }
+  opts.sort((a, b) => b.sc - a.sc);
+  for (const o of opts) {
+    if (have >= MT.showN) break;
+    if (spots.some(q => Math.hypot(q.x - o.sp.x, q.y - o.sp.y) < MT.showApart)) continue;
+    o.c.p._shw = { x: o.sp.x, y: o.sp.y, t: mp.tick };
+    spots.push(o.c.p._shw); have++;
+    send(o.c.p, o.c.p._shw);
+  }
+}
+
 // Nine spots round his cell: in front, behind, either side, and the corners.
 const REF = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [0.7, -0.7], [-0.7, 0.7], [-0.7, -0.7]];
 
@@ -672,7 +837,8 @@ function mindRuns(s, side, ph, g, carrier) {
       if (u > bestU) { bestU = u; best = { p, kind, rx, ry }; }
     };
     // IN BEHIND: a man near the last line with grass beyond it in his lane, and a passer who can play it.
-    if ((r.run.behind || 0) > 0 && pd > g.off - 9 && canPlay > 0.25) {
+    // (...and near enough to him for a ball to be played: runs were made for a passer a median 38 m away.)
+    if ((r.run.behind || 0) > 0 && pd > g.off - 9 && canPlay > 0.25 && Math.hypot(p.x - carrier.x, p.y - carrier.y) < MT.runPassD) {
       const tx = g.off + MT.runBehindL, ty = p.y + (ME_HALF_W - p.y) * 0.3;
       const room = roomAt(s, side, xAt(side, Math.min(100, tx)), ty);
       if (room > MT.runSpace) consider("behind", r.run.behind * canPlay * Math.min(1, room / 14) * (ph === "counter" ? 1.4 : 1), tx, ty);
@@ -723,7 +889,7 @@ function startRun(s, side, p, kind, rd, ry) {
   p._runT = RUN_T[kind] || 10;
   p._rx = xAt(side, clamp(rd, 3, 102)); p._ry = clamp(ry, 2, PITCH_W - 2);
   p._rHold = kind === "behind" ? MT.runHoldMax : 0;
-  p._cool = 0;
+  p._cool = 0; p._goT = null;
 }
 
 // Open grass at a point: the nearest outfield opponent's distance.
@@ -756,6 +922,7 @@ function mindRunTarget(s, side, p, g) {
     }
     p._rHold = 0;
   }
+  if (p._goT == null) p._goT = mp.tick;                 // the slice he went (see THE RUNNER'S JUMP, mindTick)
   setTarget(p, p._rx, p._ry, 1);
   p._eff = MT.effSprint;
   p._duty = "runner";
@@ -800,7 +967,9 @@ export function mindOnPass(s, side, i, act) {
     else if (fwd < 2 && depthOf(side, p.x) < PITCH_L / 2) R[side]++;
   }
   // THE BALL IN BEHIND (mind/decide.ts): the man it is for was standing on their line, and goes now.
-  if (act.rel && q.pos !== "GK") { startRun(s, side, q, "behind", depthOf(side, act.ax), act.ay); q._rHold = 0; }
+  if (act.rel && q.pos !== "GK") { startRun(s, side, q, "behind", depthOf(side, act.ax), act.ay); q._rHold = 0; q._goT = mp.tick; }
+  // A ball into a run, struck: the men on the runner have to see it and turn (THE RUNNER'S JUMP, mindTick).
+  if (act.thru && act.ax !== undefined && (act.ax - p.x) * dir > 4 && q.pos !== "GK") q._thruT = mp.tick;
   // THE DRILLED MOVE GOES ON. The ball into the wall sends the third man and asks the wall for the lay-off
   // or the ball through; the ball into the overlap fills the box.
   const pat = M.pat?.[side];
@@ -966,6 +1135,24 @@ function mindDefend(s, side) {
     for (const i of cand.slice(0, plan.outlet)) outs.push(i);
     for (const i of outs) zone.splice(zone.indexOf(i), 1);
   }
+  // ---- THE THREAT (manager.ts, meThreatPlan) ----
+  // The one man of theirs our manager has given a marker. While that man is in or near our
+  // block and within reach of the marker's own side of the pitch (the leash: further for a bigger threat), the marker
+  // is his and nobody else's: he stands goal-side of him and tight wherever he goes, follows his runs, takes him in
+  // the box, and leaves him for the ball only when he is clearly the man to go. His spot is left empty: that is the
+  // price. Beyond the leash he passes him on to the zones like any other man.
+  const T = mp.sp ? null : s.threat?.[side];
+  let tj = -1, tmi = -1, tl = 0, tIn = false;
+  if (T) {
+    tj = them.indexOf(T.q); tmi = us.indexOf(T.m);
+    if (tj < 0 || tmi < 0 || them[tj].off || us[tmi].off || us[tmi].pos === "GK" || !zone.includes(tmi)) tj = tmi = -1;
+    else {
+      tl = T.lvl;
+      const q = them[tj], m = us[tmi];
+      tIn = depthOf(side, q.x) < L + len + MT.thrAhead && Math.abs(q.y - (m._zy ?? m.y)) < MT.thrLeash0 + MT.thrLeash1 * tl;
+    }
+  }
+  const tMark = tIn && them[tj] !== carrier;                          // he is being marked this slice
   // ---- THE PRESS ----
   let p1 = -1, p2 = -1;
   const pressing = carrier && !mp.held && (ph === "press" || ph === "cpress"
@@ -983,7 +1170,8 @@ function mindDefend(s, side) {
       const zoneD = Math.hypot((p._zx ?? p.x) - cxp, (p._zy ?? p.y) - cyp);
       const isBack = (p._dr ?? 0.5) < 0.15;
       const backPen = isBack && depthOf(side, cxp) > L + 9 ? 2500 : 0;
-      const c = t * (1.15 - 0.35 * ((p._role2 || ROLES.cm).press)) + Math.max(0, zoneD - 12 - (meBadgeFx(p).chase ?? 0)) * 55 + backPen;
+      let c = t * (1.15 - 0.35 * ((p._role2 || ROLES.cm).press)) + Math.max(0, zoneD - 12 - (meBadgeFx(p).chase ?? 0)) * 55 + backPen;
+      if (i === tmi && tIn) c = carrier === them[tj] ? c * (1 - MT.thrPressOn * tl) : c + MT.thrPressOff * tl;   // THE THREAT: his man first
       if (i === cur) curC = c;
       if (c < bestC) { bestC = c; p1 = i; }
     }
@@ -1003,6 +1191,7 @@ function mindDefend(s, side) {
   }
   // ---- PEOPLE ----
   const marked = new Set();
+  if (tMark) { marked.add(tj); us[tmi]._mk2 = tj; }                   // THE THREAT: spoken for
   // Runners in behind are followed first: the nearest back-line man goes with him.
   const behindRunners = [];
   for (let j = 0; j < them.length; j++) {
@@ -1022,10 +1211,11 @@ function mindDefend(s, side) {
   for (const i of zone) us[i]._trk2 = false;
   for (const j of behindRunners) {
     const q = them[j];
+    if (j === tj && tMark) { if (tmi !== p1) { us[tmi]._trk2 = true; us[tmi]._mk2 = j; } continue; }   // THE THREAT: his marker goes with him
     let bi = -1, bd = Infinity;
     for (const i of zone) {
       const p = us[i];
-      if (i === p1 || p._trk2 || (p._dr ?? 0.5) > 0.45) continue;
+      if (i === p1 || p._trk2 || (p._dr ?? 0.5) > 0.45 || (i === tmi && tMark)) continue;
       const d = Math.hypot(p.x - q.x, p.y - q.y) + ((p.x - q.x) * dir > 0 ? 6 : 0);
       if (d < bd) { bd = d; bi = i; }
     }
@@ -1052,11 +1242,11 @@ function mindDefend(s, side) {
   }
   const dg0 = M.boxDg?.[side], fresh = danger.filter(j => !dg0?.has(j));
   const stale = !boxMk || mp.tick - (M.boxMkT?.[side] ?? -99) >= MT.boxMarkHold
-    || [...boxMk].some(([i, j]) => !zone.includes(i) || i === p1 || us[i]._trk2 || marked.has(j) || !them[j] || them[j].off
+    || [...boxMk].some(([i, j]) => !zone.includes(i) || i === p1 || us[i]._trk2 || marked.has(j) || !them[j] || them[j].off || (tMark && i === tmi)
                                    || depthOf(side, them[j].x) >= MT.boxDangerD + 4);
   if (!nearBox) boxMk = new Map();
   else if (!stale) for (const [, j] of boxMk) marked.add(j);
-  const free = nearBox ? zone.filter(i => i !== p1 && !us[i]._trk2 && !((us[i]._cut ?? 0) > 0)) : [];
+  const free = nearBox ? zone.filter(i => i !== p1 && !us[i]._trk2 && !((us[i]._cut ?? 0) > 0) && !(tMark && i === tmi)) : [];
   const pairUp = (rows, cols) => {
     if (!rows.length || !cols.length) return;
     const n = Math.max(cols.length, rows.length), cost = [];
@@ -1085,6 +1275,7 @@ function mindDefend(s, side) {
     for (const j of fresh) dg0.add(j);
   }
   (M.boxMk = M.boxMk || {})[side] = boxMk;
+  let tScreened = false;
   for (const i of zone) {
     const p = us[i];
     if (p._cut > 0) p._cut--;
@@ -1123,6 +1314,22 @@ function mindDefend(s, side) {
         setTarget(p, q.x + ux / ul * 1.6 + (q.vx || 0) * 2, q.y + uy / ul * 1.6 + (q.vy || 0) * 2, 1);
         p._closing = true; p._eff = 1; p._duty = "mark"; continue;
       }
+    }
+    if (i === tmi && tMark) {
+      // THE THREAT: goal-side of him and tight, wherever in the block he goes. Out in the field he does not drop behind
+      // his own line to do it (a man standing beyond the line is offside, and following him is what plays him on).
+      const q = them[tj];
+      const ux = own - q.x, uy = ME_HALF_W - q.y, ul = Math.hypot(ux, uy) || 1;
+      const bx2 = mp.bx - q.x, by2 = mp.by - q.y, bl = Math.hypot(bx2, by2) || 1;
+      const gs = nearBox ? MT.boxMarkGS : MT.markGoalSide, lean = nearBox ? MT.boxMarkBall : Math.min(2, bl * MT.markBallSide * 0.1);
+      let mx = q.x + ux / ul * gs + bx2 / bl * lean + (q.vx || 0) * 1.5, my = q.y + uy / ul * gs + by2 / bl * lean + (q.vy || 0) * 1.5;
+      if (!nearBox && depthOf(side, mx) < L) mx = xAt(side, L);
+      const pull = MT.thrPull0 + (1 - MT.thrPull0) * tl;
+      setTarget(p, p._zx + (mx - p._zx) * pull, p._zy + (my - p._zy) * pull, 1);
+      const dm = Math.hypot(p.x - p._tx, p.y - p._ty);
+      p._closing = true; p._duty = "mark"; p._mk2 = tj;
+      p._eff = (dm > 4 ? MT.effSprint : dm > 1.5 ? MT.effRun : MT.effJog) * (0.86 + 0.14 * mindAware(p));
+      continue;
     }
     if (boxMk.has(i)) {
       // Goal-side of his man, a stride off him, leaning toward the ball, and going with him.
@@ -1163,17 +1370,21 @@ function mindDefend(s, side) {
     } else p._mk2 = -1;
     // THE SCREEN: a front man with nobody in his zone stands in the lane from the ball to the most
     // dangerous man he can shut out.
-    if (carrier && mk < 0 && (p._dr ?? 0.5) > 0.6) {
+    // (THE THREAT: the lane into him is worth more to every front man, and one midfielder with nobody to mark stands in
+    // it as well.)
+    const front = (p._dr ?? 0.5) > 0.6, tScr = MT.thrScreenMid && tMark && !tScreened && !front && (p._dr ?? 0.5) > 0.3;
+    if (carrier && mk < 0 && (front || tScr)) {
       let bj = -1, bv = 0;
       for (let j = 0; j < them.length; j++) {
         const q = them[j];
-        if (!q || q.off || q === carrier || q.pos === "GK") continue;
+        if (!q || q.off || q === carrier || q.pos === "GK" || (!front && j !== tj)) continue;
         const ld = Math.hypot(q.x - carrier.x, q.y - carrier.y);
         if (ld < 6 || ld > MT.shadowMaxD) continue;
         if ((q.x - carrier.x) * -dir < 0) continue;                  // only balls toward our goal
-        const v = meDanger(meOther(side), q.x, q.y) / (1 + Math.hypot(q.x - p._zx, q.y - p._zy) / 10);
+        const v = meDanger(meOther(side), q.x, q.y) / (1 + Math.hypot(q.x - p._zx, q.y - p._zy) / 10) * (j === tj && tMark ? 1 + MT.thrScreen * tl : 1);
         if (v > bv) { bv = v; bj = j; }
       }
+      if (bj >= 0 && bj === tj && !front) tScreened = true;
       if (bj >= 0) {
         const q = them[bj];
         const sx = carrier.x + (q.x - carrier.x) * MT.shadowFrac, sy = carrier.y + (q.y - carrier.y) * MT.shadowFrac;
@@ -1262,7 +1473,7 @@ function mindDefend(s, side) {
     // side, so the cut inside is gone as well as the way past. Half of everything that got into a box got there
     // at the feet of a man running with it, and a deep block let as much of it in as a mid one did.
     const cD = depthOf(side, carrier.x), c0 = us[p1];
-    if (c0 && cD < MT.sqzD && Math.abs(carrier.y - ME_HALF_W) < MT.sqzY) {
+    if (c0 && cD < MT.sqzD + (tj >= 0 && carrier === them[tj] ? MT.thrSqz * tl : 0) && Math.abs(carrier.y - ME_HALF_W) < MT.sqzY) {   // (THE THREAT: sooner)
       const ux = own - carrier.x, uy = ME_HALF_W - carrier.y, ul = Math.hypot(ux, uy) || 1;
       const nx = -uy / ul, ny = ux / ul;
       const s1 = Math.sign((c0.x - carrier.x) * nx + (c0.y - carrier.y) * ny) || 1;
@@ -1365,7 +1576,7 @@ const CORNER_RT = [
   [[4.0, 6.5], [5.5, 2.5], [9.5, 4.5], [7.0, -3.0]],
   [[6.5, -7.0], [11.0, -3.0], [5.0, 4.0], [8.0, 0.5]],
 ];
-const aerialOf = (p) => meAttrs(p).strength + ((p._role2?.hold ?? 0) > 0 ? 6 : 0);
+export const aerialOf = (p) => meAttrs(p).strength + ((p._role2?.hold ?? 0) > 0 ? 6 : 0);
 function spCorner(s, sp, atk, def) {
   const us = s.players[atk], them = s.players[def], gx = meGoalX(atk), dir = meDir(atk);
   const near = sp.y < ME_HALF_W ? -1 : 1;
@@ -1417,10 +1628,15 @@ function spCorner(s, sp, atk, def) {
   const used = new Set();
   // The men by the man: the most dangerous in the air first, each picked up by the nearest of the strong.
   const threats = go.slice(0, rt.length).sort((a, b) => aerialOf(b) - aerialOf(a));
+  const byRank = !!s.managers && !globalThis.__mgrOff?.sp;
   const markers = [...left].sort((a, b) => aerialOf(b) - aerialOf(a)).slice(0, Math.max(0, left.length - zoneN));
   for (const t of threats) {
     let bi = null, bd = Infinity;
-    for (const m of markers) { if (used.has(m)) continue; const d = Math.hypot(m.x - t._tx, m.y - t._ty) - aerialOf(m) * 0.05; if (d < bd) { bd = d; bi = m; } }
+    // (With managers, by rank: his best man in the air takes theirs, and so on down; how near he stands only splits a tie.
+    // 23 November 2026, the rest of the manager rework. Without them, the nearest of the strong, as it was.)
+    for (const m of markers) { if (used.has(m)) continue;
+      const d = byRank ? Math.hypot(m.x - t._tx, m.y - t._ty) * 0.02 - aerialOf(m) : Math.hypot(m.x - t._tx, m.y - t._ty) - aerialOf(m) * 0.05;
+      if (d < bd) { bd = d; bi = m; } }
     if (!bi) break;
     used.add(bi);
     setTarget(bi, t._tx + dir * 0.9, t._ty + (t._ty < ME_HALF_W ? -0.6 : 0.6), 1);

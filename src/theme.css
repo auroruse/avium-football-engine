@@ -152,6 +152,8 @@
   --ui-info-33: #81a1c133;
   --ui-info-44: #81a1c144;
   --ui-injury: #c07070;
+  --ui-official: #08090b;
+  --ui-official-edge: #e6e2d6;
   --ui-nat-override: #9a7ab5;
   --ui-ok: #a3be8c;
   --ui-ok-22: #a3be8c22;
@@ -203,6 +205,18 @@
   --ui-turf-out: #16301c;
   --ui-turf-a: #1b3823;
   --ui-turf-b: #17311d;
+  /* The dressed pitch (22 November 2026): the run-off, the worn grass in the goalmouths, the stands and their boards,
+     the nets and the corner flags. One house look for every ground. */
+  --ui-turf-apron: #132a19;
+  --ui-turf-wear: #6b5a34;
+  --ui-turf-light: #3f7a4c;
+  --ui-stand: #0d1014;
+  --ui-stand-dot: #2a313b;
+  --ui-board-a: #1a1f27;
+  --ui-board-b: #232a34;
+  --ui-board-ink: #56606e;
+  --ui-net: #ffffff;
+  --ui-flag: #ffd166;
   /* The match-rating ramp, and by derivation the OVR ramp -- see ovrHex. Blue, cyan, green, gold,
      amber, red, deep red. Unchanged from the hexes these replaced. */
   --rate-9: #4a90d9;

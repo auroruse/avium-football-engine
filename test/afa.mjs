@@ -3,11 +3,14 @@
 // results, an Elo table over every recorded World Cup, World Cup qualifying and Nations League match, every side
 // starting 1932 on 1500. At each year's turn a side keeps two thirds of its distance from 1500 (KEEP), so one year's run
 // counts less in the next ("Lead Fades Each Year"; taken out, then "put the fade back in", all the same day). A World Cup
-// match counts most; the margin scales the swing; a shootout is a draw. The confederation championships are left out,
+// match counts most, a Nations League match next, a qualifier least (Moukden and Kirin, 24 November 2026: "qualifiers
+// still seem like theyre worth more than the actual WC, also NL should be worth more than qualifiers"): a side plays ten
+// qualifiers, mostly against sides far below it, to a World Cup's three to seven. The margin scales the swing, up to a
+// two-goal win's, so a rout of a minnow pays no more than a clear win; a shootout is a draw. The confederation championships are left out,
 // matches and titles ("Don't use championships at all"). A year's
-// matches are the ones played in it: its World Cup and Nations League, and the qualifying for the next World Cup, which
-// is filed under that World Cup's year. Sides that no longer exist (Calveria, Slytlia, the Independent XIs) play in the
-// table but are not ranked. A year is added when it closes: add its files to YEARS and write.
+// matches are its World Cup's qualifying, played first, then its World Cup and Nations League (Moukden and Kirin, 24
+// November 2026: "qualifiers should count for the year its for not the year its in"). Sides that no longer exist
+// (Calveria, Slytlia, the Independent XIs) play in the table but are not ranked. A year is added when it closes: add its files to YEARS and write.
 //
 //   node test/afa.mjs           print every year
 //   node test/afa.mjs write     write src/data/afa.js
@@ -25,12 +28,13 @@ const byName = (a, b) => (avium.find(t => t.code === a[0])?.name || a[0]).locale
 const rank = (rows) => rows.sort((a, b) => b[1] - a[1] || byName(a, b));
 
 const KEEP = 2 / 3;
-const K = { wc: 60, natl: 40, western: 40, eastern: 40 };
+const K = { wc: 60, natl: 40, western: 15, eastern: 15 };
 const YEARS = {
   1932: ["wc/1932", "natl/1932"],
   1933: ["wc/1933", "natl/1933"],
-  1934: ["wc/1934", "natl/1934", "western/1935", "eastern/1935"],
-  1935: ["wc/1935", "natl/1935"],
+  1934: ["wc/1934", "natl/1934"],
+  1935: ["western/1935", "eastern/1935", "wc/1935", "natl/1935"],
+  1936: ["western/1936", "eastern/1936", "wc/1936"],
 };
 const elo = new Map(), played = new Set();
 // A year's record a side (P, W, D, L, GF, GA, every leg a match, a shootout a draw) and the titles it won that year.
@@ -69,7 +73,7 @@ function season(year) {
         const m = (c[i] || "").match(score); if (!m) continue;
         const ga = +m[1], gb = +m[2], ea = elo.get(ra) ?? 1500, eb = elo.get(rb) ?? 1500;
         const w = ga > gb ? 1 : ga < gb ? 0 : 0.5, exp = 1 / (1 + 10 ** ((eb - ea) / 400)), d = Math.abs(ga - gb);
-        const g = d <= 1 ? 1 : d === 2 ? 1.5 : (11 + d) / 8, swing = K[comp] * g * (w - exp);
+        const g = d <= 1 ? 1 : 1.5, swing = K[comp] * g * (w - exp);
         elo.set(ra, ea + swing); elo.set(rb, eb - swing); played.add(ra); played.add(rb); tally(ra, ga, gb); tally(rb, gb, ga); n++;
       }
     }

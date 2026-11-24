@@ -11,6 +11,8 @@
 //                                  -> { sha, done, apply, request, waiting }
 //   POST /requests                 { answers: [{ id, action: "accept" | "decline" | "withdraw", edits?, note? }] }, many
 //                                  answered in one save -> { sha, done: [ids], errors: { id: [why] }, applies, waiting }
+//   GET  /activity                 the activity log, newest first (src/data/activity.js)
+//   POST /activity/<id>            { action: "undo" } the overseer, or whoever made it -> { sha, apply, activity } or 422 { errors }
 //   GET  /draft                    the drafts (src/data/drafts.json)
 //   POST /draft                    { action: "pick", n, player, out? } the club on the clock's editor or the overseer;
 //                                  { action: "start", order, stats } | "pause" | "resume" | { action: "give", n, club } the
@@ -30,6 +32,7 @@ import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, s
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, tradesFile, trendsFrom } from "../src/data/trades.js";
 import { WORLDS, sealDraft } from "../src/data/worlds.js";
+import { ACTIVITY_FILE, activityEntry, dumpActivity, logWith, markUndone, mergeEntries, undoPlan } from "../src/data/activity.js";
 import { icNow } from "../src/data/icclock.js";
 const NATIONAL_FILES = new Set(["AVIUM", "ARTERRA"]);
 import { sposFor } from "../src/engine/formations.ts";
@@ -126,10 +129,10 @@ async function tradeLog(env, head, rec, next, by) {
 async function readMain(env) {
   const head = await mainHead(env);
   const tree = (await gh(env, `/repos/${env.REPO}/git/commits/${head}`)).tree.sha;
-  const [players, managers, teams, sheets, editors, requests, leagues, drafts] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
+  const [players, managers, teams, sheets, editors, requests, leagues, drafts, activity] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
     .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", []), readJson(env, head, "src/data/leagues.json", []),
-      readJson(env, head, DRAFT_FILE, [])));
-  return { head, tree, rec: { players, managers, teams, sheets, leagues }, editors, requests, drafts };
+      readJson(env, head, DRAFT_FILE, []), readJson(env, head, ACTIVITY_FILE, [])));
+  return { head, tree, rec: { players, managers, teams, sheets, leagues }, editors, requests, drafts, activity };
 }
 // One commit to main with these files, or a 422 if main moved meanwhile (the caller reads again and redoes).
 async function commit(env, head, tree, files, message) {
@@ -258,6 +261,7 @@ async function handle(req, env) {
   }
   if (path === "/requests" && req.method === "GET") return json(await readOne(env, "src/data/requests.json", []));
   if (path === "/draft" && req.method === "GET") return json(await readOne(env, DRAFT_FILE, []));
+  if (path === "/activity" && req.method === "GET") return json(await readOne(env, ACTIVITY_FILE, []));
 
   const login = await who(req, env);
   if (!login) return json({ error: "Sign in first" }, 401);
@@ -266,7 +270,7 @@ async function handle(req, env) {
   if (path === "/save" && req.method === "POST") {
     const { cart } = await body(req);
     let errors = null;
-    const result = await withMain(env, async ({ head, rec, editors, requests }) => {
+    const result = await withMain(env, async ({ head, rec, editors, requests, activity }) => {
       const plan = planSave(rec, editors, requests, login, cart, judge(rec));
       if (plan.errors.length) { errors = plan.errors; return { result: null }; }
       const nothing = { result: { sha: null, applied: 0, apply: null, requests: [], waiting: requests } };
@@ -274,6 +278,8 @@ async function handle(req, env) {
       const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next), waiting = [...requests, ...plan.requests];
       if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify(waiting, null, 1) + "\n";
       if (plan.apply) Object.assign(files, await tradeLog(env, head, rec, next, login));
+      const entry = activityEntry(rec, plan.apply, { id: crypto.randomUUID().slice(0, 8), by: login, at: new Date().toISOString(), what: "save" });
+      if (entry) files[ACTIVITY_FILE] = dumpActivity(logWith(activity, entry));
       const added = ["players", "managers", "teams", "leagues"].reduce((n, k) => n + (plan.apply?.add?.[k]?.length || 0), 0);
       const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length + added : 0;
       if (!Object.keys(files).length) return nothing;
@@ -298,12 +304,16 @@ async function handle(req, env) {
   if (path === "/requests" && req.method === "POST") {
     const { answers } = await body(req);
     if (!Array.isArray(answers) || !answers.length || answers.length > 500) return json({ error: "Not a list of answers" }, 400);
-    const result = await withMain(env, async ({ head, rec, editors, requests }) => {
+    const result = await withMain(env, async ({ head, rec, editors, requests, activity }) => {
       const s = settleMany(rec, editors, requests, login, answers, judge);
       const result = { done: s.done, errors: s.errors, applies: s.applies, waiting: s.left };
       if (!s.done.length) return { result };
       const files = { ...(s.applies.length ? filesFor(rec, s.rec) : null), "src/data/requests.json": JSON.stringify(s.left, null, 1) + "\n" };
       if (s.applies.length) Object.assign(files, await tradeLog(env, head, rec, s.rec, login));
+      if (s.applies.length) { let cur = rec; const parts = s.applies.map(d => { const e = activityEntry(cur, d, {}); cur = applyDraft(cur, d); return e; });
+        const asked = [...new Set(requests.filter(r => s.done.includes(r.id) && answers.find(a => a.id === r.id)?.action === "accept").map(r => r.by))];
+        const entry = mergeEntries(parts, { id: crypto.randomUUID().slice(0, 8), by: login, at: new Date().toISOString(), what: "accept", for: asked });
+        if (entry) files[ACTIVITY_FILE] = dumpActivity(logWith(activity, entry)); }
       const acts = [...new Set(answers.filter(a => s.done.includes(a.id)).map(a => a.action + "s"))].join(" and ");
       return { files, message: `Registry: ${login} ${acts} ${s.done.length} request${s.done.length > 1 ? "s" : ""}`, result };
     });
@@ -314,7 +324,7 @@ async function handle(req, env) {
     const { action, edits, note, moves, sides } = await body(req);
     if (!["accept", "decline", "withdraw", "counter"].includes(action)) return json({ error: "Unknown action" }, 400);
     let errors = null;
-    const result = await withMain(env, async ({ head, rec, editors, requests }) => {
+    const result = await withMain(env, async ({ head, rec, editors, requests, activity }) => {
       const r = requests.find(x => x.id === m[1]);
       if (!r) { errors = ["No such request"]; return { result: null }; }
       const s = settleRequest(rec, editors, r, login, action, judge(rec), { edits, note, moves, sides, others: requests });
@@ -322,8 +332,33 @@ async function handle(req, env) {
       const left = s.request ? requests.map(x => (x.id === r.id ? s.request : x)) : requests.filter(x => x.id !== r.id);
       const files = { ...(s.apply ? filesFor(rec, applyDraft(rec, s.apply)) : null), "src/data/requests.json": JSON.stringify(left, null, 1) + "\n" };
       if (s.apply) Object.assign(files, await tradeLog(env, head, rec, applyDraft(rec, s.apply), login));
+      const entry = s.apply ? activityEntry(rec, s.apply, { id: crypto.randomUUID().slice(0, 8), by: login, at: new Date().toISOString(), what: "accept", for: [r.by] }) : null;
+      if (entry) files[ACTIVITY_FILE] = dumpActivity(logWith(activity, entry));
       return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s ${r.kind === "deal" ? "offer" : "request"}`,
                result: { done: !!s.done, apply: s.apply || null, request: s.request, waiting: left } };
+    });
+    return errors ? json({ errors }, 422) : json(result);
+  }
+  // UNDO (src/data/activity.js): an entry in the log taken back, by the overseer or whoever made it, while nothing it
+  // touched has changed since. The undo is itself an entry, which can be undone in turn.
+  const u = path.match(/^\/activity\/([\w-]+)$/);
+  if (u && req.method === "POST") {
+    const { action } = await body(req);
+    if (action !== "undo") return json({ error: "Unknown action" }, 400);
+    let errors = null;
+    const result = await withMain(env, async ({ head, rec, editors, activity }) => {
+      const e = (activity || []).find(x => x.id === u[1]), scope = scopeOf(editors, login);
+      if (!e) { errors = ["No such entry"]; return { result: null }; }
+      if (scope.role !== "overseer" && String(e.by).toLowerCase() !== login.toLowerCase()) { errors = ["Only the overseer or whoever made it can undo it"]; return { result: null }; }
+      const p = undoPlan(rec, e, judge(rec));
+      if (p.errors.length) { errors = p.errors; return { result: null }; }
+      const z = sealDraft(rec, p.apply, applyDraft);
+      if (z.problems.length) { errors = z.problems; return { result: null }; }
+      const next = applyDraft(rec, p.apply), at = new Date().toISOString();
+      const back = activityEntry(rec, p.apply, { id: crypto.randomUUID().slice(0, 8), by: login, at, what: "undo", undoes: e.id });
+      const log = logWith(markUndone(activity, e.id, login, at), back);
+      const files = { ...filesFor(rec, next), [ACTIVITY_FILE]: dumpActivity(log), ...(await tradeLog(env, head, rec, next, login)) };
+      return { files, message: `Registry: ${login} undoes ${e.by}'s ${e.what}`, result: { apply: p.apply, activity: log } };
     });
     return errors ? json({ errors }, 422) : json(result);
   }

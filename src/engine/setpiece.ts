@@ -11,9 +11,9 @@
 // cross, a goal kick is a punt or a pass out, a free kick near goal can be struck at goal. None of
 // that is the ordinary decision code, because none of it is ordinary play.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meBadgeFx, meGkSkill } from "./attributes";
+import { meAerial, meAttrs, meBadgeFx, meGkSkill } from "./attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meKeeper, meKeeperIx, meOther, meShotGeom } from "./geometry";
-import { meFkArc, meKickBall, meShootBall } from "./ball";
+import { meFkStrike, meKickBall, meLoftT, meShootBall } from "./ball";
 import { mePlanSave } from "./keeper";
 import { GOAL_HALF_W } from "./ball";
 
@@ -113,15 +113,31 @@ export function meSPBegin(s, kind, side, out) {
   // A penalty is taken by whoever is best at it, and nothing else about where he happens to be
   // standing matters. Everything else goes to the nearest man.
   // ...unless somebody has been NOMINATED. A shootout is a rota, not eleven deferrals to the same
-  // best shooter, so meShootout hands the next man in and this consumes the nomination. In-match
-  // penalties still go to the best striker of a ball, which is what a designated taker is.
+  // best shooter, so meShootout hands the next man in and this consumes the nomination.
+  // NO SET TAKER IN A MATCH (the user, 23 November 2026: "Do a mix of the person who won the penalty or a random player
+  // in the team good at finishing, no set penalty taker"). The best striker of a ball took every one, so a side's
+  // penalties were all one man's: Hawthorne ten of his 46 league goals, Galanis twelve of 27 (runs 45146812880,
+  // 45149033171). Now the man who won it takes it himself as often as not (CFG.penWonTakes), when he is still on and
+  // is not the keeper; otherwise, and for a handball, it goes to any one of the side's best few at it (CFG.penPool),
+  // drawn off this restart's own seed.
   if (kind === "penalty" && s.mePos._penTaker != null
       && us[s.mePos._penTaker] && !us[s.mePos._penTaker].off) {
     ti = s.mePos._penTaker; s.mePos._penTaker = null;
   }
-  else if (kind === "penalty") { let best = -1; for (let i = 0; i < us.length; i++) {
-      const p = us[i]; if (p.pos === "GK" || p.off) continue;
-      if (best < 0 || meAttrs(p).shoot + (meBadgeFx(p).setTaker ?? 0) * 100 > meAttrs(us[best]).shoot + (meBadgeFx(us[best]).setTaker ?? 0) * 100) best = i; } ti = best; }
+  else if (kind === "penalty") {
+    // (DEAD BALL, badge: his trait counts toward being one of the few.)
+    const dq = (m) => meAttrs(m).shoot + (meBadgeFx(m).dead ?? 0) * 99 + (meBadgeFx(m).setTaker ?? 0);
+    const won = s.mePos._penWon, wi = won ? us.indexOf(won) : -1, sd = { seed: spSeed(mp.vseed | 0, mp.tick, x, y) };
+    mp._penWon = null;
+    if (wi >= 0 && !won.off && won.pos !== "GK" && spRnd(sd, 90) < CFG.penWonTakes) ti = wi;
+    else {
+      const pool = [];
+      for (let i = 0; i < us.length; i++) if (us[i] && us[i].pos !== "GK" && !us[i].off) pool.push(i);
+      pool.sort((a, b) => dq(us[b]) - dq(us[a]) || a - b);
+      const n = Math.min(pool.length, CFG.penPool);
+      ti = n ? pool[Math.floor(spRnd(sd, 91) * n)] : -1;
+    }
+  }
   else if (kind === "goalkick") ti = meKeeperIx(us);
   // A CORNER HAS A TAKER. Every dead ball except the penalty went to whoever happened to be
   // standing nearest, so the man who swung a corner in was an accident of position and no side
@@ -145,7 +161,7 @@ export function meSPBegin(s, kind, side, out) {
     let best = -1, bsc = Infinity;
     for (let i = 0; i < us.length; i++) { const p = us[i];
       if (p.pos === "GK" || p.off) continue;
-      const fit = Math.max(0, Math.min(1, (meAttrs(p)[want] - 60) / 39)) + (meBadgeFx(p).setTaker ?? 0);
+      const fit = Math.max(0, Math.min(1.6, (meAttrs(p)[want] + (meBadgeFx(p).dead ?? 0) * 99 - 60) / 39)) + (meBadgeFx(p).setTaker ?? 0) * 0.1;
       const sc = Math.hypot(p.x - x, p.y - y) - fit * CFG.spTakerW;
       if (sc < bsc) { bsc = sc; best = i; } }
     if (best >= 0) ti = best;
@@ -211,6 +227,8 @@ export function meSPBegin(s, kind, side, out) {
     }
   }
   mp.sp = { kind, side, x, y, ti, t: 0, quick, fx, fy, ft: 0, seed: spSeed(mp.vseed | 0, mp.tick, x, y) };
+  // A free kick with a wall is waited for longer (meSPReady): the wall has to be built.
+  if (kind === "freekick" && !quick && meFkWallN(meGoalX(side), x, y)) mp.sp.maxT = CFG.spFkWallMaxT;
   // Which routine this one is. Three of each, so a corner is not the same corner every time.
   mp.sp.v = Math.floor(spRnd(mp.sp, 0) * 3);
   // ...and it is still FETCHED. Quick used to mean the ball blinked onto the spot, which was fine
@@ -246,7 +264,7 @@ export function meSPShape(s) {
   const duked = sp.kind === "goalkick" || sp.kind === "freekick" || sp.kind === "corner"
               // ...and a throw, for the second brain, which positions both sides at it (mind/team.ts).
               || (s.brain === 2 && sp.kind === "throw");
-  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = p._closing && duked; p._spSet = false; p._celeb = false; }
+  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = p._closing && duked; p._spSet = false; p._celeb = false; p._wall = false; }
 
   // IT HAS JUST GONE IN. A goal restarts with a kickoff, and the kickoff shape used to begin the
   // instant the ball crossed the line -- twenty-two men turning on the spot and walking to their
@@ -344,7 +362,7 @@ export function meSPShape(s) {
       // Pairs either side of the D, nearest the spot first, a second rank two metres back once a side's edge is full.
       const g = CFG.spPenGap, slotsFor = (n) => { const r = [];
         for (let k = 0; r.length < n; k++) { const sgn = k % 2 ? 1 : -1, rank = Math.floor(k / 2), row = Math.floor(rank / 5), col = rank % 5;
-          const y0 = 8.2 + row * 0.6 + col * (2 * g + 0.5), ex = gx - dir * (17.2 + row * 2);
+          const y0 = CFG.spPenEdgeY + row * 0.6 + col * (2 * g + 0.5), ex = gx - dir * (17.2 + row * 2);
           r.push([[ex, ME_HALF_W + sgn * y0], [ex, ME_HALF_W + sgn * (y0 + g)]]); } return r; };
       const P = slotsFor(Math.max(atk.length, def.length));
       // Each man to the pair nearest where he stands, so nobody crosses the box to his place.
@@ -383,8 +401,11 @@ export function meSPShape(s) {
       // both of them on the goal line. Direct displacement cannot be refused by whatever froze
       // them, and at a stride a slice they clear the box well inside the referee's patience.
       // ...only the two the whistle froze, and at a walk: everyone else walks out of it himself.
-      const _inArea = Math.abs(p.x - gx) < 17 && Math.abs(p.y - ME_HALF_W) < 20.8;
-      if ((_inArea || Math.hypot(p.x - sp.x, p.y - sp.y) < 10.5) && Math.hypot(p.vx || 0, p.vy || 0) < 0.02 && sp.t > 2) {
+      // ...and only where the law has him out of: the area itself and ten metres of the spot, the same lines the kick
+      // waits on (meSPReady). The rule reached half a metre further than either, and the marks nearest the D stood in
+      // that half metre: each time the man on one came to rest he was shoved off it and walked back (22 Nov 2026).
+      const _inArea = Math.abs(p.x - gx) < 16.5 && Math.abs(p.y - ME_HALF_W) < 20.16;
+      if ((_inArea || Math.hypot(p.x - sp.x, p.y - sp.y) < 10) && Math.hypot(p.vx || 0, p.vy || 0) < 0.02 && sp.t > 2) {
         let _dx = p._tx - p.x, _dy = p._ty - p.y, _dd = Math.hypot(_dx, _dy);
         // Two men frozen on the SAME point -- the fouler standing over the man he fouled -- have
         // the same target and the same zero-length vector, so neither could be walked anywhere.
@@ -545,7 +566,10 @@ export function meSPShape(s) {
   const gk = meKeeper(them);
   if (gk) {
     if (sp.kind === "corner") { gk._tx = clampX(gx - dir * 1.4); gk._ty = ME_HALF_W - (sp.y < ME_HALF_W ? -1 : 1) * 1.5; }
-    else { gk._tx = clampX(gx - dir * 2.0); gk._ty = ME_HALF_W; }
+    // (On his line for a free kick that can be struck at goal: two metres out, a ball dipping under the bar went over
+    // him. Cloud run 45080909054 and 600 staged kicks: two in three of those arriving above 1.8 m went in, from the
+    // middle of the goal as often as the corner.)
+    else { gk._tx = clampX(gx - dir * (sp.kind === "freekick" && meFkAtGoal(gx, sp.x, sp.y) ? CFG.spFkGkOut : 2.0)); gk._ty = ME_HALF_W; }
     gk._spSet = true; gk._closing = true;
   }
   if (!duked && sp.kind === "corner") {
@@ -565,7 +589,8 @@ export function meSPShape(s) {
     if (sgn && (px * 0 + py * (ME_HALF_W - ayW)) < 0) { px = -px; py = -py; }
     for (let w = 0; w < wall; w++) {
       const off = sgn ? w * 0.6 : (w - (wall - 1) / 2) * 0.6;
-      dtake(sp.x + ux * CFG.spWallDist + px * off, sp.y + uy * CFG.spWallDist + py * off);
+      const wi = dtake(sp.x + ux * CFG.spWallDist + px * off, sp.y + uy * CFG.spWallDist + py * off);
+      if (wi >= 0) them[wi]._wall = true;
     }
   }
   // Everyone else picks up whoever is standing in a dangerous place, goal-side of him.
@@ -733,7 +758,10 @@ export function meSPReady(s) {
   if (sp.kind === "goalkick") return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spTakerTol * 2.5;
   const struck = sp.kind === "corner" || sp.kind === "freekick" || sp.kind === "penalty";
   // Second phase: he has started his run-up, and it is struck the moment he reaches the ball.
-  if (sp.run) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spRunTol || sp.t > CFG.spMaxT + 14;
+  // (Fourteen slices from when the run-up began, not from the ordinary cap: a restart that waits past that cap, a
+  // penalty or a walled free kick, was struck the instant its run-up was called, with the taker three metres off it.)
+  if (sp.run) { if (sp.runAt == null) sp.runAt = sp.t;
+    return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spRunTol || sp.t > Math.max(CFG.spMaxT, sp.runAt) + 14; }
   // Out of patience. A struck restart still gets its run-up -- waiting on the last man to trot into
   // the box must not turn a corner into a shot from a standstill, which is what it did.
   // PER KIND. One global cap said a penalty and a throw-in deserve the same eight seconds, and
@@ -774,6 +802,25 @@ export function meSPReady(s) {
     return true;
   }
   if (sp.kind === "freekick") {
+    // A FREE KICK WITH A WALL WAITS FOR IT (user, 23 November 2026: "they don't actually wait for people to be in
+    // position before striking"). It went the moment the taker was on his mark, four to six seconds after the whistle:
+    // traced over forty in shooting range, 27 were struck before the wall was built and 35 with a defender still inside
+    // ten yards, which is most of why half of them hit somebody. The referee holds it until nobody is inside ten
+    // yards, the wall stands on its marks, the keeper is set and the taker's own men are up; the cap above still
+    // forces it away (spFkWallMaxT).
+    const gxF = meGoalX(sp.side);
+    if (meFkWallN(gxF, sp.x, sp.y)) {
+      const themF = s.players[meOther(sp.side)];
+      for (const q of themF) { if (q.off) continue;
+        const off = Math.hypot(q.x - (q._tx ?? q.x), q.y - (q._ty ?? q.y));
+        if (q.pos === "GK") { if (off > 1.5) return false; continue; }
+        if (Math.hypot(q.x - sp.x, q.y - sp.y) < CFG.spWallDist - CFG.spFkWallTol) return false;
+        if (q._wall && off > CFG.spFkWallTol) return false; }
+      let up = 0;
+      for (const q of s.players[sp.side]) { if (q.off || q.pos === "GK" || q === taker) continue;
+        if (Math.abs(q.x - gxF) < CFG.gkBoxR + 6 && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW + 6) up++; }
+      if (up < CFG.fkUpReady) return false;
+    }
     if (struck) { sp.run = 1; return false; }
     return true;
   }
@@ -891,6 +938,13 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
     cands.push([i, w]);
   }
   let ti = priced ? priced.j : -1;
+  // HIS BEST MAN IN THE AIR (23 November 2026, the rest of the manager rework): a corner or a long throw in a match with
+  // managers is aimed at the side's best header among the men it can reach likelier than at anybody else (CFG.spBestHead).
+  if (!priced && s.managers && !globalThis.__mgrOff?.sp && (sp.kind === "corner" || longThrow) && cands.length > 1) {
+    let bc = null, ba = -Infinity;
+    for (const c of cands) { const a = meAttrs(us[c[0]]).strength * (1 + (meBadgeFx(us[c[0]]).spAir ?? 0)); if (a > ba) { ba = a; bc = c; } }
+    if (bc) bc[1] *= CFG.spBestHead;
+  }
   if (!priced && cands.length) {
     let tw = 0; for (const c of cands) tw += c[1];
     let r = rng.u() * tw;
@@ -957,7 +1011,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
     if (globalThis.__pen) globalThis.__pen.push({ pk: mp._pk ? 1 : 0, t: sp.t, run: sp.run ? 1 : 0,
       ti: sp.ti, tD: +Math.hypot(taker.x - mp.bx, taker.y - mp.by).toFixed(1),
       bD: +Math.hypot(mp.bx - sp.x, mp.by - sp.y).toFixed(1) });
-    gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
+    // PENALTY STOPPER (badge): he goes the right way more often.
+    gkRead(away, (mp._pk ? CFG.spPenReadPk : CFG.spPenRead) + (meBadgeFx(meKeeper(them2)).penRead ?? 0),
                  mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99 + (meBadgeFx(taker).dead ?? 0), 0, CFG.spPenElev);
@@ -967,7 +1022,15 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
   if (shooting) {
     // Struck at goal. A free kick from twenty metres IS a shot, and it was never one before.
     const g = meShotGeom(side, sp.x, sp.y);
-    const away = ME_HALF_W + (sp.y <= ME_HALF_W ? 1 : -1) * GOAL_HALF_W * (0.35 + (a.shoot / 99 + (meBadgeFx(taker).dead ?? 0)) * 0.5);
+    // WHERE HE PUTS IT (23 November 2026; ball.ts meFkStrike). The wall takes the side of the goal the ball is on and
+    // the keeper the rest. Over the wall and down into its corner more often than not, or the open side; nearer the
+    // post and with more on it the better he strikes a dead ball, which is what DEAD BALL (badge) adds to. (It was a
+    // straight ball at the keeper's side, which only a mishit ever scored from: across three cloud runs, 45069957270
+    // to 45074579913, a side with the specialist scored no free kicks at all.)
+    const fkSk = Math.min(CFG.fkSkMax, a.shoot / 99 + (meBadgeFx(taker).dead ?? 0) * CFG.fkDeadK);
+    const wallSd = Math.abs(sp.y - ME_HALF_W) < 1.5 ? (rng.u() < 0.5 ? 1 : -1) : Math.sign(sp.y - ME_HALF_W);
+    const fkNear = rng.u() < CFG.fkNearP, fkZ = fkNear ? CFG.fkZNear : CFG.fkZFar;
+    const away = ME_HALF_W + (fkNear ? wallSd : -wallSd) * GOAL_HALF_W * (CFG.fkAimIn0 + CFG.fkAimInSkill * Math.min(1, fkSk));
     out.shots[side]++;
     // Same for the free kick, at the conversion measured in the sweep noted below. The shotDist
     // histogram is deliberately NOT fed from here -- it exists to describe open-play shot SELECTION,
@@ -978,10 +1041,11 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
     mp.fj = -1;
     if (globalThis.__fk) globalThis.__fk.push({ side, d: +g.d.toFixed(1), dy: +Math.abs(sp.y - ME_HALF_W).toFixed(1) });
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} strikes the free kick`);
-    // Over the wall and under the bar, which is the whole act. meFkArc solves the pair; the target
-    // height used to be a coin toss between one metre and two with the wall nowhere in it.
-    const [fkZ, fkV] = meFkArc(g.d, mp.bz, rng);
-    meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99 + (meBadgeFx(taker).dead ?? 0), 0, CFG.spFkElev, fkV);
+    // Everybody between him and the goal is in the way, wherever the wall has got to: he strikes it past the men he sees.
+    const inWay = them2.filter(q => q && !q.off && q.pos !== "GK" && Math.hypot(q.x - sp.x, q.y - sp.y) < 14 && (q.x - sp.x) * (gx - sp.x) > 0)
+      .map(q => [q.x, q.y, meAerial(meAttrs(q), CFG), CFG.blockReach + (meBadgeFx(q).block ?? 0) + 0.12]);
+    const hit = meFkStrike(mp, rng, { gx, ty: away, tz: fkZ[0] + rng.u() * (fkZ[1] - fkZ[0]), sk: fkSk, curl: meFoot(taker), wall: inWay });
+    if (globalThis.__fk) Object.assign(globalThis.__fk[globalThis.__fk.length - 1], hit, { near: fkNear ? 1 : 0, sk: +fkSk.toFixed(2) });
     // The keeper watches it, as he watches any shot (keeper.ts): the wall is in front of him, and it
     // costs him the sight of it.
     mePlanSave(s, mp.shot);
@@ -997,7 +1061,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
       if (q2 === taker || q2.pos === "GK" || q2.off) continue;
       const dg = Math.hypot(gx - q2.x, ME_HALF_W - q2.y);
       if (dg > 25 || dg < 2) continue;
-      q2._run = "corner"; q2._runT = CFG.spCornerRunT;
+      // (As long as the ball is in the air: six slices was the old floated corner's run, done before the ball arrived.)
+      q2._run = "corner"; q2._runT = sp.kind === "corner" ? Math.max(3, Math.round(meLoftT(Math.hypot(gx - dir * CFG.cnAimD - sp.x, ME_HALF_W - sp.y), "corner") / ME_DT) - 1) : CFG.spCornerRunT;
       q2._rx = q2.x + (gx - q2.x) / dg * CFG.spCornerRun;
       q2._ry = q2.y + (ME_HALF_W - q2.y) / dg * CFG.spCornerRun;
     }
@@ -1075,8 +1140,14 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
       }
     }
   }
+  // SWUNG IN, ONTO THE TOP OF HIS JUMP (23 November 2026; config, delSpin0). A corner, and a free kick crossed into the
+  // area, which was a floated pass landing on the grass at its man's feet.
+  const fkIn = sp.kind === "freekick" && high && !priced && Math.abs(tx - gx) < CFG.gkBoxR + 4 && Math.abs(ty - ME_HALF_W) < CFG.boxHalfW + 4;
+  const delZ = q ? Math.max(CFG.crossZ, Math.min(CFG.delHeadMax, meAerial(meAttrs(q), CFG) - CFG.delHeadUnder)) : CFG.crossZ;
+  const delSpin = meFoot(taker) * (CFG.delSpin0 + CFG.delSpinDead * (meBadgeFx(taker).dead ?? 0));
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99 + (meBadgeFx(taker).dead ?? 0), 0, 0,
-             sp.kind === "corner" ? { kind: "corner", zEnd: CFG.crossZ }
+             sp.kind === "corner" ? { kind: "corner", zEnd: delZ, spin: delSpin }
+             : fkIn ? { kind: "cross", zEnd: delZ, spin: delSpin }
              : sp.kind === "throw" ? { kind: "throw", zEnd: longThrow ? CFG.crossZ : CFG.gkThrowZ }
              : undefined);
 }

@@ -52,7 +52,7 @@ export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r
   ...(r.badges?.length ? { badges: badgeOrder(r.badges) } : null), ...(r.retired ? { retired: true } : null) });
 
 // How many people and teams a draft touches, with its trades, the new records it asks for and the records it adds.
-export const draftSize = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d?.[k] || {}).length + (d?.add?.[k]?.length || 0), 0)
+export const draftSize = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d?.[k] || {}).length + (d?.add?.[k]?.length || 0) + (d?.drop?.[k]?.length || 0), 0)
   + (d?.trades?.length || 0) + (d?.new?.length || 0);
 
 // A patch names a squad's men, and a manager, by ID. A man the sheet wrote its own way ({ id, tag } or { id, raw }) keeps
@@ -64,9 +64,15 @@ const keepCells = (was, now) => {
   return (now || []).map(v => (typeof v === "string" && cell.has(v) ? cell.get(v) : v));
 };
 
-// The records with the draft laid over them. Nothing in the draft that names a missing record is applied.
+// The records with the draft laid over them. Nothing in the draft that names a missing record is applied. A draft that
+// undoes a save (src/data/activity.js) may also drop the records that save added: drop: { players: [ids], ... }.
 export function applyDraft(rec, draft) {
   if (!draftSize(draft)) return rec;
+  if (draft.drop) { const gone = (k, key = (r) => r.id) => { const ids = new Set(draft.drop[k] || []); return (rows) => (ids.size ? (rows || []).filter(r => !ids.has(key(r))) : rows); };
+    const { drop, ...rest } = draft;
+    const out = applyDraft(rec, rest);
+    return { ...out, players: gone("players")(out.players), managers: gone("managers")(out.managers), teams: gone("teams", teamKey)(out.teams),
+             ...(out.leagues ? { leagues: gone("leagues")(out.leagues) } : null) }; }
   const ps = draft.players || {}, ms = draft.managers || {}, ts = draft.teams || {};
   // A cell kept as the sheet wrote it is written fresh once what it spells out is edited: raw text carries his old
   // rating and name, so any edit to the man; a tag is his nation on that sheet, so only an edit to his nationality.

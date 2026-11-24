@@ -17,7 +17,9 @@ import { cartItems, withoutItem } from "../src/data/cart.js";
 import { fetchAtlas } from "../src/data/atlas.js";
 // The universe a copy of the app is (App.tsx, WORLD): the harnesses are Avium's.
 import { WORLD_NAME, scopeRecords } from "../src/data/worlds.js";
-import { setClockWorld } from "../src/data/icclock.js";
+// (ageOf: attachRecords reads it at module scope for each man's age; the long-injury calendar for the season's stats sheet.)
+import { ageOf, icNow, setClockWorld } from "../src/data/icclock.js";
+import { LONG_HEAD, LONG_SLOTS, LONG_YEAR, longBack, longMiss, longPlaceOfFile, longPlaceOfName, longSpan, parseLongBlock } from "../src/data/longout.js";
 import { arrangeBench, placeFor, vacate, without } from "../src/data/squads.js";
 import { GROUP_NAME, POSITIONS, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "../src/data/positions.js";
 // The repository, wherever it is checked out: every bundle built with this prelude sits in test/.

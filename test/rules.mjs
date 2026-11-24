@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "rules-")), ENTRY = join(DIR, "entry.js"), OUT = join(DIR, "rules.mjs");
-writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js", "data/trades.js", "data/menlines.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
+writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js", "data/trades.js", "data/menlines.js", "data/activity.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
 const R = await import(pathToFileURL(OUT).href);
@@ -53,8 +53,8 @@ console.log("an editor's own sides and the overseer's things");
   ok("an editor renames and recolours their club outright", !s.errors.length && after(s.apply).teams.find(t => t.id === A.id).name === "Arminia Berlin" && !s.requests.length, s); }
 { const s = plan(ED, { teams: { [teamKey(A)]: { name: "Arminia Neu", stadium: "Neues Stadion (40,000)", location: "Berelstein", code: "ARN" } } });
   const r = s.requests[0];
-  ok("a code, ground or city goes to the overseer as a request", !s.errors.length && s.requests.length === 1 && r.kind === "details" && r.needs[OVERSEER] && r.patch.code === "ARN" && !("code" in (s.apply?.teams?.[teamKey(A)] || {})), s);
-  ok("the rest of that side's change goes live", after(s.apply).teams.find(t => t.id === A.id).name === "Arminia Neu");
+  ok("a code goes to the overseer as a request", !s.errors.length && s.requests.length === 1 && r.kind === "details" && r.needs[OVERSEER] && r.patch.code === "ARN" && !("location" in r.patch) && !("code" in (s.apply?.teams?.[teamKey(A)] || {})), s);
+  ok("the rest of that side's change goes live, its ground and city with it", after(s.apply).teams.find(t => t.id === A.id).name === "Arminia Neu" && after(s.apply).teams.find(t => t.id === A.id).location === "Berelstein");
   const a = settle(ED, r, "accept"); ok("an editor cannot answer it", a.errors?.length > 0, a);
   const o = settle(OV, r, "accept"); ok("the overseer's accept applies it", !o.errors.length && after(o.apply).teams.find(t => t.id === A.id).code === "ARN", o); }
 { const s = plan(ED, { teams: { [teamKey(B)]: { name: "Nope" } } });
@@ -97,9 +97,12 @@ console.log("new records");
 const freeA = vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr);
 { const s = plan(ED, { new: [{ id: "n1", what: "players", name: "Hans MÜLLER", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: 70, side: teamKey(A) }] }, [], fullOf([teamKey(A)]));
   ok("a new player needs a free place at his side", s.errors.some(e => /no free place/.test(e)), s.errors); }
-{ const s = plan(ED, { teams: { [teamKey(A)]: { squad: freeA } }, new: [{ id: "n1", what: "players", name: "Hans MÜLLER", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: 70, side: teamKey(A) }] });
+const lvlA = R.clubLevel({ ...A, squad: freeA }, ["ST"], h);
+{ const s = plan(ED, { teams: { [teamKey(A)]: { squad: freeA } }, new: [{ id: "n0", what: "players", name: "Hans LEVEL", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: lvlA, side: teamKey(A) }] });
+  ok("a new player at his club's level goes live at once", !s.errors.length && !s.requests.length && after(s.apply).players.some(p => p.name === "Hans LEVEL" && p.ovr === lvlA), s.errors); }
+{ const s = plan(ED, { teams: { [teamKey(A)]: { squad: freeA } }, new: [{ id: "n1", what: "players", name: "Hans MÜLLER", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: lvlA + 1, side: teamKey(A) }] });
   const r = s.requests.find(x => x.kind === "new");
-  ok("a new player is a request to the overseer, with the rating the editor proposes", !s.errors.length && r?.needs[OVERSEER] && r.rec.ovr === 70, s.errors);
+  ok("over it, a new player is a request to the overseer, with the rating the editor proposes", !s.errors.length && r?.needs[OVERSEER] && r.rec.ovr === lvlA + 1, [lvlA, s.errors]);
   const next = after(s.apply);
   const no = settle(ED, r, "accept", {}, next); ok("an editor cannot let him in", no.errors?.length > 0, no);
   const yes = settle(OV, r, "accept", { edits: { ovr: 66 } }, next), n2 = yes.apply && after(yes.apply, next), made = n2?.players.find(p => p.name === "Hans MÜLLER");
@@ -122,9 +125,9 @@ const hans = (ovr, badges) => ({ id: "n5", what: "players", name: "Hans TRAIT", 
   ok("an editor's new player may carry the traits his rating affords", !s.errors.length && r?.rec.badges?.[0] === "finisher", s.errors);
   const yes = r && settle(OV, r, "accept");
   ok("and keeps them when the overseer lets him in", !yes?.errors?.length && after(yes.apply).players.some(p => p.name === "Hans TRAIT" && p.badges?.join() === "finisher"), yes?.errors); }
-{ const over = plan(ED, { new: [hans(82, ["finisher", "vision"])] }), blank = plan(ED, { new: [hans(null, ["crosser"])] }), low = plan(ED, { new: [hans(74, ["crosser"])] });
+{ const over = plan(ED, { new: [hans(82, ["finisher", "vision"])] }), blank = plan(ED, { new: [hans(null, ["crosser"])] }), low = plan(ED, { new: [hans(69, ["crosser"])] });
   ok("but not more than his budget", over.errors.some(e => /worth 5 points, over the 3 a 82 has/.test(e)), over.errors);
-  ok("nor any without a rating of 75 or more", blank.errors.some(e => /need a rating of 75/.test(e)) && low.errors.some(e => /need a rating of 75/.test(e)), [blank.errors, low.errors]); }
+  ok("nor any without a rating of 70 or more", blank.errors.some(e => /need a rating of 70/.test(e)) && low.errors.some(e => /need a rating of 70/.test(e)), [blank.errors, low.errors]); }
 { const s = plan(ED, { new: [{ id: "n3", what: "managers", name: "Karl BAUER", nat: "ALE", born: "1890-05-06", style: "counterattack", ovr: 72 }] });
   const r = s.requests[0], yes = r && settle(OV, r, "accept");
   ok("a new manager is let in by the overseer", !s.errors.length && !yes.errors.length && after(yes.apply).managers.some(m => m.name === "Karl BAUER" && m.style === "Counter-Attack"), [s.errors, yes?.errors]); }
@@ -223,8 +226,15 @@ let batchReq;
 { const two = vacate(vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr), old(A, 14), h.labels(A), posFitCost, h.ovr);
   const men = [lad("Hans LINKS", "ST", 60), lad("Karl RECHTS", "GK", 61)];
   const s = plan(ED, { teams: { [teamKey(A)]: { squad: two } }, new: [{ ...LIST, side: teamKey(A), men }] }), next = s.apply && after(s.apply);
+  const club = next?.teams.find(t => t.id === A.id);
+  ok("a list joining a side at its level goes live and fills its open places", !s.errors.length && !s.requests.length && ["Hans LINKS", "Karl RECHTS"].every(nm => ids(club).includes(next.players.find(p => p.name === nm)?.id)), [s.errors, s.requests]); }
+{ const two = vacate(vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr), old(A, 14), h.labels(A), posFitCost, h.ovr);
+  const men = [lad("Hans LINKS", "ST", 60), lad("Karl HOCH", "GK", 99)];
+  const s = plan(ED, { teams: { [teamKey(A)]: { squad: two } }, new: [{ ...LIST, side: teamKey(A), men }] }), next = s.apply && after(s.apply);
+  ok("a list's man over the level waits, the rest go live", !s.errors.length && s.requests.length === 1 && s.requests[0].rec.men.map(m => m.name).join() === "Karl HOCH"
+    && next.players.some(p => p.name === "Hans LINKS") && !next.players.some(p => p.name === "Karl HOCH"), [s.errors, s.requests]);
   const yes = settle(OV, s.requests[0], "accept", {}, next), n = yes.apply && after(yes.apply, next), club = n?.teams.find(t => t.id === A.id);
-  ok("a list joining a side fills its open places", !s.errors.length && !yes.errors?.length && ["Hans LINKS", "Karl RECHTS"].every(nm => ids(club).includes(n.players.find(p => p.name === nm)?.id)), [s.errors, yes.errors]); }
+  ok("and lands in the place left when the overseer lets him in", !yes.errors?.length && ids(club).includes(n.players.find(p => p.name === "Karl HOCH")?.id), yes.errors); }
 
 console.log("positions (Moukden and Kirin, 11 October 2026)");
 { const p = ids(A)[5];
@@ -354,8 +364,9 @@ console.log("the sheet (12 October 2026)");
   const s = plan(OV, { new: [{ id: "n9", what: "players", name: "Hans MUSTER", nat: "ALE", born: "1910-05-05", pos: ["ST"], ovr: 70, side: teamKey(A), at }] }, [], T);
   const n = s.apply && after(s.apply, T), club = n?.teams.find(t => t.id === A.id), p9 = n?.players.find(x => x.name === "Hans MUSTER");
   ok("a new man typed into a place goes to that place", !s.errors.length && !!p9 && club.squad.map(idOf).indexOf(p9.id) === at, [s.errors, club?.squad]); }
-{ // A new club with new men of its own and its time wasting.
-  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id).slice(0, 14), squad = clubs.map(t => ids(t)[old(t, 15)]).filter(Boolean).slice(0, 14);
+{ // A new club with new men of its own and its time wasting. Fourteen men from any of the nation's clubs that has one in
+  // that place: taking the first fourteen clubs came up a man short once one of them opened it (15 October 2026).
+  const clubs = rec.teams.filter(t => t.file === "ALE" && t.id !== A.id), squad = clubs.map(t => ids(t)[old(t, 15)]).filter(Boolean).slice(0, 14);
   squad.push({ name: "Otto NEU", nat: "ALE", born: "1912-02-02", pos: ["GK"], ovr: 68 }, { name: "Emil NEU", nat: "ALE", born: "1913-03-03", pos: ["ST"], ovr: null });
   const s = plan(ED, { new: [{ id: "n5", what: "teams", name: "SV Neudorf", nation: "ALE", code: "NDF", home: "#224466", away: "#ffffff", stadium: "Neudorfer Platz (8,000)",
     location: "Berelstein", group: A.group, formation: "4-3-3", timeWasting: "Sometimes", manager: null, squad }] });
@@ -471,9 +482,29 @@ console.log("\nnew men by the line");
   ok("an unknown field is said", b("Koji MINAMI, ST, 24, Finsher").some(x => /Finsher/.test(x)), b("Koji MINAMI, ST, 24, Finsher"));
   ok("three positions are too many", b("Koji MINAMI, ST, CM, CB").includes("a player has one or two positions"), b("Koji MINAMI, ST, CM, CB"));
   ok("an age is 14 to 60", b("Koji MINAMI, 12").includes("an age is 14 to 60") && b("Koji MINAMI, 24, 25").includes("a man has one age"));
-  ok("at most three traits", b("Koji MINAMI, Finisher, Rapid, Vision, Strong").includes("at most three traits"));
+  { const lv = readManLine("(91) Koji MINAMI, CM, Vision 3, finisher:1, Unaware, Vision").man;
+    ok("a trait with its level, one key a trait", lv.badges.join() === "vision:3,finisher:1,ballwatcher", lv); }
   ok("a rating is 25 to 99", b("(20) Koji MINAMI").includes("a rating is 25 to 99"));
   ok("no name, no man", readManLine("") === null && readManLine("(84)") === null); }
+
+console.log("\nthe activity log and undo (24 November 2026)");
+{ const { activityEntry, undoPlan, mergeEntries, logWith, markUndone } = R;
+  const two = vacate(vacate(ids(A), old(A, 15), h.labels(A), posFitCost, h.ovr), old(A, 14), h.labels(A), posFitCost, h.ovr);
+  const s = plan(ED, { teams: { [teamKey(A)]: { squad: two, location: "Neustadt" } }, new: [{ id: "u1", what: "players", name: "Udo LIVE", nat: "ALE", born: "1912-03-04", pos: "ST", ovr: 60, side: teamKey(A) }] });
+  const next = after(s.apply), udo = next.players.find(p => p.name === "Udo LIVE");
+  const e = activityEntry(rec, s.apply, { id: "a1", by: ED, at: "2026-11-24T00:00:00Z", what: "save" });
+  ok("a live save is logged, its fields from and to and the man it added", !!e && e.changes.some(c => c.field === "location" && c.to === "Neustadt") && e.added?.players?.[0]?.id === udo?.id, e);
+  const u = undoPlan(next, e, h), back = u.apply && after(u.apply, next);
+  ok("its undo puts the side back and drops the man", !u.errors.length && back.teams.find(t => t.id === A.id).location === A.location
+    && !back.players.some(p => p.id === udo.id) && JSON.stringify(ids(back.teams.find(t => t.id === A.id))) === JSON.stringify(ids(A)), u.errors);
+  const e2 = activityEntry(next, u.apply, { id: "a2", by: OV, at: "2026-11-24T00:01:00Z", what: "undo", undoes: "a1" }), u2 = undoPlan(back, e2, h), again = u2.apply && after(u2.apply, back);
+  ok("and the undo can itself be undone", !u2.errors.length && again.players.some(p => p.id === udo.id) && ids(again.teams.find(t => t.id === A.id)).includes(udo.id), u2.errors);
+  const moved = after(draftWith(null, next, teamKey(A), { location: "Altstadt" }, "teams"), next);
+  ok("not once a field it set has changed since", undoPlan(moved, e, h).errors.some(x => /has changed since/.test(x)));
+  ok("nor twice", undoPlan(next, { ...e, undone: { by: OV } }, h).errors.includes("Already undone"));
+  const m = mergeEntries([e, e2], { id: "m" });
+  ok("an approval's entries read as one, a field changed and changed back dropping out", m.changes.every(c => c.field !== "location"), m.changes);
+  ok("the log keeps the newest first and marks an undo", logWith(markUndone([e], "a1", OV, "t"), e2)[0].id === "a2" && logWith(markUndone([e], "a1", OV, "t"), e2)[1].undone?.by === OV); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

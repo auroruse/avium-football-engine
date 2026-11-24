@@ -18,24 +18,26 @@ import { parseTrades } from "./data/trades.js";
 import { COLLEGE_SEASON, YEARS, collegeLeagues, collegeMen, gradFor, yearOf } from "./data/colleges.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { autoOrder, currentDraft, draftPool, makesWay, pickDue } from "./data/collegedraft.js";
-import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
+import { BADGES, FAMILIES, LEVEL_NAME, LEVEL_TIER, badgeOf, badgeOrder, budgetOf, maxLevelOf, traitCost, traitId, traitKey, traitLv, traitsProblem, withTrait } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
 import { STYLE_LBL } from "./data/styles.js";
 import { AFA_RANKINGS, AFA_YEARS, AFA_KEEP } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
 import { ageOf, birthDateOk, icNow, setClockWorld } from "./data/icclock.js";
+import { LONG_HEAD, LONG_SLOTS, LONG_YEAR, longBack, longMiss, longPlaceOfFile, longPlaceOfName, longSpan, parseLongBlock } from "./data/longout.js";
 import { WORLD_NAME, scopeRecords } from "./data/worlds.js";
 import { rollSquad } from "./data/roll.js";
 import { readManLine } from "./data/menlines.js";
 // What a player is worth, worked out as it is shown (src/data/value.js, shared with test/values.mjs).
-import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data/value.js";
+import { ageFactor, moneyLabel, trendsOf, valueBase, valueContext, valueInputs, valueOf } from "./data/value.js";
 // Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
 import editorsRec from "./data/editors.json";
 // Where every nation and city sits on the Avium Map: read off the deployed map when the app opens (src/data/atlas.js),
 // and until then the copy it was built with (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
 import { fetchAtlas } from "./data/atlas.js";
-import { OVERSEER, clubLevel, clubNations, isNational, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
+import { OVERSEER, clubLevel, clubNations, isNational, liveNewMan, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
+import { activitySize } from "./data/activity.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
@@ -46,9 +48,10 @@ import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor, subCapFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
 import { toBlob } from "html-to-image";
+import { gifPalette, gifWriter } from "./gif";
 import { shotBlob, shotWarm } from "./shot.js";
-import { DOCS, TRAIT_DOC, POS_NAME } from "./docs.js";
-import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch, meCelebT, ME_SIM_MIN } from "./engine";
+import { DOCS, DOC_MOVED, TRAIT_DOC, TRAIT_FAM_DOC, POS_NAME } from "./docs.js";
+import { CFG as ME_CFG, ME_DT, meRefInit, meTlInit, meTlStep, meTlWalk, meTlPark, meTlPack, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch, meCelebT, ME_SIM_MIN, meAttrs, meBadgeFx, aerialOf } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch, subCapFor } from "./sim/core";
@@ -711,21 +714,44 @@ const asStarter = (p) => { const q = { ...p }; delete q.bench; return q; };
 // plays it on his own positions; without them each keeps the label he had, as before.
 const swapSlot = (p, to) => (p.own?.length ? { ...p, spos: to.spos, pos: to.pos, atkW: to.atkW } : p);
 const asBench = (p) => ({ ...p, bench: true });
+const BACK_FIT = 75, DOUBT_FIT = 88;
 function managerSelect(starters, bench, kf, staminaData, context) {
   const dataOf = p => staminaData[kf(p.name)];
-  starters = starters.map(p => ({ ...p, stamina: dataOf(p)?.stamina ?? 100 }));
+  // ...and his goals and matches in this competition so far, which the other manager reads when he names the man to
+  // mark (src/engine/manager.ts, meThreatPlan).
+  const soFar = (p) => { const d = dataOf(p); return d?.matches ? { tg: d.goals || 0, tm: d.matches } : null; };
+  // EASED BACK (23 November 2026, the last of the manager rework). A man in his first match back from a lay-off of two
+  // matches or more is short of match fitness: he starts it on BACK_FIT stamina at most, so he tires by the hour and the
+  // coach's ordinary reading of legs takes him off then, and the rotation below reads him as the tired man he is. He is
+  // "back" until he has played a minute since the injury (his minutes still stand where they stood when he was hurt),
+  // so nothing has to be cleared and a result that is deleted cannot strand it.
+  // DOUBTFUL (24 November 2026, engine/injury.ts): a man who played on hurt in his last match starts the next on DOUBT_FIT
+  // at most, the same way, until he has played a minute since. Both go into the match with him (`back`, `doubt`): his
+  // muscles are likelier to go (ME_HURT.pullBack, pullDoubt).
+  const isBack = (d) => !!d && d.injAt != null && (d.mins || 0) === d.injAt && !((d.injOut || 0) > 0) && (d.injLen || 0) >= 2;
+  const isDoubt = (d) => !!d && d.hurtAt != null && (d.mins || 0) === d.hurtAt && !((d.injOut || 0) > 0);
+  const legsOf = (p) => { const d = dataOf(p), st = d?.stamina ?? 100;
+    return isBack(d) ? Math.min(st, BACK_FIT) : isDoubt(d) ? Math.min(st, DOUBT_FIT) : st; };
+  const carryOf = (p) => { const d = dataOf(p), b = isBack(d), h = !b && isDoubt(d); return b || h ? { ...(b ? { back: 1 } : null), ...(h ? { doubt: 1 } : null) } : null; };
+  starters = starters.map(p => ({ ...p, stamina: legsOf(p), ...soFar(p), ...carryOf(p) }));
   // Bench players carry their real fatigue too. Pinning them to 100 here did not just skew the
   // rotation comparison below — this stamina is what the match itself reads (mapB's p.stamina),
   // so every substitute came on fresh no matter how many minutes they had in their legs.
-  bench = bench.map(p => ({ ...p, stamina: dataOf(p)?.stamina ?? 100 }));
+  bench = bench.map(p => ({ ...p, stamina: legsOf(p), ...soFar(p), ...carryOf(p) }));
   if (!context?.stakes) return { ...capAtEleven(starters, bench), matchIntensity: 0 };
   const { stakes, ourSkill, oppSkill, nextOppSkill, horizon, totalGames, isFinal, isKnockout, isThirdPlace, isLastGroupGame, remainingGames } = context;
   const sk = (ourSkill ?? 65) - (oppSkill ?? 65);
   // Node 1: classify. A side that only needs a point is not in the same match as one that has to
   // win, even on identical urgency — so the result required overrides the scalar where it is known.
+  // ...and a match with nothing on it is one of two things, which ask for opposite elevens (the user, 23 November 2026:
+  // Cahaya, out of its World Cup group, rested its whole side for the last match). THROUGH with the place settled, there
+  // is a knockout to save legs for: "rest". OUT, or a league place that can no longer change, there is nothing to save
+  // them for: "free", the first-choice side. In a knockout a tie as good as won lets him change a few ("comfortable").
   let matchClass;
-  if (stakes.eliminated || (stakes.safe && (remainingGames ?? 0) > 0))
-    matchClass = "dead";
+  if (stakes.eliminated)
+    matchClass = "free";
+  else if (stakes.safe)
+    matchClass = isKnockout ? "comfortable" : "rest";
   else if (isFinal || (isKnockout && !isThirdPlace) || (stakes.urgency >= 0.6 && isLastGroupGame) || stakes.mustWin)
     matchClass = "must_win";
   else if (stakes.drawEnough && !isLastGroupGame)
@@ -735,7 +761,7 @@ function managerSelect(starters, bench, kf, staminaData, context) {
   else
     matchClass = "comfortable";
   // Node 5: skill-gap modifier on rotation cap
-  let maxRot = matchClass === "dead" ? 99 : matchClass === "must_win" ? 1 : matchClass === "important" ? 2 : 3;
+  let maxRot = matchClass === "rest" ? 8 : matchClass === "must_win" ? 1 : matchClass === "important" ? 2 : 3;
   if (sk > 20) maxRot += 1;
   if (sk < -15 && maxRot > 0) maxRot -= 1;
   // Node 5b: planning across the run, not just the next game. A single fixture of lookahead can
@@ -749,7 +775,7 @@ function managerSelect(starters, bench, kf, staminaData, context) {
   // Node 5c: where we are in the campaign. Nothing is settled in the opening weeks, so minutes can
   // be spread; in a run-in with the objective still live, every match is the last chance at it.
   const phase = totalGames > 0 ? 1 - (remainingGames ?? 0) / totalGames : null;
-  if (phase != null && matchClass !== "dead") {
+  if (phase != null && matchClass !== "rest") {
     if (phase < 0.25) maxRot += 1;
     else if (phase > 0.75 && !stakes.safe && !stakes.eliminated && maxRot > 0) maxRot -= 1;
   }
@@ -758,7 +784,7 @@ function managerSelect(starters, bench, kf, staminaData, context) {
   // whether the 12th man was a peer or a reserve.
   const meanOvr = (arr) => arr.length ? arr.reduce((a, p) => a + (p.ovr ?? UNRATED_OVR), 0) / arr.length : null;
   const xiQ = meanOvr(starters), benchQ = meanOvr(bench);
-  if (xiQ != null && benchQ != null && matchClass !== "dead") {
+  if (xiQ != null && benchQ != null && matchClass !== "rest") {
     if (benchQ >= xiQ - 2) maxRot += 1;
     else if (benchQ < xiQ - 8 && maxRot > 0) maxRot -= 1;
   }
@@ -768,9 +794,9 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     const p = starters[i];
     // A real #1 keeper starts nearly every match all season — goalkeeping doesn't carry the
     // physical fatigue or workload-management logic outfield rotation is built around, so a
-    // keeper is only ever a rotation candidate in a genuine dead rubber (giving the backup
-    // a run out), never for stamina, consecutive-starts, or next-opponent look-ahead.
-    if (p.pos === "GK" && matchClass !== "dead") continue;
+    // keeper is only ever a rotation candidate when the side is through and resting (giving the
+    // backup a run out), never for stamina, consecutive-starts, or next-opponent look-ahead.
+    if (p.pos === "GK" && matchClass !== "rest") continue;
     const st = p.stamina ?? 100;
     const cs = dataOf(p)?.consecutiveStarts ?? 0;
     const prot = POS_PROTECTION[p.pos] ?? 4;
@@ -800,9 +826,12 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     if (gap < -FORM_ROTATE_GAP) {
       shouldRotate = true;
       priority = 150 - gap * 10;
-    } else if (matchClass === "dead") {
+    } else if (matchClass === "rest") {
+      // Through, and a knockout to come: the tired legs first, up to eight of them.
       shouldRotate = true;
-      priority = 100 - prot;
+      priority = 100 - prot + (100 - st) * 0.3;
+    } else if (matchClass === "free" && !((remainingGames ?? 0) > 0)) {
+      // Out, and this is the last of it: nothing to save anybody for, so the best eleven he has today (the form branch above).
     } else if (matchClass === "must_win") {
       if (st < 35 && gap <= 3) { shouldRotate = true; priority = 100 - st; }
     } else if (matchClass === "important") {
@@ -860,7 +889,8 @@ function managerSelect(starters, bench, kf, staminaData, context) {
       usedBench.add(bi); rotations++;
     }
   }
-  const matchIntensity = matchClass === "dead" ? -0.3
+  const matchIntensity = matchClass === "rest" ? -0.3
+    : matchClass === "free" ? -0.1
     : matchClass === "must_win" ? (stakes.urgency ?? 0.8)
     : matchClass === "important" ? (stakes.urgency ?? 0.3) * 0.8
     : (stakes.urgency ?? 0) * 0.5;
@@ -1574,6 +1604,55 @@ function computeGroupUrg(standings, teamName, qualCount, remainingAfter) {
     drawEnough: inside && !base.eliminated && margin > remainingAfter,
     mustWin: !inside && !base.eliminated && margin < -remainingAfter };
 }
+// EVERY LINE ON THE TABLE (23 November 2026). computeGroupUrg measures a side against ONE line, and the callers gave it
+// the top qualifying place: so a league side out of the title race, a side fighting relegation, and every qualifier that
+// could not finish first (the 1936 qualifiers' line read as first place, their playoff places being the "advance" zone
+// from eighth down) were all "eliminated", and an eliminated side rested its whole eleven and coasted. A table is played
+// for every line between two zones: the title, the continental places, the playoff, the drop. So each line is measured
+// in turn, and the side's match is worth the most urgent line still open to it. Only when none is open is its place
+// settled, and then what matters is whether it goes on (through: rest them for the knockout) or not (out, or a league
+// place fixed: nothing to save anybody for). Inside the places that go through, first against second is seeding: worth
+// playing a proper side for, never a must-win. A place among the "best placed" is never settled inside its own group.
+// o: { pre: sides already qualified (they take no place and have nothing on any match), koFollows, useZones, advPerGroup }.
+function groupStakeLines(N, zones, advK) {
+  const lines = new Map();
+  for (let k = 1; k < N; k++) {
+    const a = zoneFor(k - 1, N, zones), b = zoneFor(k, N, zones);
+    if (a !== b) lines.set(k, "zone");
+    else if ((a && a.type === "advance") || k < advK) lines.set(k, "seed");
+  }
+  if (advK > 0 && advK < N) lines.set(advK, "zone");
+  if (![...lines.values()].includes("zone")) lines.set(Math.min(N - 1, Math.max(1, advK || 1)), "zone");
+  return lines;
+}
+function computeGroupStakes(standings, teamName, zones, remainingAfter, o = {}) {
+  const pre = o.pre || [];
+  if (pre.includes(teamName)) return { urgency: 0, safe: false, eliminated: true, settled: true, through: false };
+  const rows = pre.length ? standings.filter(r => !pre.includes(r.name)) : standings;
+  const N = rows.length, idx = rows.findIndex(r => r.name === teamName);
+  if (idx < 0 || N < 2) return { urgency: 0, safe: false, eliminated: false };
+  const advK = o.koFollows && !o.useZones ? Math.min(N - 1, +o.advPerGroup || 0) : 0;
+  let best = null, seed = null;
+  for (const [k, kind] of groupStakeLines(N, zones, advK)) {
+    const r = computeGroupUrg(rows, teamName, k, remainingAfter);
+    if (r.safe || r.eliminated) continue;
+    if (kind === "zone") { if (!best || r.urgency > best.urgency) best = r; }
+    else if (!seed || r.urgency > seed.urgency) seed = r;
+  }
+  // No one match is a must-win with a long run of them still to come: that is for a short group and a run-in.
+  if (best) return { ...best, safe: false, eliminated: false, mustWin: !!best.mustWin && remainingAfter <= 2 };
+  const z = zoneFor(idx, N, zones);
+  if (o.koFollows && o.useZones && z?.type === "best") return { urgency: 0.4, safe: false, eliminated: false };
+  const through = !!o.koFollows && (o.useZones ? z?.type === "advance" : idx < advK);
+  if (seed && through) return { urgency: Math.max(0, seed.urgency) * 0.5, safe: false, eliminated: false, drawEnough: !!seed.drawEnough, mustWin: false, seeding: true, through: true };
+  return { urgency: through ? -0.15 : -0.1, safe: through, eliminated: !through, settled: true, through };
+}
+// Matches a side still has after this one. A Swiss draws each round as the last one ends, so the rounds not yet drawn
+// are counted off the format; counted off the schedule alone, every Swiss match read as the side's last.
+function groupRemAfter(g, ri, name, cfg) {
+  const drawn = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home?.name === name || x.away?.name === name)).length, 0) - 1;
+  return Math.max(0, drawn) + (cfg?.matchFormat === "swiss" ? Math.max(0, (+cfg.swissRounds || 0) - g.schedule.length) : 0);
+}
 function groupUrgCore(standings, teamName, qualCount, remainingAfter) {
   const idx = standings.findIndex(s => s.name === teamName);
   if (idx === -1 || qualCount <= 0 || qualCount >= standings.length) return { urgency: 0, safe: false, eliminated: false };
@@ -1619,6 +1698,30 @@ function groupUrgCore(standings, teamName, qualCount, remainingAfter) {
 // so instead of computing mathematical certainty this leans on a simple aggregate-cushion
 // threshold for the second leg; and a third-place playoff carries real but lesser stakes than
 // actually advancing.
+// THE LAST TIME THESE TWO MET in this tournament, for the managers (src/engine/manager.ts: a side beaten heavily sets up
+// more carefully, and the men who scored against it are watched). Groups first, round by round, then the knockout, so
+// the latest meeting wins. Returned in the shape the match's stakes carry it in: the margin from each side's view and
+// each side's scorers that day, or nothing when they have not met. A two-leg tie still open is not a meeting: its
+// second leg already plays on the aggregate.
+function lastMeeting(groups, ko, home, away) {
+  let hit = null;
+  const take = (m) => {
+    const r = m?.result; if (!r || r.ftHome == null || !m.home?.name || !m.away?.name) return;
+    const fwd = m.home.name === home && m.away.name === away, rev = m.home.name === away && m.away.name === home;
+    if (!fwd && !rev) return;
+    const tally = (list) => { const o = {}; for (const g of list || []) { const k = g.full || g.name; if (k) o[k] = (o[k] || 0) + 1; } return o; };
+    const hs = tally(r.scorers?.home), as = tally(r.scorers?.away), gd = r.ftHome - r.ftAway;
+    hit = fwd ? { last: { home: gd, away: -gd }, lastSc: { home: hs, away: as } }
+              : { last: { home: -gd, away: gd }, lastSc: { home: as, away: hs } };
+  };
+  for (const g of groups || []) for (const rd of g.schedule || []) for (const m of rd || []) take(m);
+  if (ko) {
+    for (const r of ko.rounds || []) for (const m of r.matches || []) take(m);
+    for (const r of ko.losers || []) for (const m of r.matches || []) take(m);
+    for (const m of [ko.thirdPlace, ko.grandFinal, ko.reset]) take(m);
+  }
+  return hit;
+}
 function computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor, aggAgainst } = {}) {
   if (isFinal) return { urgency: 1, safe: false, eliminated: false };
   if (isThirdPlace) return { urgency: 0.3, safe: false, eliminated: false };
@@ -1626,7 +1729,9 @@ function computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor, aggAgai
   if (isTwoLeg && leg === 2 && aggFor != null && aggAgainst != null) {
     const cushion = aggFor - aggAgainst;
     if (cushion >= 3) return { urgency: -0.1, safe: true, eliminated: false };
-    if (cushion <= -3) return { urgency: -0.1, safe: false, eliminated: true };
+    // Three or four down he goes for it with everything he has; only five down is the tie gone.
+    if (cushion <= -5) return { urgency: -0.1, safe: false, eliminated: true };
+    if (cushion <= -3) return { urgency: 0.8, safe: false, eliminated: false, mustWin: true };
     if (cushion >= 2) return { urgency: 0.2, safe: false, eliminated: false };
     if (cushion <= -2) return { urgency: 0.7, safe: false, eliminated: false };
     return { urgency: 0.8, safe: false, eliminated: false };
@@ -2986,7 +3091,7 @@ function refitAs(squad, formation) {
   const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize, old.some(p => p.clubBench));
   // ...and who he is: his record, traits and own positions come with him (a rebuilt man used to lose his traits).
   nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos;
-    if (o.rid) p.rid = o.rid; if (o.badges) p.badges = o.badges; if (o.own) p.own = o.own; });
+    if (o.rid) p.rid = o.rid; if (o.badges) p.badges = o.badges; if (o.own) p.own = o.own; if (o.age != null) p.age = o.age; });
   return nsq;
 }
 
@@ -3236,9 +3341,6 @@ const ROSTER_PANEL_H = `${PANEL_H + LM_CONTROLS_H}px`;
 const THEMES_ENABLED = true;
 // Banner height. The image keeps its own aspect and the tab row stretches to match it.
 const HEADER_H = 48;
-// The share of a badge's canvas that is transparent above and below the artwork. Measured off the PNGs: 500px square,
-// crest inset 50px top and bottom.
-const CREST_PAD_RATIO = 0.10;
 function LeagueCrest({ league, alts, size = 20, style }) {
   // A step, not a boolean: each failed load moves to the next spelling, and the last candidate is
   // always the placeholder, so this cannot loop or end on a broken image.
@@ -3303,8 +3405,10 @@ const UX_HONOURS = ARTERRA ? [WORLD_CUP] : ["World Cup", "Nations League", ...AR
 // The home's Leaders, in FM's order and words. GA (goals and assists) and GP (appearances) are added up from the boards.
 const UX_LEADERS = [["RTG", "Highest Average Rating"], ["G", "Most Goals"], ["A", "Most Assists"], ["GA", "Most Goal Contributions"],
   ["CC", "Most Chances Created"], ["DC", "Most Defensive Actions"], ["SV", "Most Saves"], ["GP", "Most Appearances"]];
-// An average rating counts once a man has this many games across the season.
+// An average rating counts once a man has this many games across the season, or half the most anyone has, if fewer.
 const UX_RTG_MIN_GP = 15;
+// That bar for a year, from every man's games in it.
+const uxRtgMinOf = (rgs) => Math.min(UX_RTG_MIN_GP, Math.ceil(Math.max(1, ...rgs) / 2));
 // A manager's win rate counts once his sides have played this many matches under him.
 const UX_WIN_MIN_P = 10;
 // The top bar and the page bar, which the old canvas now sits under.
@@ -3753,6 +3857,8 @@ function attachRecords(catalog, records) {
       const s = r.squad[e?.slot ?? i], id = typeof s === "string" ? s : s?.id;
       if (!e || !id) return;
       e.rid = id;
+      // His age, for the muscles of an older man (engine/injury.ts ME_HURT.pullAge).
+      const born = P.get(id)?.born; if (born) e.age = ageOf(born);
       const b = P.get(id)?.badges;
       if (b?.length) e.badges = b;
       // His own positions (src/data/positions.js): he plays either at his full rating, and anywhere else on their skills.
@@ -4168,6 +4274,22 @@ function buildSeasonStatsTsv(tPlayerStats) {
     });
     rows.push(cells.join("\t"));
   }
+  // THE LONG INJURIES OF THE SEASON (src/data/longout.js), beside the boards: every man hurt badly enough to outlast it,
+  // with how far through his side's matches it came. Every copy of the app reads this block from every filed season
+  // and leaves him out of what follows, so the sheet is the record and a row can be typed in or deleted by hand.
+  const hurt = all.filter(p => p.longSev);
+  if (hurt.length) {
+    const teamApps = new Map();
+    for (const p of all) teamApps.set(p.team, Math.max(teamApps.get(p.team) || 0, gp(p)));
+    const pad = (r, k) => { const c = r.split("\t"); while (c.length < k) c.push(""); return c; };
+    const width = H.length;
+    const body = hurt.map((p, i) => [String(i + 1), nameOf(p), p.pos || "", codeOf(p), p.longSev,
+      Math.min(1, (p.longApps || 0) / Math.max(1, teamApps.get(p.team) || 1)).toFixed(2), p.rid || ""]);
+    const out = [[...pad(rows[0], width), "", ...LONG_HEAD].join("\t")];
+    for (let i = 0; i < Math.max(rows.length - 1, body.length); i++)
+      out.push([...pad(rows[i + 1] || "", width), "", ...(body[i] || [])].join("\t").replace(/\t+$/, ""));
+    return out.join("\n") + "\n";
+  }
   return rows.join("\n") + "\n";
 }
 
@@ -4424,6 +4546,46 @@ function SlideName({ text, style, textStyle }) {
 // A LINE THAT DOES NOT FIT IS NARROWED, never shrunk, cut or wrapped (Moukden and Kirin, 12 October 2026). Full Time lines
 // its score up with the tops of the names and FULL TIME with the manager lines, so each of those keeps one line at one
 // height whatever its length, and the whole of it is in the picture. end: anchored at the right-hand edge; mid: centred.
+// A CREST BY ITS ART. A crest file pads its drawing by however much its maker left, so a crest set by its file's box
+// stands at a different height from the next one. This measures the drawn part once a file (the pixels with any colour in
+// them) and draws the file so that part is exactly h tall, its top on the box's top, with the box as wide as the art. Until
+// the file is measured, or with no file, it is the ordinary TeamCrest at `fallback`, centred on the same box.
+const ftArt = new Map();
+function FtCrest({ team, h, fallback }) {
+  const code = abbr(team?.name, team?.code), w0 = team?.world || team?.league ? worldOf(team) : WORLD;
+  const url = code ? `${import.meta.env.BASE_URL}${w0}/badges/${code}.png` : null;
+  const [art, setArt] = useState(() => (url ? ftArt.get(url) : null));
+  useEffect(() => {
+    if (!url) return;
+    if (ftArt.has(url)) { setArt(ftArt.get(url)); return; }
+    let live = true; const im = new Image();
+    im.onload = () => { try {
+      const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 24) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const a = x1 < 0 ? null : { x0, y0, aw: x1 - x0 + 1, ah: y1 - y0 + 1, nw: c.width, nh: c.height };
+      ftArt.set(url, a); if (live) setArt(a);
+    } catch { ftArt.set(url, null); } };
+    im.onerror = () => { ftArt.set(url, null); };
+    im.src = url;
+    return () => { live = false; };
+  }, [url]);
+  if (!art) return (
+    <span className="ux-ft2-bc" style={{ width: h, height: h }}><TeamCrest team={team} size={fallback} style={{ margin: -(fallback - h) / 2 }} /></span>);
+  const k = h / art.ah;
+  return (
+    <span className="ux-ft2-bc ux-art" style={{ width: Math.round(art.aw * k), height: h }}>
+      <img src={url} alt="" style={{ position: "absolute", left: -art.x0 * k, top: -art.y0 * k, width: art.nw * k, height: art.nh * k, maxWidth: "none" }} />
+    </span>);
+}
+// How wide a line of text sets in a given font, for layouts that place labels before they are drawn (Full Time's timeline and
+// scorers). One canvas, kept.
+let _ftCv = null;
+const ftTextW = (txt, font) => { if (typeof document === "undefined") return String(txt).length * 7.5;
+  const g = (_ftCv = _ftCv || document.createElement("canvas").getContext("2d")); if (!g) return String(txt).length * 7.5;
+  g.font = font; return g.measureText(String(txt)).width; };
 function FitLine({ className, end, mid, children }) {
   const box = useRef(null), line = useRef(null);
   const [k, setK] = useState(1);
@@ -4502,6 +4664,8 @@ function UxRoll({ value, delay }) {
 // THE GOAL SHEEN. One streak across the scoring side's panel toward the score, played when its count rises (never on
 // the first draw, so a match resumed at 2-1 does not light up). The score's roll waits UX_SHEEN_LAG for it to arrive.
 const UX_SHEEN_LAG = 480;
+// ...and on the live scorebug the score rolls as the GOAL wipe clears it (MatchGfx, ux-gfx-wipe), not under it.
+const UX_GOAL_LAG = 1900;
 function UxSheen({ n }) {
   const ref = useRef(null), prev = useRef(n);
   useEffect(() => {
@@ -4510,6 +4674,129 @@ function UxSheen({ n }) {
     el.classList.remove("ux-go"); void el.offsetWidth; el.classList.add("ux-go");
   }, [n]);
   return <span ref={ref} className="ux-bug-sheen" aria-hidden="true" />;
+}
+// ── THE BROADCAST'S GRAPHICS (user, 22 November 2026: "implement better match graphics & animations. PL-style.
+// Goalscorer, H2H, all of the other PL animations that come off of the scoreboard. Replay will be a popup there too").
+// Everything a broadcast says beyond the score comes out from under the scorebug as a plate, holds, and goes back in:
+// a goal (the bar is wiped with GOAL in the scoring side's colour, then its scorer, the minute, who made it, and Replay,
+// which is where a replay is opened), a card, a change, a missed penalty, a number set side against side at set minutes,
+// their record together at the kick-off, and the scorers and numbers for as long as an interval waits. One plate at a
+// time: a goal or a red card cuts in on a number, and watched at four times or faster only what matters is shown. Timed
+// on the wall clock, so a plate reads the same at any match speed. It never stops the match and never covers play for
+// longer than it holds. Nothing that happened before the match was opened here is shown.
+const GFX_STATS = [[9, "Possession"], [19, "Shots"], [30, "Passes"], [40, "On Target"], [55, "Possession"], [64, "Shots"], [73, "xG"], [82, "Corners"]];
+function MatchGfx({ m, frame, minute, brk, speed, h2h, stats, scorers, hT, aT, hBg, aBg, hInk, aInk, hc, ac, replayOpen, onReplay }) {
+  const R = useRef({ m: null, clips: 0, q: [], stat: 0, id: 0, h2h: true, cut: 0 }).current;
+  const [cur, setCur] = useState(null), [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    const feed = m.out?.feed || [], cl = m.clips || [];
+    if (R.m !== m) {
+      R.m = m; R.clips = cl.length; R.q = []; for (const f of feed) f._gfx = 1;
+      R.stat = GFX_STATS.findIndex(s => s[0] > minute); if (R.stat < 0) R.stat = GFX_STATS.length;
+      R.h2h = minute > 1; if (cur) setCur(null); return;
+    }
+    if (m.fast || m.ftDone) { R.q = []; if (cur) setCur(null); return; }
+    while (R.clips < cl.length) { const c = cl[R.clips++];
+      R.q.push({ kind: "goal", side: c.side, clip: c, dur: 9000, pri: 2,
+                 nth: c.og || !c.scorer ? 1 : cl.slice(0, R.clips).filter(x => !x.og && x.side === c.side && x.scorer === c.scorer).length }); }
+    const fresh = []; for (const f of feed) { if (f._gfx) break; f._gfx = 1; fresh.unshift(f); }
+    for (const f of fresh) {
+      if (f.k === "red") { const mt = /^(.*?) is sent off/.exec(f.txt || ""), second = f.why === "second" || /second yellow/i.test(f.txt || "");
+        R.q.push({ kind: "card", red: true, second, side: f.side, name: mt ? mt[1] : "", why: ME_RED_WHY[f.why] || (second ? ME_RED_WHY.second : ""), dur: 6000, pri: 2 }); }
+      else if (f.k === "yellow") { const mt = /^Booked, (.*)$/.exec(f.txt || "") || /^(.*?) booked/.exec(f.txt || "");
+        if (mt) R.q.push({ kind: "card", side: f.side, name: mt[1], dur: 4500, pri: 1 }); }
+      else if (f.k === "sub") { const mt = /^(.*) on for (.*)$/.exec(f.txt || ""), last = R.q[R.q.length - 1];
+        if (mt && last && last.kind === "sub" && last.side === f.side && last.pairs.length < 3) last.pairs.push([mt[1], mt[2]]);
+        else if (mt) R.q.push({ kind: "sub", side: f.side, pairs: [[mt[1], mt[2]]], dur: 5500, pri: 1 }); }
+      else if (f.k === "penmiss") { const mt = /^(.*) misses the penalty/.exec(f.txt || "");
+        R.q.push({ kind: "miss", side: f.side, name: mt ? mt[1] : "", dur: 4500, pri: 2 }); }
+    }
+    if (!R.h2h && h2h !== undefined) { R.h2h = true; if (h2h && minute <= 2) R.q.unshift({ kind: "h2h", dur: 7500, pri: 0 }); }
+    while (R.stat < GFX_STATS.length && minute >= GFX_STATS[R.stat][0]) { const s = GFX_STATS[R.stat++];
+      if (minute <= s[0] + 3 && !R.q.some(x => x.kind === "stat")) R.q.push({ kind: "stat", stat: s[1], dur: 6500, pri: 0 }); }
+    if (speed >= 8) R.q = R.q.filter(x => x.pri >= 2); else if (speed >= 4 || R.q.length > 3) R.q = R.q.filter(x => x.pri >= 1);
+    const hold = !!brk || replayOpen || !!m.pk;
+    if (cur && (replayOpen || (hold && cur.kind !== "goal"))) { setCur(null); return; }
+    if (cur && !leaving && R.q.length && R.q[0].pri > cur.pri && R.cut !== cur.id) { const id = (R.cut = cur.id);
+      setLeaving(true); setTimeout(() => setCur(c => (c && c.id === id ? null : c)), 360); return; }
+    if (!cur && R.q.length && !hold) { const nx = R.q.shift(); nx.id = ++R.id; setLeaving(false); setCur(nx); }
+  });
+  const curId = cur ? cur.id : 0;
+  useEffect(() => {
+    if (!cur) return;
+    const id = cur.id, a = setTimeout(() => setLeaving(true), cur.dur - 380), b = setTimeout(() => setCur(c => (c && c.id === id ? null : c)), cur.dur);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, [curId]);
+  // A side's colour as it reads on the dark plate: lifted when it is too dark to show there.
+  const hcl = liftDark(hc, 0.3), acl = liftDark(ac, 0.3);
+  const away = cur?.side === "away", T = away ? aT : hT, clr = away ? acl : hcl;
+  const stat = (k) => (stats || []).find(s => s.k === k);
+  const split = (parts) => { const t = parts.reduce((s, p) => s + Math.max(0, +p[0] || 0), 0) || 1;
+    return <span className="ux-gfx-bar" aria-hidden="true">{parts.map((p, i) => <i key={i} style={{ width: `${100 * Math.max(0, +p[0] || 0) / t}%`, background: p[1] }} />)}</span>; };
+  const cls = (k, sided) => "ux-gfx-plate ux-gfx-" + k + (sided ? " ux-gfx-s" + (away ? " ux-gfx-r" : "") : "") + (leaving ? " ux-gfx-out" : "");
+  const ARROW = (up) => (<svg viewBox="0 0 10 10" width={10} height={10} aria-hidden="true"><path d={up ? "M5 1.5 L9 7.5 H1 Z" : "M5 8.5 L1 2.5 H9 Z"} fill="currentColor" /></svg>);
+  let plate = null;
+  if (cur?.kind === "goal") { const c = cur.clip;
+    const tag = c.og ? "Own Goal" : c.pen ? "Penalty" : cur.nth === 2 ? "Second Goal" : cur.nth === 3 ? "Hat-Trick" : cur.nth > 3 ? `${cur.nth} Goals` : null;
+    plate = (
+      <div key={cur.id} className={cls("goal", true)} style={{ "--gfx-c": clr }}>
+        {c.scorer && !c.og ? <PlayerShot name={c.scorer} size={34} /> : null}
+        <span className="ux-gfx-txt">
+          <span className="ux-gfx-main"><FitLine className="ux-gfx-nm" end={away}>{shortName(c.og || c.scorer || "Goal")}</FitLine><i>{c.min}'{c.add ? "+" + c.add : ""}</i></span>
+          <span className="ux-gfx-sub">{tag ? <em>{tag}</em> : null}{c.assist && !c.og && !c.pen ? <span>Assist <b>{shortName(c.assist)}</b></span> : null}{!tag && !(c.assist && !c.pen) ? <span>{T?.name}</span> : null}</span>
+        </span>
+        <button type="button" className="ux-btnreset ux-gfx-replay" onClick={() => onReplay(c)}>
+          <svg viewBox="-1 -1 2 2" width={8} height={8} aria-hidden="true"><path d="M -0.5 -0.7 L 0.7 0 L -0.5 0.7 Z" fill="currentColor" /></svg>Replay</button>
+      </div>); }
+  else if (cur?.kind === "card") plate = (
+    <div key={cur.id} className={cls("card", true)} style={{ "--gfx-c": clr }}>
+      {cur.second ? <i className="ux-gfx-cd" /> : null}<i className={"ux-gfx-cd" + (cur.red ? " ux-red" : "")} />
+      <span className="ux-gfx-txt">
+        <span className="ux-gfx-main"><FitLine className="ux-gfx-nm" end={away}>{shortName(cur.name)}</FitLine></span>
+        {cur.red ? <span className="ux-gfx-sub"><em>Red Card</em>{cur.why ? <span>{cur.why}</span> : null}</span> : null}
+      </span>
+    </div>);
+  else if (cur?.kind === "miss") plate = (
+    <div key={cur.id} className={cls("miss", true)} style={{ "--gfx-c": clr }}>
+      <span className="ux-gfx-txt">
+        <span className="ux-gfx-main"><FitLine className="ux-gfx-nm" end={away}>{shortName(cur.name)}</FitLine></span>
+        <span className="ux-gfx-sub"><em>Penalty Missed</em></span>
+      </span>
+    </div>);
+  else if (cur?.kind === "sub") plate = (
+    <div key={cur.id} className={cls("chg", true)} style={{ "--gfx-c": clr }}>
+      {cur.pairs.map((p, i) => (
+        <span key={i} className="ux-gfx-pair">
+          <span className="ux-gfx-on">{ARROW(true)}<b>{shortName(p[0])}</b></span>
+          <span className="ux-gfx-off">{ARROW(false)}<b>{shortName(p[1])}</b></span>
+        </span>))}
+    </div>);
+  else if (cur?.kind === "stat") { const s = stat(cur.stat);
+    plate = s ? (
+      <div key={cur.id} className={cls("stat", false)}>
+        <span className="ux-gfx-vs"><b>{s.h}</b><span>{s.k}</span><b>{s.a}</b></span>
+        {split([[s.hv ?? s.h, hcl], [s.av ?? s.a, acl]])}
+      </div>) : null; }
+  else if (cur?.kind === "h2h" && h2h) plate = (
+    <div key={cur.id} className={cls("h2h", false)}>
+      <span className="ux-gfx-vs"><b>{h2h.a}<small>Wins</small></b>
+        <span>Head To Head<small>{h2h.p ? `${h2h.d} ${h2h.d === 1 ? "Draw" : "Draws"}` : "First Meeting"}</small></span>
+        <b>{h2h.b}<small>Wins</small></b></span>
+      {h2h.p ? split([[h2h.a, hcl], [h2h.d, "rgba(255,255,255,.28)"], [h2h.b, acl]]) : null}
+    </div>);
+  else if (brk && !m.pk && !replayOpen) plate = (
+    <div key="brk" className="ux-gfx-plate ux-gfx-brk">
+      {(scorers.home.length || scorers.away.length) ? (
+        <div className="ux-gfx-scorers">{["home", "away"].map(sd => (
+          <div key={sd} className={sd === "away" ? "ux-gfx-r" : ""}>{scorers[sd].map((g, i) => <span key={i}><b>{g.who}</b>{g.min}'{g.tag ? " " + g.tag : ""}</span>)}</div>))}</div>) : null}
+      {["Possession", "Shots", "On Target", "xG", "Corners"].map(k => { const s = stat(k);
+        return s ? <span key={k} className="ux-gfx-vs"><b>{s.h}</b><span>{k}</span><b>{s.a}</b></span> : null; })}
+    </div>);
+  return (<>
+    {cur?.kind === "goal" && <span key={"w" + cur.id} className={"ux-gfx-wipe" + (away ? " ux-gfx-r" : "") + ((away ? aInk : hInk) ? " ux-ink" : "")}
+                                    style={{ background: away ? aBg : hBg }} aria-hidden="true">Goal</span>}
+    <div className={"ux-gfx" + (cur && away && cur.kind !== "stat" && cur.kind !== "h2h" ? " ux-gfx-r" : "")} aria-live="polite">{plate}</div>
+  </>);
 }
 // HOLD TO CONFIRM (HoldButton), in place of asking twice. The loss colour rises through the button while it is held,
 // its leading edge a small wave, and drains back if it is let go early; Space or Enter held does the same and Escape
@@ -4696,75 +4983,272 @@ function MomentumChart({ mom, perMin, last, htAt, etAt, goals, hc, ac, height })
   }
   return <div ref={box} className="ux-ftmom" style={{ height }}>{svg}</div>;
 }
-const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
-function GoalReplay({ clip, hc, ac }) {
-  const F = clip.frames, last = F.length - 1;
-  const [pos, setPos] = useState(last);
-  const [playing, setPlaying] = useState(false);
-  const posRef = useRef(last);
-  useEffect(() => { posRef.current = last; setPos(last); setPlaying(false); }, [clip, last]);
-  useEffect(() => {
-    if (!playing || last < 1) return;
-    let raf = 0, prev = 0;
-    const step = (now) => {
-      if (prev) {
-        posRef.current = Math.min(last, posRef.current + (now - prev) / CLIP_MS);
-        setPos(posRef.current);
-        if (posRef.current >= last) { setPlaying(false); return; }
-      }
-      prev = now;
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [playing, clip, last]);
-
+const CLIP_MS = 250;                           // per tape slice: the speed of play (a slice is a quarter of a second of it)
+// WHAT A SHOT, A HEADER, A TACKLE, A BLOCK AND A SAVE LOOK LIKE (user, 22 November 2026: "headers, shots, tackles, blocks,
+// and saves can have special effects"; asked: all of them, at full strength, the keeper may stretch). Short and quiet,
+// in white and the keeper's yellow, each over in half a second or so of play; nothing stops or shakes the match.
+//   The engine lists every event of a slice (match.ts meEvt, out.fx). meFxMake turns a slice's list into records, once,
+//   against the state as that slice left it: where, which way, how hard, and which man. A record's clock is in slices,
+//   so an effect runs at the speed of whatever is showing it: the live pitch (the match's own tick), the replay and the
+//   saved GIF (the tape's frames, which carry their records).
+//   meFxPrims is what a record draws at an age: rings, lines and dots in pitch metres, for the SVG and the canvas alike.
+//   meFxMan is what the records do to a man: a lift for a header, a stretch along a slide, a step back off a block.
+const FX_CLR = { w: "#ffffff", y: "#f5e663", warn: "#ff9f43", turf: "#0b1a0f" };
+const FX_LIFE = { shot: 1.3, post: 2.4, goal: 7, head: 0.8, tackle: 0.9, scuff: 18, foul: 2.2, block: 1.3, save: 1.4 };
+const FX_MAN = { head: 1.6, head2: 1.1, slide: 1.2, block: 1.3 };
+export const meFxMake = (s, raw, memo) => {
+  const mp = s.mePos, v = Math.hypot(mp.bvx || 0, mp.bvy || 0), out = [];
+  const near = (side, x, y, maxD) => { let b = -1, bd = maxD; (s.players[side] || []).forEach((p, i) => { if (!p || p.off || i > 10) return;
+    const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; b = i; } }); return b < 0 ? -1 : (side === "away" ? 11 : 0) + b; };
+  const oth = (sd) => (sd === "home" ? "away" : "home"), up = (mp.bz || 0) > 1.25;
+  const head = (e) => out.push({ k: "head", x: e.x0, y: e.y0, q: near(e.side, e.x0, e.y0, 1.6), q2: near(oth(e.side), e.x0, e.y0, 1.6) });
+  for (const e of raw) {
+    if (e.k === "shot") { out.push({ k: "shot", x: e.x0, y: e.y0, pw: Math.max(0, Math.min(1, (v - 12) / 20)) }); memo._fxShot = [e.x0, e.y0]; if (up) head(e); }
+    else if (e.k === "goal" || e.k === "pen") out.push({ k: "goal", x: e.x1 > 52.5 ? 104.4 : 0.6, y: Math.max(31, Math.min(37, e.y1)) });
+    else if (e.k === "post") out.push({ k: "post", x: e.x0 > 52.5 ? 104.4 : 0.6, y: Math.max(30.34, Math.min(37.66, e.y0)) });
+    else if (e.k === "head" || (e.k === "clear" && up)) head(e);
+    // A SLIDE is the engine's own call (the duel's, carried on the event as f). It was guessed here from the gap between
+    // the two men, over 1.15 metres, and an ordinary standing tackle is made from about 1.9: three tackles in four were
+    // drawn as slides, each leaving a dark streak in the grass for four seconds after the men had gone (user, 24 November
+    // 2026: "tackle lines on the field seemingly appearing randomly and not during actual tackles").
+    else if (e.k === "tackle") { const d = Math.hypot(e.x1 - e.x0, e.y1 - e.y0) || 1, dx = (e.x1 - e.x0) / d, dy = (e.y1 - e.y0) / d, slide = !!e.f;
+      const q = Math.max(near("home", e.x0, e.y0, 0.5), near("away", e.x0, e.y0, 0.5));
+      out.push({ k: "tackle", x: e.x0, y: e.y0, x1: e.x1, y1: e.y1, dx, dy, q, f: slide ? 1 : 0 });
+      if (slide) out.push({ k: "scuff", x: e.x0 - dx * 0.5, y: e.y0 - dy * 0.5, x1: e.x1 + dx * 0.4, y1: e.y1 + dy * 0.4 }); }
+    else if (e.k === "foul") out.push({ k: "foul", x: e.x0, y: e.y0 });
+    else if (e.k === "block") { const o = memo._fxShot; let dx = o ? e.x0 - o[0] : (e.side === "home" ? 1 : -1), dy = o ? e.y0 - o[1] : 0; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      out.push({ k: "block", x: e.x0, y: e.y0, dx, dy, q: near(oth(e.side), e.x0, e.y0, 1.8) }); }
+    else if (e.k === "save" || (e.k === "penmiss" && /saved/.test(e.txt))) out.push({ k: "save", x: e.x0, y: e.y0, f: /saves$/.test(e.txt) ? 1 : 0 });
+  }
+  return out;
+};
+const fxRand = (a, b) => { const x = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return x - Math.floor(x); };
+export const meFxPrims = (e, a) => {
+  const L = FX_LIFE[e.k]; if (!L || a < 0 || a >= L) return [];
+  const u = a / L, P = [];
+  const ring = (x, y, r, w, o, c = "w") => P.push({ t: "ring", x, y, r, w, o, c });
+  const line = (x, y, x1, y1, w, o, c = "w") => P.push({ t: "line", x, y, x1, y1, w, o, c });
+  const ticks = (x, y, n, r0, len, w, o, c) => { for (let k = 0; k < n; k++) { const th = (k / n) * Math.PI * 2 + 0.4; line(x + Math.cos(th) * r0, y + Math.sin(th) * r0, x + Math.cos(th) * (r0 + len), y + Math.sin(th) * (r0 + len), w, o, c); } };
+  if (e.k === "shot") ring(e.x, e.y, 0.5 + (1.3 + 1.3 * e.pw) * u, 0.13 + 0.1 * e.pw, (1 - u) * (0.5 + 0.4 * e.pw));
+  else if (e.k === "post") { const j = 0.17 * Math.sin(a * 9.5) * (1 - u); line(e.x + j, 30.34, e.x + j, 37.66, 0.42, (1 - u) * 0.95); ring(e.x, e.y, 0.3 + 1.1 * u, 0.14, (1 - u) * 0.8); }
+  else if (e.k === "goal") { const dir = e.x > 52.5 ? 1 : -1;
+    for (let k = 0; k < 3; k++) { const b = a - k * 0.45; if (b > 0 && b < 2.4) ring(e.x + dir * 1.5, e.y, 0.3 + b * 0.85, 0.09, (1 - b / 2.4) * 0.5); }
+    // the cameras in the stand behind that goal, and along the far side
+    for (let k = 0; k < 26; k++) { const ph = fxRand(k, e.y) * 5.6, b = a - ph; if (b < 0 || b > 0.55) continue;
+      const far = k % 3 === 0, x = far ? 52.5 + dir * (6 + fxRand(k, 3) * 46) : e.x + dir * (4.6 + fxRand(k, 5) * 9), y = far ? -4.4 - fxRand(k, 7) * 4 : 2 + fxRand(k, 9) * 64;
+      P.push({ t: "dot", x, y, r: 0.2 + 0.16 * Math.sin((b / 0.55) * Math.PI), o: Math.sin((b / 0.55) * Math.PI) * 0.95, c: "w" }); } }
+  else if (e.k === "head") ring(e.x, e.y, 0.35 + 0.55 * u, 0.1, (1 - u) * 0.8);
+  else if (e.k === "tackle") { if (!e.f) ticks((e.x + e.x1) / 2, (e.y + e.y1) / 2, 5, 0.25 + 0.55 * u, 0.34, 0.11, (1 - u) * 0.9, "w"); }
+  else if (e.k === "scuff") line(e.x, e.y, e.x1, e.y1, 0.46, 0.5 * (1 - u) * Math.min(1, a / 0.6), "turf");
+  else if (e.k === "foul") ring(e.x, e.y, 0.8 + 1.5 * u, 0.2, (1 - u) * 0.9, "warn");
+  else if (e.k === "block") line(e.x - e.dy * 0.75, e.y + e.dx * 0.75, e.x + e.dy * 0.75, e.y - e.dx * 0.75, 0.28, 1 - u * u);
+  else if (e.k === "save") { if (e.f) ring(e.x, e.y, 1.7 - 1.35 * u, 0.14, u < 0.8 ? 0.35 + 0.6 * u : (1 - u) * 4.2, "y");
+    else { ticks(e.x, e.y, 6, 0.3 + 0.95 * u, 0.45, 0.13, 1 - u, "y"); ring(e.x, e.y, 0.3 + 0.8 * u, 0.09, (1 - u) * 0.6); } }
+  return P;
+};
+// What the records do to man q (0 to 21) at clock tau: [lift 0..1, stretch x, stretch y, step x, step y], or null.
+export const meFxMan = (list, q, tau) => {
+  let lift = 0, sx = 0, sy = 0, nx = 0, ny = 0, hit = false;
+  for (const e of list) { const a = tau - e.t; if (a < 0 || a > 1.7) continue;
+    if (e.k === "head") { if (e.q === q && a < FX_MAN.head) { lift = Math.max(lift, Math.sin(Math.PI * a / FX_MAN.head)); hit = true; }
+      else if (e.q2 === q && a < FX_MAN.head2) { lift = Math.max(lift, 0.8 * Math.sin(Math.PI * a / FX_MAN.head2)); hit = true; } }
+    else if (e.k === "tackle" && e.f && e.q === q && a < FX_MAN.slide) { const m = 0.6 * Math.sin(Math.PI * a / FX_MAN.slide); sx = e.dx * m; sy = e.dy * m; hit = true; }
+    else if (e.k === "block" && e.q === q && a < FX_MAN.block) { const m = 0.3 * Math.sin(Math.PI * a / FX_MAN.block); nx = e.dx * m; ny = e.dy * m; hit = true; } }
+  return hit ? [lift, sx, sy, nx, ny] : null;
+};
+// A clip's records on its own clock: frame j's happened during the slice that ended there.
+const meFxOfClip = (clip) => clip._fx || (clip._fx = clip.frames.flatMap((f, j) => (f.fx || []).map(e => ({ ...e, t: j - 0.5 }))));
+// THE GROUND A MATCH IS PLAYED ON, as every picture of one draws it (22 November 2026; one house look): the live pitch,
+// the replay on it, and the Full Time highlights (the saved GIF paints the same thing on a canvas, meClipGif). In pitch
+// metres, 105 by 68 with the touchlines 0.6 in. The window is always wider than the pitch, and what showed in the slack
+// was flat turf-coloured nothing; now it is a stand, dark and speckled with a crowd, with a line of boards along the far
+// touchline and behind each goal line and a darker apron of grass between them and the pitch, drawn far past the
+// picture's own box so that whatever the window's shape there is ground under it. `bulge` pushes the back of a net out
+// where a goal has just struck it: [which end 0 or 1, how far in metres, where across].
+function PitchGround({ bulge = null }) {
+  return (<>
+    <defs>
+      <pattern id="lmCrowd" width="1.3" height="1.1" patternUnits="userSpaceOnUse">
+        <circle cx="0.32" cy="0.3" r="0.2" fill="var(--ui-stand-dot)" /><circle cx="0.97" cy="0.85" r="0.2" fill="var(--ui-stand-dot)" fillOpacity="0.7" />
+      </pattern>
+      <pattern id="lmNet" width="0.34" height="0.34" patternUnits="userSpaceOnUse">
+        <path d="M0 0H0.34M0 0V0.34" stroke="var(--ui-net)" strokeOpacity="0.5" strokeWidth="0.045" fill="none" />
+      </pattern>
+      {/* The referee and his assistants wear stripes (user, 24 November 2026: "Refs/linemen should have striped referee
+          dots"): three dark bars across the dot, measured on the dot itself so they travel with him. */}
+      <pattern id="lmStripe" width="0.34" height="1" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox">
+        <rect width="0.34" height="1" fill="var(--ui-official-edge)" /><rect x="0.07" width="0.17" height="1" fill="var(--ui-official)" />
+      </pattern>
+      <radialGradient id="lmLight" cx="50%" cy="46%" r="68%">
+        <stop offset="0" stopColor="var(--ui-turf-light)" stopOpacity="0.2" /><stop offset="0.6" stopColor="var(--ui-turf-light)" stopOpacity="0.04" />
+        <stop offset="1" stopColor="#000" stopOpacity="0.3" />
+      </radialGradient>
+      <radialGradient id="lmWear"><stop offset="0" stopColor="var(--ui-turf-wear)" stopOpacity="0.17" /><stop offset="1" stopColor="var(--ui-turf-wear)" stopOpacity="0" /></radialGradient>
+    </defs>
+    <rect x={-80} y={-60} width={265} height={190} fill="var(--ui-stand)" />
+    <rect x={-80} y={-60} width={265} height={190} fill="url(#lmCrowd)" />
+    <rect x={-3.6} y={-3.2} width={112.2} height={74.6} fill="var(--ui-turf-apron)" />
+    {/* The boards: twelve along the far side, three either side of each goal. A plain mark on each, never a word. */}
+    <g>
+      {Array.from({ length: 12 }, (_, i) => (
+        <g key={"bd" + i}><rect x={0.6 + i * 8.65} y={-3.2} width={8.45} height={0.95} fill={i % 2 ? "var(--ui-board-a)" : "var(--ui-board-b)"} />
+          <rect x={0.6 + i * 8.65 + 3.3} y={-2.88} width={1.85} height={0.3} fill="var(--ui-board-ink)" /></g>))}
+      {[-3.6, 107.65].map((bx0) => [3, 11.6, 20.2, 39.2, 47.8, 56.4].map((by0, i) => (
+        <rect key={"bg" + bx0 + i} x={bx0} y={by0} width={0.95} height={8.4} fill={i % 2 ? "var(--ui-board-a)" : "var(--ui-board-b)"} />)))}
+    </g>
+    {/* THE GRASS. Eight mown bands, which is the thing that reads as a football pitch before any
+        marking does -- a flat green rectangle reads as a diagram however good the lines on it are.
+        Two tones a shade apart, so it is texture rather than stripes you look at, and drawn only
+        inside the touchlines so the run-off stays plain. Over them the light: brighter in the middle of the
+        pitch and falling away to the corners; and the grass worn in the two goalmouths and the centre spot. */}
+    {Array.from({ length: 8 }, (_, i) => (
+      <rect key={"mow" + i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
+            fill={i % 2 ? "var(--ui-turf-a)" : "var(--ui-turf-b)"} />
+    ))}
+    <rect x={-3.6} y={-3.2} width={112.2} height={74.6} fill="url(#lmLight)" />
+    <ellipse cx={3.4} cy={34} rx={3.6} ry={5.6} fill="url(#lmWear)" /><ellipse cx={101.6} cy={34} rx={3.6} ry={5.6} fill="url(#lmWear)" />
+    <ellipse cx={52.5} cy={34} rx={2.2} ry={2.2} fill="url(#lmWear)" />
+    {/* The technical areas on the near side, either side of halfway. */}
+    <g stroke="rgba(255,255,255,.26)" strokeWidth={0.16} strokeDasharray="0.7 0.5" fill="none">
+      <path d="M 37 67.9 V 70 H 47 V 67.9" /><path d="M 58 67.9 V 70 H 68 V 67.9" />
+    </g>
+    {/* The markings, and all of them. What was here had no penalty spots, no D-arcs and no corner
+        arcs -- and the D especially is what makes a pitch instantly legible as a pitch rather than
+        as boxes on green. Lifted to 44% white from 32%: real markings are painted, not suggested. */}
+    <g stroke="rgba(255,255,255,.44)" strokeWidth={0.24} fill="none">
+      <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+      <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+      <circle cx={52.5} cy={34} r={9.15} />
+      <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+      <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+      <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+      <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+      {/* The D: the arc of the ten-yard circle that falls OUTSIDE the box, which is all of it you
+          ever see. Centred on the penalty spot and swept between where r=9.15 crosses the box line
+          -- the box front sits 5.5 m from the spot, so the crossings are 34 +/- sqrt(9.15^2 - 5.5^2)
+          = 34 +/- 7.31, and the arc bulges away from goal in each case. */}
+      <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
+      <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
+      <path d="M 0.6 1.6 A 1 1 0 0 0 1.6 0.6" />
+      <path d="M 103.4 0.6 A 1 1 0 0 0 104.4 1.6" />
+      <path d="M 104.4 66.4 A 1 1 0 0 0 103.4 67.4" />
+      <path d="M 1.6 67.4 A 1 1 0 0 0 0.6 66.4" />
+    </g>
+    <g fill="rgba(255,255,255,.44)">
+      <circle cx={52.5} cy={34} r={0.34} />
+      <circle cx={11.6} cy={34} r={0.34} />
+      <circle cx={93.4} cy={34} r={0.34} />
+    </g>
+    {/* THE GOALS: the net behind each, seen from above, and its frame. */}
+    {[0, 1].map((gi) => { const gx0 = gi ? 104.4 : 0.6, dir = gi ? 1 : -1, back = gx0 + dir * 2.1;
+      const amp = bulge && bulge[0] === gi ? bulge[1] : 0, yb = bulge && bulge[0] === gi ? bulge[2] : 34;
+      const d = `M ${gx0} 30.34 L ${back} 30.7 Q ${back + dir * amp * 2} ${yb} ${back} 37.3 L ${gx0} 37.66 Z`;
+      return (
+        <g key={"goal" + gi}>
+          <path d={d} fill="rgba(0,0,0,.28)" /><path d={d} fill="url(#lmNet)" />
+          <path d={d} fill="none" stroke="rgba(255,255,255,.5)" strokeWidth={0.12} />
+          <line x1={gx0} y1={30.34} x2={gx0} y2={37.66} stroke="#fff" strokeOpacity={0.9} strokeWidth={0.26} />
+          <circle cx={gx0} cy={30.34} r={0.2} fill="#fff" /><circle cx={gx0} cy={37.66} r={0.2} fill="#fff" />
+        </g>); })}
+    {/* The corner flags. */}
+    {[[0.6, 0.6, 1, 1], [104.4, 0.6, -1, 1], [0.6, 67.4, 1, -1], [104.4, 67.4, -1, -1]].map(([cx, cy, sx, sy], i) => (
+      <g key={"cf" + i}><path d={`M ${cx} ${cy} l ${-sx * 0.95} ${-sy * 0.25} l ${sx * 0.3} ${-sy * 0.6} Z`} fill="var(--ui-flag)" fillOpacity={0.9} />
+        <circle cx={cx} cy={cy} r={0.13} fill="#fff" /></g>))}
+  </>);
+}
+// A GOAL CARD: the move as a still, the passes and the shot drawn on it, with a button that opens the goal's full-pitch
+// replay as a match does (user, 23 November 2026: "there should be a replay button, like in matches"; asked, the full-screen
+// one, and the card stops playing itself under the pointer).
+function GoalReplay({ clip, hc, ac, onReplay }) {
+  const F = clip.frames, last = F.length - 1, pos = last;
   const flip = meGoalX(clip.side) < 52.5;
   const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
   const i = Math.min(last, Math.floor(pos)), a = i >= last ? 1 : pos - i;
   const A = F[i], B = F[Math.min(last, i + 1)];
   const L = (u, v) => u + (v - u) * a;
   const pt = (f) => `${X(f.bx).toFixed(1)},${Y(f.by).toFixed(1)}`;
-  const seen = F.slice(0, i + 1);
   const sw = 0.26;
-  const play = () => { posRef.current = 0; setPos(0); setPlaying(true); };
-  const rest = () => { setPlaying(false); posRef.current = last; setPos(last); };
+  // THE SHOT AND THE PASSES (user, 23 November 2026: "'The Goals:' should only highlight the path of the SHOT. Indicate passes
+  // better (dots?)"). The ball's whole path used to be drawn, faint, with its last stretch bright: a dribble, a pass and the
+  // finish all one line. Now only the shot is a line, gold, from where it was struck along the ball's own flight into the
+  // net; every pass the scoring side played before it is a chain of white dots from the passer to where it was played,
+  // with a dot on the man who played it. The engine's own events say which is which (a frame's ev: k "pass", "head", "shot").
+  // Each appears as the replay reaches it.
+  const ev = clip._ev || (clip._ev = F.flatMap((f, j) => (f.ev || []).map(e => ({ ...e, t: j - 0.5 }))));
+  const shotE = [...ev].reverse().find(e => e.side === clip.side && e.k === "shot")
+             || [...ev].reverse().find(e => e.side === clip.side && e.k === "head");
+  const shotT = shotE ? shotE.t : Math.max(0, last - 6);
+  // THE MOVE THAT SCORED (user, 24 November 2026: the passes on the cards "seem to be broken"). Each pass was drawn from
+  // the passer to where it was AIMED, with nothing between one pass and the next, so a run with the ball left a gap and
+  // every pass seemed to start metres from where the last one went; passes played before the side lost the ball and won it
+  // back were drawn as well. Now only the move, from the slice the side last won the ball (the tape's sd): each pass from
+  // where it was struck to where it was taken (the first slice one of ours has it, or the next touch for a ball played
+  // first time), and each run with it along the ball's own path.
+  const move = clip._mv || (clip._mv = (() => {
+    const jS = shotE ? Math.round(shotT + 0.5) : last, side = clip.side, at = (e) => Math.round(e.t + 0.5);
+    let s0 = 0;
+    for (let j = Math.min(jS, last); j >= 0; j--) if (F[j].sd && F[j].sd !== side) { s0 = j + 1; break; }
+    const evs = ev.filter(e => e.side === side && (e.k === "pass" || e.k === "head") && at(e) >= s0 && e.t < shotT);
+    const ps = [], runs = [];
+    const run = (j0, j1, end) => {            // the ball while one of ours has it, slices j0..j1-1, then onto `end`
+      const pts = [];
+      for (let j = j0; j < j1 && j <= last; j++) if (F[j].ix >= 0 && F[j].sd === side) pts.push([F[j].bx, F[j].by]);
+      if (pts.length && end) pts.push(end);
+      if (pts.length > 1) runs.push(pts);
+    };
+    run(s0, evs.length ? at(evs[0]) : jS, evs.length ? [evs[0].x0, evs[0].y0] : shotE ? [shotE.x0, shotE.y0] : null);
+    evs.forEach((e, n) => {
+      const nx = n + 1 < evs.length ? evs[n + 1] : shotE, jN = n + 1 < evs.length ? at(evs[n + 1]) : jS;
+      let jt = -1;
+      for (let j = at(e) + 1; j < jN && j <= last; j++) if (F[j].ix >= 0 && F[j].sd === side) { jt = j; break; }
+      const end = jt >= 0 ? [F[jt].bx, F[jt].by] : nx ? [nx.x0, nx.y0] : [e.x1, e.y1];
+      ps.push({ x0: e.x0, y0: e.y0, x1: end[0], y1: end[1] });
+      if (jt >= 0) run(jt, jN, nx ? [nx.x0, nx.y0] : null);
+    });
+    return { ps, runs };
+  })());
+  const shotPts = pos < shotT ? null : [shotE ? `${X(shotE.x0).toFixed(1)},${Y(shotE.y0).toFixed(1)}` : null,
+    ...F.slice(Math.ceil(shotT), i + 1).map(pt), `${X(L(A.bx, B.bx)).toFixed(1)},${Y(L(A.by, B.by)).toFixed(1)}`].filter(Boolean);
   return (
-    <div className="goal-play" tabIndex={0} role="button" aria-label="Play the goal"
-         onMouseEnter={play} onMouseLeave={rest} onFocus={play} onBlur={rest} onClick={play}
-         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(); } }}
-         style={{ position: "relative", cursor: "pointer" }}>
-      <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", background: "#142c1a" }}>
-        {Array.from({ length: 6 }, (_, k) => (
-          <rect key={"m" + k} x={k * 17.5} y={0} width={17.5} height={68} fill={k % 2 ? "#173119" : "#142c17"} />))}
-        <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
-          <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-          <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-          <circle cx={52.5} cy={34} r={9.15} />
-          <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-          <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-          <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-          <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-        </g>
-        {/* The whole move faint underneath, the last stretch bright on top: one flat line says the
-            ball travelled, two say which way it is going. */}
-        {i > 0 && <polyline points={seen.map(pt).join(" ")} fill="none" stroke="#ffd166"
-                            strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
-        {i > 0 && <polyline points={seen.slice(-7).map(pt).join(" ")} fill="none" stroke="#ffd166"
-                            strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round" strokeLinejoin="round" />}
+    <div className="goal-play" style={{ position: "relative" }}>
+      <svg viewBox="-2.6 -1.7 110.2 71.4" style={{ width: "100%", display: "block", background: "var(--ui-stand)" }}>
+        <PitchGround />
+        {move.runs.map((r, k) => (
+          <polyline key={"rn" + k} points={r.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(" ")} fill="none"
+                    stroke="#fff" strokeOpacity={0.4} strokeWidth={0.3} strokeLinecap="round" strokeLinejoin="round" />))}
+        {move.ps.map((e, k) => (
+          <g key={"ps" + k}>
+            <line x1={X(e.x0)} y1={Y(e.y0)} x2={X(e.x1)} y2={Y(e.y1)} stroke="#fff" strokeOpacity={0.8} strokeWidth={0.42}
+                  strokeLinecap="round" strokeDasharray="0 1.15" />
+            <circle cx={X(e.x0)} cy={Y(e.y0)} r={0.5} fill="#fff" fillOpacity={0.9} />
+          </g>))}
+        {shotPts && shotPts.length > 1 && <polyline points={shotPts.join(" ")} fill="none" stroke="#ffd166"
+                            strokeOpacity={0.95} strokeWidth={sw * 2} strokeLinecap="round" strokeLinejoin="round" />}
         {[0, 1].map(sd => Array.from({ length: 11 }, (_, k) => {
           const j = sd * 22 + k * 2;
           if (A.xy[j] < -50 || B.xy[j] < -50) return null;
-          return <circle key={"p" + sd + k} cx={X(L(A.xy[j], B.xy[j]))} cy={Y(L(A.xy[j + 1], B.xy[j + 1]))}
-                         r={1.02} fill={sd ? ac : hc} stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
+          const cx = X(L(A.xy[j], B.xy[j])), cy = Y(L(A.xy[j + 1], B.xy[j + 1]));
+          return <g key={"p" + sd + k}><ellipse cx={cx + 0.26} cy={cy + 0.38} rx={1.02} ry={0.9} fill="#000" fillOpacity={0.28} />
+            <circle cx={cx} cy={cy} r={0.98} fill={clip.gk && clip.gk[sd * 11 + k] ? "#f5e663" : sd ? ac : hc} stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.6} /></g>;
         }))}
-        <circle cx={X(L(A.bx, B.bx))} cy={Y(L(A.by, B.by))} r={0.78} fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
-        {playing && <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />}
-        {playing && <rect x={0} y={67.2} width={105 * (last < 1 ? 1 : pos / last)} height={0.8} fill="#ffd166" />}
+        {(() => { const bz = L(A.bz ?? 0, B.bz ?? 0), up = Math.max(0, bz - 0.11), cx = X(L(A.bx, B.bx)), cy = Y(L(A.by, B.by));
+          return <g><ellipse cx={cx + 0.2 + up * 0.16} cy={cy + 0.3 + up * 0.24} rx={0.7} ry={0.55} fill="#000" fillOpacity={0.34} />
+            <circle cx={cx} cy={cy} r={0.66 * (1 + Math.min(1, up / 6) * 0.9)} fill="#fff" stroke="#000" strokeWidth={sw * 0.6} /></g>; })()}
       </svg>
-      {/* A corner mark on the still, so it reads as something that plays rather than a diagram. */}
-      {!playing && <span aria-hidden="true" style={{ position: "absolute", right: 6, bottom: 4, fontSize: 9,
-                                                   lineHeight: 1, color: "rgba(255,255,255,.55)" }}>&#9654;</span>}
+      {onReplay && (
+        <button type="button" className="ux-btnreset ux-gr-play" title="Replay" aria-label="Replay" onClick={onReplay}>
+          <svg viewBox="-1 -1 2 2" width={9} height={9} aria-hidden="true"><path d="M -0.45 -0.65 L 0.7 0 L -0.45 0.65 Z" fill="currentColor" /></svg>
+        </button>)}
+      <button type="button" title="Save GIF" aria-label="Save GIF"
+              onClick={(e) => { e.stopPropagation(); meClipGif(clip, hc, ac); }}
+              onKeyDown={(e) => e.stopPropagation()}
+              style={{ position: "absolute", right: 5, top: 5, width: 20, height: 20, padding: 0, display: "grid", placeItems: "center",
+                       border: "1px solid rgba(255,255,255,.28)", borderRadius: 10, background: "rgba(0,0,0,.45)", cursor: "pointer" }}>
+        <svg viewBox="-1 -1 2 2" width={12} height={12} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={0.22}
+             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M 0 -0.6 L 0 0.25 M -0.36 -0.1 L 0 0.27 L 0.36 -0.1 M -0.5 0.6 L 0.5 0.6" />
+        </svg>
+      </button>
     </div>);
 }
 // ONE SCALE, EVERY SHAPE. Scales a layout designed around a w x h page by as much as the window
@@ -4845,6 +5329,28 @@ const tlIcon = (k) => {
         <path d="M1.4 10.6V1.8h9.2v8.8" fill="none" stroke={c} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
       </svg>);
   }
+  // The feed's other kinds (22 November 2026), drawn in the same hand: a change, a foul's whistle, the flag, a corner, a
+  // throw, a goal kick, the gloves, a shootout's kick.
+  const L = { fill: "none", strokeWidth: 1.3, strokeLinecap: "round", strokeLinejoin: "round" };
+  if (k === "sub") return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <path d="M3.5 9.6V3.2M1.6 5.1l1.9-2 1.9 2" {...L} stroke="var(--ui-ok)" /><path d="M8.5 2.4v6.4M6.6 6.9l1.9 2 1.9-2" {...L} stroke="var(--ui-danger)" /></svg>);
+  if (k === "foul") return (
+    <svg viewBox="0 0 12 12" style={S}><circle cx={4.6} cy={7.3} r={2.8} fill="var(--chrome-muted)" /><path d="M4.4 4.5h6.1v2.2H7z" fill="var(--chrome-muted)" /></svg>);
+  if (k === "offside") return (
+    <svg viewBox="0 0 12 12" style={S}><path d="M3 1.4v9.2" {...L} stroke="var(--ui-warn)" /><path d="M3.7 1.9h5.9L8.2 4.1l1.4 2.2H3.7z" fill="var(--ui-warn)" /></svg>);
+  if (k === "corner") return (
+    <svg viewBox="0 0 12 12" style={S}><path d="M3 1.4v9.2M3 7.5a3.1 3.1 0 0 1 3.1 3.1" {...L} strokeWidth={1.1} stroke="var(--chrome-muted)" /><path d="M3.6 1.9l4.6 1.7-4.6 1.7z" fill="var(--chrome-muted)" /></svg>);
+  if (k === "throw") return (
+    <svg viewBox="0 0 12 12" style={S}><path d="M2 9.6c.5-4.2 3.4-6.3 7.3-5.8M9.4 3.8L7.3 2.4M9.4 3.8L7.9 5.8" {...L} strokeWidth={1.2} stroke="var(--chrome-muted)" /></svg>);
+  if (k === "goalkick") return (
+    <svg viewBox="0 0 12 12" style={S}><path d="M2.2 10.2h7.6M6 8.4V2.2M3.8 4.4L6 2.2l2.2 2.2" {...L} strokeWidth={1.2} stroke="var(--chrome-muted)" /></svg>);
+  if (k === "gloves") return (
+    <svg viewBox="0 0 12 12" style={S}><path d="M3.3 10.6V6.9L2 5.2c-.5-.8.5-1.6 1.1-.9l.9 1V2.5c0-.9 1.3-.9 1.3 0V2c0-.9 1.3-.9 1.3 0v.5c0-.8 1.3-.8 1.3 0v.8c0-.8 1.2-.8 1.2 0v4.3c0 1.2-.4 3-.4 3z" fill="var(--ui-warn)" /></svg>);
+  if (k === "pk") return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <path d="M3.6 2.6v7.6M6 2.6v7.6M8.4 2.6v7.6M1.4 5.2h9.2M1.4 7.8h9.2" stroke="var(--chrome-muted)" strokeWidth={0.55} strokeOpacity={0.6} />
+      <path d="M1.4 10.6V1.8h9.2v8.8" fill="none" stroke="var(--chrome-muted)" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" /></svg>);
   // A ball for a goal from open play; an own goal's is ringed red.
   return (
     <svg viewBox="0 0 12 12" style={S}>
@@ -4853,116 +5359,6 @@ const tlIcon = (k) => {
       <path d="M6 3.9l2 1.45-.76 2.35H4.76L4 5.35z" fill="#1c1c1c" />
     </svg>);
 };
-function MatchTimeline({ w, h, events, hT, aT, hc, ac, et, pens }) {
-  const ref = useRef(null);
-  // The label font is the theme's, which only resolves inside the themed tree, so it is read off
-  // this element before the first paint and the labels are measured in it.
-  const [fam, setFam] = useState("");
-  useLayoutEffect(() => {
-    if (ref.current) setFam(getComputedStyle(ref.current).getPropertyValue("--chrome-font").trim());
-  }, []);
-  const MONO = "'JetBrains Mono','Fira Code',monospace", FAM = fam || "sans-serif";
-  const measure = (txt, font) => {
-    if (!txt) return 0;
-    if (!_tlCtx) _tlCtx = document.createElement("canvas").getContext("2d");
-    if (!_tlCtx) return txt.length * 7;
-    _tlCtx.font = font;
-    return _tlCtx.measureText(txt).width;
-  };
-  const AX = Math.round(h / 2), LH = 16, LG = 2, NEAR = 6;   // axis, lane height, lane gap, clearance
-  const XR = w - 24 - (pens.length ? 176 : 0);
-  // HALF TIME IN THE MIDDLE OF THE PAGE, under the score. The axis is laid out from the centre
-  // outward, as wide as the narrower side allows, and each half has its own side whatever its
-  // length -- so extra time is squeezed into the right-hand half rather than pushing the break
-  // off the middle. The final whistle is the right-hand end.
-  const C = w / 2, HALF = Math.min(C - 112, XR - 20 - C), X0 = C - HALF, X1 = C + HALF;
-  const END = (et ? 120 : 90) + 1;
-  // Added time goes into the tenth of a minute after the period's number, so 60+3 still lands before
-  // the 61st minute; the first half's own added time stays on the first half's side of the break.
-  const xOf = (min, add) => {
-    min = min || 0;
-    if (min === 45 && add) return C - 2;
-    const t = Math.min(END - 0.1, min + (add ? Math.min(add, 9) / 10 : 0));
-    return t <= 45 ? X0 + t / 45 * (C - X0) : C + (t - 45) / (END - 45) * (X1 - C);
-  };
-  // A side that runs out of room drops its assists and is laid out again: a 16-0 has more goals than
-  // two lanes of full labels can hold, and the last of them were being pushed off the page.
-  const place = (mine, lean) => {
-    const lanes = [-Infinity, -Infinity], got = [];
-    let crowded = false;
-    for (const e0 of mine) {
-      const e = lean && e0.k === "goal" ? { ...e0, det: "" } : e0;
-      const x = xOf(e.min, e.add);
-      const wid = measure(fmtMin(e.min, e.add), `700 10px ${MONO}`) + 4 + 12 + 4
-                + measure(e.who, `700 11.5px ${FAM}`) + (e.det ? 5 + measure(e.det, `400 10px ${FAM}`) : 0);
-      let start = Math.max(8, Math.min(x - 3, XR - wid));
-      let lane = lanes.findIndex(r => r + 10 <= start);
-      if (lane < 0) {
-        lane = lanes[0] <= lanes[1] ? 0 : 1;
-        start = lanes[lane] + 10;
-        if (start + wid > XR) { crowded = true; start = XR - wid; }
-      }
-      lanes[lane] = start + wid;
-      got.push({ ...e, x, start, lane });
-    }
-    return { got, crowded };
-  };
-  const laid = [];
-  for (const side of ["home", "away"]) {
-    const mine = events.filter(e => e.side === side).sort((a, b) => a.min - b.min || (a.add || 0) - (b.add || 0));
-    const full = place(mine, false);
-    laid.push(...(full.crowded ? place(mine, true).got : full.got));
-  }
-  const top = (side, lane) => side === "home" ? AX - NEAR - LH - lane * (LH + LG) : AX + NEAR + lane * (LH + LG);
-  const mark = (x, txt) => (
-    <span key={txt} style={{ position: "absolute", left: x, top: AX, transform: "translate(-50%, -50%)",
-                             padding: "0 5px", background: "var(--chrome-bg)", fontSize: 8.5, fontWeight: 700,
-                             letterSpacing: ".14em", lineHeight: "12px", color: "var(--chrome-muted)" }}>{txt}</span>);
-  const team = (t, clr, side) => (
-    <div style={{ position: "absolute", left: 24, top: side === "home" ? 4 : AX + NEAR, height: AX - NEAR - 4,
-                  display: "flex", alignItems: "center", gap: 7 }}>
-      <TeamCrest team={t} size={16} />
-      <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: clr }}>
-        {t?.code || abbr(t?.name, t?.code)}</span>
-    </div>);
-  // THE SHOOTOUT, after the axis rather than on it: it has no minutes. A goal frame a kick in the
-  // order they were taken, green in and red out, the taker on hover.
-  const pH = pens.filter(p => p.side === "home"), pA = pens.filter(p => p.side === "away");
-  const PX = XR + 20, kickW = Math.min(15, (w - 24 - PX - 44) / Math.max(1, pH.length, pA.length));
-  const kick = (p, i, side) => (
-    <span key={side + i} title={`${p.full || p.name}, ${p.scored ? "scored" : "missed"}`}
-          style={{ position: "absolute", left: PX + 44 + i * kickW,
-                   top: side === "home" ? AX - NEAR - LH / 2 - 6 : AX + NEAR + LH / 2 - 6 }}>
-      {tlIcon(p.scored ? "pen" : "penmiss")}</span>);
-  return (
-    <div ref={ref} style={{ position: "relative", width: w, height: h }}>
-      {team(hT, hc, "home")}
-      {team(aT, ac, "away")}
-      <div style={{ position: "absolute", left: X0, width: X1 - X0, top: AX - 1, height: 2,
-                    background: "var(--chrome-border)" }} />
-      {mark(C, "HT")}
-      {et && mark(xOf(90), "90")}
-      {mark(X1, et ? "AET" : "FT")}
-      {laid.map((e, i) => (
-        <span key={"d" + i} style={{ position: "absolute", left: e.x - 4, top: AX - 4, width: 8, height: 8,
-                                     borderRadius: 4, background: e.side === "home" ? hc : ac,
-                                     boxShadow: "0 0 0 2px var(--chrome-bg)" }} />))}
-      {laid.map((e, i) => (
-        <div key={"l" + i} style={{ position: "absolute", left: e.start, top: top(e.side, e.lane), height: LH,
-                                    display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
-          <span style={{ ...mono, fontSize: 10, fontWeight: 700, color: e.side === "home" ? hc : ac }}>
-            {fmtMin(e.min, e.add)}</span>
-          {tlIcon(e.k)}
-          <span style={{ fontSize: 11.5, fontWeight: 700 }}>{e.who}</span>
-          {e.det && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 1 }}>{e.det}</span>}
-        </div>))}
-      {pens.length > 0 && <>
-        {mark(PX + 18, "PENS")}
-        {pH.map((p, i) => kick(p, i, "home"))}
-        {pA.map((p, i) => kick(p, i, "away"))}
-      </>}
-    </div>);
-}
 // Left-aligned heading for a section inside a panel — white, so it outranks the data beneath it.
 const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" };
 // The stages between two others: a draw, and groups, byes or ties picked by hand. Each lives in a state object of its own,
@@ -5399,28 +5795,55 @@ const shotChain = (name) => {
     .map((n) => `${import.meta.env.BASE_URL}${WORLD}/players/${encodeURIComponent(n)}.png`)   // his own universe's picture; the blank one below is nobody's
     .concat(`${import.meta.env.BASE_URL}avium/players/placeholder.jpg`);
 };
-// A player badge as drawn in public/player-badges: the art carries its own tier (metal and pips), and the name rides
-// along as the image's text for anyone who cannot see it. Hovering it shows its card (TraitCard).
+// A player badge as drawn in public/player-badges, one picture a level: the art carries the level (metal and pips), and
+// the name rides along as the image's text for anyone who cannot see it. `id` is a man's key for the trait ("vision",
+// "vision:3"); a key at level 0 is the trait itself, nobody's, drawn at its highest. Hovering it shows its card (TraitCard).
+const badgeSrc = (k) => `${import.meta.env.BASE_URL}player-badges/${traitId(k)}-${traitLv(k) || maxLevelOf(k)}.svg`;
 const BadgeIcon = ({ id, size = 22 }) => {
-  const b = BADGE_BY_ID[id];
+  const b = badgeOf(id);
   if (!b) return null;
-  return <img src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={b.name} data-trait={id}
+  return <img src={badgeSrc(id)} alt={b.name} data-trait={id}
               width={size} height={size} draggable={false} style={{ display: "block", flexShrink: 0 }} />;
+};
+// THE TRAITS, PICKED BY LEVEL (user, 22 November 2026: levels, and flaws). Every trait under its family, the flaws last,
+// each with a pip a level: a pip gives him the trait at that level, the lit one takes it away. With limit (an editor's
+// new player) a level his points cannot reach, or a second flaw, cannot be picked. onSet is handed his traits as they
+// would then be.
+const TraitPicker = ({ keys, onSet, ovr, limit }) => {
+  const ks = keys || [], o = Math.round(+ovr) || 0;
+  const can = (id, L) => !limit || !traitsProblem(withTrait(ks, id, L), o);
+  const group = (title, list) => list.length > 0 && (
+    <div key={title} className="ux-tp-g" role="group" aria-label={title}>
+      <div className="ux-tp-h">{title}</div>
+      {list.map(b => { const key = ks.find(k => traitId(k) === b.id), lv = key ? traitLv(key) : 0;
+        return (
+          <div key={b.id} className={"ux-tp-row" + (lv ? " ux-on" : "") + (b.flaw ? " ux-flaw" : "")} data-trait={traitKey(b.id, lv)}>
+            <BadgeIcon id={traitKey(b.id, lv)} size={20} />
+            <span className="ux-tp-n">{b.name}</span>
+            <span className={"ux-tp-lv ux-" + (b.flaw ? "flaw" : LEVEL_TIER[lv] || "none")}>
+              {Array.from({ length: maxLevelOf(b.id) }, (_, i) => i + 1).map(L => (
+                <button key={L} type="button" className={"ux-btnreset ux-tp-pip" + (lv >= L ? " ux-on" : "")} aria-pressed={lv === L}
+                  aria-label={b.name + " Level " + L} disabled={lv !== L && !can(b.id, L)} onClick={() => onSet(withTrait(ks, b.id, lv === L ? 0 : L))} />))}
+            </span>
+          </div>); })}
+    </div>);
+  return <div className="ux-tp">{FAMILIES.map(f => group(f, BADGES.filter(b => b.fam === f && !b.flaw)))}{group("Flaws", BADGES.filter(b => b.flaw))}</div>;
 };
 // THE TRAIT CARD (user, 11 October 2026). Hovering or focusing a trait anywhere shows its card: its art, name and tier,
 // and what it does in the Traits table's words (docs.js TRAIT_DOC). One card for the whole app, found by delegation:
 // whatever stands for a trait carries data-trait, its id. Fixed to the window, so no panel that clips can cut it, and
 // never in the pointer's way; under the trait, or over it near the window's foot, and inside the window's edges.
-const TIER_LBL = { gold: "Gold", silver: "Silver", bronze: "Bronze" };
 // A PLAYER'S TRAITS ON A PITCH (user, 11 October 2026): up to three, small, on an arc just outside the bottom of his
 // circle, between his rating and his position, each opening its card on hover. Angles in degrees, 90 straight down,
 // listed left to right so they read in the trait table's order, gold first.
 const UX_PL_ARC = { 1: [90], 2: [110, 70], 3: [125, 90, 55] };
+// The three there is room for: his highest levels first, in the table's order among equals.
+const traitsTop = (ids) => badgeOrder(ids || []).map((k, i) => [k, i]).sort((a, b) => traitLv(b[0]) - traitLv(a[0]) || a[1] - b[1]).slice(0, 3).map(x => x[0]);
 const uxPlTraits = (ids) => {
-  const xs = badgeOrder(ids || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
+  const xs = traitsTop(ids);
   return xs.length > 0 && (
     <span className="ux-pl-tr">{xs.map((id, i) => { const a = (UX_PL_ARC[xs.length][i] * Math.PI) / 180;
-      return <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id} draggable={false}
+      return <img key={id} src={badgeSrc(id)} alt={badgeOf(id).name} data-trait={id} draggable={false}
         style={{ left: `calc(50% + ${Math.cos(a).toFixed(3)} * var(--tr-r))`, top: `calc(50% + ${Math.sin(a).toFixed(3)} * var(--tr-r))` }} />; })}</span>);
 };
 // A SIDE'S ELEVEN ON A PITCH: a club's Formation, the match's team sheets and a manager's Tactics, each man drawn as the old
@@ -5539,7 +5962,7 @@ const TraitCard = () => {
   }, [el]);
   let o = null;
   if (el && el.hasAttribute("data-oop")) { try { o = JSON.parse(el.getAttribute("data-oop")); } catch { o = null; } }
-  const b = !o && el && BADGE_BY_ID[el.getAttribute("data-trait")];
+  const tkey = !o && el ? el.getAttribute("data-trait") : null, b = tkey && badgeOf(tkey), tlv = b ? traitLv(tkey) : 0;
   if (!b && !o?.rows?.length) return null;
   const placed = pos && pos.el === el ? pos : null;
   const at = placed ? { left: placed.left, top: placed.top } : { left: 0, top: 0, visibility: "hidden" };
@@ -5562,8 +5985,8 @@ const TraitCard = () => {
   return (
     <div ref={ref} className="ux-tcard" role="tooltip" style={at}>
       <div className="ux-tcard-h">
-        <img src={`${import.meta.env.BASE_URL}player-badges/${b.id}.svg`} alt="" width={40} height={40} draggable={false} />
-        <div><b>{b.name}</b><span className={"ux-tcard-tier ux-" + b.tier}>{TIER_LBL[b.tier]}</span></div>
+        <img src={badgeSrc(tkey)} alt="" width={40} height={40} draggable={false} />
+        <div><b>{b.name}</b><span className={"ux-tcard-tier ux-" + (b.flaw ? "flaw" : LEVEL_TIER[tlv] || "none")}>{[tlv > 0 && !b.flaw && LEVEL_NAME[tlv], b.fam, b.flaw && "Flaw", b.flaw && tlv > 0 && tlv].filter(Boolean).join(" ")}</span></div>
       </div>
       {TRAIT_DOC[b.id] && <p>{TRAIT_DOC[b.id]}</p>}
     </div>);
@@ -5638,6 +6061,12 @@ const MGR_LOG_KIND = {
             icon: <path d="M2.4 6.4l2.6 2.6 4.6-5.4" /> },
   talk:   { lbl: "Half-time talk", clr: "var(--ui-info)",
             icon: <path d="M2 2.6h8v5H6.4L4 9.8V7.6H2z" /> },
+  mark:   { lbl: "Marking", clr: "var(--ui-info)",
+            icon: <><circle cx="4.4" cy="6" r="2.2" /><circle cx="8.2" cy="6" r="1.4" /></> },
+  plan:   { lbl: "Game plan", clr: "var(--ui-info)",
+            icon: <><path d="M2.2 9.6V2.4" /><path d="M2.2 2.8h6.4l-1.6 2 1.6 2H2.2" /></> },
+  sub:    { lbl: "Substitution", clr: "var(--ui-ok)",
+            icon: <><path d="M3.6 9.4V3.2M1.8 5l1.8-1.8L5.4 5" /><path d="M8.4 2.6v6.2M6.6 7l1.8 1.8L10.2 7" /></> },
   shape:  { lbl: "Formation change", clr: "var(--ui-warn)",
             icon: <><rect x="2" y="2" width="8" height="8" rx="1.2" /><path d="M4.2 4.6h3.6M4.2 7.4h3.6" /></> },
   reorg:  { lbl: "Reorganisation", clr: "var(--ui-info)",
@@ -5848,6 +6277,10 @@ const LEGACY_H = PANEL_H + LM_CONTROLS_H;
 // 8-9px labels stop being readable at all, so the gate takes over rather than pretending.
 const MIN_ZOOM = 0.5;
 const MIN_WINDOW_W = Math.ceil(MIN_APP_WIDTH * MIN_ZOOM) + APP_PAD_X * 2;
+// NO PHONES, EITHER WAY ROUND (user, 23 November 2026: "Someone said that they were able to use the app on mobile, horizontal?
+// Shouldn't be able to happen"). A phone on its side is 844 to 932 wide, past MIN_WINDOW_W, and only portrait was gated. A
+// touch screen whose short side is under 600px is a phone (the smallest tablet held sideways is 744 tall), so it gets the gate
+// too; a tablet held sideways and any desktop window, however short, still get the app.
 const APP_CSS = `
 /* Instant hover tooltips: the native title attribute waits a second and looks like nothing is
    happening, which reads as broken. */
@@ -5897,7 +6330,7 @@ const APP_CSS = `
 :root{--app-zoom:1;}
 .app-body{zoom:var(--app-zoom);}
 .width-gate{display:none;}
-@media(max-width:${MIN_WINDOW_W - 1}px),(orientation:portrait){
+@media(max-width:${MIN_WINDOW_W - 1}px),(orientation:portrait),(pointer:coarse) and (max-height:600px){
   .ux-app{display:none;}
   .width-gate{display:flex;}
 }
@@ -6118,26 +6551,38 @@ const T_PRESETS = {
 // THE TAPE. Where the twenty-two and the ball actually were, every slice, kept on a ring.
 // Recorded in the APP rather than in the engine, for the same reason the half-time walk-off is:
 // no tick is consumed, no counter moves, and the headless harnesses that drive meTick directly
-// never allocate a byte of it. A goal then freezes the match and plays the build-up back
-// picture-in-picture. Nothing ticks while a replay is up, so "positions preserved" is not something
-// that has to be implemented -- the pitch behind the inset is still the instant the ball crossed the
-// line, because the match genuinely has not moved.
-const ME_TAPE = 64;                            // slices kept: eighty seconds, longer than any move
-// max/min: how much build-up a replay may show. rate: real frames spent on each slice, so it runs at
-// a third pace like a television replay. tail: how long it holds on the goal before play resumes.
-const ME_CLIP = { max: 26, min: 8, rate: 3 };   // tail is gone: the viewer decides when it ends
-export const meSnap = (s) => {
-  const mp = s.mePos, xy = new Float32Array(44);
-  let k = 0;
+// never allocate a byte of it. A goal's build-up is cut from it and kept; opened, it plays back on the
+// whole pitch. Nothing ticks while a replay is up, so "positions preserved" is not something that
+// has to be implemented -- when it closes the pitch is still the instant it was opened at, because
+// the match genuinely has not moved.
+const ME_TAPE = 80;                            // slices kept: twenty seconds, longer than any replay shows
+// max/min: how much build-up a replay may show. max 26 -> 60 (user, 22 November 2026: replays "should also be longer";
+// fifteen seconds of play at most). Every replay plays at the speed of the match (meCelStep, CLIP_MS, meClipGif).
+const ME_CLIP = { max: 60, min: 8 };   // tail is gone: the viewer decides when it ends
+export const meSnap = (s, tln) => {
+  const mp = s.mePos, xy = new Float32Array(44), fc = new Float32Array(22);
+  let k = 0, q = 0;
   for (const sd of ["home", "away"]) {
     const ps = s.players[sd];
     for (let i = 0; i < 11; i++) {
       const p = ps[i];
       xy[k++] = p && !p.off ? p.x : -99;       // sent off or injured: no dot to draw
       xy[k++] = p && !p.off ? p.y : -99;
+      fc[q++] = p && p._face !== undefined ? p._face : NaN;   // which way he faces, for the replay's dots
     }
   }
-  return { xy, bx: mp.bx, by: mp.by, bz: mp.bz, sd: mp.side, ix: mp.idx };
+  // sub: where the ball was at three points inside the slice just played (ball.ts meBallRun), so a replay follows its
+  // bounces and deflections instead of cutting straight from one slice's end to the next.
+  // tk: the last man to play the ball on purpose (side, index, slice), so a first-time pass or finish names its man
+  // even though he never held it at the end of a slice.
+  const tl = mp.tlog && mp.tlog.length ? mp.tlog[mp.tlog.length - 1] : null;
+  // gkd: a keeper at full stretch, [man 0..21, how far, which way x, y] (match.ts _pext), for the replay's stretched dot.
+  // Only with a shot on its way: the engine lengthens him whenever he moves quickly, and a keeper running is not diving.
+  const gkd = [];
+  for (const [o, sd] of [[0, "home"], [11, "away"]]) s.players[sd].forEach((p, i) => { if (p && !p.off && i < 11 && p.pos === "GK" && (p._dext ?? 0) > 0.05 && (mp.shot || mp.gkPlan)) gkd.push([o + i, p._dext, p._dux || 0, p._duy || 0]); });
+  return { xy, fc, bx: mp.bx, by: mp.by, bz: mp.bz, sd: mp.side, ix: mp.idx, sub: mp._sub && mp._sub.length >= 9 ? mp._sub.slice(0, 9) : null,
+           tk: tl && !tl.d ? [tl.s, tl.i, tl.t] : null, ...(gkd.length ? { gkd } : null),
+           of: meTlPack(s, tln) };       // the referee, his assistants and the coaches (engine/touchline.ts)
 };
 // WHERE THE MOVE STARTED: walk back from the goal to the last slice the other side held the ball.
 // That is the build-up by the only definition the engine can actually answer, and it is the honest
@@ -6171,7 +6616,8 @@ export const meClipFrom = (tape, side) => {
 export const meChain = (s, frames) => {
   const chain = [];
   let last = "";
-  for (const f of frames) {
+  for (let n = 0; n < frames.length; n++) {
+    const f = frames[n];
     if (f.ix < 0 || !f.sd) continue;                   // loose ball, or in flight: nobody has it
     const k = f.sd + ":" + f.ix;
     if (k === last) continue;
@@ -6179,10 +6625,270 @@ export const meChain = (s, frames) => {
     const b = (f.sd === "away" ? 22 : 0) + f.ix * 2;
     if (f.xy[b] < -50) continue;
     const p = s.players[f.sd]?.[f.ix];
-    chain.push({ name: p ? shortName(p.name) : "", side: f.sd, x: f.xy[b], y: f.xy[b + 1] });
+    chain.push({ name: p ? shortName(p.name) : "", side: f.sd, x: f.xy[b], y: f.xy[b + 1], fi: n, ix: f.ix });
   }
   return chain;
 };
+
+// THE BALL BETWEEN TWO FRAMES OF THE TAPE, `a` of the way from A to B: through the three points kept inside the slice
+// when there are any (meSnap sub), straight otherwise. [x, y, z].
+export const meBallAt = (A, B, a) => {
+  const q = B.sub;
+  if (!q) return [A.bx + (B.bx - A.bx) * a, A.by + (B.by - A.by) * a, A.bz + (B.bz - A.bz) * a];
+  const P = [[A.bx, A.by, A.bz], [q[0], q[1], q[2]], [q[3], q[4], q[5]], [q[6], q[7], q[8]], [B.bx, B.by, B.bz]];
+  const t = Math.min(3.999, Math.max(0, a * 4)), k = Math.floor(t), u = t - k;
+  return [0, 1, 2].map(j => P[k][j] + (P[k + 1][j] - P[k][j]) * u);
+};
+// A MAN BETWEEN TWO FRAMES OF THE TAPE, on a curve through the slices either side (Catmull-Rom) instead of a straight
+// line from one to the next: the tape holds four positions a second, and straight lines between them turn every change
+// of direction into a visible corner. j is his x in xy. Null when he is off the pitch.
+export const meManAt = (F, i, a, j) => {
+  const A = F[i], B = F[Math.min(F.length - 1, i + 1)];
+  if (A.xy[j] < -50 || B.xy[j] < -50) return null;
+  const P = F[Math.max(0, i - 1)], Q = F[Math.min(F.length - 1, i + 2)];
+  const cr = (k) => { const p1 = A.xy[k], p2 = B.xy[k];
+    if (Math.abs(p2 - p1) > 5) return p1 + (p2 - p1) * a;           // placed, not run: no curve through a jump
+    const p0 = P.xy[k] < -50 || Math.abs(P.xy[k] - p1) > 5 ? p1 : P.xy[k], p3 = Q.xy[k] < -50 || Math.abs(Q.xy[k] - p2) > 5 ? p2 : Q.xy[k];
+    return 0.5 * (2 * p1 + (p2 - p0) * a + (2 * p0 - 5 * p1 + 4 * p2 - p3) * a * a + (3 * p1 - p0 - 3 * p2 + p3) * a * a * a); };
+  return [cr(j), cr(j + 1)];
+};
+// ...and the way he faces, turned the short way round. q is his slot, 0-21. Undefined when the tape has none.
+export const meFaceAt = (A, B, a, q) => {
+  const u = A.fc ? A.fc[q] : NaN, v = B.fc ? B.fc[q] : NaN;
+  if (Number.isNaN(u)) return undefined;
+  if (Number.isNaN(v)) return u;
+  const d = Math.atan2(Math.sin(v - u), Math.cos(v - u));
+  return u + d * a;
+};
+// EVERY TOUCH IN A CLIP, a list of frames for each of the twenty-two: the slices he had the ball at his feet, and the
+// slices he played it first time (meSnap tk). A name shown off this comes up every time he touches it.
+export const meTouchLog = (F) => {
+  const T = Array.from({ length: 22 }, () => []);
+  const put = (q, n) => { if (q >= 0 && q < 22 && T[q][T[q].length - 1] !== n) T[q].push(n); };
+  for (let n = 0; n < F.length; n++) { const f = F[n], pv = F[n - 1];
+    if (f.sd && f.ix >= 0) put((f.sd === "away" ? 11 : 0) + f.ix, n);
+    if (pv && f.tk && (!pv.tk || pv.tk[2] !== f.tk[2] || pv.tk[1] !== f.tk[1] || pv.tk[0] !== f.tk[0])) put((f.tk[0] === "away" ? 11 : 0) + f.tk[1], n); }
+  return T;
+};
+
+// A GOAL'S REPLAY AS A GIF (user, 22 November 2026: "saving replays as a gif, with the game, scorer, minute, assister if
+// applicable"; framed on the attacking half with the caption below, as asked). Drawn on a canvas with the goal at the
+// top, in the match view's own turf and markings, at the speed of play like every replay (user, the same day: "make all
+// replays the same speed as the match"): twenty-five pictures a second and a hold on the ball in the net. Every man on a curve through the tape (meManAt) with the
+// way he faces, the ball small with its shadow under it, and a man's name over him each time he touches it, fading
+// once it has gone (user, same day: "player name that fades away after the touch", no lines, "why do names only show up
+// once per player", "way too slow, not fluid enough, and the ball is too big"). The view starts further back for a move
+// that began deep and slides up with the ball. Under the pitch, a bar like a broadcast's (user, same day: "a bit too
+// fast now... make it look like a real highlight reel. Also redesign info UI to have team logos and scorer portrait"):
+// the scorer's portrait, the minute, his name and who made it on the left; the two crests, the codes and the score on
+// the right, the competition under them. Written with the project's own encoder (gif.ts) and handed to the browser as a
+// download.
+const meCrestOf = (t) => { const code = abbr(t?.name, t?.code), w = t?.world || t?.league ? worldOf(t) : WORLD;
+  return { code, url: code ? `${import.meta.env.BASE_URL}${w}/badges/${code}.png` : null, c1: t?.primaryColor || null, c2: t?.secondaryColor || null }; };
+export async function meClipGif(clip, hc, ac) {
+  if (typeof document === "undefined") return;
+  const F = clip.frames, last = F.length - 1;
+  if (last < 1) return;
+  const S = 9, SIDE = 2, W = (68 + SIDE * 2) * S, VIEW = 50, PH = VIEW * S, CAP = 96, H = PH + CAP, BACK = 3.6;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d", { willReadFrequently: true });
+  if (!g) return;
+  const gx = meGoalX(clip.side), up = gx > 52.5, sg = up ? 1 : -1;
+  // (The ground as PitchGround draws it, 22 November 2026: the stand and its crowd, the boards, the apron, the flags. Flat
+  // colours, the theme's own; no light falling across it, which a palette of 256 would band.)
+  const C = { a: "#1b3823", b: "#17311d", out: "#16301c", bg: "#0c110e", ink: "#ffffff", dim: "#93a199", net: "#dfe6e1", keep: "#f5e663",
+              stand: "#0d1014", crowd: "#2a313b", apron: "#132a19", boardA: "#1a1f27", boardB: "#232a34", boardInk: "#56606e", flag: "#ffd166", official: "#08090b", officialEdge: "#e6e2d6" };
+  const rgb = (c) => { g.fillStyle = "#808080"; g.fillStyle = c; const m = /^#([0-9a-f]{6})$/i.exec(String(g.fillStyle));
+    return m ? [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)] : [128, 128, 128]; };
+  // the palette: the colours drawn, and the blends between them that the edges of every line, dot and letter land on
+  const mix = (c, d, t) => c.map((v, k) => Math.round(v + (d[k] - v) * t));
+  const base = [C.a, C.b, C.out, C.bg, C.ink, C.dim, C.net, hc, ac, C.keep, "#000000", C.stand, C.crowd, C.apron, C.boardA, C.boardB, C.boardInk, C.flag, FX_CLR.warn, FX_CLR.turf].map(rgb);
+  const tA = base[0], bgc = base[3], ink = base[4], hC = base[7], aC = base[8], kC = base[9], blk = base[10];
+  // THE BAR UNDER THE PITCH, drawn once: it does not change from one picture to the next.
+  const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+  const load = (urls) => new Promise((res) => { const u = (urls || []).filter(Boolean); if (!u.length) return res(null);
+    let k = 0; const im = new Image(); im.onload = () => res(im); im.onerror = () => { k++; if (k < u.length) im.src = u[k]; else res(null); }; im.src = u[0]; });
+  const [hImg, aImg, face] = await Promise.all([load([clip.hb?.url]), load([clip.ab?.url]), load(clip.scorer ? shotChain(clip.scorer) : [])]);
+  const bar = document.createElement("canvas"); bar.width = W; bar.height = CAP;
+  const b = bar.getContext("2d", { willReadFrequently: true });
+  { const mine = clip.side === "away" ? ac : hc, MID = 46;
+    b.fillStyle = C.bg; b.fillRect(0, 0, W, CAP);
+    b.fillStyle = "rgba(255,255,255,.12)"; b.fillRect(0, 0, W, 1);
+    // the two sides, from the right edge inward: crest, code, the score in its own box, code, crest
+    const crest = (im, t, x, sz) => {
+      if (im) { b.drawImage(im, x - sz * 0.05, MID - sz * 0.6, sz * 1.1, sz * 1.1); return; }
+      b.save(); b.translate(x + sz / 2 - 20 * sz / 46, MID - 22 * sz / 46 - sz * 0.04); b.scale(sz / 46, sz / 46);
+      b.beginPath(); b.moveTo(20, 2); b.lineTo(35, 8); b.lineTo(35, 20); b.bezierCurveTo(35, 30, 28.5, 37.5, 20, 41.5); b.bezierCurveTo(11.5, 37.5, 5, 30, 5, 20); b.lineTo(5, 8); b.closePath();
+      b.fillStyle = t?.c1 || "#55605a"; b.fill(); b.strokeStyle = t?.c2 || t?.c1 || "#8a948e"; b.lineWidth = 2.5; b.lineJoin = "round"; b.stroke(); b.restore(); };
+    const hCode = clip.hb?.code || String(clip.hn || "Home").slice(0, 3).toUpperCase(), aCode = clip.ab?.code || String(clip.an || "Away").slice(0, 3).toUpperCase();
+    const sc = String(clip.score || "").replace("-", " - "), CR = 38;
+    b.textBaseline = "middle";
+    let x = W - 16 - CR; crest(aImg, clip.ab, x, CR);
+    b.font = `800 19px ${FONT}`; b.textAlign = "right"; b.fillStyle = C.ink; x -= 10; b.fillText(aCode, x, MID - 4); x -= b.measureText(aCode).width + 10;
+    b.font = `800 20px ${FONT}`; const sw = b.measureText(sc).width + 20; b.fillStyle = C.ink; b.fillRect(x - sw, MID - 20, sw, 32);
+    b.fillStyle = "#0c110e"; b.textAlign = "center"; b.fillText(sc, x - sw / 2, MID - 3); x -= sw + 10;
+    b.font = `800 19px ${FONT}`; b.textAlign = "right"; b.fillStyle = C.ink; b.fillText(hCode, x, MID - 4); x -= b.measureText(hCode).width + 10;
+    x -= CR; crest(hImg, clip.hb, x, CR);
+    if (clip.comp) { b.font = `500 11px ${FONT}`; b.fillStyle = C.dim; b.textAlign = "right"; b.fillText(clip.comp, W - 16, CAP - 14); }
+    // the scorer: his portrait in a ring of his side's colour, the minute over his name, who made it under
+    const room = x - 14; let tx = 16;
+    if (face) { const R0 = 33, cx = 16 + R0, cy = CAP / 2 + 1; b.save(); b.beginPath(); b.arc(cx, cy, R0, 0, Math.PI * 2); b.clip();
+      b.fillStyle = "#1a211d"; b.fillRect(cx - R0, cy - R0, R0 * 2, R0 * 2);
+      const k = Math.max(R0 * 2 / face.width, R0 * 2 / face.height); b.drawImage(face, cx - face.width * k / 2, cy - face.height * k / 2, face.width * k, face.height * k); b.restore();
+      b.beginPath(); b.arc(cx, cy, R0, 0, Math.PI * 2); b.strokeStyle = mine; b.lineWidth = 2.5; b.stroke(); tx = 16 + R0 * 2 + 14; }
+    else { b.fillStyle = mine; b.fillRect(16, 18, 4, CAP - 34); tx = 30; }
+    const minute = `${clip.min}'${clip.add ? "+" + clip.add : ""}`, who = clip.scorer || (clip.txt ? String(clip.txt).replace(/\s*\(.*$/, "") : "Goal");
+    b.textAlign = "left"; b.textBaseline = "alphabetic";
+    b.font = `700 13px ${FONT}`; b.fillStyle = C.dim; b.fillText(minute, tx, 31);
+    let fs = 21; b.font = `700 ${fs}px ${FONT}`; while (fs > 12 && tx + b.measureText(who).width > room) { fs--; b.font = `700 ${fs}px ${FONT}`; }
+    b.fillStyle = C.ink; b.fillText(who, tx, 56);
+    if (clip.assist) { b.font = `500 12px ${FONT}`; b.fillStyle = C.dim; b.fillText("Assist", tx, 76); const w0 = b.measureText("Assist").width + 6;
+      b.font = `600 12px ${FONT}`; b.fillStyle = "#d7dfda"; b.fillText(clip.assist, tx + w0, 76); } }
+  // the palette: the colours drawn on the pitch and the blends at their edges, the commonest colours of the bar (the
+  // crests and the portrait are pictures, not flat colour), and a coarse cube under them all
+  const barD = b.getImageData(0, 0, W, CAP).data, bk = new Map();
+  for (let q = 0; q < barD.length; q += 4) { const key = ((barD[q] >> 4) << 8) | ((barD[q + 1] >> 4) << 4) | (barD[q + 2] >> 4), o = bk.get(key);
+    if (o) { o[0] += barD[q]; o[1] += barD[q + 1]; o[2] += barD[q + 2]; o[3]++; } else bk.set(key, [barD[q], barD[q + 1], barD[q + 2], 1]); }
+  const seen = [...bk.values()].sort((u, v) => v[3] - u[3]).slice(0, 88).map(o => [Math.round(o[0] / o[3]), Math.round(o[1] / o[3]), Math.round(o[2] / o[3])]);
+  const pal = gifPalette(base.concat([0.25, 0.5, 0.75].map(t => mix(tA, ink, t)), [0.33, 0.66].map(t => mix(tA, hC, t)), [0.33, 0.66].map(t => mix(tA, aC, t)),
+    [0.4, 0.7].map(t => mix(tA, blk, t)), [mix(hC, blk, 0.5), mix(aC, blk, 0.5), mix(tA, kC, 0.5), mix(base[13], blk, 0.3), mix(base[11], base[12], 0.5)], seen), 5);
+  const gif = gifWriter(W, H, pal.table);
+  const px = new Uint8Array(W * H);
+  for (let q = 0, e = W * CAP; q < e; q++) px[W * PH + q] = pal.index(barD[q * 4], barD[q * 4 + 1], barD[q * 4 + 2]);
+  const dOf = (x) => Math.abs(gx - x), U = (y) => ((up ? y : 68 - y) + SIDE) * S;
+  // 0.16 of a slice a picture at four hundredths of a second: four slices a second, the speed of play. (At sixteen
+  // pictures a second and straight-line movement that speed was "way too slow, not fluid enough"; twice it was "a bit
+  // too fast".)
+  const T = []; { let q = 0; while (q < last - 1e-6) { T.push(q); q += 0.16; } T.push(last); }
+  // ...and the last frame held a second while the net settles and the cameras go off: the effects' clock runs on (POST).
+  const fxL = uxReduced() ? [] : meFxOfClip(clip), POST = T.map(() => 0);
+  if (fxL.some(e => e.k === "goal")) for (let q = 0.16; q <= 4.0; q += 0.16) { T.push(last); POST.push(q); }
+  const names = clip.names || (() => { const o = []; for (const t of clip.chain || []) if (t.ix != null) o[(t.side === "away" ? 11 : 0) + t.ix] = t.name; return o; })();
+  const TL = meTouchLog(F), NAME_HOLD = 3, NAME_FADE = 5;
+  const nameA = (q, pos) => { const L = TL[q]; let t = -1;
+    for (let k = L.length - 1; k >= 0; k--) if (L[k] <= pos + 0.5) { t = L[k]; break; }
+    if (t < 0) return 0;
+    const e = pos - t - NAME_HOLD; return e <= 0 ? 1 : Math.max(0, 1 - e / NAME_FADE); };
+  let v0 = null;
+  const LINE = "rgba(255,255,255,.5)";
+  // the crowd: a speckle on the stand, one tile of it, laid from the goal line so it moves with the pitch
+  const tile = document.createElement("canvas"); tile.width = 12; tile.height = 10;
+  { const t2 = tile.getContext("2d"); t2.fillStyle = C.stand; t2.fillRect(0, 0, 12, 10); t2.fillStyle = C.crowd;
+    t2.beginPath(); t2.arc(3, 3, 1.8, 0, Math.PI * 2); t2.fill(); t2.beginPath(); t2.arc(9, 8, 1.8, 0, Math.PI * 2); t2.fill(); }
+  const crowd = g.createPattern(tile, "repeat"), trail = [];
+  for (let n = 0; n < T.length; n++) {
+    const pos = T[n], i = Math.max(0, Math.min(last - 1, Math.floor(pos))), a = Math.max(0, Math.min(1, pos - i)), A = F[i], B = F[i + 1];
+    const tau = pos + POST[n];
+    const [bx, by, bz] = meBallAt(A, B, a);
+    const want = Math.max(-BACK, Math.min(105 + BACK - VIEW, dOf(bx) - 32));
+    v0 = v0 == null ? want : v0 + (want - v0) * 0.09;
+    const Y = (d) => (d - v0) * S;
+    g.save(); g.beginPath(); g.rect(0, 0, W, PH); g.clip();
+    // the stand and its crowd, the apron of grass, and the boards behind each goal line, three either side of the goal
+    { const y0 = Y(0), off = ((y0 % 10) + 10) % 10;
+      g.save(); g.translate(0, off - 10); g.fillStyle = crowd || C.stand; g.fillRect(0, 0, W, PH + 20); g.restore();
+      g.fillStyle = C.apron; g.fillRect(0, Y(-3.0), W, (105 + 6.0) * S);   // to the picture's edges: its sides are two metres, too thin for a stand
+      for (const e of [0, 1]) { const top = e ? Y(107.05) : Y(-3.0);
+        [3, 11.6, 20.2, 39.2, 47.8, 56.4].forEach((yy, q) => { g.fillStyle = q % 2 ? C.boardA : C.boardB; g.fillRect((yy + SIDE) * S, top, 8.4 * S, 0.95 * S);
+          g.fillStyle = C.boardInk; g.fillRect((yy + SIDE + 3.3) * S, top + 0.32 * S, 1.8 * S, 0.3 * S); }); } }
+    for (let k = 0; k < 8; k++) { g.fillStyle = k % 2 ? C.a : C.b; g.fillRect(U(up ? 0 : 68), Y(k * 13.125), 68 * S, 13.125 * S + 1); }
+    // the markings, both ends: touchlines, halfway, the circle, the areas, the spots, the arcs, the corners
+    g.strokeStyle = LINE; g.fillStyle = LINE; g.lineWidth = 1.25; g.lineJoin = "miter";
+    const X0 = SIDE * S, X1 = (68 + SIDE) * S, XM = (34 + SIDE) * S;
+    g.strokeRect(X0, Y(0), 68 * S, 105 * S);
+    g.beginPath(); g.moveTo(X0, Y(52.5)); g.lineTo(X1, Y(52.5)); g.stroke();
+    g.beginPath(); g.arc(XM, Y(52.5), 9.15 * S, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(XM, Y(52.5), 1.6, 0, Math.PI * 2); g.fill();
+    for (const e of [0, 1]) { const D = (d) => Y(e ? 105 - d : d), dn = e ? -1 : 1;
+      g.strokeRect(XM - 20.15 * S, Math.min(D(0), D(16.5)), 40.3 * S, 16.5 * S);
+      g.strokeRect(XM - 9.15 * S, Math.min(D(0), D(5.5)), 18.3 * S, 5.5 * S);
+      g.beginPath(); g.arc(XM, D(11), 1.6, 0, Math.PI * 2); g.fill();
+      g.beginPath(); if (dn > 0) g.arc(XM, D(11), 9.15 * S, 0.645, Math.PI - 0.645); else g.arc(XM, D(11), 9.15 * S, Math.PI + 0.645, -0.645); g.stroke();
+      g.beginPath(); if (dn > 0) g.arc(X0, D(0), S, 0, Math.PI / 2); else g.arc(X0, D(0), S, -Math.PI / 2, 0); g.stroke();
+      g.beginPath(); if (dn > 0) g.arc(X1, D(0), S, Math.PI / 2, Math.PI); else g.arc(X1, D(0), S, Math.PI, Math.PI * 1.5); g.stroke();
+      // the goal: its frame behind the line and the net inside it
+      const gy = dn > 0 ? D(0) - 2.2 * S : D(0), gw = 7.32 * S, gl = XM - gw / 2;
+      g.fillStyle = "rgba(255,255,255,.07)"; g.fillRect(gl, gy, gw, 2.2 * S);
+      g.strokeStyle = "rgba(255,255,255,.16)"; g.lineWidth = 1; g.beginPath();
+      for (let q = 1; q < 12; q++) { g.moveTo(gl + gw * q / 12, gy); g.lineTo(gl + gw * q / 12, gy + 2.2 * S); }
+      for (let q = 1; q < 4; q++) { g.moveTo(gl, gy + 2.2 * S * q / 4); g.lineTo(gl + gw, gy + 2.2 * S * q / 4); }
+      g.stroke();
+      g.strokeStyle = C.net; g.lineWidth = 1.75; g.strokeRect(gl, gy, gw, 2.2 * S);
+      g.fillStyle = C.ink; for (const px0 of [gl, gl + gw]) { g.beginPath(); g.arc(px0, D(0), 2, 0, Math.PI * 2); g.fill(); }
+      // the corner flags
+      for (const [cx, sx] of [[X0, 1], [X1, -1]]) { g.fillStyle = C.flag; g.beginPath(); g.moveTo(cx, D(0)); g.lineTo(cx - sx * 2.2, D(0) - dn * 8.5); g.lineTo(cx - sx * 5.4, D(0) - dn * 2.7); g.closePath(); g.fill();
+        g.fillStyle = C.ink; g.beginPath(); g.arc(cx, D(0), 1.2, 0, Math.PI * 2); g.fill(); }
+      g.strokeStyle = LINE; g.fillStyle = LINE; g.lineWidth = 1.25; }
+    // THE EFFECTS (meFxPrims), in the canvas's own frame: a scuff under the men here, the rest over them below
+    const PX = (x, y) => [U(y), Y(up ? gx - x : x - gx)];   // signed: the stand behind the goal line is behind it here too
+    const fxPaint = (under) => { for (const e of fxL) { if ((e.k === "scuff") !== under) continue;
+      for (const P of meFxPrims(e, tau - e.t)) { const c = FX_CLR[P.c] || FX_CLR.w, [x0, y0] = PX(P.x, P.y);
+        g.globalAlpha = Math.max(0, Math.min(1, P.o));
+        if (P.t === "ring") { g.strokeStyle = c; g.lineWidth = Math.max(1, P.w * S); g.beginPath(); g.arc(x0, y0, Math.max(0.5, P.r * S), 0, Math.PI * 2); g.stroke(); }
+        else if (P.t === "line") { const [x1, y1] = PX(P.x1, P.y1); g.strokeStyle = c; g.lineWidth = Math.max(1, P.w * S); g.lineCap = "round"; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.lineCap = "butt"; }
+        else { g.fillStyle = c; g.beginPath(); g.arc(x0, y0, P.r * S, 0, Math.PI * 2); g.fill(); }
+        g.globalAlpha = 1; } } };
+    fxPaint(true);
+    // the referee and his two assistants (the tape's `of`): dark dots with a pale edge, under the men
+    if (A.of && B.of) for (const k of [0, 2, 4]) { if (A.of[k] < -90 || B.of[k] < -90) continue;
+      const ox = A.of[k] + (B.of[k] - A.of[k]) * a, oy = A.of[k + 1] + (B.of[k + 1] - A.of[k + 1]) * a, x = U(oy), y = Y(dOf(ox));
+      g.fillStyle = "rgba(0,0,0,.28)"; g.beginPath(); g.ellipse(x + 1.5, y + 2.2, 4.1, 3.6, 0, 0, Math.PI * 2); g.fill();
+      // striped, as on the pitch: a pale dot with three dark bars across it
+      g.fillStyle = C.officialEdge; g.beginPath(); g.arc(x, y, 3.95, 0, Math.PI * 2); g.fill();
+      g.save(); g.beginPath(); g.arc(x, y, 3.95, 0, Math.PI * 2); g.clip(); g.fillStyle = C.official;
+      for (const bx0 of [-3.4, -0.7, 2.0]) g.fillRect(x + bx0, y - 4, 1.35, 8);
+      g.restore(); g.strokeStyle = C.officialEdge; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 3.95, 0, Math.PI * 2); g.stroke(); }
+    // the twenty-two: the keeper in his own colour, a nose for the way each man faces
+    g.lineJoin = "round";
+    const at = [], gkdNow = (a < 0.5 ? A : B).gkd || [];
+    for (let sd = 0; sd < 2; sd++) for (let k = 0; k < 11; k++) { const q = sd * 11 + k, xy = meManAt(F, i, a, q * 2);
+      if (!xy) continue;
+      // (what the effects do to him, meFxMan: up for a header, drawn out along a slide, a step back off a block; and the
+      // keeper drawn out along his dive, the tape's gkd)
+      const md = fxL.length ? meFxMan(fxL, q, tau) : null, lift = md ? md[0] : 0, R0 = 4.2, R = R0 * (1 + 0.24 * lift);
+      const x = U(xy[1]) + (md ? sg * md[4] * S : 0), y = Y(dOf(xy[0])) + (md ? -sg * md[3] * S : 0), col = clip.gk && clip.gk[q] ? C.keep : sd ? ac : hc, th = meFaceAt(A, B, a, q);
+      at[q] = [x, y];
+      g.fillStyle = `rgba(0,0,0,${(0.28 - 0.1 * lift).toFixed(2)})`; g.beginPath(); g.ellipse(x + 1.5 * (1 + 3 * lift), y + 2.2 * (1 + 3 * lift), R * 1.02, R * 0.9, 0, 0, Math.PI * 2); g.fill();
+      const gd = gkdNow.find(v => v[0] === q), cap = (ax, ay, bx2, by2) => { g.strokeStyle = col; g.lineWidth = R * 1.8; g.lineCap = "round"; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); g.lineCap = "butt"; };
+      if (gd) { const cx = sg * gd[3] * gd[1] * S, cy = -sg * gd[2] * gd[1] * S; cap(x - cx, y - cy, x + cx, y + cy); }
+      if (md && (md[1] || md[2])) cap(x, y, x + sg * md[2] * S, y - sg * md[1] * S);
+      g.fillStyle = col; g.strokeStyle = "rgba(0,0,0,.7)"; g.lineWidth = 1;
+      if (th !== undefined) { const c = sg * Math.sin(th), s = -sg * Math.cos(th), tip = R + 3.2, bk = R * 0.5, w = R * 0.66;
+        g.beginPath(); g.moveTo(x + c * tip, y + s * tip); g.lineTo(x + c * bk - s * w, y + s * bk + c * w); g.lineTo(x + c * bk + s * w, y + s * bk - c * w); g.closePath(); g.fill(); g.stroke(); }
+      g.beginPath(); g.arc(x, y, R, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    fxPaint(false);
+    // WHO IS PLAYING IT: a man's name over him every time he touches the ball, held a moment, then fading
+    const R = 5;
+    g.font = `600 11px ${FONT}`; g.textAlign = "center";
+    for (let q = 0; q < 22; q++) { if (!at[q] || !names[q]) continue;
+      const al = nameA(q, pos); if (al <= 0.03) continue;
+      g.globalAlpha = al; g.strokeStyle = "rgba(0,0,0,.85)"; g.lineWidth = 2.6; g.strokeText(names[q], at[q][0], at[q][1] - R - 5);
+      g.fillStyle = C.ink; g.fillText(names[q], at[q][0], at[q][1] - R - 5); g.globalAlpha = 1; }
+    // the ball: its shadow on the grass, the ball above it by its height and a touch bigger for it
+    { const x = U(by), y = Y(dOf(bx)), lift = Math.max(0, bz - 0.11), hi = Math.min(1, lift / 6), r = 2.6 + hi * 1.9;
+      // a streak behind it when it is struck hard: the last few places it was, in pitch metres (the view may have moved)
+      trail.push([bx, by]); if (trail.length > 7) trail.shift();
+      g.lineCap = "round";
+      for (let k = 1; k < trail.length; k++) { const p0 = trail[k - 1], p1 = trail[k], dd = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), vv = dd / 0.04;
+        if (vv < 9 || dd > 4) continue;
+        g.strokeStyle = `rgba(255,255,255,${((k / trail.length) * (0.14 + 0.42 * Math.min(1, (vv - 9) / 16))).toFixed(3)})`; g.lineWidth = r * (0.7 + 0.9 * k / trail.length);
+        g.beginPath(); g.moveTo(U(p0[1]), Y(dOf(p0[0]))); g.lineTo(U(p1[1]), Y(dOf(p1[0]))); g.stroke(); }
+      g.lineCap = "butt";
+      g.fillStyle = "rgba(0,0,0,.4)"; g.beginPath(); g.ellipse(x + 0.8 + lift * 1.1, y + 0.8 + lift * 0.4, r * 0.95, r * 0.7, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = C.ink; g.strokeStyle = "rgba(0,0,0,.85)"; g.lineWidth = 0.9; g.beginPath(); g.arc(x, y - lift * S * 0.42, r, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    g.restore();
+    const d = g.getImageData(0, 0, W, PH).data;
+    for (let q = 0, e = W * PH; q < e; q++) px[q] = pal.index(d[q * 4], d[q * 4 + 1], d[q * 4 + 2]);
+    gif.frame(px, n === T.length - 1 ? 250 : 4);
+    if (n % 8 === 7) await new Promise(r => setTimeout(r, 0));
+  }
+  const blob = new Blob([gif.finish()], { type: "image/gif" });
+  const url = URL.createObjectURL(blob), el = document.createElement("a");
+  const safe = (v) => String(v || "").replace(/[^\p{L}\p{N} .'-]+/gu, "").trim();
+  el.href = url; el.download = `${safe(clip.hn)} ${clip.score || ""} ${safe(clip.an)} ${clip.min} ${safe(clip.scorer)}`.replace(/\s+/g, " ").trim() + ".gif";
+  document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 
 
 
@@ -6664,6 +7370,16 @@ export default function App() {
   // ---- positional match engine lab -------------------------------------------------------
   const ME_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 20];
   const [meSpeedIx, setMeSpeedIx] = useState(2);   // index into ME_SPEEDS; 1x real time
+  // The speed the match is being watched at, for the replay's own clock (meCelRun), and that clock.
+  const meSpdRef = useRef(1); meSpdRef.current = ME_SPEEDS[meSpeedIx] ?? 1;
+  const meCelTimer = useRef(null);
+  // THE CUT TO A REPLAY AND BACK (user, 22 November 2026: "There should be a screen-wide animation when opening the
+  // replay"). Slanted panels in the scoring side's colour cross the whole picture, the word Replay on them, and the
+  // picture changes while they cover it (ux-wipe). { id, side } while one is crossing.
+  const [meWipe, setMeWipe] = useState(null);
+  const ME_WIPE_COVER = 430, ME_WIPE_MS = 1100;
+  const meWipeGo = (side) => { if (uxReduced()) return 0; const id = Date.now();
+    setMeWipe({ id, side }); setTimeout(() => setMeWipe(w => (w && w.id === id ? null : w)), ME_WIPE_MS + 60); return ME_WIPE_COVER; };
   // The second brain's thinking drawn on the pitch: runs, who presses, who marks whom. Off by default.
   const [meOverlay, setMeOverlay] = useState(false);
   const meAcc = useRef(0);
@@ -6681,8 +7397,9 @@ export default function App() {
   const [meSideTab, setMeSideTab] = useState("feed");
   // Subs and Tactics pause the match while open; this remembers that it was they who paused it, so closing plays on.
   const mePanelHeld = useRef(false);
-  // FULL TIME ON THE CLIPBOARD. Copy Image renders the page out of sight at its design size, 1600 x FT_PAGE_H, takes it at
-  // 1920 wide (1920 x 1310), and resolves the promise the clipboard was handed in the click (Moukden and Kirin, 10 October 2026).
+  // FULL TIME ON THE CLIPBOARD. Copy Image renders the page out of sight at its fixed size, 1600 x FT_PAGE_H, whatever the
+  // window (the user, 24 November 2026: "I asked for the copied report to be fixed dimensions"), takes it 1920 x 1310, and
+  // resolves the promise the clipboard was handed in the click (Moukden and Kirin, 10 October 2026).
   // The picture is taken by src/shot.js, with the page's own stylesheets (user, 11 October 2026: it "literally takes
   // longer than screenshotting"); html-to-image, which copies every style onto every element, is only the fallback.
   const [ftShot, setFtShot] = useState(null);
@@ -6705,8 +7422,9 @@ export default function App() {
           await new Promise(r => setTimeout(r, 50));
         }
         const at = { position: "static", left: "0", top: "0" };
-        const blob = await shotBlob(el, { width: 1600, height: FT_PAGE_H, scale: 1920 / 1600, rootStyle: at })
-          .catch(() => toBlob(el, { width: 1600, height: FT_PAGE_H, pixelRatio: 1920 / 1600, cacheBust: false, style: at }));
+        const { w, h } = ftShot;
+        const blob = await shotBlob(el, { width: w, height: h, scale: 1920 / w, rootStyle: at, vars: { "--app-zoom": "1" } })
+          .catch(() => toBlob(el, { width: w, height: h, pixelRatio: 1920 / w, cacheBust: false, style: at }));
         if (!blob) throw new Error("no picture");
         ftShot.res(blob);
       } catch (e) { ftShot.rej(e); }
@@ -6721,6 +7439,8 @@ export default function App() {
   // not what happens on a touchline.
   const mePending = useRef({ subs: [], strategy: {} });
   const meSubPick = useRef(null);        // the man taken off, waiting for his replacement
+  const meSubDraft = useRef(null);       // the Subs panel's unsaved changes, { home: [[outIdx, benchIdx]], away }
+  const meSubDrag = useRef(null);        // the row being dragged in the Subs panel, { side, kind, idx }
   const meRef = useRef(null), meTimer = useRef(null);
   const ftPageRef = useRef(null);
   useEffect(() => {
@@ -6905,8 +7625,8 @@ export default function App() {
                                 style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{ROLE_NAME[roleOf[p.name]]?.[1] || p.spos || p.pos}</span>
                           {badges && (p.badges || []).length > 0 && (
                             <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: cf(3), display: "flex", gap: cf(1.5) }}>
-                              {p.badges.map(id => BADGE_BY_ID[id] && (
-                                <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id}
+                              {p.badges.map(id => badgeOf(id) && (
+                                <img key={id} src={badgeSrc(id)} alt={badgeOf(id).name} data-trait={id}
                                   draggable={false} style={{ width: cf(12), height: cf(12), display: "block" }} />))}
                             </span>)}
                         </div>); })}
@@ -6987,7 +7707,9 @@ export default function App() {
     meInit(st, pitchSlots, rng);
     // The dugout log opens with whatever the managers changed before kick-off.
     const out0 = meFreshOut();
+    out0.fx = [];                                          // the engine lists every event of a slice here, for the effects (meFxMake)
     if (st.preLog) out0.mgrLog = { home: [...(st.preLog.home || [])], away: [...(st.preLog.away || [])] };
+    meRefInit(st);                                         // the referee is on the pitch before the first whistle (engine/referee.ts)
     // TWO ENGINES, ONE SETUP. "Force Result" on the setup screen sets lmForce, which drives extra
     // time and penalties in the classic simulation (createMatchState's forceResult, read at the
     // second-half stoppage). The positional engine has its own flag, needWin, read only by the
@@ -6997,7 +7719,8 @@ export default function App() {
     return { s: st, out: out0, rng, t: 0, hT, aT, needWin: tn ? tn.needWin : lmForce,
              tourn: tn, agg, awayGoals: tn ? !!tn.awayGoalsRule : lm2ndLeg && lmAwayGoals,
              // the replay tape, the goals cut from it, and the one playing right now
-             tape: [], clips: [], cel: null, gH: 0, gA: 0 };
+             tape: [], clips: [], cel: null, gH: 0, gA: 0,
+             tl: meTlInit(st, out0) };                    // the assistants and the coaches (engine/touchline.ts)
   };
   // Whether this match is still a draw. Aggregate for a two-legged tie, the scoreline for
   // everything else, and away goals settle a level aggregate where the competition uses them --
@@ -7027,7 +7750,7 @@ export default function App() {
         goals: p.goals || 0, assists: p.assists || 0,
         rating: +(p.rating ?? 6.5).toFixed(1),
         yc: p.yc || 0, rc: p.rc ? 1 : 0, rcVariant: p.rcVariant,
-        inj: p.inj ? 1 : 0, injSev: p.injSev, injPart: p.injPart,
+        inj: p.inj ? 1 : 0, injSev: p.injSev, injPart: p.injPart, injLen: p.injLen, hurt: p.hurt ? 1 : 0, hurtDx: p.hurtDx,
         passOk: p.passOk || 0, prog: p.prog || 0, cc: p.cc || 0, defActs: p.defActs || 0, saves: p.saves || 0,
         stamina: p.stamina,
         // _onAt is stamped only on a man who came on, so it answers "did he start" for the live
@@ -7102,33 +7825,66 @@ export default function App() {
     const last = frames[frames.length - 1];
     // "pen" as well as "goal": a penalty IS a goal and the engine tags it separately, so every
     // penalty in the game reached the highlights with a blank caption.
+    // Who scored it and who made it, and the game it was in: for the saved replay's caption (meClipGif).
+    const sc = (m.out.scorers?.[side] || []).slice(-1)[0];
     const clip = { min: m.out.min, add: m.out.add || 0, side, frames, txt: ev && (ev.k === "goal" || ev.k === "pen") ? ev.txt : null,
+                   hn: m.hT?.name, an: m.aT?.name, comp: m.tourn?.name || null,
+                   // each side's code and where its crest is (as TeamCrest finds it), for the saved replay's bar
+                   hb: meCrestOf(m.hT), ab: meCrestOf(m.aT),
+                   scorer: ev && (ev.k === "goal" || ev.k === "pen") && sc ? (sc.full || sc.name) : null, assist: sc?.assist || null,
                    score: `${m.out.goals.home}-${m.out.goals.away}`,
                    // resolved now, while the names still line up with the indices -- see meChain
-                   chain: meChain(m.s, frames), end: { x: last.bx, y: last.by } };
+                   chain: meChain(m.s, frames), end: { x: last.bx, y: last.by },
+                   // the twenty-two by slot, and which two are the keepers, for the same reason
+                   names: ["home", "away"].flatMap(sd => Array.from({ length: 11 }, (_, i) => { const p = m.s.players[sd][i]; return p ? shortName(p.name) : ""; })),
+                   gk: ["home", "away"].flatMap(sd => Array.from({ length: 11 }, (_, i) => m.s.players[sd][i]?.pos === "GK")) };
+    // THE REPLAY IS OFFERED, NOT STAGED (user, 22 November 2026: "the in-match replay should be an option to open, not
+    // something instant"). A goal used to freeze the match and play itself back whether anybody asked or not. The clip
+    // is banked, the goal's line in the feed is told which clip is its own, and the match plays on: Replay on the pitch
+    // opens the last goal's, the arrow on a goal's line in the feed opens that goal's (meCelOpen).
+    if (ev && (ev.k === "goal" || ev.k === "pen")) ev.clip = m.clips.length;
+    // ...and whether it was a penalty or an own goal (and whose), for the scorebug's goal plate (MatchGfx).
+    clip.pen = !!ev && ev.k === "pen";
+    if (!clip.scorer) { const o = (m.out.owns?.[side === "home" ? "away" : "home"] || []).slice(-1)[0];
+      if (o && o.min === m.out.min) clip.og = o.full || o.name || null; }
     m.clips.push(clip);
-    // Skipping to the end asks for a result, not for theatre -- but the clip is still banked, because
-    // the highlights on the post-match screen are built from exactly these.
-    if (!m.fast) m.cel = { t: 0, i: 0, a: 0, done: 0, clip };
   };
-  // Driven off the wall clock rather than off match time, so a replay looks the same at 0.25x as it
-  // does at 4x. Match speed governs the match; it has no business governing a replay.
-  // IT DOES NOT DISMISS ITSELF. It used to close after a fixed count of frames past the end, which
-  // meant the one thing you might actually want to look at twice was the one thing you could not --
-  // and if you glanced away you missed it entirely. It now freezes on the last frame and waits.
-  // The match is frozen behind it either way (meStep refuses to tick while m.cel is set), so the
-  // cost of waiting is nothing, and closing it is one click.
-  const meCelStep = (m) => {
+  // A REPLAY RUNS AT THE SPEED OF THE MATCH (user, 22 November 2026: "Why is the replay so much faster than the match?
+  // Make all replays the same speed as the match"). It ran a slice every three frames whatever the match was doing,
+  // about twice the speed of a match at 1x, with the last second slowed. It now advances exactly as the match does:
+  // the same slices a second at the speed the match is being watched at, with no slow finish. On its own clock
+  // (meCelTimer), so it plays whether the match was running or paused when it was opened.
+  // IT DOES NOT DISMISS ITSELF: it holds on its last frame until it is closed, and the match waits behind it (meStep
+  // refuses to tick while m.cel is set) and carries on from the same instant.
+  const meCelStep = (m, spd) => {
     const c = m.cel; if (!c || c.done) return;
-    c.t++;
-    const last = c.clip.frames.length - 1, pos = c.t / ME_CLIP.rate;
+    const last = c.clip.frames.length - 1;
+    const step = (spd || 1) * 0.04 / ME_DT;
+    const pos = (c.pos = Math.min(last, (c.pos ?? 0) + step));
     c.i = Math.min(last, Math.floor(pos));
     c.a = c.i >= last ? 1 : Math.min(1, pos - c.i);
-    if (c.i >= last) c.done = 1;
+    // ...and holds its last frame while the net settles and the cameras go off (the effects' clock runs on, c.post).
+    if (c.i >= last) { c.post = (c.post || 0) + step; if (c.post >= FX_LIFE.goal) c.done = 1; }
   };
+  const meCelStop = () => { if (meCelTimer.current) clearInterval(meCelTimer.current); meCelTimer.current = null; };
+  const meCelRun = () => { meCelStop();
+    meCelTimer.current = setInterval(() => { const mc = meRef.current;
+      if (!mc?.cel || mc.cel.done) { meCelStop(); return; }
+      meCelStep(mc, mc.ftDone ? 1 : meSpdRef.current); setMeFrame(f => f + 1); }, 40); };   // after full time, at normal speed
+  // Opened under the wipe: the replay's first frame takes the pitch at once, hidden as the panels arrive, and starts to
+  // play as they clear. Closed the same way: the match's own picture comes back under them.
+  // After full time it opens over the Full Time page (the goal cards' button), however the match was finished.
+  const meCelOpen = (m, clip) => { if (!m || !clip || (m.fast && !m.ftDone) || m.cel) return;
+    const wait = meWipeGo(clip.side);
+    const go = () => { if (meRef.current !== m || (m.fast && !m.ftDone)) return; m.cel = { i: 0, a: 0, pos: 0, done: 0, clip }; setMeFrame(f => f + 1);
+      setTimeout(() => { if (meRef.current === m && m.cel && m.cel.clip === clip) meCelRun(); }, wait ? ME_WIPE_MS - ME_WIPE_COVER - 180 : 0); };
+    if (wait) setTimeout(go, wait); else go(); };
   const meCelReplay = (m) => { const c = m?.cel; if (!c) return;
-    c.t = 0; c.i = 0; c.a = 0; c.done = 0; setMeFrame(f => f + 1); };
-  const meCelClose = (m) => { if (!m) return; m.cel = null; setMeFrame(f => f + 1); };
+    c.i = 0; c.a = 0; c.pos = 0; c.post = 0; c.done = 0; meCelRun(); setMeFrame(f => f + 1); };
+  const meCelClose = (m) => { if (!m) return; const c = m.cel; if (!c || c.closing) { if (!c) meCelStop(); return; }
+    meCelStop(); c.closing = 1;
+    const wait = meWipeGo(c.clip.side), end = () => { if (m.cel === c) { m.cel = null; setMeFrame(f => f + 1); } };
+    if (wait) setTimeout(end, wait); else end(); };
 
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
@@ -7203,7 +7959,8 @@ export default function App() {
       st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
       meDead(st, "kickoff", ko, 40, m.out);
       meSPShape(st);
-      m.h2 = !m.h2;
+      m.h2 = !m.h2; st.mePos.h2 = m.h2;          // the officials keep their diagonal on screen (referee.ts meRefDiag)
+      meTlPark(st, m.tl, true, meTunnel);
       for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
         p._hx = undefined; p._hy = undefined;
         if (p.off) continue;
@@ -7246,13 +8003,14 @@ export default function App() {
       const tx = back ? p._hx : meTunnel[0], ty = back ? p._hy : meTunnel[1];
       p._px = p.x; p._py = p.y;
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
-      if (d > 0.02) { const k = Math.min(d, ME_BRK.step) / d; p.x += dx * k; p.y += dy * k; }
+      if (d > 0.02) { const k = Math.min(d, ME_BRK.step) / d; p.x += dx * k; p.y += dy * k; meFaceWalk(p, dx, dy); }
       p.vx = 0; p.vy = 0;
       // Walking off is finished when the last man is out of sight, not when a counter says so.
       if (back ? d > 0.02 : p.y < ME_BRK.gone) settled = false;
     }
     // The ball is still live for a beat after the whistle, and only while they are walking OFF --
     // once they are coming back out it has been collected and spotted for the restart.
+    meTlWalk(st, m.tl, back, meTunnel, ME_BRK.step);      // the officials and the coaches go off and come back with them
     if (!back && b.t <= ME_ROLL) meRollBall(m); else { const q = st.mePos; q._bpx = q.bx; q._bpy = q.by; q._bpz = q.bz; }
     if (!back) {
       if (!settled && b.t < ME_BRK.off) return;
@@ -7285,7 +8043,8 @@ export default function App() {
         // ...and the other half is only ever drawn. Actually swapping ends means flipping meDir under
         // fifty-two call sites; mirroring the VIEW is the same picture for none of the risk, and the
         // engine keeps the one coordinate convention every calibrated number was measured in.
-        m.h2 = !m.h2;
+        meTlPark(st, m.tl, false, meTunnel);
+        m.h2 = !m.h2; st.mePos.h2 = m.h2;
         // WALK TO THE REAL MARK. _hx was meInit's opening shape, which is near the kickoff shape but
         // not it -- so they arrived, and then shuffled again once play resumed. The set piece has
         // just published where each man is actually wanted; walk him there instead.
@@ -7303,13 +8062,32 @@ export default function App() {
       if (b.kind === "ft") meStop();
     }
   };
+  // HE FACES THE WAY HE WALKS (user, 22 November 2026: players "don't change direction during set events like being
+  // subbed out, walking off for half time"). The engine turns a man's body as he moves (mind/perceive.ts), but every walk
+  // drawn here is outside it -- the interval, the man going off, the man sent off, the shootout -- so each of them kept
+  // the facing the whistle caught him in and went to the tunnel backwards. One turn for all of them, as quick as a man
+  // turns to walk away: about half a second to come right round.
+  const meFaceWalk = (p, dx, dy) => {
+    if (Math.hypot(dx, dy) < 0.05) return;
+    const want = Math.atan2(dy, dx);
+    if (p._face === undefined) { p._face = want; return; }
+    const off = Math.atan2(Math.sin(want - p._face), Math.cos(want - p._face));
+    p._face += Math.max(-1.6, Math.min(1.6, off));
+  };
   // SUBSTITUTIONS, WALKED. The man coming on is the engine's (user, 16 October 2026: subs "move VERY quickly to places as
   // if they're being dragged to their zone"): meSub puts him on the halfway line on the benches' side and he runs to his
   // place under the engine's own legs, while the restart waits for him (setpiece.ts meSPReady). This used to draw a walk
   // from the touchline on top of the engine moving him to his mark -- two pulls on one man, his own velocity pinned at
   // nought while the walk dragged him -- and play went on without him. All that is left to draw is the man going off, who
   // is no longer in s.players: he leaves by the nearest point of the touchline, as the law has him, at a walk.
-  const ME_SUB = { step: 0.55, line: 70.8, park: -6, gone: 69.4, max: 48 };
+  // TO THE TECHNICAL AREA, AND ON FROM IT (user, 23 November 2026: "make subbed/injured players walk to their technical
+  // area smoothly, vice versa for their replacement"). The man going off left by the nearest point of the touchline and
+  // was gone there, an injured or dismissed man by the far one, six metres past it, and the man coming on appeared at
+  // halfway. Now the man replaced jogs to his own side's technical area (the dashed box by halfway: PitchGround) and an
+  // injured man is walked there slowly; a man sent off goes down the tunnel between the two; the replacement comes on
+  // from the technical area (engine: CFG.subEnterX). step and hurt are metres a slice; nobody takes longer than max.
+  const ME_SUB = { step: 0.8, hurt: 0.45, line: 70.8, park: -6, max: 80, hurtMax: 130, techX: 10.5, techY: 69.0, tunnelY: 71.4 };
+  const meTechXY = (sd, k) => [PITCH_L / 2 + (sd === "home" ? -1 : 1) * (ME_SUB.techX + ((k % 5) - 2) * 1.3), ME_SUB.techY];
   const meSubScan = (m) => {
     const s = m.s, tick = s.mePos.tick;
     m.subSeen = m.subSeen || { home: 0, away: 0 };
@@ -7318,8 +8096,11 @@ export default function App() {
       const arr = s.subbedOff?.[sd] || [];
       for (let k = m.subSeen[sd]; k < arr.length; k++) {
         const p = arr[k];
-        // Straight off at the nearer touchline; on the benches' side he walks out to the dugout row.
-        A.off.push({ p, sd, t: 0, ex: p.x, park: p.y < ME_HALF_W ? 1 : 0 });
+        // (A man who went off hurt and is replaced afterwards has made his walk already; one the physio came for is
+        // taken off by the physio: engine/touchline.ts meTlCare.)
+        if (p._subWalk || p._care) continue;
+        p._subWalk = 1;
+        A.off.push({ p, sd, t: 0, to: meTechXY(sd, k), step: ME_SUB.step, max: ME_SUB.max });
       }
       m.subSeen[sd] = arr.length;
       // A MAN SENT OFF WALKS TOO. He is not in s.subbedOff -- only meSub writes that -- so the
@@ -7328,17 +8109,19 @@ export default function App() {
       // drawn: put him back on his spot and hand him to the same animation, then park him where
       // the engine wants him once he is gone.
       for (const p of s.players[sd]) {
-        if (!p.off || p._offAt !== tick || p._subWalk) continue;
+        if (!p.off || p._offAt !== tick || p._subWalk || p._care) continue;
         p._subWalk = 1;
         if (p._offX === undefined) continue;          // parked before this ever ran; leave him
+        const end = [p.x, p.y];                        // where the engine keeps a man who is off
         p.x = p._offX; p.y = p._offY; p._px = p.x; p._py = p.y;
-        A.off.push({ p, sd, t: 0, ex: p.x, park: 1 });
+        A.off.push(p.inj ? { p, sd, t: 0, to: meTechXY(sd, 2), step: ME_SUB.hurt, max: ME_SUB.hurtMax, end }
+                         : { p, sd, t: 0, to: [PITCH_L / 2, ME_SUB.tunnelY], step: ME_SUB.step, max: ME_SUB.max, end });
       }
-      // The man coming on steps on from the dugout row to the halfway line: the renderer tweens _px -> x, and a bench man's
-      // last drawn position is wherever he sat, or nowhere.
+      // The man coming on steps over the line out of his technical area: the renderer tweens _px -> x, and a bench man's
+      // last drawn position is wherever he sat, or nowhere. From there he runs to his place on the engine's own legs.
       for (const p of s.players[sd]) {
         if (p._onAt !== tick || p._subWalk) continue;
-        p._subWalk = 1; p._px = p.x; p._py = ME_SUB.line;
+        p._subWalk = 1; p._px = p.x; p._py = ME_SUB.techY;
       }
     }
   };
@@ -7362,7 +8145,7 @@ export default function App() {
       const f = g.f; f._px = f.x; f._py = f.y;
       const tx = back ? g.hx : g.tx, ty = back ? ME_SUB.line : g.ty;
       const ddx = tx - f.x, ddy = ty - f.y, d = Math.hypot(ddx, ddy), st = back ? ME_BENCH.walk : ME_BENCH.run;
-      if (d > 0.05) { const k = Math.min(d, st) / d; f.x += ddx * k; f.y += ddy * k; left++; }
+      if (d > 0.05) { const k = Math.min(d, st) / d; f.x += ddx * k; f.y += ddy * k; left++; meFaceWalk(f, ddx, ddy); }
     }
     if (back && !left) m.benchCel = null;
   };
@@ -7370,21 +8153,21 @@ export default function App() {
     const A = m.subAnim; if (!A || !A.off.length) return;
     const toward = (p, tx, ty, step) => {
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
-      if (d > 0.05) { const k = Math.min(d, step) / d; p.x += dx * k; p.y += dy * k; }
+      if (d > 0.05) { const k = Math.min(d, step) / d; p.x += dx * k; p.y += dy * k; meFaceWalk(p, dx, dy); }
       return d <= 0.05;
     };
-    // NOBODY IS STILL WALKING AT 48. Walking pace is the floor; whoever has further to go than the slices left simply goes
-    // quicker, which is what a player being waved off actually does.
-    const paceFor = (p, tx, ty, t) =>
-      Math.max(ME_SUB.step, Math.hypot(tx - p.x, ty - p.y) / Math.max(1, ME_SUB.max - t));
+    // NOBODY IS STILL ON HIS WAY AT `max`. His own pace is the floor; whoever has further to go than the slices left
+    // simply goes quicker, which is what a player being waved off actually does.
+    const paceFor = (w, tx, ty) =>
+      Math.max(w.step, Math.hypot(tx - w.p.x, ty - w.p.y) / Math.max(1, w.max - w.t));
     // The man walking off is not in s.players, so nothing else moves him -- which also means nothing
     // else maintains the position the renderer interpolates FROM. He needs it set here or he smears.
     for (const w of A.off) {
       w.t++; w.p._px = w.p.x; w.p._py = w.p.y;
-      const ty = w.park ? ME_SUB.park : ME_SUB.line;
-      toward(w.p, w.ex, ty, paceFor(w.p, w.ex, ty, w.t));
-      const gone = w.park ? w.p.y < ME_SUB.park + 1.4 : w.p.y > ME_SUB.gone;
-      if (gone || w.t >= ME_SUB.max) { w.p.y = ty; w.p._py = ty; w.p._px = w.p.x; w.done = 1; }
+      const [tx, ty] = w.to;
+      const there = toward(w.p, tx, ty, paceFor(w, tx, ty));
+      // There, he is drawn no longer; a man the engine still holds (hurt, sent off) goes back to where it keeps him.
+      if (there || w.t >= w.max) { const [fx, fy] = w.end || w.to; w.p.x = fx; w.p.y = fy; w.p._px = fx; w.p._py = fy; w.done = 1; }
     }
     A.off = A.off.filter(w => !w.done);
   };
@@ -7508,7 +8291,7 @@ export default function App() {
     // pace is the floor; the deadline only ever speeds a man up. Pass left = 999 for a walk that
     // takes as long as it takes.
     const k = Math.min(d, Math.max(pace, d / Math.max(1, left))) / d;
-    q.x += dx * k; q.y += dy * k; q.vx = 0; q.vy = 0;
+    q.x += dx * k; q.y += dy * k; q.vx = 0; q.vy = 0; meFaceWalk(q, dx, dy);
     return false;
   };
   const mePkStep = (m) => {
@@ -7780,8 +8563,19 @@ export default function App() {
       // The engine stamps its own slice count (a substitution's _onAt), which runs ahead of the clock by every slice
       // celebrated: logged here so meTickMin can read one back as the clock had it.
       if (clk < 1) (m.lagLog || (m.lagLog = [])).push([m.s.mePos.tick, m.s.mePos.tick - m.t]);
-      if (!m.fast) { meSubScan(m); meSubStep(m); meBenchStep(m); }
-      m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
+      if (!m.fast) { meSubScan(m); meSubStep(m); meBenchStep(m); meTlStep(m.s, m.out, m.tl || (m.tl = meTlInit(m.s, m.out))); }
+      else m.tl = null;                                   // unwatched, the touchlines are not drawn: they start again in place
+      // THE EFFECTS of this slice (meFxMake): on the match's own clock for the live pitch, and on the tape's frame for
+      // a replay or a saved GIF. Not while the rest of a match is being simulated unseen.
+      let fxNew = null, evNew = null;
+      // The passes, headers and shots of the slice, kept on its frame whatever the speed, for the goal cards' drawing of a
+      // move (GoalReplay): the effects above are made only when the match is watched.
+      if (m.out.fx && m.out.fx.length) {
+        for (const e of m.out.fx) if (e.k === "pass" || e.k === "head" || e.k === "shot") (evNew = evNew || []).push({ k: e.k, side: e.side, x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1 });
+        if (!m.fast) fxNew = meFxMake(m.s, m.out.fx, m); m.out.fx.length = 0; }
+      if (fxNew && fxNew.length) { const t0 = m.s.mePos.tick - 0.5; m.fx = (m.fx || []).filter(e => t0 - e.t < 20); for (const e of fxNew) m.fx.push({ ...e, t: t0 }); }
+      { const snap = meSnap(m.s, m.tl); if (fxNew && fxNew.length) snap.fx = fxNew; if (evNew) snap.ev = evNew; m.tape.push(snap); } if (m.tape.length > ME_TAPE) m.tape.shift();
+      m.s.mePos._rec = 1;                                 // keep the ball's path inside each slice, for the replay
       // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
       // disagree with itself. Breaks out of the slice loop so the freeze lands on the instant it went
       // in, not several slices into the restart.
@@ -7789,7 +8583,6 @@ export default function App() {
         const side = m.out.goals.home !== m.gH ? "home" : "away";
         m.gH = m.out.goals.home; m.gA = m.out.goals.away;
         meCelebrate(m, side);
-        if (m.cel) break;
       }
       // The interval, taken at the first dead ball at or after the halfway point rather than in the
       // middle of a move -- which is how a referee does it too.
@@ -7850,7 +8643,7 @@ export default function App() {
     // Asking to skip to the end is asking for a result, not for theatre. Clips are still cut -- the
     // highlights are built from them -- but no replay is staged, and any replay already up is
     // dropped, or the guard at the top of meStep would spin this loop against a frozen match.
-    m.fast = true; m.cel = null;
+    m.fast = true; m.cel = null; meCelStop();
     // Mid-shootout, "skip" means finish the kicks, not abandon them: hand the remaining rota back
     // to the one-call version and take its number.
     if (m.pk) { const p = m.pk; m.pk = null;
@@ -7869,14 +8662,8 @@ export default function App() {
     setMeRunning(true);
     meAcc.current = 0;
     meTimer.current = setInterval(() => {
-      // A goal replay owns the clock while it is up, and it advances on the WALL clock: a replay has
-      // to look the same at quarter pace as it does at four times, because it is television rather
-      // than football. Match time does not move here at all.
-      const mc = meRef.current;
-      if (mc?.cel) { const i0 = mc.cel.i, d0 = mc.cel.done;
-        meCelStep(mc);
-        if (!mc.cel.done || mc.cel.i !== i0 || mc.cel.done !== d0) setMeFrame(f => f + 1);
-        return; }
+      // A replay that is open has its own clock (meCelRun); the match waits for it.
+      if (meRef.current?.cel) return;
       // Carry the fraction over between frames instead of rounding it away, so 0.25x really is
       // quarter pace rather than the fastest the frame rate happens to allow.
       meAcc.current += ME_SPEEDS[meSpeedIx] * 0.04 / ME_DT;
@@ -7893,7 +8680,7 @@ export default function App() {
     if (!uniActive) { if (meRunning) { meHeldUni.current = true; meStop(); } }
     else if (meHeldUni.current) { meHeldUni.current = false; if (meRef.current && !meRef.current.ftDone) mePlay(); }
   }, [uniActive]);
-  useEffect(() => () => { if (meTimer.current) clearInterval(meTimer.current); }, []);
+  useEffect(() => () => { if (meTimer.current) clearInterval(meTimer.current); if (meCelTimer.current) clearInterval(meCelTimer.current); }, []);
       // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
   // inside the 1350px scroll box are ever visible — mounting the rest is what made opening the
   // Roster tab lag. Render the visible slice plus overscan, and pad with spacer rows so the
@@ -7961,6 +8748,26 @@ export default function App() {
   // Season stats + rating changelog. null until the Registry, Play Match or the Editor (whose Trades shows values) is first
   // opened.
   const [pstats, setPstats] = useState(null);
+  // THE LONG INJURIES ON FILE (src/data/longout.js): every one read out of every filed season's stats sheet, each with the
+  // stretch of the calendar it covers, by the man's record and by his name; the latest return wins if he has two. `now`
+  // is how far the archive has got: the end of the latest season filed, which is what "still out" is measured against.
+  const longIdx = useMemo(() => {
+    const byId = new Map(), byName = new Map(); let now = 0;
+    for (const sn of pstats?.seasons || []) {
+      const place = longPlaceOfFile(sn.id.split("/")[0], sn.season);
+      if (!place) continue;
+      if (!sn.hist) now = Math.max(now, place.c * LONG_YEAR + LONG_SLOTS.slice(0, place.slot + 1).reduce((a, x) => a + x.w, 0));
+      for (const r of sn.long || []) {
+        const sev = ME_INJURY.find(v => v.id === r.sev), span = longSpan(sev, place, r.at, r.id || r.name + "|" + r.team);
+        if (!span) continue;
+        const e = { ...r, label: sev.part[0].toUpperCase() + sev.part.slice(1) + " " + sev.label, span, place, comp: sn.comp, season: sn.season };
+        const keep = (M, k) => { const o = M.get(k); if (!o || o.span.to < span.to) M.set(k, e); };
+        if (r.id) keep(byId, r.id);
+        keep(byName, r.name.toLowerCase());
+      }
+    }
+    return { byId, byName, now, of: (rid, name) => (rid && byId.get(rid)) || (name ? byName.get(String(name).toLowerCase()) : null) || null };
+  }, [pstats]);
   useEffect(() => {
     if ((tab !== "leagues" && tab !== "live" && tab !== "editor") || pstats) return;
     let dead = false;
@@ -7981,7 +8788,7 @@ export default function App() {
         const yr = m[4] ? +m[4] : pstatsYear(m[3]);
         seasons.push({ id: f, md: mdFiles.has(f.replace(/\.tsv$/i, "")), comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
                        season: m[4] || (m[2] + "/" + m[3]),
-                       ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1), boards: parseStatBoards(text) });
+                       ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1), boards: parseStatBoards(text), long: parseLongBlock(text) });
       }));
       if (dead) return;
       for (const base of mdFiles) {
@@ -8722,7 +9529,10 @@ export default function App() {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, fullName:p.fullName, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, mins: p.mins||0, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, passOk: p.passOk||0, prog: p.prog||0, cc: p.cc||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, hurt: p.hurt||0, passOk: p.passOk||0, prog: p.prog||0, cc: p.cc||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina,
+          // THE DIAGNOSIS. It was dropped here, so a match played live and imported gave its injured man one to five games
+          // at random whatever he had, and a long injury from it never reached the season's sheet.
+          injSev: p.injSev, injPart: p.injPart, injLen: p.injLen };
       });
       return entries;
     };
@@ -8778,7 +9588,7 @@ export default function App() {
         for (const [k, v] of Object.entries(entries)) {
           const d = {matches:v.matches||0,subApp:v.subApp||0,mins:v.mins||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,prog:v.prog||0,cc:v.cc||0,defActs:v.defActs||0,saves:v.saves||0};
           if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
-          if (v.inj) { const sev = v.injSev ? ME_INJURY.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
+          if (v.inj) { const sev = v.injSev ? ME_INJURY.find(s => s.id === v.injSev) : null; d.injOut = v.injLen ? v.injLen : sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
         }
         return diffs;
@@ -8813,7 +9623,12 @@ export default function App() {
           // yellow-triggered portion of the ban too, not just any red-card portion.
           if (tConfig.suspensions !== false) d.suspended += ycSuspGames(prevYc, next[k].yellows);
           if (d.reds || d.suspended) { next[k].reds = (next[k].reds||0) + d.reds; next[k].suspended = (next[k].suspended||0) + d.suspended; }
-          if (d.injOut) { next[k].injOut = (next[k].injOut||0) + d.injOut; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
+          if (d.injOut) { next[k].injOut = (next[k].injOut||0) + d.injOut; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart;
+            next[k].injAt = next[k].mins; next[k].injLen = d.injOut; }      // for his first match back (managerSelect)
+          // PLAYED ON HURT (engine/injury.ts): doubtful for the next one, until he has played a minute since (managerSelect).
+          if (v.hurt && !v.inj) next[k].hurtAt = next[k].mins;
+          // A LONG ONE (src/data/longout.js): kept with how far into his side's matches it came, for the season's stats sheet.
+          if (v.inj && ME_INJURY.find(q => q.id === v.injSev)?.long) { next[k].longSev = v.injSev; next[k].longApps = (next[k].matches || 0) + (next[k].subApp || 0); }
           if (tConfig.staminaCarry && v.stamina != null) next[k].stamina = staminaRecoverFrom(v.stamina);
           if (tConfig.staminaCarry) next[k].consecutiveStarts = d.matches > 0 ? (next[k].consecutiveStarts||0) + 1 : 0;
         }
@@ -8990,16 +9805,15 @@ export default function App() {
     let liveIsKO = false, liveIsFinal = false, liveIsTP = false, liveRemH = 0, liveRemA = 0;
     if (target.type === "group") {
       const g = tGroups[target.gi];
-      const qc = tQualLine;
-      liveRemH = g.schedule.slice(target.ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === homeTeam.name || x.away.name === homeTeam.name)).length, 0) - 1;
-      liveRemA = g.schedule.slice(target.ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === awayTeam.name || x.away.name === awayTeam.name)).length, 0) - 1;
-      homeStakes = computeGroupUrg(g.standings, homeTeam.name, qc, liveRemH);
-      awayStakes = computeGroupUrg(g.standings, awayTeam.name, qc, liveRemA);
+      liveRemH = groupRemAfter(g, target.ri, homeTeam.name, tConfig);
+      liveRemA = groupRemAfter(g, target.ri, awayTeam.name, tConfig);
+      homeStakes = computeGroupStakes(g.standings, homeTeam.name, tConfig.qualZones, liveRemH, tStakeOpts);
+      awayStakes = computeGroupStakes(g.standings, awayTeam.name, tConfig.qualZones, liveRemA, tStakeOpts);
       homeHor = fixtureHorizon(g.schedule, target.ri, homeTeam.name);
       awayHor = fixtureHorizon(g.schedule, target.ri, awayTeam.name);
       homeNextOpp = homeHor[0]?.skill ?? null;
       awayNextOpp = awayHor[0]?.skill ?? null;
-      liveTotal = g.schedule.length;
+      liveTotal = tConfig.matchFormat === "swiss" ? Math.max(g.schedule.length, +tConfig.swissRounds || 0) : g.schedule.length;
     } else {
       liveIsKO = true;
       const bk = target.bracket || (target.tp ? "tp" : "wb");
@@ -9033,7 +9847,8 @@ export default function App() {
                                          bench: sq.bench.map(p => ({ ...p, ovr: f(p) })) });
     return { vc, isL2, liveHId, liveAId, homeAdv, venue, forceResult, startScore,
              squads: { home: shiftSq(hSquad, shiftFor(hSquad, liveHId)), away: shiftSq(aSquad, shiftFor(aSquad, liveAId)) },
-             matchUrg: { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 } };
+             matchUrg: { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0,
+                         ...lastMeeting(tGroups, tKO, teamById(liveHId).name, teamById(liveAId).name) } };
   };
 
   const tConfirmPlayLive = (target) => {
@@ -9284,6 +10099,14 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", back);
   }, [isEditor, loadRequests]);
   const locks = useMemo(() => new Set(requests.flatMap(r => r.locks || [])), [requests]);
+  // THE ACTIVITY LOG (src/data/activity.js): every save that put something live, newest first, read again whenever the
+  // requests are (a save or an answer has just landed).
+  const [activity, setActivity] = useState([]);
+  const [actBusy, setActBusy] = useState(null);                 // the entry whose undo is on its way
+  const [actMsg, setActMsg] = useState({});                     // why an undo was refused, by entry
+  const loadActivity = useCallback(() => fetch(`${REGISTRY}/activity`).then(r => (r.ok ? r.json() : null))
+    .then(a => { if (Array.isArray(a)) setActivity(a); }).catch(() => {}), []);
+  useEffect(() => { if (isEditor) loadActivity(); }, [isEditor, requests, loadActivity]);
   // ── The record editor ──
   // The cart, the player or team in an edit dialog, and saving. The cart is laid over everything at load; a change made
   // now rebuilds the teams it touches exactly as the load builds them, so nothing waits for a reload.
@@ -9500,6 +10323,20 @@ export default function App() {
     } catch (e) { const why = String(e?.message || e); setReqMsg(m => ({ ...m, ...Object.fromEntries(answers.map(a => [a.id, m[a.id] || why])) })); }
     finally { setReqRun(null); }
   };
+  // UNDO (src/data/activity.js): a save in the log taken back, while nothing it touched has changed since.
+  const undoEntry = async (e) => {
+    if (actBusy || !session) return;
+    setActBusy(e.id); setActMsg(m => ({ ...m, [e.id]: null }));
+    try {
+      const res = await authed(`/activity/${e.id}`, { action: "undo" }), data = await res.json().catch(() => ({}));
+      if (res.status === 401) { signOut(); return; }
+      if (res.status === 404 && !data.errors) { setActMsg(m => ({ ...m, [e.id]: "The Registry Server Needs Its Update" })); return; }
+      if (!res.ok) { setActMsg(m => ({ ...m, [e.id]: (data.errors || [data.error || `The registry answered ${res.status}`]).join(" ") })); loadActivity(); return; }
+      if (data.apply) showRecords(applyDraft(landed(data.apply), draft));
+      if (Array.isArray(data.activity)) setActivity(data.activity); else loadActivity();
+    } catch (err) { setActMsg(m => ({ ...m, [e.id]: String(err?.message || err) })); }
+    finally { setActBusy(null); }
+  };
   // ONE CHANGE as the cart and the requests show it, before and after. A squad shows who came in, who left, and each man
   // whose slot changed, read against the formation the team ends up in.
   const renderChange = (c, formationAfter) => {
@@ -9546,8 +10383,8 @@ export default function App() {
     const to = Array.isArray(c.to) ? c.to : [], from = Array.isArray(c.from) ? c.from : [];
     const add = to.filter(x => !from.includes(x)), rem = from.filter(x => !to.includes(x));
     return (<span className="ux-chg">
-      {add.map(id => <span key={"+" + id} className="ux-chg-bd" data-trait={id}><b className="ux-chg-up">+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
-      {rem.map(id => <span key={"-" + id} className="ux-chg-bd ux-chg-o" data-trait={id}><b className="ux-chg-dn">&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
+      {add.map(id => <span key={"+" + id} className="ux-chg-bd" data-trait={id}><b className="ux-chg-up">+</b><BadgeIcon id={id} size={18} />{badgeOf(id)?.name}</span>)}
+      {rem.map(id => <span key={"-" + id} className="ux-chg-bd ux-chg-o" data-trait={id}><b className="ux-chg-dn">&#8722;</b><BadgeIcon id={id} size={18} /><s>{badgeOf(id)?.name}</s></span>)}
     </span>);
   };
   // The per-season stats table: the six boards merged to a row per player, every recorded stat a
@@ -9901,13 +10738,14 @@ export default function App() {
     // Entries recorded before fullName was kept resolve it off the squads, inside the team, the
     // same way the leaderboards do — an abbreviated name must never reach the archive again.
     const full = new Map();
-    const grab = (tm) => tm?.squad?.forEach(q => { if (q.fullName) full.set(tm.name + "|" + q.name, q.fullName); });
+    const rids = new Map();
+    const grab = (tm) => tm?.squad?.forEach(q => { if (q.fullName) full.set(tm.name + "|" + q.name, q.fullName); if (q.rid) rids.set(tm.name + "|" + q.name, q.rid); });
     tGroups.forEach(g => g.teams?.forEach(grab));
     if (tKO) { (tKO.rounds || []).concat(tKO.losers || []).forEach(r => r.matches?.forEach(m => { grab(m.home); grab(m.away); }));
       [tKO.thirdPlace, tKO.grandFinal, tKO.reset].forEach(m => { if (m) { grab(m.home); grab(m.away); } }); }
     const enriched = {};
     for (const [k, v] of Object.entries(tPlayerStats))
-      enriched[k] = v.fullName ? v : { ...v, fullName: full.get(v.team + "|" + v.name) };
+      enriched[k] = { ...v, fullName: v.fullName || full.get(v.team + "|" + v.name), rid: rids.get(v.team + "|" + v.name) };
     dlText(`${tSlotName()} Player Stats.tsv`, buildSeasonStatsTsv(enriched), "text/tab-separated-values;charset=utf-8");
   };
   const slotExport = (id) => {
@@ -10021,15 +10859,8 @@ export default function App() {
   const tUseZones = tHasKO && zonesHaveAdvance(qz);
   const tKoTeams = tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length : tUseZones ? countKOTeamsFromZones(tConfig.qualZones, tConfig.numGroups) : tConfig.numGroups * tConfig.advPerGroup;
   const tAdvOk = tConfig.mode === "single" || tKoTeams >= 2;
-  // THE QUALIFYING LINE a side measures its group match against (computeGroupUrg): how many places from the top go through,
-  // read off the qualification zones that actually send them through, or, with no knockout, the first zone from the top (a
-  // champion's place). The through-per-group number counts only where no zone sends anybody through.
-  const tQualLine = (() => {
-    const top = qz.filter(z => z.anchor === "top" && (tUseZones ? z.type === "advance" : true)).sort((a, b) => (+a.from || 0) - (+b.from || 0));
-    if (!tUseZones) return top.length && +top[0].from === 1 ? Math.max(1, +top[0].to || 1) : (tHasKO ? tConfig.advPerGroup || 1 : 1);
-    let k = 0; for (const z of top) { if ((+z.from || 0) > k + 1) break; k = Math.max(k, +z.to || 0); }
-    return k || tConfig.advPerGroup || 1;
-  })();
+  // What a side's place in its table is worth (computeGroupStakes): every line between two zones, not the top one alone.
+  const tStakeOpts = { pre: tConfig.preQualified || [], koFollows: tHasKO, useZones: tUseZones, advPerGroup: tConfig.advPerGroup };
   const tKoValid = tKoTeams >= 2;
   const tGroupsOk = tConfig.numGroups >= 1 && tConfig.numGroups <= 26;
   // Pots are configured on the draw screen now, and validated there by running the solver. A number
@@ -10220,7 +11051,8 @@ export default function App() {
       // PER MAN. This took the FIRST injured player's lay-off and gave it to everybody hurt in the
       // match, and recorded only his diagnosis -- so two injuries in one game came out as one
       // knee and one guess. A torn hamstring and a bruised foot are not the same number of weeks.
-      const injDurOf = (p) => { const sev = ME_INJURY.find(v => v.id === p.injSev);
+      // (The engine settles it when he goes off, engine/injury.ts injLen, so the full-time screen said the same number.)
+      const injDurOf = (p) => { if (p.injLen) return p.injLen; const sev = ME_INJURY.find(v => v.id === p.injSev);
         if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1));
         const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; };
       const staminaOf = {};
@@ -10242,6 +11074,7 @@ export default function App() {
         d.saves += p.saves || 0;
         if (p.rc) { d.reds++; if (tConfig.suspensions !== false) d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
         if (p.inj) d.injOut += injDurOf(p);
+        else if (p.hurt) d.hurt = 1;
       });
       const bans = Object.entries(diffs)
         .filter(([, d]) => d.suspended || d.injOut)
@@ -10270,6 +11103,8 @@ export default function App() {
           next[k].reds = (next[k].reds||0) + d.reds;
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
+          if (d.injOut) { next[k].injAt = next[k].mins; next[k].injLen = d.injOut; }   // for his first match back (managerSelect)
+          if (d.hurt) next[k].hurtAt = next[k].mins;                                    // played on hurt: doubtful for the next one
           next[k].passOk = (next[k].passOk||0) + d.passOk;
           next[k].prog = (next[k].prog||0) + (d.prog||0);
           next[k].cc = (next[k].cc||0) + (d.cc||0);
@@ -10290,7 +11125,8 @@ export default function App() {
           teamObj.squad.forEach(p => { const k = keyOf(p.name); if (!diffs[k] && next[k]) next[k].consecutiveStarts = 0; });
         }
         for (const p of simPlayers) if (p.inj && p.injSev) {
-          const ik = keyOf(p.name); if (next[ik]) { next[ik].injSev = p.injSev; next[ik].injPart = p.injPart; } }
+          const ik = keyOf(p.name); if (next[ik]) { next[ik].injSev = p.injSev; next[ik].injPart = p.injPart;
+            if (ME_INJURY.find(q => q.id === p.injSev)?.long) { next[ik].longSev = p.injSev; next[ik].longApps = (next[ik].matches || 0) + (next[ik].subApp || 0); } } }
         return next;
       });
       // WHAT THIS RESULT DOES TO THE REST OF THE ROUND. One red and one injury per match was the
@@ -10389,11 +11225,41 @@ export default function App() {
     setTNotice("Rebuilt the table and the player stats from the results.");
   };
   // Who is out of a match: suspended or injured, once what the results being replaced had added is taken back off.
+  // LEFT OUT FOR A LONG INJURY ON FILE (longIdx; the Long Injuries switch in setup, on unless it is turned off). This
+  // competition is placed in the year by its name; a man misses the share of it his lay-off still covers, counted in
+  // his side's matches where the fixture list says how many there are, and the whole of it otherwise.
+  const tLongOut = useMemo(() => {
+    const out = new Map();
+    if (tConfig.longInjuries === false || (!longIdx.byId.size && !longIdx.byName.size)) return out;
+    const nameNow = String(tSlots.find(x => x.id === tActiveSlot)?.name || "").toLowerCase();
+    const place = longPlaceOfName(nameNow, icNow().getUTCFullYear());
+    if (!place) return out;
+    const teams = new Map();
+    const grab = (tm) => { if (tm?.name && tm.squad) teams.set(tm.name, tm); };
+    tGroups.forEach(g => g.teams?.forEach(grab));
+    if (tKO) { (tKO.rounds || []).concat(tKO.losers || []).forEach(r => r.matches?.forEach(m => { grab(m.home); grab(m.away); }));
+      [tKO.thirdPlace, tKO.grandFinal, tKO.reset].forEach(m => { if (m) { grab(m.home); grab(m.away); } }); }
+    const total = new Map();
+    if (tConfig.matchFormat === "roundRobin") tGroups.forEach(g => g.teams?.forEach(tm => total.set(tm.name, Math.max(0, (g.teams.length - 1) * (tConfig.rrLegs || 1)))));
+    const played = new Map();
+    for (const v of Object.values(tPlayerStats)) played.set(v.team, Math.max(played.get(v.team) || 0, (v.matches || 0) + (v.subApp || 0)));
+    for (const tm of teams.values()) for (const q of tm.squad) {
+      const e = longIdx.of(q.rid, q.fullName || q.name);
+      // (Not the season it happened in, played again: the competition's own injuries are its own matches' to count.)
+      if (!e || (e.place.c === place.c && e.place.slot === place.slot && e.comp && nameNow.includes(String(e.comp).toLowerCase()))) continue;
+      const miss = longMiss(e.span, place), n = total.get(tm.name) || 0;
+      if (miss <= 0) continue;
+      if (n ? (played.get(tm.name) || 0) < Math.ceil(miss * n - 1e-6) : miss > 0.25)
+        out.set(playerKey(tm.name, q.name), { name: q.fullName || q.name, team: tm.name, label: e.label });
+    }
+    return out;
+  }, [tConfig.longInjuries, tConfig.matchFormat, tConfig.rrLegs, longIdx, tSlots, tActiveSlot, tGroups, tKO, tPlayerStats]);
   const tUnavail = (backOff) => {
     const less = {};
     for (const d of backOff) if (d) for (const [k, x] of Object.entries(d)) { const e = less[k] || (less[k] = { s: 0, i: 0 }); e.s += x.suspended || 0; e.i += x.injOut || 0; }
     const out = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) if ((v.suspended || 0) - (less[k]?.s || 0) > 0 || (v.injOut || 0) - (less[k]?.i || 0) > 0) out.add(k);
+    for (const k of tLongOut.keys()) out.add(k);
     return out;
   };
   // A typed score's match, played once and its goals fitted to the score (fitToScore).
@@ -10594,7 +11460,7 @@ export default function App() {
       }
       const unavailSet = buildUnavail();
       const urgCache = {};
-      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const qc = tQualLine; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.home.name || x.away.name === m.home.name)).length, 0) - 1; const remA = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.away.name || x.away.name === m.away.name)).length, 0) - 1; urgCache[`${gi}_${mi}`] = { home: computeGroupUrg(g.standings, m.home.name, qc, remH), away: computeGroupUrg(g.standings, m.away.name, qc, remA), remH, remA }; }); });
+      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = groupRemAfter(g, ri, m.home.name, tConfig), remA = groupRemAfter(g, ri, m.away.name, tConfig); urgCache[`${gi}_${mi}`] = { home: computeGroupStakes(g.standings, m.home.name, tConfig.qualZones, remH, tStakeOpts), away: computeGroupStakes(g.standings, m.away.name, tConfig.qualZones, remA, tStakeOpts), remH, remA }; }); });
       // Form as it stood before this round, computed once per group: a matchday's fixtures are
       // simultaneous, so the first result of the round must not feed the last one's form.
       // PASS ONE: every fixture in the round becomes a job, and none of them is played yet. A
@@ -10605,11 +11471,11 @@ export default function App() {
         if (targetMi !== -1 && targetMi !== mi) return;
         const _ug = urgCache[`${gi}_${mi}`];
         const _hHor = fixtureHorizon(g.schedule, ri, m.home.name), _aHor = fixtureHorizon(g.schedule, ri, m.away.name);
-        const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: _hHor[0]?.skill ?? null, horizon: _hHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
-        const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
+        const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: _hHor[0]?.skill ?? null, horizon: _hHor, totalGames: tConfig.matchFormat === "swiss" ? Math.max(g.schedule.length, +tConfig.swissRounds || 0) : g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
+        const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: tConfig.matchFormat === "swiss" ? Math.max(g.schedule.length, +tConfig.swissRounds || 0) : g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
         slot.push(m);
-        jobs.push({ seed: jobSeed(baseSeed, `g_${gi}_${ri}_${mi}`), a: [m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
+        jobs.push({ seed: jobSeed(baseSeed, `g_${gi}_${ri}_${mi}`), a: [m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0, ...lastMeeting(ng, tKO, m.home.name, m.away.name) },
           { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] });
       }); });
 
@@ -10859,7 +11725,7 @@ export default function App() {
     const hCtx = { stakes: hStakes, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
-    const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
+    const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0, ...lastMeeting(tGroups, tKO, m.home.name, m.away.name) };
     if (tConfig.koLegs === 1 || oneLeg) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
@@ -11366,7 +12232,7 @@ export default function App() {
   const [docPage, setDocPage] = useState(null);          // the Documentation page open (the first when null)
   const [docOn, setDocOn] = useState(null);              // the section being read, lit in the contents
   // The Editor's state (its pages are drawn by renderUxEditor), here so the address can read it.
-  const [edSec, setEdSec] = useState("sheet");
+  const [edSec, setEdSec] = useState("home");
   const [edPick, setEdPick] = useState({});          // the record open on each page, by page
   const [edQ, setEdQ] = useState("");                // the rail's search
   const [edSel, setEdSel] = useState(null);          // the place picked on the pitch or bench, waiting for the one it swaps with
@@ -11409,11 +12275,25 @@ export default function App() {
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   // The sheet replaced the Teams, Players, Managers and Leagues pages; their forms are kept to review a request for a new
   // record, and the list form for Many. With neither open the editor is the sheet again.
-  useEffect(() => { if (!edNew && !["sheet", "trades", "requests", "draft"].includes(edSec)) setEdSec("sheet"); }, [edNew, edSec]);
+  useEffect(() => { if (!edNew && !["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(edSec)) setEdSec("home"); }, [edNew, edSec]);
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
   const [edMsg, setEdMsg] = useState("");             // why the last move could not be made
+  // THE EDITOR, REDESIGNED (DESIGN.md "The Editor, redesigned"): one's own side's page in Editing, and the desk.
+  const [ucEdit, setUcEdit] = useState(false);       // one's own side's page open for editing (it stays on from side to side)
+  const [ucPick, setUcPick] = useState(null);        // the place picked on it, its man's card beside the list
+  const [ucSwap, setUcSwap] = useState(null);        // Swap: the place waiting for the one it changes with
+  const [ucType, setUcType] = useState(null);        // a name being typed into an open place: { i, v }
+  const [ucFrom, setUcFrom] = useState(null);        // an open place filling from Free Agents, My Clubs or Nationals: { i, src, q }
+  const [ucFill, setUcFill] = useState(null);        // Fill Open Places: { text, amin, amax, mode }
+  const [ucCall, setUcCall] = useState(null);        // a call-up waiting for who makes way: { id, k, i }
+  const [ucDet, setUcDet] = useState(null);          // a profile section being changed: { sec, ... }
+  const [ucPos, setUcPos] = useState(null);          // positions being changed or asked for: { id, a, b }
+  const ucDragRef = useRef(null), ucFillRef = useRef({ key: null, men: [] });
+  const [edActMine, setEdActMine] = useState(false);  // Activity: one's own saves only
+  const [inbPick, setInbPick] = useState(null);      // the Inbox's open save
+  const [inbClub, setInbClub] = useState(null);      // the club previewed beside it
   const [edCupNew, setEdCupNew] = useState(null);    // the league whose new cup is being named in place
   const [routeKick, setRouteKick] = useState(0);         // bumped by every address applied
   const routePend = useRef(null), routeReplace = useRef(true), routeBoot = useRef(false);
@@ -11532,9 +12412,10 @@ export default function App() {
         else if (lb) { setTPage("open"); setTView("stats"); setTPsSort({ k: lb === "rating" ? "avg" : lb, asc: false }); }
         else tOpenBySlug(s1, T_VIEW_OF_SLUG[(segs[2] || "").toLowerCase()] || null);
       }
-      if (t === "docs") { const pg = DOCS.find(p => p.id === (segs[1] || "").toLowerCase()), id = pg && segs[2] ? segs[2].toLowerCase() : null;
+      if (t === "docs") { const p1 = (segs[1] || "").toLowerCase(), s2 = (segs[2] || "").toLowerCase(), has = (p) => p.sections.some(x => x.id === s2);
+        const named = DOCS.find(p => p.id === (DOC_MOVED[p1] || p1)), pg = s2 && !(named && has(named)) ? DOCS.find(has) || named : named, id = pg && s2 && has(pg) ? s2 : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["sheet", "trades", "requests", "draft"].includes(s) ? s : "sheet"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(s) ? (s === "requests" ? "inbox" : s) : "home"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -11773,6 +12654,8 @@ export default function App() {
   }, [teams]);
   const regNationBy = useMemo(() => new Map(regNations.map(n => [n.code, n])), [regNations]);
   const regTeamObj = reg.team ? teams.find(x => x.id === reg.team) || null : null;
+  // A side's page left: what was picked on it goes (Editing stays on, side to side).
+  useEffect(() => { setUcPick(null); setUcSwap(null); setUcType(null); setUcFrom(null); setUcDet(null); setUcPos(null); setUcFill(null); }, [regTeamObj?.rkey]);
   // A man's badges, off the squad entry the records put them on.
   const badgesByName = useMemo(() => { const m = new Map();
     for (const t of teams) for (const e of t.squad || []) if (e?.badges?.length) m.set(e.fullName || e.name, e.badges);
@@ -12551,8 +13434,9 @@ export default function App() {
     for (const s of pstats?.seasons || []) if (Object.keys(s.boards || {}).length) { const y = uxYearOf(s); by.set(y, (by.get(y) || 0) + 1); }
     return [...by].sort((a, b) => b[0] - a[0]);
   }, [pstats]);
-  // A year whose leagues are still being filed reads short, so the default is the newest year most of the archive has.
-  const uxYear = uxLeadYear ?? (() => { const top = Math.max(0, ...uxYears.map(([, n]) => n)); return (uxYears.find(([, n]) => n >= top * 0.8) || [null])[0]; })();
+  // The default is the newest year on file, however little of it is played (Moukden and Kirin, 24 November 2026: "Advance
+  // the leaders to 1936").
+  const uxYear = uxLeadYear ?? (uxYears[0]?.[0] ?? null);
   const uxClubOf = useMemo(() => {
     const m = new Map();
     for (const t of teams) if (!isIntlLeague(t.league) && t.code) { m.set(t.league + "|" + t.code, t); if (!m.has(t.code)) m.set(t.code, t); }
@@ -12577,7 +13461,10 @@ export default function App() {
       }
     }
     const all = [...tot.values()];
-    const val = (a, k) => k === "RTG" ? (a.rg >= UX_RTG_MIN_GP ? a.rs / a.rg : -1) : k === "GA" ? a.G + a.A : k === "GP" ? a.gp : a[k];
+    // A year only a tournament into has nobody at UX_RTG_MIN_GP games, so the bar is then half the most anyone has played
+    // (a World Cup's seven: four), and an average rating always has a man behind it.
+    const minGp = uxRtgMinOf(all.map(a => a.rg));
+    const val = (a, k) => k === "RTG" ? (a.rg >= minGp ? a.rs / a.rg : -1) : k === "GA" ? a.G + a.A : k === "GP" ? a.gp : a[k];
     return UX_LEADERS.map(([k, label]) => {
       let best = null; for (const a of all) if (!best || val(a, k) > val(best, k)) best = a;
       return best && { k, label, a: best, v: k === "RTG" ? val(best, k).toFixed(2) : val(best, k) };
@@ -12668,6 +13555,8 @@ export default function App() {
     for (const a of tot.values()) a.RTG = a.rg ? a.rs / a.rg : null;
     return tot;
   }, [uxScreen, pstats, uxPsY, uxClubOf]);
+  // The Season view's bar for an average rating, the way Leaders sets it.
+  const uxPsMinGp = useMemo(() => uxRtgMinOf([...uxPsSeason.values()].map(a => a.rg)), [uxPsSeason]);
   // The rows: the world's players, or the Hall of Fame's when the Club filter asks for it, filtered and then sorted. A
   // figure a man has too few games for (an average rating) sorts below the rest either way, as the old list did.
   const uxPsRows = useMemo(() => {
@@ -12686,7 +13575,7 @@ export default function App() {
       if (lf && !hof && !p.clubs.some(c => c.league === lf)) continue;
       const f = uxPsFacts.get(nm) || null;
       if (!uxAgeOk(uxPsAge, f?.age)) continue;
-      if (uxPsTrait && !(f?.badges || []).includes(uxPsTrait)) continue;
+      if (uxPsTrait && !(f?.badges || []).some(k => traitId(k) === uxPsTrait)) continue;
       const se = uxPsSeason.get(key) || null, c = uxCareers.get(key) || null;
       if (view === "season" && !se) continue;
       if (view === "career" && !c?.gp) continue;
@@ -12697,7 +13586,7 @@ export default function App() {
     }
     const { k, asc } = uxPsSort, dir = asc ? 1 : -1;
     const fig = (r) => (view === "season" ? r.se : r.c);
-    const ok = (r) => (view === "season" ? (r.se?.rg || 0) >= UX_RTG_MIN_GP : (r.c?.rg || 0) >= careerRtg.minGp) ? 1 : 0;
+    const ok = (r) => (view === "season" ? (r.se?.rg || 0) >= uxPsMinGp : (r.c?.rg || 0) >= careerRtg.minGp) ? 1 : 0;
     const val = (r) => k === "name" ? r.disp : k === "pos" ? String(r.p.pos || "").split("/")[0] : k === "age" ? r.f?.age
       : k === "nat" ? r.natT?.name || r.p.nationality || null : k === "club" ? (view === "season" ? r.se?.club : r.clubT)?.name || null
       : k === "ovr" ? (r.f ? r.f.ovr : r.p.ovr) : k === "value" ? r.f?.value : k === "yrs" ? r.yrs : k === "avg" ? fig(r)?.RTG ?? null
@@ -12712,7 +13601,7 @@ export default function App() {
     });
     return out;
   }, [uxScreen, pstats, playerIndex, playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsTrait, uxPsView, uxPsSort,
-      uxPsFacts, uxPsSeason, uxCareers, careerRtg, teams, teamByName, natTeamByCode]);
+      uxPsFacts, uxPsSeason, uxPsMinGp, uxCareers, careerRtg, teams, teamByName, natTeamByCode]);
   // A new list starts at its top; coming back to the page (Back from a player) finds it where it was left.
   useEffect(() => { if (uxPsBox.current) uxPsBox.current.scrollTop = 0; setUxPsTop(0); },
     [playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsTrait, uxPsView, uxPsY, uxPsSort, world]);
@@ -13033,7 +13922,7 @@ export default function App() {
 
   const renderUxRequests = () => {
     const forMe = reqFor.filter(r => !reqMine.includes(r));
-    const toPage = () => { closeInbox(); setTab("editor"); setEdSec("requests"); };
+    const toPage = () => { closeInbox(); setTab("editor"); setEdSec("inbox"); };
     const section = (title, list, mine) => list.length > 0 && (
       <div role="group" aria-label={title}>
         <div className="ux-drop-sec">{title}<b style={mono}>{list.length}</b></div>
@@ -13119,23 +14008,14 @@ export default function App() {
   // A line of facts with a dot between them.
   const edDots = (...xs) => xs.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && <span className="ux-ed-dot">&middot;</span>}{x}</Fragment>);
   // The national sides as a side picker's choices, and the sides this person may send a man to.
-  // THE TRAITS, PICKED FROM A LIST (user, 11 October 2026): under each tier every trait by its art and name, ticked when
-  // the man carries it; each row toggles, and hovering one shows its card. toggle(id, on) gives or takes it. Above them
-  // the points spent of the budget his rating gives him (badges.js: a trait costs its pips). With limit (an editor's new
-  // player) a trait he cannot afford, or one past the most he may carry, cannot be ticked.
-  const edTraitList = (sel, toggle, ovr = null, limit = false) => {
+  // THE TRAITS, PICKED FROM A LIST (user, 11 October 2026; by level, 22 November 2026): TraitPicker under the points
+  // spent of the budget his rating gives him (badges.js: a trait costs its level, a flaw gives its level back).
+  const edTraitList = (sel, setKeys, ovr = null, limit = false) => {
     const ids = sel || [], o = Math.round(+ovr) || 0, budget = budgetOf(o), spent = traitCost(ids);
-    const fits = (id) => ids.includes(id) || (ids.length < maxTraitsOf(o) && spent + PRICE[BADGE_BY_ID[id].tier] <= budget);
     return (
       <div className="ux-ed-tpanel">
         <div className={"ux-ed-tbud" + (spent > budget ? " ux-over" : "")}><span>Points</span><b style={mono}>{spent}</b><span>Of</span><b style={mono}>{budget}</b></div>
-        <div className="ux-ed-tlist">{["gold", "silver", "bronze"].map(tier => (
-          <div key={tier} className="ux-ed-tcol" role="group" aria-label={TIER_LBL[tier] + " Traits"}>
-            <div className={"ux-ed-th ux-" + tier}>{TIER_LBL[tier]}</div>
-            {BADGES.filter(b => b.tier === tier).map(b => { const on = ids.includes(b.id);
-              return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-tpick" + (on ? " ux-on" : "")} aria-pressed={on}
-                disabled={limit && !fits(b.id)} onClick={() => toggle(b.id, on)}><BadgeIcon id={b.id} size={20} /><span>{b.name}</span><i className="ux-ed-tbox" aria-hidden="true">{uxIcon("check", "ux-xs")}</i></button>; })}
-          </div>))}</div>
+        <TraitPicker keys={ids} onSet={setKeys} ovr={o} limit={limit} />
       </div>);
   };
   const edNatChoices = (all, codes = scope.nations || []) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || codes.includes(c))
@@ -13403,7 +14283,7 @@ export default function App() {
               {fact("Rating", uxBadge(p.ovr), <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} defaultValue={p.ovr} aria-label="Rating" style={mono}
                 onBlur={e => { const v = Math.round(+e.target.value); if (v >= 25 && v <= 99 && v !== p.ovr) setP({ ovr: v }); }} />)}
               {fact("Traits", badgeOrder(p.badges).length ? <span className="ux-ed-traits">{badgeOrder(p.badges).map(b => <BadgeIcon key={b} id={b} size={20} />)}</span> : "None",
-                edTraitList(p.badges, (id, on) => setP({ badges: badgeOrder(on ? p.badges.filter(x => x !== id) : [...(p.badges || []), id]) }), p.ovr))}
+                edTraitList(p.badges, (ks) => setP({ badges: ks }), p.ovr))}
             </dl>))}
           {uxPanel("Sides", null, (
             <div className="ux-ed-sides">
@@ -13568,8 +14448,7 @@ export default function App() {
                   <td>{review && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + m.name}
                     onClick={() => upd({ list: list.filter((_, j) => j !== i), tsel: null })}>{uxIcon("close", "ux-s")}</button>}</td>
                 </tr>
-                {f.tsel === i && <tr className="ux-ed-bxrow"><td colSpan={8}>{edTraitList(m.badges, (id, on) => upd({ list: list.map((x, j) => (j === i
-                  ? { ...x, badges: on ? (x.badges || []).filter(y => y !== id) : [...(x.badges || []), id] } : x)) }), m.ovr, !overseer)}</td></tr>}
+                {f.tsel === i && <tr className="ux-ed-bxrow"><td colSpan={8}>{edTraitList(m.badges, (ks) => upd({ list: list.map((x, j) => (j === i ? { ...x, badges: ks } : x)) }), m.ovr, !overseer)}</td></tr>}
               </Fragment>))}</tbody></table>
               {!list.length && <div className="ux-empty-sm ux-ed-none">No Players Yet</div>}
             </div>
@@ -13638,7 +14517,7 @@ export default function App() {
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
               {k !== "teams" && field("Rating", <input className={"ux-ed-in ux-ed-num" + (cap != null && !edUnderCap(f.nat, f.ovr) ? " ux-need" : "")} type="number" min={25} max={cap != null ? cap - 1 : 99}
                 placeholder={overseer ? "25 To 99" : cap != null ? `Below ${cap}` : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
-              {k === "players" && field("Traits", edTraitList(f.badges, (id, on) => upd({ badges: on ? f.badges.filter(x => x !== id) : [...(f.badges || []), id] }), f.ovr, !overseer))}
+              {k === "players" && field("Traits", edTraitList(f.badges, (ks) => upd({ badges: ks }), f.ovr, !overseer))}
               {k === "teams" && <>
                 {(overseer || clubNations(scope).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer, clubNations(scope))} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
                 {field("League", sel("League", f.group, leagues.map(g => [g, g]), v => upd({ group: v })))}
@@ -14042,7 +14921,7 @@ export default function App() {
                 max={edCapOf(np.nat || nation) != null ? edCapOf(np.nat || nation) - 1 : 99} aria-label="Rating"
                 placeholder={overseer ? "25 To 99" : edCapOf(np.nat || nation) != null ? `Below ${edCapOf(np.nat || nation)}` : "Blank"}
                 value={np.ovr || ""} onChange={e => setNp({ ovr: e.target.value, auto: false })} style={mono} />)}
-              {field("Traits", edTraitList(np.badges, (id, on) => setNp({ badges: on ? np.badges.filter(x => x !== id) : [...(np.badges || []), id] }), np.ovr, !overseer))}
+              {field("Traits", edTraitList(np.badges, (ks) => setNp({ badges: ks }), np.ovr, !overseer))}
             </dl>
             <div className="ux-ed-npf">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
@@ -14708,7 +15587,7 @@ export default function App() {
   const [shFreeKind, setShFreeKind] = useState("p");     // the Free Agents panel's tab: players or managers
   const [shRowMenu, setShRowMenu] = useState(null);      // a club row's menu: { k, x, y, arm?, roll?, target? }
   // A New Player (one) or New Manager form belongs on the dock; a list of new players, a club and a league open full width.
-  useEffect(() => { if (edRev || !edNew || ["sheet", "trades", "requests", "draft"].includes(edSec)) return;
+  useEffect(() => { if (edRev || !edNew || ["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(edSec)) return;
     if ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers") { setShFormOpen(edNew.kind); setShFormEdit(null); setShDock("rec"); setEdSec("sheet"); } },
     [edRev, edNew, edSec]);
   const shOrder = useRef(new Map()), shGrid = useRef(null), shFlat = useRef([]), shRowNo = useRef(new Map());
@@ -15007,7 +15886,7 @@ export default function App() {
     shPut({ ...draft, new: [...shNew, { id: edUid(), what: "leagues", nation: code, name: "", tier: tiers.length ? Math.max(...tiers) + 1 : 1, cup: null, clubs: [] }] }); };
   const shSetNew = (id, patch) => shPut({ ...draft, new: shNew.map(n => (n.id === id ? { ...n, ...patch } : n)) });
   const shDropNew = (id) => shPut({ ...draft, new: shNew.filter(n => n.id !== id) });
-  // An edit to a side's cell. Code, ground, capacity and city are the overseer's to agree: an editor's change goes as a
+  // An edit to a side's cell. A code is the overseer's to agree (a ground, capacity and city go live): an editor's change goes as a
   // request (src/data/rules.js), shown in the cell beside what it has until he answers.
   const shCommit = (k, c, v) => {
     const T = shRowOf(k); if (!T || !shCan(k)) return; const val = String(v ?? "");
@@ -15030,7 +15909,7 @@ export default function App() {
   const shEditable = (k, c) => shCan(k) && ["name", "code", "formation", "tw", "home", "away", "city", "ground", "cap"].includes(c);
   // The men in a new club's places: an existing man by ID, or a new one made there.
   const shClubMan = (k, i) => { const x = shClubOf(k); const v = x?.c.squad?.[i]; return v && typeof v === "object" ? v : null; };
-  const SH_ASKED = new Set(["code", "ground", "cap", "city"]);
+  const SH_ASKED = new Set(["code"]);            // (a ground, capacity and city go live: 21 November 2026)
   // What changed in the cart for a side's column, and whether it waits on the overseer.
   const shChanged = (k, c) => { const p = draft.teams?.[k]; if (!p) return false;
     const f = { name: "name", code: "code", formation: "formation", tw: "timeWasting", mgr: "manager", home: "home", away: "away", city: "location", ground: "stadium", cap: "stadium" }[c];
@@ -15477,23 +16356,15 @@ export default function App() {
         {pi === 1 && <option value="">None</option>}{POSITIONS.map(x => <option key={x} value={x} disabled={own[1 - pi] === x}>{x}</option>)}</select>))}
       <button type="button" className="ux-btnreset ux-sh-done" onClick={() => setShRecEd(null)}>Done</button></span>);
   const shPosChips = (own) => (own.length ? own.map(p => <span key={p} className="ux-sh-posc" style={{ color: POS_CLR[p], ...mono }}>{p}</span>) : <span className="ux-dim">None</span>);
-  // His traits as chips; the overseer's Edit Traits opens every trait, two columns a tier, within what his rating affords.
+  // His traits as chips; the overseer's Edit Traits opens every trait by level (TraitPicker), within what his rating affords.
   const shTraits = (ids, ovr, set) => { const o = Math.round(+ovr) || 0, budget = budgetOf(o), spent = traitCost(ids || []);
-    const fits = (id) => (ids || []).includes(id) || ((ids || []).length < maxTraitsOf(o) && spent + PRICE[BADGE_BY_ID[id].tier] <= budget);
     return (
       <section className="ux-sh-sec">
         <div className="ux-sh-sech"><span>Traits</span><span className="ux-sh-pts">{set ? <><b style={mono}>{spent}</b> Of <b style={mono}>{budget}</b> Points</> : null}</span></div>
-        <div className="ux-sh-trl">{(ids || []).length ? badgeOrder(ids).map(b => <span key={b} className="ux-sh-trc" data-trait={b}><BadgeIcon id={b} size={18} />{BADGE_BY_ID[b]?.name}</span>)
+        <div className="ux-sh-trl">{(ids || []).length ? badgeOrder(ids).map(b => <span key={b} className="ux-sh-trc" data-trait={b}><BadgeIcon id={b} size={18} />{badgeOf(b)?.name}</span>)
           : <span className="ux-dim">None</span>}
           {set && <button type="button" className="ux-btnreset ux-sh-trb" aria-expanded={shTraitsOpen} onClick={() => setShTraitsOpen(v => !v)}>{shTraitsOpen ? "Close" : "Edit Traits"}</button>}</div>
-        {set && shTraitsOpen && (
-          <div className="ux-sh-trp">{["gold", "silver", "bronze"].map(tier => (
-            <Fragment key={tier}>
-              <div className={"ux-sh-trt ux-" + tier}>{TIER_LBL[tier]}</div>
-              {BADGES.filter(b => b.tier === tier).map(b => { const on = (ids || []).includes(b.id);
-                return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-sh-trx" + (on ? " ux-on" : "")} aria-pressed={on} disabled={!fits(b.id)}
-                  onClick={() => set(on ? ids.filter(x => x !== b.id) : badgeOrder([...(ids || []), b.id]))}><BadgeIcon id={b.id} size={18} /><span>{b.name}</span></button>; })}
-            </Fragment>))}</div>)}
+        {set && shTraitsOpen && <div className="ux-sh-trp"><TraitPicker keys={ids || []} onSet={set} ovr={o} limit /></div>}
       </section>); };
   // The new-record form, laid out as the dock's facts: everything the New Player and New Manager forms had. "new" is a
   // record being made (Add To Cart, Cancel); "edit" one already made (Done, Remove, Cancel).
@@ -15794,8 +16665,621 @@ export default function App() {
         {shRowMenu && shRowMenuPanel()}
       </div>);
   };
+  // ════ THE EDITOR, REDESIGNED (DESIGN.md "The Editor, redesigned", Moukden and Kirin, 21 November 2026: "Make it a
+  // completely user-facing feature-rich editor with very connected and navigable interface"). Edit where you read: one's
+  // own side's page takes its changes in place, its squad list taking names in its open places; the Editor is a desk of
+  // Home, the Inbox (Sent for an editor), Trades and Activity. Everything goes through the cart and its one Save. ════
+  // The sides someone keeps: their nations' national sides and clubs, and the clubs of nations whose clubs they were given;
+  // national sides first, then clubs by league tier and rating.
+  const edHomeSides = useMemo(() => {
+    const nats = new Set(scope.nations || []), clubs = new Set(clubNations(scope)), tier = new Map((curRecs.leagues || []).map(l => [l.nation + "|" + l.name, l.tier ?? 9]));
+    const mean = (t) => { const v = edSq(t).slice(0, 11).filter(Boolean).map(id => recNow(id)?.ovr).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+    return curRecs.teams.filter(t => (arterraOn || t.file !== "ARTERRA") && (isNational(t) ? nats.has(t.code) : clubs.has(t.nation)))
+      .sort((a, b) => (isNational(b) - isNational(a)) || (tier.get(a.nation + "|" + a.group) ?? 9) - (tier.get(b.nation + "|" + b.group) ?? 9)
+        || String(a.group || "").localeCompare(String(b.group || "")) || mean(b) - mean(a));
+  }, [curRecs, scope, arterraOn, draft]);
+  // A side's open places: empty, and no new man in the cart standing in them.
+  // (a place a request's new man waits for is not open either: he lands there when he is let in)
+  const ucOpen = (T) => { if (!T) return []; const k = teamKey(T), taken = shNewAt(k); return edSq(T).map((v, i) => (!v && !taken.has(i) && !reqWaitAt.has(k + "|" + i) ? i : -1)).filter(i => i >= 0); };
+  const ucRun = edHomeSides.filter(t => ucOpen(t).length > 0);
+  const ucGo = (k, edit = true) => { const tm = teamOfKey(k); if (!tm) return; setUcEdit(edit); openTeam(tm); };
+  // What a man is given in a list of new men: his own positions, else the place's; his age, else drawn in the range; his
+  // rating as typed, else by the mode picked: Club Level (the side's best starter at his position, which goes live) or
+  // none; Blank leaves every rating for the overseer.
+  const ucPosFor = (lab) => { const d = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab; return POSITIONS.includes(d) ? [d] : ["CM"]; };
+  // A line as Fill Open Places reads it: as the Sheet reads a man, and a bare number over 60 after a comma as his rating
+  // ("Quri Tupaq, 71"), since nobody is that age.
+  const ucLine = (s) => { const t = String(s || "").trim(); if (!t) return null;
+    const parts = t.split(","), n = parts.findIndex((x, i) => i > 0 && /^\s*\d+\s*$/.test(x) && +x > 60 && +x <= 99);
+    const line = n > 0 && !/^\(\d+\)/.test(t) ? `(${parts[n].trim()}) ${parts.filter((_, i) => i !== n).join(",")}` : t;
+    const r = readManLine(line); return r ? { ...r.man, bad: r.bad } : null; };
+  const ucMen = (T, lines, places, mode, amin, amax) => {
+    const k = teamKey(T), own = isNational(T) ? T.code : T.nation, lab = edLab(T), free = [...places], out = [], bad = [];
+    for (const raw of lines) { const p = ucLine(raw); if (!p) continue; if (p.bad.length) { bad.push(p); continue; }
+      if (!free.length) break;
+      const fit = p.pos.length ? (() => { let best = -1, c0 = Infinity; for (const i of free) { const c = posFitCost(p.pos, lab[i]); if (c < c0) { c0 = c; best = i; } } return best; })() : free[0];
+      free.splice(free.indexOf(fit), 1);
+      const pos = p.pos.length ? p.pos : ucPosFor(lab[fit]), age = p.age ?? (amin + Math.floor(Math.random() * (amax - amin + 1)));
+      // (a rating typed in the list is kept in Club Level too; only Blank drops it)
+      const ovr = mode === "blank" ? null : p.ovr ?? (mode === "level" ? clubLevel(T, pos, judge) : null);
+      const nat = p.nat && natTeamByCode.get(p.nat) ? p.nat : own;
+      out.push({ id: edUid(), what: "players", side: k, at: fit, name: p.name, nat, born: edBornFor(age), pos, ovr, ...(p.badges.length ? { badges: p.badges } : null) });
+    }
+    return { men: out, bad };
+  };
+  // Live or For Review, as the server will judge it (src/data/rules.js liveNewMan): the overseer's own always live.
+  const ucLive = (T, m) => overseer || liveNewMan(T, m, judge);
+  // Profile sections changed in place go through the Sheet's own commit, so a side's cells are kept the one way.
+  const ucCell = (k, c, v) => shCommit(k, c, v);
+
+  // ── THE CLUB PAGE, EDITING ──
+  const renderUxClubEdit = (t) => {
+    const k = t.rkey, T = edTeamRec(k);
+    if (!T) return renderUxClub(t);
+    const nt = isNational(T), sq = edSq(T), lab = edLab(T), staged = shNewAt(k), open = ucOpen(T), own = nt ? T.code : T.nation;
+    const nPlace = sq.length, pickId = ucPick != null ? sq[ucPick] : null, pickNew = ucPick != null && !pickId ? staged.get(ucPick) : null;
+    const myKeys = new Set(edHomeSides.map(teamKey));
+    const ageOfId = (id) => { const b = recNow(id)?.born; return b ? ageOf(b) : null; };
+    const valOf = (id) => (pstats && !veiled(id) ? trValueAll("player", id) : null);
+    const fitCost = (id, i) => posFitCost(ownOfId(id).length ? ownOfId(id) : [lab[i]], lab[i]);
+    // Moves, each one step into the cart: a man to another place (onto a man, the two change places), released, called up.
+    const moveTo = (i, j) => { const id = sq[i]; if (!id || i === j) return; shMovePlayer({ id, from: { k, i } }, k, j); setUcPick(j); setUcSwap(null); };
+    const toBench = (i) => { const id = sq[i]; if (!id || i >= 11) return;
+      const openB = sq.map((v, x) => (x >= 11 && !v && !staged.has(x) ? x : -1)).filter(x => x >= 0);
+      // Onto the bench, the best bench man for his place coming into the eleven.
+      const subs = sq.map((v, x) => (x >= 11 && v ? x : -1)).filter(x => x >= 0).sort((a, b) => fitCost(sq[a], i) - fitCost(sq[b], i) || (recNow(sq[b])?.ovr ?? 0) - (recNow(sq[a])?.ovr ?? 0));
+      if (subs.length) moveTo(i, subs[0]); else if (openB.length) shSay("Someone Has To Take His Place In The Eleven"); };
+    const release = (i) => { const id = sq[i]; if (!id) return; shRelease({ id, from: { k, i } }); setUcPick(null); };
+    const ntOf = (id) => curRecs.teams.find(x => isNational(x) && x.code === recNow(id)?.nat) || null;
+    const callUp = (i) => { const id = sq[i], N = ntOf(id); if (!N) return; const nk = teamKey(N), nsq = edSq(N);
+      if (nsq.includes(id)) return shSay("Already In The Squad");
+      const j = ucOpen(N)[0];
+      if (j != null) { shMovePlayer({ id, from: { k, i } }, nk, j); shSay(`Called Up To ${N.name.trim()}`); return; }
+      setUcCall({ id, k, i }); ucGo(nk); };
+    // A man typed into an open place, rated at the side's level unless a rating is typed; Enter goes on to the next open place.
+    const typeIn = (i, text) => { const { men, bad } = ucMen(T, [text], [i], ucLine(text)?.ovr != null ? "typed" : "level", nt ? 20 : 18, nt ? 32 : 32);
+      if (bad.length) { shSay(`${bad[0].name}: ${uxTitle(bad[0].bad[0])}`); return false; }
+      if (!men.length) return false;
+      shPut({ ...draft, new: [...shNew, { ...men[0], at: i }] }); return true; };
+    const nextOpen = (i) => open.find(x => x > i) ?? null;
+    // Free agents, men at one's other clubs, or for a national side its nationals, best fitting the place first.
+    const pool = (src, i, q) => { const f = edFold(q || ""), hit = (n) => !f || (" " + edFold(n)).includes(" " + f);
+      let ids;
+      if (nt) ids = curRecs.players.filter(p => !p.retired && p.nat === T.code && !sq.includes(p.id)).map(p => p.id);
+      else if (src === "fa") ids = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat))).map(p => p.id);
+      else ids = edHomeSides.filter(x => !isNational(x) && teamKey(x) !== k).flatMap(x => edSq(x).filter(Boolean));
+      return ids.filter(id => hit(recNow(id)?.name) && !edLockedMen.has("p:" + id)).sort((a, b) => fitCost(a, i) - fitCost(b, i) || (seen(b, recNow(b)?.ovr) ?? 0) - (seen(a, recNow(a)?.ovr) ?? 0)).slice(0, 40); };
+    const take = (id, i) => { const at = whereIs.get(id)?.club;
+      shMovePlayer({ id, from: !nt && at && at.key !== k ? { k: at.key, i: edSq(edTeamRec(at.key)).indexOf(id) } : { pool: nt ? "nat" : "fa" } }, k, i); setUcFrom(null); setUcPick(i); };
+    // The rows: the eleven, then the bench.
+    const tagNew = (n) => <span className="ux-uce-new">New</span>;
+    const row = (i) => {
+      const id = sq[i], n = staged.get(i), on = ucPick === i, swapOn = ucSwap != null, place = lab[i];
+      const common = { onDragOver: (e) => { if (ucDragRef.current != null) { e.preventDefault(); e.currentTarget.classList.add("ux-dropon"); } },
+        onDragLeave: (e) => e.currentTarget.classList.remove("ux-dropon"),
+        onDrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove("ux-dropon"); const from = ucDragRef.current; ucDragRef.current = null; if (from != null) moveTo(from, i); } };
+      if (id) { const r = recNow(id), nm = r?.name || id, oop = uxOop(ownOfId(id), place), ag = ageOfId(id), v = valOf(id), nat = r?.nat && r.nat !== own ? natTeamByCode.get(r.nat) : null;
+        return (
+        <tr key={i} {...common} className={"ux-uce-r" + (on ? " ux-on" : "") + (swapOn && ucSwap !== i ? " ux-uce-target" : "")} draggable={!edLockedMen.has("p:" + id)}
+          onDragStart={(e) => { ucDragRef.current = i; e.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => { ucDragRef.current = null; }}
+          onClick={() => { if (ucCall && nt) { shMovePlayer({ id: ucCall.id, from: { k: ucCall.k, i: ucCall.i } }, k, i); setUcCall(null); return; }
+            if (swapOn && ucSwap !== i) { moveTo(ucSwap, i); return; } setUcSwap(null); setUcPick(on ? null : i); }}>
+          <td><span className="ux-uce-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[i < 11 ? place : posOfId(id)] || POS_CLR[place] }}>{i < 11 ? place : place}</span></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(nm)} /></span>
+            {edLockedMen.has("p:" + id) && <span className="ux-uce-wait" title="Waiting On A Request">{uxIcon("lock", "ux-xs")}</span>}</div></td>
+          <td><div className="ux-sqtr">{traitsTop(seen(id, r?.badges) || []).map(b => <BadgeIcon key={b} id={b} size={14} />)}</div></td>
+          <td title={nat ? nat.name : undefined}><div className="ux-tc">{nat && <TeamCrest team={nat} size={16} />}</div></td>
+          <td className="ux-n" style={mono}>{ag ?? "–"}</td>
+          <td className="ux-c">{manBadge(id, r?.ovr)}</td>
+          <td className={"ux-n" + (v != null ? "" : " ux-dim")} style={mono}>{v != null ? moneyLabel(v) : "–"}</td>
+        </tr>); }
+      if (n) { const live = !n.batch && ucLive(T, n);
+        return (
+        <tr key={i} {...common} className={"ux-uce-r ux-uce-staged" + (on ? " ux-on" : "")} onClick={() => setUcPick(on ? null : i)}>
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[posList(n.pos)[0]] || POS_CLR[place] }}>{place}</span></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={n.name} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(n.name)} /></span>{tagNew(n)}</div></td>
+          <td /><td /><td className="ux-n" style={mono}>{n.born ? ageOf(n.born) : "–"}</td>
+          <td className="ux-c">{n.ovr != null ? uxBadge(n.ovr) : <span className="ux-dim">Blank</span>}</td>
+          <td className="ux-n"><span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span></td>
+        </tr>); }
+      // A new man asked for in this place, waiting for review: shown in it, faint, his request's own.
+      const wr = reqWaitAt.get(k + "|" + i);
+      if (wr) { const w = wr.rec;
+        return (
+        <tr key={i} className="ux-uce-r ux-uce-waiting" title="Waiting For Review">
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[posList(w.pos)[0]] || POS_CLR[place] }}>{place}</span></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={w.name} size="100%" /></span><span className="ux-sqnm"><SlideName text={fullDisplayName(w.name)} /></span></div></td>
+          <td /><td /><td className="ux-n" style={mono}>{w.born ? ageOf(w.born) : "–"}</td>
+          <td className="ux-c">{w.ovr != null ? uxBadge(w.ovr) : <span className="ux-dim">Blank</span>}</td>
+          <td className="ux-n"><span className="ux-uce-st ux-rev">For Review</span></td>
+        </tr>); }
+      const typing = ucType?.i === i, from = ucFrom?.i === i ? ucFrom : null;
+      return (
+        <tr key={i} {...common} className={"ux-uce-r ux-uce-open" + (typing || from ? " ux-on" : "") + (swapOn ? " ux-uce-target" : "")}
+          onClick={() => { if (ucCall && nt) { shMovePlayer({ id: ucCall.id, from: { k: ucCall.k, i: ucCall.i } }, k, i); setUcCall(null); return; } if (swapOn) moveTo(ucSwap, i); }}>
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[place] }}>{place}</span></td>
+          <td colSpan={6}>
+            <div className="ux-uce-add">
+              {typing ? (
+                <input className="ux-ed-in ux-uce-in" autoFocus value={ucType.v} placeholder="Name, Or (Rating) Name, Position, Age" aria-label={"New Player, " + place}
+                  onChange={e => setUcType({ i, v: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Escape") setUcType(null);
+                    if (e.key === "Enter") { e.preventDefault(); if (!ucType.v.trim()) { setUcType(null); return; }
+                      if (typeIn(i, ucType.v)) { const nx = nextOpen(i); setUcType(nx != null ? { i: nx, v: "" } : null); } } }}
+                  onBlur={() => setTimeout(() => setUcType(x => (x && x.i === i && !x.v.trim() ? null : x)), 150)} />)
+                : <button type="button" className="ux-btnreset ux-uce-plus" onClick={(e) => { e.stopPropagation(); if (swapOn) { moveTo(ucSwap, i); return; } setUcFrom(null); setUcType({ i, v: "" }); }}>
+                    <i aria-hidden="true">{uxIcon("plus", "ux-xs")}</i>Add Player</button>}
+              {(typing || from) && !swapOn && (nt ? [["nat", "Nationals"]] : [["fa", "Free Agents"], ["mine", "My Clubs"]]).map(([s, l]) => (
+                <button key={s} type="button" className={"ux-btnreset ux-btn ux-uce-src" + (from?.src === s ? " ux-on" : "")} onMouseDown={e => e.preventDefault()}
+                  onClick={(e) => { e.stopPropagation(); setUcType(null); setUcFrom(from?.src === s ? null : { i, src: s, q: "" }); }}>{l}</button>))}
+            </div>
+            {from && (
+              <div className="ux-uce-pool" onClick={e => e.stopPropagation()}>
+                <input className="ux-ed-in" autoFocus placeholder="Search" aria-label="Search" value={from.q} onChange={e => setUcFrom({ ...from, q: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Escape") setUcFrom(null); }} />
+                <div className="ux-uce-pl">{pool(from.src, i, from.q).map(pid => { const r = recNow(pid), at = whereIs.get(pid)?.club;
+                  return (
+                  <button key={pid} type="button" className="ux-btnreset ux-uce-pr" onClick={() => take(pid, i)}>
+                    <b style={{ ...mono, color: POS_CLR[posOfId(pid)] }}>{posText(ownOfId(pid)) || posOfId(pid)}</b>
+                    <span className="ux-uce-pn"><SlideName text={fullDisplayName(r?.name || pid)} /></span>
+                    <span className="ux-dim">{at ? <SlideName text={edTeamRec(at.key)?.name.trim() || ""} /> : r?.born ? ageOf(r.born) : ""}</span>
+                    {manBadge(pid, r?.ovr)}</button>); })}
+                  {!pool(from.src, i, from.q).length && <div className="ux-empty-sm">None</div>}</div>
+              </div>)}
+          </td>
+        </tr>);
+    };
+    // CHECKS: the side read in words.
+    const gks = [...sq.filter(Boolean).map(id => ownOfId(id)), ...[...staged.values()].map(n => posList(n.pos))].filter(p => p.includes("GK")).length;
+    const xiGap = sq.slice(0, 11).filter((v, i) => !v && !staged.has(i)).length, oopN = sq.slice(0, 11).filter((id, i) => id && uxOop(ownOfId(id), lab[i])).length;
+    const checks = [
+      [xiGap === 0, xiGap ? `${xiGap} Empty In The Eleven` : "Eleven Complete"],
+      [gks >= 2, gks >= 2 ? "Two Goalkeepers" : gks === 1 ? "One Goalkeeper" : "No Goalkeeper"],
+      [!open.length, open.length ? `${open.length} Open Place${open.length > 1 ? "s" : ""}` : "Squad Full"],
+      [!!idOf(T.manager), idOf(T.manager) ? "Manager" : "No Manager"],
+      ...(oopN ? [[false, `${oopN} Out Of Position`]] : []),
+    ];
+    // CHANGES: this side's part of the cart, each with its undo, marked Live or For Review.
+    const mineItems = cartList.filter(it => it.groups.some(g => g.kind === "teams" && g.id === k) || it.rec?.side === k || it.trade?.side === k || it.trade?.other === k
+      || it.groups.some(g => g.kind === "players" && sq.includes(g.id)));
+    const asks = preview?.requests || [];
+    const itemLive = (it) => { if (overseer) return true; if (it.trade) return false;
+      if (it.rec) return it.rec.what === "players" && !!it.rec.side && ucLive(edTeamRec(it.rec.side), it.rec);
+      return !asks.some(r => (r.kind === "details" && it.groups.some(g => g.kind === "teams" && g.id === r.team)) || (r.kind === "pos" && it.groups.some(g => g.kind === "players" && g.id === r.player))); };
+    const nLive = mineItems.filter(itemLive).length, others = cartList.length - mineItems.length;
+    const problems = saveState?.errors?.length ? saveState.errors : session && cartList.length ? preview?.errors || [] : [];
+    const busy = !!saveState?.busy;
+    const chRow = (it) => { const live = itemLive(it);
+      if (it.rec) { const n = it.rec, pos = posList(n.pos)[0];
+        return (
+        <div key={it.key} className="ux-uce-ch">
+          <b className="ux-uce-chp" style={{ ...mono, color: POS_CLR[pos] }}>{pos || "–"}</b>
+          <span className="ux-uce-chn"><b><SlideName text={n.what === "batch" ? `${(n.men || []).length} Players` : fullDisplayName(n.name || "")} /></b><span>New {n.what === "managers" ? "Manager" : "Player"}</span></span>
+          <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>
+          {n.ovr != null ? uxBadge(n.ovr) : <span className="ux-dim">–</span>}
+          <button type="button" className="ux-btnreset ux-cb-x" title="Undo" aria-label="Undo" disabled={busy} onClick={() => removeItem(it)}>{uxIcon("undo", "ux-s")}</button>
+        </div>); }
+      return (
+        <div key={it.key} className="ux-uce-ch ux-uce-chg">
+          <div className="ux-uce-chh">
+            <span className="ux-uce-chn"><b><SlideName text={it.trade ? "Trade" : it.groups.map(g => (g.kind === "players" ? fullDisplayName(g.name) : g.name)).join(", ")} /></b>
+              <span>{it.trade ? edTradeReq(it.trade).otherName : it.groups.flatMap(g => g.rows.map(c => FIELD_LBL[c.field] || c.field)).filter((x, i, a) => a.indexOf(x) === i).join(", ")}</span></span>
+            <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>
+            <button type="button" className="ux-btnreset ux-cb-x" title="Undo" aria-label="Undo" disabled={busy} onClick={() => removeItem(it)}>{uxIcon("undo", "ux-s")}</button>
+          </div>
+          {!it.trade && it.groups.map(g => g.rows.filter(c => c.field !== "squad").map(c => uxCbRow(c.field + g.key, FIELD_LBL[c.field] || c.field, renderChange(c, draft.teams?.[c.id]?.formation))))}
+        </div>); };
+    // THE MAN PICKED: his card and what can be done with him.
+    const card = (() => {
+      if (pickNew) { const n = pickNew;
+        return (<>
+          <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={n.name} size="100%" /></span>
+            <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(n.name)} /></b><span>{edDots(posText(n.pos), n.born ? `Age ${ageOf(n.born)}` : null, natOptions.name.get(n.nat) || n.nat)}</span></span>
+            {n.ovr != null ? uxBadge(n.ovr, true) : null}</div>
+          <dl className="ux-uce-dl">
+            <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
+            {!n.batch && <div><dt>Rating</dt><dd><input className="ux-ed-in ux-uce-rt" type="number" min={25} max={99} style={mono} aria-label="Rating" value={n.ovr ?? ""} placeholder="Blank"
+              onChange={e => { const v = parseInt(e.target.value, 10); shSetNew(n.id, { ovr: Number.isFinite(v) ? v : null }); }} />
+              <span className="ux-dim">Level <span style={mono}>{showOvr(clubLevel(T, posList(n.pos), judge))}</span></span></dd></div>}
+            <div><dt>On Send</dt><dd><span className={"ux-uce-st " + (!n.batch && ucLive(T, n) ? "ux-live" : "ux-rev")}>{!n.batch && ucLive(T, n) ? "Live" : "For Review"}</span></dd></div>
+          </dl>
+          <div className="ux-uce-acts">
+            {!n.batch && <button type="button" className="ux-btnreset ux-uce-act ux-bad" onClick={() => { shDropNew(n.id); setUcPick(null); }}>{uxIcon("close", "ux-s")}Remove</button>}
+          </div></>); }
+      if (!pickId) return <div className="ux-empty">Pick A Player</div>;
+      const r = recNow(pickId), nm = r?.name || pickId, N = ntOf(pickId), inNT = N && edSq(N).includes(pickId), lockd = edLockedMen.has("p:" + pickId);
+      const ask = ucPos?.id === pickId ? ucPos : null, v = valOf(pickId);
+      return (<>
+        <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={nm} size="100%" /></span>
+          <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(nm)} /></b><span>{edDots(posText(ownOfId(pickId)) || posOfId(pickId), ageOfId(pickId) != null ? `Age ${ageOfId(pickId)}` : null, natOptions.name.get(r?.nat) || r?.nat)}</span></span>
+          {manBadge(pickId, r?.ovr, true)}</div>
+        <dl className="ux-uce-dl">
+          <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
+          <div><dt>Rating</dt><dd>{overseer
+            ? <input className="ux-ed-in ux-uce-rt" type="number" min={25} max={99} style={mono} aria-label="Rating" value={r?.ovr ?? ""}
+                onChange={e => { const x = parseInt(e.target.value, 10); if (x >= 25 && x <= 99) shPut(draftWith(draft, recBase, pickId, { ovr: x }, "players")); }} />
+            : <>{manBadge(pickId, r?.ovr)}{edLock}</>}</dd></div>
+          <div><dt>Positions</dt><dd>{ask ? (
+              <span className="ux-uce-posask">
+                {[["a", true], ["b", false]].map(([f, need]) => (
+                  <select key={f} className="ux-ed-in" aria-label={need ? "Position" : "Second Position"} value={ask[f]} onChange={e => setUcPos({ ...ask, [f]: e.target.value })}>
+                    {!need && <option value="">None</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select>))}
+                <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => { shPut(draftWith(draft, recBase, pickId, { pos: posList([ask.a, ask.b].filter(Boolean)) }, "players")); setUcPos(null); }}>{overseer ? "Set" : "Request"}</button>
+                <button type="button" className="ux-btnreset ux-cb-x" aria-label="Cancel" onClick={() => setUcPos(null)}>{uxIcon("close", "ux-s")}</button></span>)
+            : <><span className="ux-uce-ptags">{ownOfId(pickId).map(p => <b key={p} style={{ ...mono, color: POS_CLR[p] }}>{p}</b>)}</span>
+                <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setUcPos({ id: pickId, a: ownOfId(pickId)[0] || "CM", b: ownOfId(pickId)[1] || "" })}>{overseer ? "Change" : "Request Change"}</button></>}</dd></div>
+          <div><dt>Value</dt><dd style={mono}>{v != null ? moneyLabel(v) : "–"}</dd></div>
+        </dl>
+        {lockd ? <div className="ux-uce-note">Waiting On A Request</div> : (
+        <div className="ux-uce-acts">
+          <button type="button" className={"ux-btnreset ux-uce-act" + (ucSwap === ucPick ? " ux-on" : "")} onClick={() => setUcSwap(ucSwap === ucPick ? null : ucPick)}>{uxIcon("swap", "ux-s")}{ucSwap === ucPick ? "Pick Who To Swap With" : "Swap"}</button>
+          {ucPick < 11 && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => toBench(ucPick)}>{uxIcon("back", "ux-s")}Move To Bench</button>}
+          {!nt && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => { setTab("editor"); setEdSec("trades"); }}>{uxIcon("swap", "ux-s")}Trade</button>}
+          {!nt && N && myKeys.has(teamKey(N)) && !inNT && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => callUp(ucPick)}>{uxIcon("up", "ux-s")}Call Up</button>}
+          {uxArmBtn("rel:" + pickId, <>{uxIcon("close", "ux-s")}{nt ? "Drop" : "Release"}</>, nt ? "Confirm Drop" : "Confirm Release", () => release(ucPick))}
+        </div>)}</>);
+    })();
+    // THE PROFILE, as the page has it, each section with Edit.
+    const det = ucDet, st = stripVenue(T.stadium || ""), cap = venueCap(T.stadium) || "", city = stripVenue(T.location || "");
+    const secH = (title, sec, init, lockIt) => (
+      <h3 className="ux-psec-h ux-uce-sh">{title}{lockIt ? <span className="ux-uce-lk">{edLock}</span>
+        : <button type="button" className="ux-btnreset ux-uce-edit" onClick={() => setUcDet(det?.sec === sec ? null : { sec, ...init })}>{uxIcon("edit", "ux-xs")}{det?.sec === sec ? "Close" : "Edit"}</button>}</h3>);
+    const mgrId = idOf(T.manager), mgr = mgrId ? mgrNow(mgrId) : null;
+    const freeMgrs = det?.sec === "manager" ? curRecs.managers.filter(m => !edSidesOfMgr(m.id).some(x => !isNational(x)) && (arterraOn || !artNats.has(m.nat))
+      && (!det.q || (" " + edFold(m.name)).includes(" " + edFold(det.q)))).sort((a, b) => b.ovr - a.ovr).slice(0, 30) : [];
+    return (
+      <div className="ux-body ux-uce">
+        <div className="ux-col">
+          {uxPanel(nt ? "Team" : "Club", null, (
+            <div className="ux-psb">
+              <div className="ux-prof ux-uce-prof">
+                <TeamCrest team={t} size={120} />
+                <FitLine className="ux-prof-nm" mid>{T.name.trim()}</FitLine>
+                <span className="ux-prof-sub" style={mono}>{T.code}{!overseer && <span className="ux-uce-req" title="The Overseer's">{uxIcon("lock", "ux-xs")}Request</span>}</span>
+              </div>
+              <section className="ux-psec">{secH("Kits", "kits", { home: T.home, away: T.away })}
+                {det?.sec === "kits" ? (
+                  <div className="ux-uce-form">{["home", "away"].map(f => (
+                    <label key={f}><span>{f === "home" ? "Home" : "Away"}</span>
+                      <input type="color" className="ux-uce-col" value={String(T[f] || "#888888")} onChange={e => ucCell(k, f, e.target.value)} />
+                      <span style={mono}>{String(T[f] || "").toUpperCase()}</span></label>))}</div>)
+                  : <div className="ux-pkits">{[["Home", T.home], ["Away", T.away]].map(([l, c]) => (
+                    <div key={l} className="ux-pkit"><svg className="ux-kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z" fill={c || "var(--ux-panel-3)"} stroke="rgba(255,255,255,.55)" strokeWidth="1" /></svg>
+                      <span><b>{l}</b><span style={mono}>{String(c || "–").toUpperCase()}</span></span></div>))}</div>}</section>
+              <section className="ux-psec">{secH("Stadium", "stadium", { g: st, c: cap, city })}
+                {det?.sec === "stadium" ? (
+                  <div className="ux-uce-form">
+                    <label><span>Ground</span><input className="ux-ed-in" value={det.g} onChange={e => setUcDet({ ...det, g: e.target.value })} onBlur={() => det.g.trim() && det.g.trim() !== st && ucCell(k, "ground", det.g)} /></label>
+                    <label><span>Capacity</span><input className="ux-ed-in" style={mono} value={det.c} onChange={e => setUcDet({ ...det, c: e.target.value })} onBlur={() => String(det.c) !== String(cap) && ucCell(k, "cap", det.c)} /></label>
+                    <label><span>City</span><UxSidePick label="City" value={city} placeholder="Search Cities" onPick={it => ucCell(k, "city", it.k)} groups={edCities} /></label>
+                  </div>)
+                  : <div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b><span>{city && <span>{city}</span>}{cap && <span>Capacity {cap}</span>}</span></div>}</section>
+              <section className="ux-psec">{secH("Manager", "manager", { q: "" })}
+                {det?.sec === "manager" ? (
+                  <div className="ux-uce-form">
+                    <input className="ux-ed-in" autoFocus placeholder="Search Free Managers" aria-label="Search Free Managers" value={det.q} onChange={e => setUcDet({ ...det, q: e.target.value })} />
+                    <div className="ux-uce-pl ux-uce-mgrs">{freeMgrs.map(m => (
+                      <button key={m.id} type="button" className="ux-btnreset ux-uce-pr" onClick={() => { shMoveMgr({ id: m.id, from: {} }, k); setUcDet(null); }}>
+                        <span className="ux-uce-pn"><SlideName text={fullDisplayName(m.name)} /></span><span className="ux-dim">{uxStyleName(edStyleOfMgr(m.id))}</span>{uxBadge(m.ovr)}</button>))}
+                      {!freeMgrs.length && <div className="ux-empty-sm">None</div>}</div>
+                    {mgr && uxArmBtn("sack:" + k, "Sack " + fullDisplayName(mgr.name), "Confirm Sack", () => { shSack({ from: { k } }); setUcDet(null); })}
+                  </div>)
+                  : <div className="ux-pmgr"><span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={mgr?.name || ""} size="100%" /></span>
+                      <div className="ux-pmgr-id"><span className="ux-pmgr-nm">{mgr ? fullDisplayName(mgr.name) : "None"}{mgr && <span style={{ ...ovrBlock(mgr.ovr, true), ...mono }}>{showOvr(mgr.ovr)}</span>}</span>
+                        <span className="ux-pmgr-st">{uxStyleName(styleKeyOf(T.style) || "balanced")}<span style={mono}>{String(T.formation || "4-3-3").trim()}</span></span></div></div>}</section>
+            </div>), true)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Squad", (<>
+            {(shMsg || ucCall) && <span className="ux-uce-msg">{ucCall && nt ? `Call Up ${fullDisplayName(recNow(ucCall.id)?.name || "")}: Pick Who Makes Way` : shMsg}</span>}
+            <span className="ux-ph-gap" />
+            {ucCall && <button type="button" className="ux-btnreset ux-btn" onClick={() => setUcCall(null)}>Cancel</button>}
+            {open.length > 0 && <span className="ux-uce-open-n"><b style={mono}>{open.length}</b> Open</span>}
+            {open.length > 0 && <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => setUcFill({ text: "", amin: nt ? 20 : 18, amax: shCollege(k) ? 21 : 32, mode: "level" })}>{uxIcon("plus", "ux-s")}Fill Open Places</button>}</>),
+            <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-sq">
+              <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 78 }} /></colgroup>
+              <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>Nat</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th></tr></thead>
+              <tbody>{Array.from({ length: Math.min(11, nPlace) }, (_, i) => row(i))}<tr className="ux-sep"><td colSpan={7} /></tr>
+                {Array.from({ length: Math.max(0, nPlace - 11) }, (_, x) => row(11 + x))}</tbody>
+            </table></div>, true)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Player", pickId && playerByName.has(recNow(pickId)?.name) ? <button type="button" className="ux-btnreset ux-btn" onClick={() => openPlayer(recNow(pickId).name)}>Open His Page{uxIcon("fwd", "ux-s")}</button> : null,
+            <div className="ux-pbody ux-uce-card">{card}</div>, true)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Checks", null, (
+            <div className="ux-uce-checks">{checks.map(([ok, l]) => (
+              <div key={l} className={"ux-uce-chk" + (ok ? " ux-ok" : "")}>{ok ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{l}</span>
+                {!ok && /Open Place/.test(l) && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setUcFill({ text: "", amin: nt ? 20 : 18, amax: shCollege(k) ? 21 : 32, mode: "level" })}>Fill</button>}</div>))}</div>), false)}
+          {uxPanel("Changes", <b className="ux-drop-n" style={mono}>{mineItems.length}</b>, (<>
+            <div className="ux-pbody ux-uce-chs">{mineItems.length ? mineItems.map(chRow) : <div className="ux-empty">None</div>}</div>
+            <div className="ux-uce-foot">
+              <div className={"ux-uce-sum" + (problems.length || saveState?.err ? " ux-bad" : saveState?.ok ? " ux-good" : "")} role={problems.length ? "alert" : "status"}>
+                {problems.length ? problems.slice(0, 3).map((p, i) => <div key={i}>{p}</div>)
+                  : saveState?.busy ? "Sending"
+                  : saveState?.ok && !cartList.length ? (saveState.applied || saveState.asked ? <>Sent{saveState.applied ? <>, <b style={mono}>{saveState.applied}</b> Live</> : null}{saveState.asked ? <>, <b style={mono}>{saveState.asked}</b> For Review</> : null}</> : "Nothing To Send")
+                  : saveState?.err ? saveState.err
+                  : <><b style={mono}>{nLive}</b> Live · <b style={mono}>{mineItems.length - nLive}</b> For Review{others > 0 && <> · <b style={mono}>{others}</b> Elsewhere</>}</>}
+              </div>
+              {session ? <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !cartList.length || problems.length > 0} onClick={saveCart}>{busy ? "Sending" : "Send"}</button>
+                : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={signIn}>Sign In</button>}
+            </div></>), true, null, "ux-uce-chp-panel")}
+        </div>
+        {ucFill && renderUcFill(T)}
+      </div>);
+  };
+  // FILL OPEN PLACES: a pasted list, a name a line, into every open place at once, each shown in his place first.
+  const renderUcFill = (T) => {
+    const f = ucFill, k = teamKey(T), places = ucOpen(T), lines = f.text.split(/\r?\n/).filter(x => x.trim());
+    const { men, bad } = ucMen(T, lines, places, f.mode, Math.min(f.amin, f.amax), Math.max(f.amin, f.amax));
+    // The same men every time the preview draws: ages and ids are drawn once per text.
+    const key = JSON.stringify([f.text, f.mode, f.amin, f.amax]);
+    if (ucFillRef.current.key !== key) ucFillRef.current = { key, men };
+    const shown = ucFillRef.current.men, lab = edLab(T), nLive = shown.filter(m => ucLive(T, m)).length;
+    const close = () => { setUcFill(null); ucFillRef.current = { key: null, men: [] }; };
+    return (<>
+      <div className="ux-scrim ux-uce-scrim" onClick={close} />
+      <div className="ux-uce-fill" role="dialog" aria-label="Fill Open Places" onKeyDown={e => { if (e.key === "Escape") close(); }}>
+        <div className="ux-ph"><h2 className="ux-pt">Fill Open Places</h2><span className="ux-uce-fclub"><TeamCrest team={teamOfKey(k)} size={14} />{T.name.trim()}</span>
+          <span className="ux-ph-gap" /><button type="button" className="ux-btnreset ux-cb-x" aria-label="Close" onClick={close}>{uxIcon("close", "ux-s")}</button></div>
+        <div className="ux-uce-fb">
+          <div className="ux-uce-fl">
+            <label className="ux-uce-fh">Names</label>
+            <textarea className="ux-ed-in ux-uce-ta" autoFocus spellCheck={false} value={f.text} placeholder={"Quri Tupaq, 71\nTupan Chaska, CB, 26\n(68) Paway CHASKA"}
+              onChange={e => setUcFill({ ...f, text: e.target.value })} />
+            <div className="ux-uce-frow"><span>Ages</span>
+              <input className="ux-ed-in ux-uce-age" type="number" min={14} max={45} style={mono} aria-label="Youngest" value={f.amin} onChange={e => setUcFill({ ...f, amin: +e.target.value || 18 })} />
+              <span className="ux-dim">To</span>
+              <input className="ux-ed-in ux-uce-age" type="number" min={14} max={45} style={mono} aria-label="Oldest" value={f.amax} onChange={e => setUcFill({ ...f, amax: +e.target.value || 32 })} />
+              <button type="button" className="ux-btnreset ux-cb-x" title="Draw Again" aria-label="Draw Again" onClick={() => { ucFillRef.current = { key: null, men: [] }; setUcFill({ ...f }); }}>{uxIcon("dice", "ux-s")}</button></div>
+            <div className="ux-uce-frow"><span>Ratings</span>
+              <div className="ux-seg" role="group" aria-label="Ratings">{[["level", "Club Level"], ["typed", "Typed"], ["blank", "Blank"]].map(([m, l]) => (
+                <button key={m} type="button" className={"ux-btnreset" + (f.mode === m ? " ux-on" : "")} aria-pressed={f.mode === m} onClick={() => setUcFill({ ...f, mode: m })}>{l}</button>))}</div></div>
+            {bad.length > 0 && <div className="ux-uce-fbad" role="alert">{bad.slice(0, 3).map((b, i) => <div key={i}>{b.name}: {uxTitle(b.bad[0])}</div>)}</div>}
+          </div>
+          <div className="ux-uce-fr">
+            <table className="ux-tbl ux-uce-ft">
+              <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 52 }} /><col style={{ width: 40 }} /><col style={{ width: 46 }} /><col style={{ width: 92 }} /></colgroup>
+              <thead><tr><th>Place</th><th>Player</th><th className="ux-c">Pos</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th>On Send</th></tr></thead>
+              <tbody>{shown.map(m => { const live = ucLive(T, m);
+                return (
+                <tr key={m.id}><td><span className="ux-uce-pos" style={{ color: POS_CLR[lab[m.at]] }}>{lab[m.at]}</span></td>
+                  <td className="ux-strong"><SlideName text={fullDisplayName(m.name)} /></td>
+                  <td className="ux-c"><b style={{ ...mono, color: POS_CLR[m.pos[0]] }}>{posText(m.pos)}</b></td>
+                  <td className="ux-n" style={mono}>{ageOf(m.born)}</td>
+                  <td className="ux-c">{m.ovr != null ? uxBadge(m.ovr) : <span className="ux-dim">Blank</span>}</td>
+                  <td><span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span></td></tr>); })}
+                {!shown.length && <tr><td colSpan={6} className="ux-dim">{places.length} Open Place{places.length === 1 ? "" : "s"}</td></tr>}</tbody>
+            </table>
+          </div>
+        </div>
+        <div className="ux-uce-ff">
+          <span><b style={mono}>{shown.length}</b> Player{shown.length === 1 ? "" : "s"} · <b style={mono}>{nLive}</b> Live · <b style={mono}>{shown.length - nLive}</b> For Review
+            {lines.length > places.length && <> · <b style={mono}>{lines.length - places.length}</b> Over</>}</span>
+          <span className="ux-ph-gap" />
+          <button type="button" className="ux-btnreset ux-btn" onClick={close}>Cancel</button>
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!shown.length} onClick={() => { shPut({ ...draft, new: [...shNew, ...shown] }); close(); }}>Add {shown.length || ""} Player{shown.length === 1 ? "" : "s"}</button>
+        </div>
+      </div></>);
+  };
+
+  // ── THE DESK: HOME ──
+  const edActLine = (e) => { const n = activitySize(e), sides = [...new Set((e.changes || []).filter(c => c.kind === "teams").map(c => c.name))];
+    const men = (e.added?.players || []).length;
+    const what = e.what === "undo" ? "Undid A Change" : e.what === "accept" ? `Accepted ${n} Change${n === 1 ? "" : "s"}` : men && men === n - sides.length ? `${men} New Player${men === 1 ? "" : "s"}` : `${n} Change${n === 1 ? "" : "s"}`;
+    return { what, sides }; };
+  const edActRow = (e, compact) => { const { what, sides } = edActLine(e), mine = String(e.by).toLowerCase() === String(scope.login).toLowerCase();
+    return (
+    <div key={e.id} className={"ux-act-r" + (e.undone ? " ux-act-undone" : "")}>
+      <img className="ux-act-av" src={uxGh(e.by)} alt="" />
+      <span className="ux-act-t"><span><b>{e.by}</b> {what}{e.undone && <span className="ux-dim"> · Undone By {e.undone.by}</span>}</span>
+        {!compact && sides.length > 0 && <span className="ux-dim"><SlideName text={sides.slice(0, 3).join(", ") + (sides.length > 3 ? ` And ${sides.length - 3} More` : "")} /></span>}
+        {actMsg[e.id] && <span className="ux-bad">{actMsg[e.id]}</span>}</span>
+      <span className="ux-act-when" style={mono}>{ago(e.at)}</span>
+      {!compact && !e.undone && (overseer || mine) && uxArmBtn("undo:" + e.id, actBusy === e.id ? "Undoing" : <>{uxIcon("undo", "ux-xs")}Undo</>, "Confirm Undo", () => undoEntry(e))}
+    </div>); };
+  const renderEdHome = () => {
+    const sides = edHomeSides, nat = natTeamByCode.get((scope.nations || [])[0]) || null;
+    const clubs = sides.filter(t => !isNational(t)), lgs = new Set(clubs.map(t => t.nation + "|" + t.group));
+    const men = new Set(sides.flatMap(t => edSq(t).filter(Boolean)));
+    const openAll = sides.reduce((n, t) => n + ucOpen(t).length, 0);
+    const mineOpen = reqMine.filter(r => !r.declined), declined = reqMine.filter(r => r.declined), offers = reqFor.filter(r => r.kind === "deal" || r.kind === "trade");
+    const inbox = overseer ? reqFor.filter(r => !reqMine.includes(r)) : [];
+    const keys = new Set(sides.map(teamKey));
+    const acts = activity.filter(e => overseer || (e.changes || []).some(c => keys.has(c.id)) || String(e.by).toLowerCase() === String(scope.login).toLowerCase()).slice(0, 14);
+    const todo = [
+      openAll > 0 && ["Open Places", openAll, "Fill", () => ucRun[0] && ucGo(teamKey(ucRun[0]))],
+      overseer && inbox.length > 0 && ["Waiting For You", inbox.length, "Open", () => setEdSec("inbox")],
+      offers.length > 0 && ["Offers", offers.length, "Open", () => setEdSec("trades")],
+      declined.length > 0 && ["Declined", declined.length, "Open", () => setEdSec("inbox")],
+      cartList.length > 0 && ["Not Sent", cartList.length, "Review", () => setDraftOpen(true)],
+    ].filter(Boolean);
+    const newMenu = (code) => [
+      ["New Player", () => { setTab("editor"); setEdSec("sheet"); shOpenNew("players"); }],
+      ["New Club", () => { setTab("editor"); setEdSec("sheet"); if (code) shOpenTab(code); }],
+      ["New League", () => { setTab("editor"); setEdSec("sheet"); if (code) { shOpenTab(code); shAddLeague(code); } }],
+      ["New Deal", () => setEdSec("trades")]];
+    const code = nat?.code || (scope.nations || [])[0] || clubNations(scope)[0];
+    return (
+      <div className="ux-body ux-edh">
+        <div className="ux-col ux-edh-main">
+          <section className="ux-panel ux-edh-hero">
+            {nat ? <TeamCrest team={teamOfKey(teamKey(nat)) || nat} size={40} /> : null}
+            <h2 className="ux-edh-nat">{nat ? nat.name.trim() : overseer ? "Overseer" : "Editor"}</h2>
+            <div className="ux-strip ux-edh-n">
+              <div><b style={mono}>{clubs.length}</b><span>Clubs</span></div>
+              <div><b style={mono}>{lgs.size}</b><span>Leagues</span></div>
+              <div><b style={mono}>{men.size}</b><span>Players</span></div></div>
+            <span className="ux-ph-gap" />
+            {newMenu(code).map(([l, go]) => <button key={l} type="button" className="ux-btnreset ux-btn" onClick={go}>{uxIcon(l === "New Deal" ? "swap" : "plus", "ux-s")}{l}</button>)}
+          </section>
+          {uxPanel("To Do", <b className="ux-drop-n" style={mono}>{todo.length}</b>, (
+            <div className="ux-edh-todo">{todo.length ? todo.map(([l, n, b, go]) => (
+              <div key={l} className="ux-edh-td"><i className="ux-uce-dot" aria-hidden="true" /><b>{l}</b><span className="ux-ph-gap" /><b className="ux-edh-tdn" style={mono}>{n}</b>
+                <button type="button" className={"ux-btnreset ux-btn" + (l === "Open Places" ? " ux-btn-pri" : "")} onClick={go}>{b}{uxIcon("fwd", "ux-s")}</button></div>))
+              : <div className="ux-empty">Nothing To Do</div>}</div>), false)}
+          {uxPanel("Sides", <b className="ux-drop-n" style={mono}>{sides.length}</b>, (
+            <div className="ux-pbody"><table className="ux-tbl ux-edh-tbl">
+              <colgroup><col /><col style={{ width: "22%" }} /><col style={{ width: 50 }} /><col style={{ width: 50 }} /><col style={{ width: 60 }} /><col style={{ width: 50 }} /><col style={{ width: "20%" }} /><col style={{ width: 70 }} /></colgroup>
+              <thead><tr><th>Side</th><th>League</th><th className="ux-c">OVR</th><th className="ux-c">XI</th><th className="ux-n">Squad</th><th className="ux-n">Open</th><th>Manager</th><th>Shape</th></tr></thead>
+              <tbody>{sides.map(t => { const k = teamKey(t), tm = teamOfKey(k), nums = shNums(t), o = ucOpen(t).length, m = mgrNow(idOf(t.manager));
+                return (
+                <tr key={k} className="ux-link" onClick={() => ucGo(k)}>
+                  <td><div className="ux-tc">{tm && <TeamCrest team={tm} size={16} />}<b><SlideName text={t.name.trim()} /></b>{locks.has(k) && <span className="ux-uce-wait" title="Waiting On A Request">{uxIcon("lock", "ux-xs")}</span>}</div></td>
+                  <td className="ux-dim"><SlideName text={isNational(t) ? "National Side" : t.group || ""} /></td>
+                  <td className="ux-c">{nums.ovr != null ? uxBadge(Math.round(nums.ovr)) : "–"}</td>
+                  <td className="ux-c">{nums.xi != null ? uxBadge(Math.round(nums.xi)) : "–"}</td>
+                  <td className="ux-n" style={mono}>{edSq(t).filter(Boolean).length + shNewAt(k).size}/{t.squad.length}</td>
+                  <td className={"ux-n" + (o ? " ux-edh-open" : " ux-dim")} style={mono}>{o || "–"}</td>
+                  <td><SlideName text={m ? fullDisplayName(m.name) : "–"} /></td>
+                  <td className="ux-dim" style={mono}>{String(t.formation || "").trim()}</td>
+                </tr>); })}
+                {!sides.length && <tr><td colSpan={8} className="ux-dim">None</td></tr>}</tbody>
+            </table></div>), true)}
+        </div>
+        <div className="ux-col ux-edh-side">
+          {uxPanel(overseer ? "Inbox" : "Sent", <b className="ux-drop-n" style={mono}>{overseer ? inbox.length : mineOpen.length}</b>, (
+            <div className="ux-edh-list">{(overseer ? reqGroups(inbox) : reqGroups(mineOpen)).slice(0, 6).map(g => (
+              <button key={g[0].id} type="button" className="ux-btnreset ux-edh-li" onClick={() => { setEdSec("inbox"); setInbPick(g[0].by + "|" + g[0].at); }}>
+                <img className="ux-act-av" src={uxGh(g[0].by)} alt="" /><span><b>{g.length >= REQ_GROUP ? reqTitle(g) : g.length > 1 ? `${g.length} Requests` : g[0].teamName}</b><span className="ux-dim">{g[0].by}</span></span>
+                <span className="ux-act-when" style={mono}>{ago(g[0].at)}</span></button>))}
+              {!(overseer ? inbox : mineOpen).length && <div className="ux-empty-sm">None</div>}</div>), false)}
+          {uxPanel("Offers", <b className="ux-drop-n" style={mono}>{offers.length}</b>, (
+            <div className="ux-edh-list">{offers.slice(0, 5).map(r => (
+              <button key={r.id} type="button" className="ux-btnreset ux-edh-li" onClick={() => setEdSec("trades")}>
+                <img className="ux-act-av" src={uxGh(r.by)} alt="" /><span><b><SlideName text={r.teamName} /></b><span className="ux-dim">{r.by}</span></span>
+                <span className="ux-act-when" style={mono}>{ago(r.at)}</span></button>))}
+              {!offers.length && <div className="ux-empty-sm">None</div>}</div>), false)}
+          {uxPanel("Activity", <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdSec("activity")}>All{uxIcon("fwd", "ux-s")}</button>, (
+            <div className="ux-edh-list ux-edh-acts">{acts.map(e => edActRow(e, true))}{!acts.length && <div className="ux-empty-sm">None</div>}</div>), true)}
+        </div>
+      </div>);
+  };
+
+  // ── THE DESK: ACTIVITY ──
+  const renderEdActivity = () => {
+    const mineOnly = edActMine, list = activity.filter(e => !mineOnly || String(e.by).toLowerCase() === String(scope.login).toLowerCase());
+    return (
+      <div className="ux-body ux-edact">
+        {uxPanel("Activity", (<>
+          <span className="ux-ph-gap" />
+          <div className="ux-seg" role="group" aria-label="Whose">{[[false, "Everyone"], [true, "Mine"]].map(([v, l]) => (
+            <button key={l} type="button" className={"ux-btnreset" + (mineOnly === v ? " ux-on" : "")} aria-pressed={mineOnly === v} onClick={() => setEdActMine(v)}>{l}</button>))}</div></>),
+          <div className="ux-pbody ux-edact-l">{list.map(e => edActRow(e, false))}{!list.length && <div className="ux-empty">None</div>}</div>, true)}
+      </div>);
+  };
+
+  // ── THE DESK: THE INBOX (the overseer's; an editor's Sent) ──
+  const renderEdInbox = () => {
+    if (!overseer) return renderEdRequests();
+    const waiting = reqFor.filter(r => !reqMine.includes(r)), groups = reqGroups(waiting);
+    const gid = (g) => g[0].by + "|" + g[0].at, cur = groups.find(g => gid(g) === inbPick) || groups[0] || null;
+    const live = activity.filter(e => e.what === "save" && String(e.by).toLowerCase() !== String(scope.login).toLowerCase()).slice(0, 20);
+    const gTitle = (g) => (g.length >= REQ_GROUP ? reqTitle(g) : g.length > 1 ? `${g.length} Requests` : g[0].kind === "new" ? `New ${edKindName(g[0].what === "batch" ? "players" : g[0].what)}` : g[0].teamName);
+    const gSides = (g) => new Set(g.map(r => r.rec?.side || r.team).filter(Boolean));
+    // The open save: its men by club, each with his gap to the club's level and his rating in a box.
+    const men = cur ? cur.filter(reqIsMan) : [], rest = cur ? cur.filter(r => !reqIsMan(r)) : [];
+    const bySide = new Map(); for (const r of men) { const k = r.rec.side || ""; if (!bySide.has(k)) bySide.set(k, []); bySide.get(k).push(r); }
+    const ovrOf = (r) => reqEdit[r.id]?.ovr ?? (r.rec.ovr > 0 ? +r.rec.ovr : null);
+    const lvlOf = (r) => (r.rec.side ? reqLevel(r.rec.side, posList(r.rec.pos)) : null);
+    const rs = men.map(ovrOf).filter(v => v != null), gaps = men.map(r => { const l = lvlOf(r), o = ovrOf(r); return l != null && o != null ? o - l : null; }).filter(v => v != null);
+    const pk = inbClub && bySide.has(inbClub) ? inbClub : [...bySide.keys()][0] || null;
+    const open = cur ? cur.filter(r => !r.declined) : [], picked = open.filter(r => reqSel.has(r.id));
+    const capAll = () => setReqEdit(o => { const n = { ...o }; for (const r of men) { const l = lvlOf(r), v = ovrOf(r); if (l != null && v != null && v > l) n[r.id] = { ovr: l }; } return n; });
+    // The preview: the picked club's eleven, bench and squad before and after these men.
+    const preview2 = (() => { if (!pk) return null; const T = recTeam.get(pk), tm = teamOfKey(pk); if (!T) return null;
+      const lab = teamLabels(T), sq = T.squad.map(v => idOf(v) ?? null), add = new Map();
+      for (const r of (bySide.get(pk) || []).filter(x => !x.declined)) { const i = Number.isInteger(r.rec.at) && !sq[r.rec.at] && !add.has(r.rec.at) ? r.rec.at : placeFor(sq.map((v, x) => v || (add.has(x) ? "x" : null)), lab, posFitCost, posList(r.rec.pos)); if (i >= 0) add.set(i, r); }
+      const rt = (i) => (sq[i] ? recById.get(sq[i])?.ovr : add.has(i) ? ovrOf(add.get(i)) : null);
+      const mean = (xs) => { const v = xs.filter(x => Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+      const was = (a, b) => mean(sq.slice(a, b).map(id => (id ? recById.get(id)?.ovr : null))), now = (a, b) => mean(Array.from({ length: b - a }, (_, x) => rt(a + x)));
+      const fig = (l, a, b) => { const w = was(a, b), n = now(a, b);
+        return <div key={l}><span>{l}</span><b style={mono}>{w != null ? w.toFixed(1) : "–"}{n != null && (w == null || Math.abs(n - w) > 0.04) && <><span className="ux-chg-a">&#8594;</span>{n.toFixed(1)}</>}</b></div>; };
+      const line = (i) => { const id = sq[i], r = add.get(i), nm = id ? recById.get(id)?.name : r?.rec.name, pos = lab[i];
+        if (!nm) return <div key={i} className="ux-inb-pm ux-dim"><b className="ux-uce-pos" style={{ color: POS_CLR[pos] }}>{pos}</b><span>Open</span></div>;
+        return <div key={i} className="ux-inb-pm"><b className="ux-uce-pos" style={{ color: POS_CLR[pos] }}>{pos}</b><span><SlideName text={fullDisplayName(nm)} /></span>{r ? <span className="ux-uce-new">New</span> : <span />}
+          <span className="ux-dim" style={mono}>{id ? ageOf(recById.get(id)?.born) ?? "" : r?.rec.born ? ageOf(r.rec.born) : ""}</span>{rt(i) != null ? uxBadge(rt(i)) : <span className="ux-dim">–</span>}</div>; };
+      return { T, tm, pk, figs: [fig("Eleven", 0, 11), fig("Bench", 11, sq.length), fig("Squad", 0, sq.length)], xi: Array.from({ length: 11 }, (_, i) => line(i)), bench: Array.from({ length: sq.length - 11 }, (_, x) => line(11 + x)) };
+    })();
+    const manRow = (r) => { const s = r.rec, pos = posList(s.pos), lvl = lvlOf(r), ovr = ovrOf(r), over = lvl != null && ovr != null && ovr > lvl, typed = reqEdit[r.id]?.ovr;
+      return (
+      <div key={r.id} className={"ux-inb-r" + (r.declined ? " ux-rg-dec" : "")}>
+        {r.declined ? <span className="ux-rg-notick" /> : uxReqTick([r.id], "Select " + fullDisplayName(s.name))}
+        <b className="ux-rg-pos" style={{ ...mono, color: POS_CLR[pos[0]] }}>{posText(pos) || "–"}</b>
+        <button type="button" className="ux-btnreset ux-rg-name" title="Review" onClick={() => uxNewReview(r)}><SlideName text={fullDisplayName(s.name)} /></button>
+        <span className="ux-rg-age" style={mono}>{s.born ? ageOf(s.born) : "–"}</span>
+        <span className="ux-rg-pl">{Number.isInteger(s.at) ? (s.at < 11 ? "Eleven" : "Bench") : ""}</span>
+        <span className="ux-rg-st">{over && !r.declined && <span className="ux-rg-flag" style={mono} title={`Level ${showOvr(lvl)}`}>+{ovr - lvl}</span>}</span>
+        {!r.declined ? <input className={"ux-ed-in ux-rg-ovr" + (typed != null && typed !== s.ovr ? " ux-rg-set" : "")} type="number" min={25} max={99} style={mono}
+            aria-label={"Rating, " + fullDisplayName(s.name)} placeholder="Blank" disabled={!!reqRun} value={ovr ?? ""}
+            onChange={e => { const v = parseInt(e.target.value, 10); setReqEdit(o => { const n = { ...o }; if (Number.isFinite(v)) n[r.id] = { ovr: v }; else delete n[r.id]; return n; }); }} />
+          : <span className="ux-rg-msg ux-bad">Declined</span>}
+        {reqMsg[r.id] && <span className="ux-rg-msg ux-bad" role="alert">{reqMsg[r.id]}</span>}
+      </div>); };
+    return (
+      <div className="ux-body ux-inb">
+        <div className="ux-col">
+          {uxPanel("Inbox", <b className="ux-drop-n" style={mono}>{groups.length}</b>, (
+            <div className="ux-inb-list">{groups.map(g => { const s = gSides(g), on = cur && gid(g) === gid(cur), nat = natTeamByCode.get(recTeam.get([...s][0])?.nation || "");
+              return (
+              <button key={gid(g)} type="button" className={"ux-btnreset ux-inb-li" + (on ? " ux-on" : "")} onClick={() => { setInbPick(gid(g)); setInbClub(null); setReqSel(new Set()); }}>
+                <img className="ux-act-av" src={uxGh(g[0].by)} alt="" />
+                <span><b><SlideName text={gTitle(g)} /></b><span className="ux-dim">{nat && <TeamCrest team={nat} size={12} />}{edDots(nat?.name, s.size ? `${s.size} Club${s.size > 1 ? "s" : ""}` : g[0].by)}</span></span>
+                <span className="ux-act-when" style={mono}>{ago(g[0].at)}</span></button>); })}
+              {!groups.length && <div className="ux-empty-sm">None</div>}</div>), false)}
+          {uxPanel("Live", null, (
+            <div className="ux-inb-list">{live.map(e => edActRow(e, false))}{!live.length && <div className="ux-empty-sm">None</div>}</div>), true)}
+        </div>
+        <div className="ux-col">
+          {cur ? uxPanel(gTitle(cur), (<>
+            <span className="ux-rq-by"><img src={uxGh(cur[0].by)} alt="" />{cur[0].by}<span className="ux-ed-dot">&middot;</span>{ago(cur[0].at)}</span>
+            <span className="ux-ph-gap" />
+            {open.length > 0 && <>
+              {uxReqTick(open.map(r => r.id), "Select All")}<span className="ux-inb-all">Select All</span>
+              {uxArmBtn("inb:d", picked.length ? `Decline ${picked.length}` : "Decline", `Confirm Decline ${picked.length || open.length}`, () => settleMany((picked.length ? picked : open).map(r => reqAns(r, "decline"))))}
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!!reqRun || !!reqBusy} onClick={() => settleMany((picked.length ? picked : open).map(r => reqAns(r, "accept")))}>
+                {reqRun ? `Saving ${reqRun.done} Of ${reqRun.n}` : picked.length ? `Accept ${picked.length}` : "Accept All"}</button></>}</>), (<>
+            {men.length > 0 && (
+              <div className="ux-inb-sum">
+                <div><span>Clubs</span><b style={mono}>{bySide.size}</b></div>
+                <div><span>Ratings</span><b style={mono}>{rs.length ? `${Math.min(...rs)} To ${Math.max(...rs)}` : "Blank"}</b></div>
+                <div><span>Over Level</span><b style={mono}>{gaps.filter(x => x > 0).length ? `+${Math.min(...gaps.filter(x => x > 0))} To +${Math.max(...gaps)}` : "None"}</b></div>
+                <span className="ux-ph-gap" />
+                {gaps.some(x => x > 0) && <button type="button" className="ux-btnreset ux-btn" onClick={capAll}>Cap At Level</button>}
+              </div>)}
+            <div className="ux-pbody ux-inb-body">
+              {[...bySide].map(([k, rows]) => { const tm = k ? teamOfKey(k) : null, lv = rows.filter(r => !r.declined);
+                return (
+                <div key={k || "none"} className={"ux-inb-club" + (pk === k ? " ux-on" : "")}>
+                  <div className="ux-rg-ch" onClick={() => setInbClub(k)}>
+                    {uxReqTick(lv.map(r => r.id), "Select " + (tm ? tm.name : "These"))}
+                    {tm && <TeamCrest team={tm} size={18} />}
+                    <b className="ux-rg-cn"><SlideName text={tm ? tm.name : "No Side"} /></b>
+                    <span className="ux-rg-n"><span style={mono}>{rows.length}</span> New</span>
+                    {lv.length > 0 && <button type="button" className="ux-btnreset ux-btn ux-rg-ca" disabled={!!reqBusy || !!reqRun} onClick={(e) => { e.stopPropagation(); settleMany(lv.map(r => reqAns(r, "accept"))); }}>Accept <span style={mono}>{lv.length}</span></button>}
+                  </div>
+                  {rows.map(manRow)}
+                </div>); })}
+              {rest.map(r => <div key={r.id} className="ux-rq-pick">{!r.declined && uxReqTick([r.id], "Select")}{uxReqBlock(r, false)}</div>)}
+            </div></>), true) : uxPanel("Inbox", null, <div className="ux-empty">Nothing Waiting</div>, true)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Preview", preview2?.tm ? <button type="button" className="ux-btnreset ux-btn" onClick={() => ucGo(preview2.pk, false)}>Open Club{uxIcon("fwd", "ux-s")}</button> : null, preview2 ? (
+            <div className="ux-pbody ux-inb-pv">
+              <div className="ux-inb-pvh">{preview2.tm && <TeamCrest team={preview2.tm} size={28} />}<span><b><SlideName text={preview2.T.name.trim()} /></b><span className="ux-dim"><SlideName text={preview2.T.group || ""} /></span></span></div>
+              <div className="ux-inb-figs">{preview2.figs}</div>
+              <div className="ux-inb-h">Starting Eleven</div>{preview2.xi}
+              <div className="ux-inb-h">Bench</div>{preview2.bench}
+            </div>) : <div className="ux-empty">None</div>, true)}
+        </div>
+      </div>);
+  };
   const renderUxEditor = () => {
     if (edSec === "draft" && draftSees) return renderEdDraft();
+    if (edSec === "home") return renderEdHome();
+    if (edSec === "inbox") return renderEdInbox();
+    if (edSec === "activity") return renderEdActivity();
     if (edSec === "requests") return renderEdRequests();
     if (edSec === "trades") return renderEdTrades();
     if (edSec === "sheet" || !edNew || (!edRev && !(edNew.kind === "players" && edNew.mode === "many"))) return renderEdSheet();
@@ -15990,9 +17474,17 @@ export default function App() {
           {n && <button type="button" className="ux-btnreset ux-pb-up" onClick={() => openNation(n.code)}><TeamCrest team={n.nt} size={18} />{n.nt.name}{uxIcon("fwd", "ux-s")}</button>}
           <TeamCrest team={t} size={22} /><h1>{t.name}</h1></>);
         list.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === list[0][0] ? null : id })))));
-        if (canEditTeam(t)) right = (<>
-          {(overseer || !locks.has(t.rkey)) && <button type="button" className="ux-btnreset ux-btn" onClick={() => shOpenSide(t.rkey)}>{uxIcon("edit", "ux-s")}{isNT ? "Edit Team" : "Edit Club"}</button>}
-          {locks.has(t.rkey) && <button type="button" className="ux-btnreset ux-btn ux-warn" onClick={openInbox}>Waiting On A Request</button>}</>);
+        // EDITING, ON ONE'S OWN SIDE'S PAGE (DESIGN.md "The Editor, redesigned"): Edit turns the page into its editor, and a run
+        // of one's sides with open places steps on with Previous and Next Club.
+        if (canEditTeam(t)) { const ix = ucRun.findIndex(x => teamKey(x) === t.rkey), on = ucEdit && cur === "overview";
+          const step = (d) => { const n = ucRun.length; if (!n) return; const j = ix < 0 ? (d > 0 ? 0 : n - 1) : (ix + d + n) % n; ucGo(teamKey(ucRun[j])); };
+          right = (<>
+          {locks.has(t.rkey) && <button type="button" className="ux-btnreset ux-btn ux-warn" onClick={openInbox}>Waiting On A Request</button>}
+          <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (on ? " ux-on" : "")} aria-pressed={on} onClick={() => { setUcEdit(!on); if (!on && cur !== "overview") setReg(r => ({ ...r, tab: null })); setUcPick(null); setUcSwap(null); }}>{uxIcon("edit", "ux-s")}{on ? "Editing" : "Edit"}</button>
+          {on && ucRun.length > 0 && <>
+            <span className="ux-uce-run">Open Places {ix >= 0 && <><b style={mono}>{ix + 1}</b> / </>}<b style={mono}>{ucRun.length}</b></span>
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => step(-1)}>{uxIcon("back", "ux-s")}Previous</button>
+            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => step(1)}>Next Club{uxIcon("fwd", "ux-s")}</button></>}</>); }
       } else if (n) title = <><TeamCrest team={n.nt} size={22} /><h1>{n.nt.name}</h1></>;
     } else if (tab === "leagues") {
       title = <h1>{{ competitions: "Competitions", players: "Players", managers: "Managers" }[reg.sec] || "Registry"}</h1>;
@@ -16026,8 +17518,11 @@ export default function App() {
     } else if (tab === "editor") {
       // The Editor: Teams, Players, Managers, Leagues, Trades and Requests.
       title = <h1>Editor</h1>;
-      [["sheet", "Sheet"], ["trades", "Trades"], ["requests", "Requests"],
-       ...(draftSees ? [["draft", <>Draft{draftYours && <i className="ux-pb-dot" title="Your Pick" />}</>]] : [])].forEach(([id, l]) =>
+      // The desk (DESIGN.md "The Editor, redesigned"): Home, the Inbox (Sent for an editor), Trades, Activity; the Sheet
+      // stays until the pages cover all it does.
+      const waitN = overseer ? reqFor.filter(r => !reqMine.includes(r)).length : 0;
+      [["home", "Home"], ["inbox", <>{overseer ? "Inbox" : "Sent"}{waitN > 0 && <b className="ux-pb-n" style={mono}>{waitN}</b>}</>], ["trades", "Trades"], ["activity", "Activity"],
+       ...(draftSees ? [["draft", <>Draft{draftYours && <i className="ux-pb-dot" title="Your Pick" />}</>]] : []), ["sheet", "Sheet"]].forEach(([id, l]) =>
         tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdCall(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.
@@ -16044,8 +17539,103 @@ export default function App() {
   };
 
   // ── Documentation (DESIGN.md): the page's sections down the left, the page read in one panel ──
-  // A block is a paragraph, a list of terms, or a table read live from the engine (src/docs.js).
-  const docLive = (k) => {
+  // What the text asks to be drawn from the engine itself, so it cannot drift from what the engine plays (src/docs.js).
+  // A figure drawn here is the one the match plays by: the text names it by where it lives in the engine's settings
+  // ("subWon.0.1"), or gives the minute itself where the engine has no setting for it.
+  const docCfg = (v) => typeof v === "string" ? v.split(".").reduce((o, key) => o?.[key], ME_CFG) : v;
+  // A small pitch seen from above, attacking up the page, in metres on 68 by 105.
+  const docPitch = (kids, cls) => (
+    <svg className={"ux-doc-pitch" + (cls ? " " + cls : "")} viewBox="0 0 68 105" aria-hidden="true">
+      <rect className="ux-doc-turf" x="0" y="0" width="68" height="105" />
+      <g className="ux-doc-mk"><rect x="0.4" y="0.4" width="67.2" height="104.2" /><line x1="0.4" y1="52.5" x2="67.6" y2="52.5" /><circle cx="34" cy="52.5" r="9.15" />
+        <rect x="13.84" y="0.4" width="40.32" height="16.5" /><rect x="13.84" y="88.1" width="40.32" height="16.5" /></g>
+      {kids}
+    </svg>);
+  const docLive = (k, b) => {
+    // THE SCREEN, drawn small: the top bar, the page bar and the panels, the bars' parts numbered for the list under it.
+    if (k === "screen") { const n = (i) => <b className="ux-doc-n" style={mono}>{i}</b>;
+      return (
+      <div className="ux-doc-scr" aria-hidden="true">
+        <div className="ux-doc-scr-top">{n(1)}<span className="ux-on">Registry</span><span>Competitions</span><span>Tournaments</span>
+          <div className="ux-doc-scr-r">{n(2)}<span className="ux-doc-scr-find">{uxIcon("search", "ux-xs")}Search</span>{n(3)}{uxIcon("gear", "ux-s")}{n(4)}<span>Sign In</span>
+            {n(5)}<span className="ux-doc-scr-go">Play Match</span></div></div>
+        <div className="ux-doc-scr-page">{n(6)}<b>Registry</b><span className="ux-on">Overview</span><span>Teams</span><span>Players</span><span>Managers</span><span>Trades</span><span>Rating Changes</span></div>
+        <div className="ux-doc-scr-body"><i /><i /><i /></div>
+      </div>); }
+    // WHEN A MANAGER ACTS, on the match's ninety minutes: a bar from the minute each thing may first happen (b.rows:
+    // a label and a minute, or the setting that holds it).
+    if (k === "clock") { const rows = (b.rows || []).map(([l, v]) => [l, +docCfg(v) || 0]), pc = (m) => (m / 90 * 100).toFixed(2) + "%";
+      return (
+      <div className="ux-doc-clock">
+        <div className="ux-doc-ck-ax" style={mono}><span /><div>{[0, 15, 30, 45, 60, 75, 90].map(m => <i key={m} style={{ left: pc(m) }}>{m}</i>)}</div></div>
+        {rows.map(([l, m]) => (
+          <div key={l} className="ux-doc-ck-row"><span>{l}</span>
+            <div><i style={{ left: pc(m) }} />{m > 0 && <b style={{ left: pc(m), ...mono }}>{m}</b>}</div></div>))}
+      </div>); }
+    // THE DISTANCES THAT DECIDE A SET PIECE, on the half of the pitch in front of a goal, read off the engine: where a
+    // dropping ball is headed at goal, where a free kick is struck at goal, and the men a wall takes by its distance.
+    if (k === "ranges") { const C = ME_CFG, at = (r, deg) => [34 + r * Math.cos(deg * Math.PI / 180), r * Math.sin(deg * Math.PI / 180)];
+      // A wall's size sits in the middle of its band, clear of the two lines drawn inside the first bands.
+      const bands = C.spWallD.map((d, i) => { const lo = i ? C.spWallD[i - 1] : C.headShotR, hi = C.spShootRange > lo && C.spShootRange < d ? C.spShootRange : d; return [(lo + hi) / 2, C.spWallBy[i]]; });
+      return (
+      <div className="ux-doc-ranges">
+        <svg viewBox="0 -1.6 68 39.6" aria-hidden="true">
+          <defs><clipPath id="ux-doc-rg"><rect x="0" y="0" width="68" height="38" /></clipPath></defs>
+          <rect className="ux-doc-turf" x="0" y="0" width="68" height="38" />
+          <g clipPath="url(#ux-doc-rg)">
+            <circle className="ux-doc-rg-head" cx="34" cy="0" r={C.headShotR} />
+            {C.spWallD.map(d => <circle key={d} className="ux-doc-rg-wall" cx="34" cy="0" r={d} />)}
+            <circle className="ux-doc-rg-shot" cx="34" cy="0" r={C.spShootRange} />
+          </g>
+          <g className="ux-doc-mk"><rect x="0.2" y="0" width="67.6" height="38" /><rect x="13.84" y="0" width="40.32" height="16.5" /><rect x="24.84" y="0" width="18.32" height="5.5" />
+            <path d="M26.69 16.5A9.15 9.15 0 0 0 41.31 16.5" /><rect x="30.34" y="-1.3" width="7.32" height="1.3" /></g>
+          <circle className="ux-doc-rg-spot" cx="34" cy="11" r="0.4" />
+          {bands.map(([r, n]) => { const [x, y] = at(r, 20); return <text key={r} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor="middle" dominantBaseline="central" style={mono}>{n}</text>; })}
+        </svg>
+        <div className="ux-doc-key">
+          <span><i className="ux-doc-rg-k1" />Headed At Goal<b style={mono}>{C.headShotR} m</b></span>
+          <span><i className="ux-doc-rg-k2" />Free Kick Struck At Goal<b style={mono}>{C.spShootRange} m</b></span>
+          <span><i className="ux-doc-rg-k3" />Men In The Wall<b style={mono}>{C.spWallBy.map((n, i) => n + " Inside " + C.spWallD[i] + " m").join(", ")}</b></span>
+        </div>
+      </div>); }
+    // THE POINTS A RATING GIVES A MAN TO SPEND ON TRAITS (src/data/badges.js budgetOf), a column a band.
+    if (k === "budget") { const bands = []; for (let o = 25; o <= 99; o++) { const n = budgetOf(o), l = bands[bands.length - 1]; if (l && l[2] === n) l[1] = o; else bands.push([o, o, n]); }
+      const top = Math.max(1, ...bands.map(x => x[2]));
+      return (
+      <div className="ux-doc-budget">
+        {bands.map(([a, z, n], i) => (
+          <div key={a} className="ux-doc-bd"><b style={mono}>{n}</b><i style={{ height: 6 + n / top * 66 }} />
+            <span style={mono}>{i === 0 ? "Under " + (z + 1) : z >= 99 ? a + " And Over" : a + " To " + z}</span></div>))}
+      </div>); }
+    // WHAT A PLAYER IS WORTH, by rating and by age (src/data/value.js): dollars on a scale that multiplies, and the share of
+    // his value at his peak.
+    if (k === "value") { const W = 400, H = 176, L = 46, T = 10, pw = W - L - 12, ph = H - T - 24;
+      const path = (pts) => pts.map(([x, y], i) => (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1)).join("");
+      const r0 = 60, r1 = 95, v0 = 5, v1 = Math.log10(3e8), rx = (o) => L + (o - r0) / (r1 - r0) * pw, vy = (v) => T + (1 - (Math.log10(v) - v0) / (v1 - v0)) * ph;
+      const byR = []; for (let o = r0; o <= r1; o++) byR.push([rx(o), vy(valueBase(o))]);
+      const a0 = 17, a1 = 38, top = 1.8, ax = (a) => L + (a - a0) / (a1 - a0) * pw, ay = (f) => T + (1 - f / top) * ph;
+      const byA = (ovr, gk) => { const p = []; for (let a = a0; a <= a1; a++) p.push([ax(a), ay(ageFactor(a, ovr, gk))]); return path(p); };
+      const frame = (xs, xOf, ys, yOf, yLab) => (<>
+        {ys.map(v => <Fragment key={v}><line className="ux-doc-ch-g" x1={L} x2={W - 12} y1={yOf(v)} y2={yOf(v)} /><text x={L - 7} y={yOf(v) + 3.5} textAnchor="end" style={mono}>{yLab(v)}</text></Fragment>)}
+        <line className="ux-doc-ch-a" x1={L} x2={W - 12} y1={T + ph} y2={T + ph} />
+        {xs.map(v => <text key={v} x={xOf(v)} y={H - 6} textAnchor="middle" style={mono}>{v}</text>)}</>);
+      return (
+      <div className="ux-doc-charts">
+        <figure className="ux-doc-chart"><figcaption>By Rating</figcaption>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Value By Rating">
+            {frame([60, 70, 80, 90], rx, [1e6, 1e7, 1e8], vy, moneyLabel)}
+            <path className="ux-doc-ch-l" d={path(byR)} />
+            {[70, 80, 93].map(o => <Fragment key={o}><circle className="ux-doc-ch-d" cx={rx(o)} cy={vy(valueBase(o))} r="3.5" />
+              <text className="ux-doc-ch-v" x={rx(o) - 8} y={vy(valueBase(o)) - 6} textAnchor="end" style={mono}>{moneyLabel(valueBase(o))}</text></Fragment>)}
+          </svg></figure>
+        <figure className="ux-doc-chart"><figcaption>By Age, Against His Peak</figcaption>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Value By Age">
+            {frame([18, 22, 26, 30, 34, 38], ax, [0.5, 1, 1.5], ay, (f) => Math.round(f * 100) + "%")}
+            <path className="ux-doc-ch-l ux-doc-ch-l3" d={byA(85, true)} /><path className="ux-doc-ch-l ux-doc-ch-l2" d={byA(60, false)} /><path className="ux-doc-ch-l" d={byA(85, false)} />
+          </svg>
+          <div className="ux-doc-key"><span><i className="ux-doc-ch-k1" />Rated 85 And Over</span><span><i className="ux-doc-ch-k2" />Rated 60 And Under</span><span><i className="ux-doc-ch-k3" />Goalkeeper</span></div>
+        </figure>
+      </div>); }
     if (k === "styles") return (
       <table className="ux-doc-tbl">
         <colgroup><col style={{ width: 190 }} /><col /></colgroup>
@@ -16061,39 +17651,60 @@ export default function App() {
           return (<tr key={m.name}><td><span className="ux-doc-chip">{uxBadge(v)}{m.name}</span></td>
             <td style={mono}>{max == null ? m.min + " And Over" : isFinite(m.min) ? m.min + " To " + max : max + " And Under"}</td></tr>); })}</tbody>
       </table>);
-    // The match-rating colours, each band's figure in its own colour (ratingColor).
-    if (k === "rating-colours") return (
-      <table className="ux-doc-tbl ux-doc-sm">
-        <colgroup><col style={{ width: 170 }} /><col /></colgroup>
-        <thead><tr><th>Colour</th><th>Match Rating</th></tr></thead>
-        <tbody>{[[9, null], [8, 8.9], [7, 7.9], [6.5, 6.9], [6, 6.4], [5, 5.9], [null, 4.9]].map(([lo, hi]) => (
-          <tr key={String(lo ?? hi)}><td><b style={{ ...mono, color: ratingColor(lo ?? hi) }}>{(lo ?? hi).toFixed(1)}</b></td>
-            <td style={mono}>{hi == null ? lo.toFixed(1) + " And Over" : lo == null ? "Under 5.0" : lo.toFixed(1) + " To " + hi.toFixed(1)}</td></tr>))}</tbody>
-      </table>);
-    // The traits as src/data/badges.js lists them (art, name, tier), with what each does to how a man plays.
+    // THE MATCH RATING'S SCALE, 3.0 to 10.0, each band in its own colour (ratingColor), with the text's marks over and
+    // under it (b.marks: a rating, what it is, and "dn" to hang it below).
+    if (k === "scale") { const lo = 3, hi = 10, cuts = [3, 5, 6, 6.5, 7, 8, 9, 10], pc = (v) => ((v - lo) / (hi - lo) * 100).toFixed(2) + "%";
+      const mark = ([v, l]) => <span key={l} style={{ left: pc(v) }}><b style={mono}>{Number.isInteger(v * 10) ? v.toFixed(1) : String(v)}</b>{l}</span>;
+      return (
+      <div className="ux-doc-scale">
+        <div className="ux-doc-sc-up">{(b.marks || []).filter(m => m[2] !== "dn").map(mark)}</div>
+        <div className="ux-doc-sc-bar">{cuts.slice(0, -1).map((c, i) => <i key={c} style={{ left: pc(c), right: `calc(100% - ${pc(cuts[i + 1])})`, background: ratingColor(c) }} />)}</div>
+        <div className="ux-doc-sc-ax" style={mono}>{cuts.map(c => <i key={c} style={{ left: pc(c) }}>{c.toFixed(1)}</i>)}</div>
+        <div className="ux-doc-sc-dn">{(b.marks || []).filter(m => m[2] === "dn").map(mark)}</div>
+      </div>); }
+    // THE TRAITS, A FAMILY AT A TIME (user, 22 November 2026: "Organize the traits better in the documentation"; it was one
+    // table of fifty-one rows). First what the three levels and a flaw look like, one trait drawn at each. Then every
+    // family under its own heading: its traits in green, then its flaws in their red, each with what it does to how a man plays
+    // (docs.js TRAIT_DOC). Names, families and art from src/data/badges.js.
     if (k === "traits") return (
-      <table className="ux-doc-tbl">
-        <colgroup><col style={{ width: 190 }} /><col style={{ width: 80 }} /><col /></colgroup>
-        <thead><tr><th>Trait</th><th>Tier</th><th>How He Plays</th></tr></thead>
-        <tbody>{BADGES.map(b => (
-          <tr key={b.id}><td><span className="ux-doc-chip" data-trait={b.id}><BadgeIcon id={b.id} size={18} />{b.name}</span></td>
-            <td className={"ux-doc-tier ux-" + b.tier}>{b.tier[0].toUpperCase() + b.tier.slice(1)}</td><td>{TRAIT_DOC[b.id] || ""}</td></tr>))}</tbody>
-      </table>);
-    // What each style pays or is paid at kick-off, in rating points on every man (ME_MIND_PRICE), lowest first.
-    if (k === "style-price") return (
-      <table className="ux-doc-tbl ux-doc-sm">
-        <colgroup><col style={{ width: 220 }} /><col /></colgroup>
-        <thead><tr><th>Style</th><th>Every Man's Rating</th></tr></thead>
-        <tbody>{STYLES.map(s => [s, -(ME_MIND_PRICE[ME_STYLE_DEF[s] || s] || 0)]).sort((a, b) => a[1] - b[1]).map(([s, d]) => (
-          <tr key={s}><td>{uxStyleName(s)}</td><td style={mono}>{d > 0 ? "+" + d.toFixed(1) : d < 0 ? "\u2212" + Math.abs(d).toFixed(1) : "0.0"}</td></tr>))}</tbody>
-      </table>);
-    // The formations a side can set up in, and the shape each drops into without the ball (ME_DEF_FORM).
-    if (k === "formations") return (
-      <table className="ux-doc-tbl ux-doc-sm">
-        <colgroup><col style={{ width: 160 }} /><col /></colgroup>
-        <thead><tr><th>Formation</th><th>Defends As</th></tr></thead>
-        <tbody>{FORMATIONS.map(f => <tr key={f}><td style={mono}>{f}</td><td style={ME_DEF_FORM[f] ? mono : undefined}>{ME_DEF_FORM[f] || "The Same"}</td></tr>)}</tbody>
-      </table>);
+      <div className="ux-doc-traits">
+        <div className="ux-doc-lv" role="group" aria-label="Levels">
+          {[1, 2, 3].map(L => <span key={L} className="ux-doc-lvi"><BadgeIcon id={traitKey("vision", L)} size={30} /><b>{LEVEL_NAME[L]}</b><i>{L === 1 ? "1 Point" : L + " Points"}</i></span>)}
+          <span className="ux-doc-lvi"><BadgeIcon id={traitKey("ballwatcher", 1)} size={30} /><b>Flaw</b><i>1 Or 2 Back</i></span>
+        </div>
+        {FAMILIES.map(f => { const rows = [...BADGES.filter(b => b.fam === f && !b.flaw), ...BADGES.filter(b => b.fam === f && b.flaw)];
+          return (
+            <section key={f} className="ux-doc-fam" aria-label={f}>
+              <h4><b>{f}</b><span>{TRAIT_FAM_DOC[f]}</span><i style={mono}>{rows.filter(b => !b.flaw).length}</i></h4>
+              <table className="ux-doc-tbl ux-doc-ttbl">
+                <colgroup><col style={{ width: 210 }} /><col /></colgroup>
+                <tbody>{rows.map(b => (
+                  <tr key={b.id} className={b.flaw ? "ux-doc-flawrow" : undefined}>
+                    <td><span className={"ux-doc-chip" + (b.flaw ? "" : " ux-doc-good")} data-trait={traitKey(b.id, 0)}><BadgeIcon id={traitKey(b.id, 0)} size={20} />{b.name}</span></td>
+                    <td>{TRAIT_DOC[b.id] || ""}</td></tr>))}</tbody>
+              </table>
+            </section>); })}
+      </div>);
+    // What each style pays or is paid at kick-off, in rating points on every man (ME_MIND_PRICE), lowest first: a bar
+    // either side of nothing.
+    if (k === "style-price") { const rows = STYLES.map(s => [s, -(ME_MIND_PRICE[ME_STYLE_DEF[s] || s] || 0)]).sort((x, y) => x[1] - y[1]), top = Math.max(0.1, ...rows.map(r => Math.abs(r[1])));
+      return (
+      <div className="ux-doc-bars">
+        {rows.map(([s, d]) => (
+          <div key={s}>{uxStyleName(s)}
+            <div><i className={d < 0 ? "ux-doc-less" : "ux-doc-more"} style={{ width: (Math.abs(d) / top * 50).toFixed(1) + "%" }} /></div>
+            <b style={mono}>{d > 0 ? "+" + d.toFixed(1) : d < 0 ? "\u2212" + Math.abs(d).toFixed(1) : "0.0"}</b></div>))}
+      </div>); }
+    // THE FORMATIONS, each drawn twice: where its men stand with the ball, and the shape it drops into without it
+    // (ME_DEF_FORM), a dot a man in his line's colour.
+    if (k === "shapes") { const dots = (f) => { const sp = sposFor(f); return pitchSlots(f).map(([x, y], i) =>
+        <circle key={i} cx={(x * 0.68).toFixed(1)} cy={(y * 1.05).toFixed(1)} r="3.6" style={{ fill: POS_CLR[sp[i]] || "var(--ux-text)" }} />); };
+      return (<>
+        <div className="ux-doc-key"><span><i className="ux-doc-sh-k1" />With The Ball</span><span><i className="ux-doc-sh-k2" />Without It</span></div>
+        <div className="ux-doc-shapes">
+          {FORMATIONS.map(f => { const d = ME_DEF_FORM[f] || f; return (
+            <figure key={f} className="ux-doc-shape">{docPitch(dots(f))}{docPitch(dots(d), "ux-doc-off")}<b style={mono}>{f}</b><span style={mono}>{d}</span></figure>); })}
+        </div></>); }
     // The roles the engine deals, by the part of the pitch they belong to (ROLE_NAME).
     if (k === "roles") { const grp = (r) => r === "gk" ? "Goalkeeper" : /^cb/.test(r) ? "Centre-Backs" : /^(fb|wb)/.test(r) ? "Full-Backs And Wing-Backs"
         : /^dm/.test(r) ? "Defensive Midfielders" : /^cm/.test(r) ? "Central Midfielders" : /^am/.test(r) ? "Attacking Midfielders" : /^(w|wm)/.test(r) ? "Wide Players" : "Strikers";
@@ -16115,18 +17726,32 @@ export default function App() {
         <tbody>{moves.map(([a, b]) => <tr key={a + b}><td><b style={{ ...mono, color: POS_CLR[a] }}>{a}</b> At <b style={{ ...mono, color: POS_CLR[b] }}>{b}</b></td>
           <td style={mono}>{posDrop([a], b)}</td></tr>)}</tbody>
       </table>); }
-    // The positions in their colours, by group.
-    if (k === "positions") return (
-      <table className="ux-doc-tbl ux-doc-sm">
-        <colgroup><col style={{ width: 70 }} /><col /></colgroup>
-        <thead><tr><th>Position</th><th>Name</th></tr></thead>
-        <tbody>{Object.entries(POS_NAME).map(([p, n]) => <tr key={p}><td><b style={{ ...mono, color: POS_CLR[p] }}>{p}</b></td><td>{n}</td></tr>)}</tbody>
-      </table>);
+    // THE POSITIONS, where each stands on a pitch in its line's colour, with their names beside it.
+    if (k === "positions") { const at = { GK: [34, 97], LB: [9, 81], CB: [34, 84], RB: [59, 81], LWB: [8, 67], RWB: [60, 67], DM: [34, 69], CM: [34, 53],
+        LM: [8, 51], RM: [60, 51], AM: [34, 37], LW: [9, 25], RW: [59, 25], ST: [34, 14] };
+      return (
+      <div className="ux-doc-pos">
+        {docPitch(Object.entries(at).map(([p, [x, y]]) => <g key={p}><rect x={x - 6.5} y={y - 4} width="13" height="8" style={{ fill: POS_CLR[p] }} /><text x={x} y={y + 1.7} textAnchor="middle" style={mono}>{p}</text></g>))}
+        <table className="ux-doc-tbl ux-doc-sm">
+          <colgroup><col style={{ width: 70 }} /><col /></colgroup>
+          <thead><tr><th>Position</th><th>Name</th></tr></thead>
+          <tbody>{Object.entries(POS_NAME).map(([p, n]) => <tr key={p}><td><b style={{ ...mono, color: POS_CLR[p] }}>{p}</b></td><td>{n}</td></tr>)}</tbody>
+        </table>
+      </div>); }
     return null;
   };
+  // A block of the text (src/docs.js): a paragraph, a list of terms, a table, numbered steps, or something drawn from the
+  // engine.
   const docBlock = (b, i) => typeof b === "string" ? <p key={i} className="ux-doc-p">{b}</p>
     : b.dl ? <dl key={i} className="ux-doc-dl">{b.dl.map(([dt, dd]) => <Fragment key={dt}><dt>{dt}</dt><dd>{dd}</dd></Fragment>)}</dl>
-    : b.live ? <Fragment key={i}>{docLive(b.live)}</Fragment> : null;
+    : b.tbl ? (
+      <table key={i} className={"ux-doc-tbl ux-doc-st" + (b.tbl.sm ? " ux-doc-sm" : "")}>
+        <colgroup>{b.tbl.head.map((h, c) => <col key={h} style={b.tbl.w?.[c] ? { width: b.tbl.w[c] } : undefined} />)}</colgroup>
+        <thead><tr>{b.tbl.head.map(h => <th key={h}>{h}</th>)}</tr></thead>
+        <tbody>{b.tbl.rows.map((r, n) => <tr key={n}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
+      </table>)
+    : b.steps ? <ol key={i} className="ux-doc-steps">{b.steps.map((t, n) => <li key={n}><b style={mono}>{n + 1}</b><span>{t}</span></li>)}</ol>
+    : b.live ? <Fragment key={i}>{docLive(b.live, b)}</Fragment> : null;
   const renderUxDocs = () => {
     const pg = DOCS.find(p => p.id === docPage) || DOCS[0], on = docOn || pg.sections[0]?.id;
     return (
@@ -16225,8 +17850,11 @@ export default function App() {
   // ════ HOME ════
   const renderUxHome = () => {
     const q = pFold(uxNatQ.trim());
+    // Ordered by the newest AFA ranking (Moukden and Kirin, 24 November 2026), a side it leaves out after the rest by
+    // OVR; Arterra has no ranking, so all by OVR.
+    const afaList = AFA_HERE[AFA_YEAR_LIST[AFA_YEAR_LIST.length - 1]] || [], afaAt = new Map(afaList.map(([c], i) => [c, i]));
     const list = regNations.filter(n => n.world === world)
-      .sort((a, b) => (Number(b.nt.skill) || 0) - (Number(a.nt.skill) || 0) || a.nt.name.localeCompare(b.nt.name));
+      .sort((a, b) => (afaAt.get(a.code) ?? 1e9) - (afaAt.get(b.code) ?? 1e9) || (Number(b.nt.skill) || 0) - (Number(a.nt.skill) || 0) || a.nt.name.localeCompare(b.nt.name));
     const rankOf = new Map(list.map((n, i) => [n.code, i + 1]));
     const shown = q ? list.filter(n => pFold(n.nt.name).includes(q) || pFold(n.code).includes(q)) : list;
     const conf = (nt) => String(nt.conference || CONF_BY_CODE.get(nt.code) || "").replace(/ Conference$/, "");
@@ -16344,7 +17972,7 @@ export default function App() {
       const side = isNT ? (oc ? teamByName.get(oc.name) : null) : pe?.natCode ? natTeamByCode.get(pe.natCode) : null;
       const rec = p.rid ? recNow(p.rid) : null, own = posList(rec?.pos ?? p.own), age = rec?.born ? ageOf(rec.born) : null;
       const value = rec && pstats && !veiled(p.rid) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null;
-      const traits = badgeOrder(seen(p.rid, rec?.badges) || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
+      const traits = traitsTop(seen(p.rid, rec?.badges) || []);
       const place = p.bench ? p.lab || p.pos : pos, oop = uxOop(p.own, place), other = own.find(q => q !== pos);
       return (
         <tr key={i} className="ux-link" onClick={() => pe && openPlayer(nm)}>
@@ -17031,7 +18659,7 @@ export default function App() {
     // His roles: what each side he starts for deals him, as a match deals them (rolesOf: the side's style, its shape and
     // his slot); a man on the bench has none until he comes on. His country first, as the banner's crests run.
     const roles = uxRoleRows(sheets), oops = uxOopSides(sheets, ownPos, ovr);
-    const traits = badgeOrder(seen(rid, rec?.badges) || []).map(id => BADGE_BY_ID[id]).filter(Boolean);
+    const traits = badgeOrder(seen(rid, rec?.badges) || []).filter(id => badgeOf(id));
     // The season picked, his newest by default.
     const years = [...new Set(rows.map(x => x.y))].sort((a, b) => b - a);
     const year = uxPlSel.who === name && years.includes(uxPlSel.y) ? uxPlSel.y : years[0] ?? null;
@@ -17079,7 +18707,12 @@ export default function App() {
     const honours = [...won.entries()].map(([c, ss]) => [c, ss.sort((a, b) => b.ord - a.ord)]).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
     // The pitch's column is as wide as the tallest pitch the window allows is wide (three quarters of its length, under the
     // banner and Traits), so the pitch fills its panel; the season and the career share the rest.
-    const right = rows.length > 0, under = (traits.length ? 12 + 38 + 44 * traits.length : 0) + (roles.length ? 1 + 44 * roles.length : 0)
+    // THE TRAITS SCROLL, NOT THE PITCH (user, 22 November 2026, with a man of eight traits whose Positions panel had been
+    // squeezed to one line: "Maybe the traits list needs to be the one scrolling"). With levels a man can carry more
+    // than the three the page was laid out for: the list shows UX_TRAIT_ROWS of them and scrolls inside itself for more.
+    // Four and a half rows when there are more, so the next one shows cut off and the list reads as one that scrolls.
+    const UX_TRAIT_ROWS = traits.length > 4 ? 4.5 : 4;
+    const right = rows.length > 0, under = (traits.length ? 12 + 38 + 44 * Math.min(traits.length, UX_TRAIT_ROWS) : 0) + (roles.length ? 1 + 44 * roles.length : 0)
       + (oops.length ? 1 + 44 * oops.length : 0);
     return (
       <div className="ux-body" style={{ gridTemplateColumns: `minmax(300px, calc((100vh - ${370 + under}px) * 0.75 + 26px)) minmax(0, 1fr)${right ? " 340px" : ""}`, gridTemplateRows: "auto minmax(0, 1fr)" }}>
@@ -17123,13 +18756,18 @@ export default function App() {
             {oops.length > 0 && uxOopList(oops, ownPos)}
             {roles.length > 0 && uxRolesList(roles)}
           </>), true)}
-          {traits.length > 0 && uxPanel("Traits", null, (
-            <div className="ux-pbody ux-fit">{traits.map(b => (
-              <div key={b.id} className="ux-trait" data-trait={b.id}><BadgeIcon id={b.id} size={28} /><b>{b.name}</b><span>{b.tier[0].toUpperCase() + b.tier.slice(1)}</span></div>))}</div>))}
+          {traits.length > 0 && uxPanel("Traits", traits.length > 4 ? <span className="ux-dim" style={{ ...mono, fontSize: 11 }}>{traits.length}</span> : null, (
+            <div className="ux-pbody ux-fit ux-traitlist" style={{ maxHeight: 44 * UX_TRAIT_ROWS }}>{traits.map(k => { const b = badgeOf(k); return (
+              <div key={b.id} className="ux-trait" data-trait={k}><BadgeIcon id={k} size={28} /><b>{b.name}</b><span>{b.flaw ? "Flaw" : LEVEL_NAME[traitLv(k)]}</span></div>); })}</div>))}
         </div>
         <div className="ux-col">
+          {/* A LONG INJURY on file that the archive has not yet got past (longIdx): a warning row over his season, what it is
+              and how long he is out (user, 24 November 2026: "cannot be on the header strip. Put it as a warning row in
+              season stats"). */}
           {uxPanel("Season Stats", years.length > 0 && uxPick("Season", String(year), years.map(y => [String(y), uxSeasonLabel(y)]), v => setUxPlSel({ who: name, y: +v })),
-            !yr.length ? <div className="ux-empty">{!pstats ? "Loading" : "No Matches Recorded"}</div> : (
+            <>{(() => { const e = longIdx.of(rid, null); if (!e || e.span.to <= longIdx.now) return null; const b = longBack(e.span);
+              return <div className="ux-injw">{tlIcon("injury")}<b>{e.label}</b><span>Out Until {b.label} <span style={mono}>{b.c}</span></span></div>; })()}
+            {!yr.length ? <div className="ux-empty">{!pstats ? "Loading" : "No Matches Recorded"}</div> : (
             <div className="ux-pbody ux-fit"><table className="ux-tbl">
               <colgroup><col /><col style={{ width: 74 }} /><col style={{ width: 40 }} /><col style={{ width: 36 }} /><col style={{ width: 36 }} /><col style={{ width: 40 }} /><col style={{ width: 40 }} /><col style={{ width: 40 }} /><col style={{ width: 48 }} /></colgroup>
               <thead><tr><th>Competition</th><th>Team</th>
@@ -17145,7 +18783,7 @@ export default function App() {
                 {yr.length > 1 && (
                   <tr className="ux-tot"><td>Total</td><td />{num(tot.gp)}{num(tot.G)}{num(tot.A)}{num(tot.CC)}{num(tot.DC)}{num(tot.SV)}{rtgTd(tot.rg ? tot.rs / tot.rg : null)}</tr>)}
               </tbody>
-            </table></div>), !perf)}
+            </table></div>)}</>, !perf)}
           {perf && uxPanel("Performance", null, uxRadar(perf, clr, disp, "Average " + (UX_BAND[perf.band] || "Player")), true)}
         </div>
         {right && (
@@ -17257,7 +18895,7 @@ export default function App() {
           </>) : (<>
             {view === "season" ? side(r.se?.club || null, "") : uxNum(r.yrs, "ux-c")}
             {uxNum(fg?.gp)}{uxNum(fg?.G)}{uxNum(fg?.A)}{uxNum(fg?.CC)}{uxNum(fg?.DC)}{uxNum(fg?.SV)}
-            {uxAvgTd(fg?.RTG ?? null, view === "season" ? (fg?.rg || 0) >= UX_RTG_MIN_GP : (fg?.rg || 0) >= careerRtg.minGp)}
+            {uxAvgTd(fg?.RTG ?? null, view === "season" ? (fg?.rg || 0) >= uxPsMinGp : (fg?.rg || 0) >= careerRtg.minGp)}
           </>)}
         </tr>);
     };
@@ -17282,7 +18920,7 @@ export default function App() {
               groups={[[null, [{ k: "", name: "All Clubs" }, { k: "FA", name: "Free Agents" }, { k: "HOF", name: "Hall Of Fame" }]],
                 ...playerClubItems.filter(([lg]) => !playerCompFilter || lg === playerCompFilter)]} />
             {uxPickG("Age", uxPsAge, [[null, UX_AGES]], setUxPsAge)}
-            {uxPickG("Trait", uxPsTrait, [[null, [["", "All Traits"]]], ...["gold", "silver", "bronze"].map(t => [TIER_LBL[t], BADGES.filter(b => b.tier === t).map(b => [b.id, b.name])])], setUxPsTrait)}
+            {uxPickG("Trait", uxPsTrait, [[null, [["", "All Traits"]]], ...FAMILIES.map(f => [f, BADGES.filter(b => b.fam === f && !b.flaw).map(b => [b.id, b.name])]), ["Flaws", BADGES.filter(b => b.flaw).map(b => [b.id, b.name])]], setUxPsTrait)}
             {warnChips.map(c => (
               <button key={c.key} type="button" className="ux-btnreset ux-fault" style={{ color: c.color }} title={c.title} onClick={() => setWarnOpen(w => (w === c.key ? null : c.key))}>
                 <span style={mono}>{c.lines.length}</span> {c.label[0].toUpperCase() + c.label.slice(1)}</button>))}
@@ -17325,8 +18963,8 @@ export default function App() {
     const yr = { gp: 0, G: 0, A: 0, rs: 0, rg: 0 };
     for (const x of per.values()) { yr.gp += x.gp; yr.G += x.G || 0; yr.A += x.A || 0; if (x.RTG != null) { yr.rs += x.RTG * x.gp; yr.rg += x.gp; } }
     const rtg = (rs, rg, gate) => (rg ? [(rs / rg).toFixed(2).replace(/0$/, ""), rg >= gate ? ratingColor(rs / rg) : "var(--ux-text-3)"] : [null, null]);
-    const [yv, yc] = rtg(yr.rs, yr.rg, UX_RTG_MIN_GP), c = r.c, [cv, cc] = c ? rtg(c.rs, c.rg, careerRtg.minGp) : [null, null];
-    const traits = badgeOrder(seen(r.f?.rid, (r.f?.rid ? recNow(r.f.rid) : null)?.badges) || []).filter(id => BADGE_BY_ID[id]);
+    const [yv, yc] = rtg(yr.rs, yr.rg, uxPsView === "season" ? uxPsMinGp : UX_RTG_MIN_GP), c = r.c, [cv, cc] = c ? rtg(c.rs, c.rg, careerRtg.minGp) : [null, null];
+    const traits = badgeOrder(seen(r.f?.rid, (r.f?.rid ? recNow(r.f.rid) : null)?.badges) || []).filter(id => badgeOf(id));
     return (
       <div className="ux-col ux-psc">
         <section className="ux-panel ux-plc" aria-label={disp}>
@@ -17352,7 +18990,7 @@ export default function App() {
         {c && c.gp > 0 && uxPanel("Career", null, uxStrip([["Seasons", r.yrs], ["GP", c.gp], ["G", c.G], ["A", c.A], ["Avg", cv, cc]]))}
         {traits.length > 0 && uxPanel("Traits", null, (
           <div className="ux-tchips">{traits.map(id => (
-            <span key={id} className="ux-tchip" data-trait={id}><BadgeIcon id={id} size={22} />{BADGE_BY_ID[id].name}</span>))}</div>))}
+            <span key={id} className="ux-tchip" data-trait={id}><BadgeIcon id={id} size={22} />{badgeOf(id).name}</span>))}</div>))}
       </div>);
   };
 
@@ -19148,7 +20786,7 @@ export default function App() {
       <div className="ux-fsec">Home Advantage</div>
       {uxTHomeAdv()}
       <div className="ux-fsec">Match Rules</div>
-      <div className="ux-frow-c">{[["injuries", "Injuries"], ["suspensions", "Suspensions"], ["staminaCarry", "Tiredness"]].map(([k, l]) => uxTog(l, tConfig[k] !== false, v => setTConfig(c => ({ ...c, [k]: v }))))}</div>
+      <div className="ux-frow-c">{[["injuries", "Injuries"], ["longInjuries", "Long Injuries"], ["suspensions", "Suspensions"], ["staminaCarry", "Tiredness"]].map(([k, l]) => uxTog(l, tConfig[k] !== false, v => setTConfig(c => ({ ...c, [k]: v }))))}</div>
     </div>), true);
   const uxTSidesPanel = () => {
     const q = pFold(tSidesQ.trim()), sel = new Set(tournamentTeamIds), body = [];
@@ -19468,17 +21106,25 @@ export default function App() {
   };
   const tToStats = (k) => { setTView("stats"); setTPsSort({ k, asc: false }); };
   const uxTLeadersPanel = () => {
-    const rows = uxTLeaderRows(), out = Object.values(tPlayerStats).filter(p => (p.suspended || 0) > 0 || (p.injOut || 0) > 0);
-    const control = out.length > 0 ? (
+    // (and the doubtful after them: a man who played on hurt in his last match, until he has played since)
+    const isDbt = (p) => p.hurtAt != null && (p.mins || 0) === p.hurtAt && !((p.injOut || 0) > 0) && !((p.suspended || 0) > 0);
+    const rows = uxTLeaderRows(), out = Object.values(tPlayerStats).filter(p => (p.suspended || 0) > 0 || (p.injOut || 0) > 0 || isDbt(p));
+    const control = out.length + tLongOut.size > 0 ? (
       <button type="button" className={"ux-btnreset ux-chip ux-chip-btn" + (tUnavailOpen ? " ux-on" : "")} aria-pressed={tUnavailOpen} onClick={() => setTUnavailOpen(o => !o)}>
-        <span style={mono}>{out.length}</span>&nbsp;Unavailable</button>) : null;
-    const body = tUnavailOpen && out.length ? (
-      <div className="ux-pbody ux-fit">{out.map(p => { const t = uxTSideOf(p.team), sus = (p.suspended || 0) > 0, k = sus ? p.suspended : p.injOut; return (
+        <span style={mono}>{out.filter(p => !isDbt(p)).length + tLongOut.size}</span>&nbsp;Unavailable</button>) : null;
+    const body = tUnavailOpen && out.length + tLongOut.size ? (
+      <div className="ux-pbody ux-fit">{[...tLongOut.values()].map(p => { const t = uxTSideOf(p.team); return (
+        <div key={"long|" + p.team + "|" + p.name} className="ux-ldr ux-sm ux-rec">
+          <span className="ux-ldr-cat">{p.name}</span>
+          <span className="ux-ldr-who">{t && <TeamCrest team={t} size={14} />}<span className="ux-ldr-nm">{p.team}</span></span>
+          <span className="ux-ldr-v ux-ldr-t">Long Injury</span>
+          <span className="ux-ldr-s">{p.label}</span>
+        </div>); })}{out.map(p => { const t = uxTSideOf(p.team), sus = (p.suspended || 0) > 0, k = sus ? p.suspended : p.injOut; return (
         <div key={p.team + "|" + p.name} className="ux-ldr ux-sm ux-rec">
           <span className="ux-ldr-cat">{p.fullName || p.name}</span>
           <span className="ux-ldr-who">{t && <TeamCrest team={t} size={14} />}<span className="ux-ldr-nm">{p.team}</span></span>
-          <span className="ux-ldr-v ux-ldr-t">{sus ? "Suspended" : "Injured"}</span>
-          <span className="ux-ldr-s" style={mono}>{k} {k === 1 ? "Match" : "Matches"}</span>
+          <span className="ux-ldr-v ux-ldr-t">{sus ? "Suspended" : k ? "Injured" : "Doubtful"}</span>
+          <span className="ux-ldr-s" style={mono}>{k ? <>{k} {k === 1 ? "Match" : "Matches"}</> : "Next Match"}</span>
         </div>); })}</div>)
       : rows.length ? (
       <div className="ux-pbody ux-fit">{rows.map(([k, label, p, f, clr]) => { const t = uxTSideOf(p.team); return (
@@ -19600,7 +21246,7 @@ export default function App() {
   const renderUxTRules = () => {
     const c = tConfig, fact = (label, v) => <div key={label} className="ux-frow"><span className="ux-frow-l">{label}</span><div className="ux-frow-c ux-fval">{v}</div></div>;
     const alloc = { seed: "Seed", random: "Random", manual: "By Hand", draw: "Draw", preset: "As Drawn", crossover: "Crossover" };
-    const rules = [["injuries", "Injuries"], ["suspensions", "Suspensions"], ["staminaCarry", "Tiredness"]].filter(([k]) => c[k] !== false).map(([, l]) => l);
+    const rules = [["injuries", "Injuries"], ["longInjuries", "Long Injuries"], ["suspensions", "Suspensions"], ["staminaCarry", "Tiredness"]].filter(([k]) => c[k] !== false).map(([, l]) => l);
     return (
       <div className="ux-body ux-tsplit">
         {uxPanel("Format", null, (
@@ -20568,7 +22214,7 @@ export default function App() {
       <div className="width-gate ux-gate" role="alert">
         <img src={headerImg} alt="Avium Football Engine" />
         <h1>Wrong Window Shape</h1>
-        <p>The engine needs a landscape window at least <b>{MIN_WINDOW_W}px</b> wide. Widen the window, rotate the device or open it on a desktop.</p>
+        <p>The engine needs a desktop, or a tablet held sideways, at least <b>{MIN_WINDOW_W}px</b> wide.</p>
       </div>
       <div className="ux-app">
         <TraitCard />
@@ -20578,7 +22224,7 @@ export default function App() {
         {renderUxPageBar()}
         <main className="ux-main">
           {uxScreen === "home" && renderUxHome()}
-          {uxScreen === "club" && renderUxClub(regTeamObj)}
+          {uxScreen === "club" && (ucEdit && regTeamObj && canEditTeam(regTeamObj) ? renderUxClubEdit(regTeamObj) : renderUxClub(regTeamObj))}
           {uxScreen === "clubhist" && renderUxClubHistory(regTeamObj)}
           {uxScreen === "nation" && renderUxNation(regNationBy.get(reg.nation))}
           {uxScreen === "player" && uxPl && renderUxPlayer(uxPl)}
@@ -21468,9 +23114,28 @@ export default function App() {
           // Two circles, both real: the solid one is his BODY, which the ball bounces off, and the
           // faint one is how far he gets a FOOT to it, which is the only way he takes possession.
           // With the reach invisible the engine was interacting through a ring you could not see.
-          const R_MAN = ME_CFG.bodyR, R_BALL = ME_CFG.ballR, R_REACH = ME_CFG.reach;
+          // ...EXCEPT THE MAN AND THE BALL THEMSELVES (user, 22 November 2026: "make the field and graphics look a lot
+          // better... No more boring dots and lines"; asked: Dressed Top-Down, names over every player, one house look).
+          // At his true 0.28 m a man is six pixels of a thousand and the ball two, which is a diagram. He is drawn as a
+          // dot half as big again, inside his own reach ring, which stays true; the ball at about twice its size.
+          const R_MAN = 0.4, R_BALL = 0.19, R_REACH = ME_CFG.reach;   // (0.5 was "a bit too big", the user, the same day)
           // How high a ball has to get to be drawn at its biggest, and how much bigger that is.
-          const BALL_LIFT_H = 6, BALL_LIFT = 1.1;
+          const BALL_LIFT_H = 6, BALL_LIFT = 0.9;
+          // Where the light comes from: a man's shadow falls this far down and right of him, a ball's further as it rises.
+          const SH_X = 0.14, SH_Y = 0.2, R0 = R_MAN;
+          // THE EFFECTS showing, and their clock in slices: the replay's own while one is up, else the match's. None for
+          // someone who has asked for less motion.
+          const fxOn = !!m && !uxReduced();
+          const fxCel = m?.cel && st ? m.cel : null;
+          const fxList = !fxOn ? [] : fxCel ? meFxOfClip(fxCel.clip) : (m.fx || []);
+          const fxTau = !fxOn ? 0 : fxCel ? Math.min(fxCel.clip.frames.length - 1, (fxCel.i || 0) + (fxCel.i >= fxCel.clip.frames.length - 1 ? 0 : fxCel.a || 0)) + (fxCel.post || 0)
+                                          : (st?.mePos?.tick ?? 0) - 1 + al;
+          const fxDraw = (under) => fxList.flatMap((e, n) => { if ((e.k === "scuff") !== under) return [];
+            return meFxPrims(e, fxTau - e.t).map((P, k) => { const key = "fx" + n + "_" + k, c = FX_CLR[P.c] || FX_CLR.w;
+              return P.t === "ring" ? <circle key={key} cx={fx(P.x)} cy={P.y} r={Math.max(0.05, P.r)} fill="none" stroke={c} strokeOpacity={Math.max(0, Math.min(1, P.o))} strokeWidth={P.w} />
+                   : P.t === "line" ? <line key={key} x1={fx(P.x)} y1={P.y} x2={fx(P.x1)} y2={P.y1} stroke={c} strokeOpacity={Math.max(0, Math.min(1, P.o))} strokeWidth={P.w} strokeLinecap="round" />
+                   : <circle key={key} cx={fx(P.x)} cy={P.y} r={P.r} fill={c} fillOpacity={Math.max(0, Math.min(1, P.o))} />; }); });
+          const fxGoal = fxList.find(e => e.k === "goal" && fxTau - e.t >= 0 && fxTau - e.t < 5);
           // A label sits above its dot and stays there. Tried and rejected: planning all twenty-two as
           // boxes and flipping a colliding one underneath its dot, the way the old abstract painter
           // does. It removes the overprinting and replaces it with something worse -- a label that
@@ -21480,39 +23145,77 @@ export default function App() {
           // What it gets instead is contrast: brighter, and a heavier outline behind it, so an
           // overlap stays legible rather than turning to mush.
           const gk = (p) => p.pos === "GK";
-          const dot = (p, fill, key, carrier) => {
-            const x = ix(p), y = iy(p);
+          const dot = (p, fill, key, carrier, q = -1) => {
+            // What the effects do to him (meFxMan): up for a header, along the grass in a slide, a step back off a block.
+            const md = fxOn && q >= 0 ? meFxMan(fxList, q, fxTau) : null, hs = m?.h2 ? -1 : 1;
+            const x = ix(p) + (md ? md[3] * hs : 0), y = iy(p) + (md ? md[4] : 0), lift = md ? md[0] : 0;
+            const R_MAN = R0 * (1 + 0.24 * lift);
             // GONE IS GONE. A man walking down the tunnel should leave the picture, not sit as a
             // half-clipped dot on the bottom edge of it.
             if (y > 69.4) return null;
             // The keeper is the one man a viewer has to pick out instantly, and the one man whose
             // colour genuinely is different in real football.
             const face = gk(p) ? "#f5e663" : fill;
-            // WHICH WAY HE IS FACING, for the second brain, where it decides what he can see: a nose on
-            // the dot, in his own colour. Mirrored with the ends at half time.
-            const fa = st?.brain === 2 && p._face !== undefined ? (m?.h2 ? Math.PI - p._face : p._face) : null;
+            // A DOT, and nothing more (user, 22 November 2026, on a head and shoulders drawn from above: "Figures look
+            // goofy just use dots"). His kit's colour, a soft shadow under it, and a nose the way he faces (the second
+            // brain's body angle; mirrored with the ends at half time).
+            const fa = st?.brain === 2 && p._face !== undefined && !Number.isNaN(p._face) ? (m?.h2 ? Math.PI - p._face : p._face) : null;
             const nose = fa === null ? null : (() => {
-              const c = Math.cos(fa), sn = Math.sin(fa), tip = R_MAN + 0.5, bk = R_MAN * 0.55, w = R_MAN * 0.62;
+              const c = Math.cos(fa), sn = Math.sin(fa), tip = R_MAN + 0.42, bk = R_MAN * 0.55, w = R_MAN * 0.62;
               return `${x + c * tip},${y + sn * tip} ${x + c * bk - sn * w},${y + sn * bk + c * w} ${x + c * bk + sn * w},${y + sn * bk - c * w}`;
             })();
+            // THE KEEPER AT FULL STRETCH, and a man sliding in: the dot drawn out along the line he is going (the engine's
+            // own dive, match.ts _pext; the tackle's own line).
+            // (the dive itself, match.ts _dext: his running pace stretched him too, and a keeper sprinting off his line was
+            // drawn smeared along his run like a row of copies of himself; user, 24 November 2026)
+            const dv = p._dive ? [p._pext ?? 0, p._pux ?? 0, p._puy ?? 0] : [p._dext ?? 0, p._dux ?? 0, p._duy ?? 0];
+            const ext = gk(p) && dv[0] > 0.05 && (p._dive || (!rep && (st?.mePos?.shot || st?.mePos?.gkPlan))) ? dv[0] : 0, dux = hs * dv[1], duy = dv[2];
+            const slx = md ? md[1] * hs : 0, sly = md ? md[2] : 0;
             return (
               <g key={key}>
-                {nose && <polygon points={nose} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} strokeLinejoin="round" />}
+                <ellipse cx={x + SH_X * (1 + 3 * lift)} cy={y + SH_Y * (1 + 3 * lift)} rx={R_MAN * 1.02 + ext * 0.5} ry={R_MAN * 0.9} fill="#000" fillOpacity={0.26 - 0.1 * lift} />
+                {ext > 0 && <line x1={x - dux * ext} y1={y - duy * ext} x2={x + dux * ext} y2={y + duy * ext} stroke={face} strokeWidth={R_MAN * 1.7} strokeLinecap="round" />}
+                {(slx || sly) ? <line x1={x} y1={y} x2={x + slx} y2={y + sly} stroke={face} strokeWidth={R_MAN * 1.8} strokeLinecap="round" /> : null}
                 {/* HIS TOUCH REACH, and only his. Drawn round all twenty-two it was twenty-two fuzzy
                     haloes and pure noise; drawn round the man on the ball it is the one thing on the
                     pitch it was ever telling you -- how far he can actually get a foot to it, which
                     is what decides whether he keeps it. It doubles as the carrier marker, so the
                     separate highlight ring is not needed and is not missed. */}
-                {carrier && <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill}
-                                    strokeOpacity={0.5} strokeWidth={0.09} />}
-                <circle cx={x} cy={y} r={R_MAN} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} />
-                <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.88}
-                      fontSize={0.74} stroke="rgba(0,0,0,.8)" strokeWidth={0.2} paintOrder="stroke"
+                {carrier && <circle cx={x} cy={y} r={R_REACH + 0.2} fill="none" stroke={fill}
+                                    strokeOpacity={0.55} strokeWidth={0.1} />}
+                {nose && <polygon points={nose} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.08} strokeLinejoin="round" />}
+                <circle cx={x} cy={y} r={R_MAN} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.08} />
+                {(p.yc || 0) > 0 && <rect x={x + R_MAN * 0.8} y={y - R_MAN * 1.3} width={0.3} height={0.42} rx={0.04} fill="var(--ui-warn)"
+                                          stroke="rgba(0,0,0,.5)" strokeWidth={0.04} />}
+                <text x={x} y={y - R_MAN - 0.5} textAnchor="middle" fill="#fff" fillOpacity={0.92}
+                      fontSize={0.8} fontWeight={600} stroke="rgba(0,0,0,.8)" strokeWidth={0.2} paintOrder="stroke"
                       style={{ pointerEvents: "none" }}>
                   {shortName(p.name)}
                 </text>
               </g>
             );
+          };
+          // THE BALL: its shadow on the grass, further from it the higher it is; a streak behind it when it is struck hard
+          // (the last few places it was drawn, kept on `hold`, the match or the replay); and the ball itself, swelling a
+          // little as it rises. A pass no longer gets a line drawn for it: the ball's own streak says where it went.
+          const ballG = (hold, bxm, by, bz, key) => {
+            const bx = fx(bxm), lift = Math.min(1, Math.max(0, bz - ME_CFG.ballR) / BALL_LIFT_H), hgt = Math.max(0, bz - ME_CFG.ballR);
+            const now = performance.now(), T = (hold._trail = (hold._trail || []).filter(q => now - q.t < 320));
+            const last = T[T.length - 1];
+            if (!last || Math.hypot(last.x - bx, last.y - by) > 0.05) T.push({ x: bx, y: by, t: now });
+            if (last && Math.hypot(last.x - bx, last.y - by) > 14) T.length = 0;          // a restart: the ball was carried there
+            const r = R_BALL * (1 + lift * BALL_LIFT);
+            return (
+              <g key={key} style={{ pointerEvents: "none" }}>
+                {T.length > 1 && T.slice(1).map((q, i) => { const p0 = T[i], d = Math.hypot(q.x - p0.x, q.y - p0.y), v = d / Math.max(0.012, (q.t - p0.t) / 1000);
+                  if (v < 9 || d > 8) return null;
+                  const k = (i + 1) / T.length, hard = Math.min(1, (v - 9) / 16);
+                  return <line key={i} x1={p0.x} y1={p0.y} x2={q.x} y2={q.y} stroke="#fff" strokeOpacity={k * (0.14 + 0.42 * hard)}
+                               strokeWidth={r * (0.7 + 0.9 * k)} strokeLinecap="round" />; })}
+                <ellipse cx={bx + SH_X * 0.6 + hgt * 0.16} cy={by + SH_Y * 0.6 + hgt * 0.24} rx={r * 1.05} ry={r * 0.8} fill="#000" fillOpacity={0.34 - lift * 0.16} />
+                <circle cx={bx} cy={by} r={r} fill="#fff" stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />
+                <circle cx={bx - r * 0.18} cy={by - r * 0.2} r={r * 0.36} fill="#1c1d21" fillOpacity={0.55} />
+              </g>);
           };
           // The last action, held on screen for a few slices so a pass or a shot is something you
           // can actually see rather than a ball that teleports.
@@ -21546,60 +23249,104 @@ export default function App() {
           // Everything on the pitch is still drawn at exactly the coordinates it always was. Height
           // is left to the caller: the setup panel wants it to grow with its width, the match view
           // wants it to fill what is left under the scoreboard.
+          // THE REPLAY TAKES THE WHOLE PITCH (user, 22 November 2026: "the in-game replay should be fullscreen and full
+          // detail like a game"). While m.cel is up the twenty-two are drawn from the tape by the same dot() the match
+          // uses -- kit, keeper, name, the way he faces, the reach ring on the man with the ball -- and the live men,
+          // the event lines and the overlay stand down. The match itself is frozen underneath (meStep refuses to tick).
+          // It is only ever up because somebody opened it (meCelOpen).
+          const rep = m?.cel && st ? (() => {
+            const c = m.cel, F = c.clip.frames, n = F.length - 1;
+            if (n < 1) return null;
+            const i = Math.min(n - 1, c.i), a = c.i >= n ? 1 : c.a, A = F[i], B = F[i + 1];
+            const men = [0, 1].map(sd => Array.from({ length: 11 }, (_, k) => {
+              const xy = meManAt(F, i, a, sd * 22 + k * 2);
+              if (!xy) return null;
+              const q = sd * 11 + k, p = st.players[sd ? "away" : "home"][k];
+              const gd = ((a < 0.5 ? A : B).gkd || []).find(g => g[0] === q);
+              return { x: xy[0], y: xy[1], _px: xy[0], _py: xy[1], name: c.clip.names?.[q] || p?.name || "",
+                       pos: c.clip.gk ? (c.clip.gk[q] ? "GK" : "") : p?.pos, _face: meFaceAt(A, B, a, q),
+                       ...(gd ? { _pext: gd[1], _pux: gd[2], _puy: gd[3], _dive: 1 } : null) };
+            }));
+            const on = a < 0.5 ? A : B;
+            return { c, men, ball: meBallAt(A, B, a), cs: on.sd, ci: on.ix, prog: Math.max(0, Math.min(1, (i + a) / n)) };
+          })() : null;
+          // THE REFEREE, HIS ASSISTANTS AND THE COACHES (engine/referee.ts, engine/touchline.ts): dark dots with a pale
+          // edge and no name, under the players. An assistant carries his flag, drawn along the line the engine gives it; a
+          // coach wears his side's colour as a ring, and an order he gives goes out from him as three arcs with the order
+          // over them. In a replay they are drawn from the tape, without the shout.
+          const tlMen = (() => {
+            if (!st) return null;
+            const hs = m?.h2 ? -1 : 1;
+            if (rep) {
+              const c = rep.c, F = c.clip.frames, n = F.length - 1, i = Math.min(n - 1, c.i), a = c.i >= n ? 1 : c.a, A = F[i].of, B = F[i + 1].of;
+              if (!A || !B) return null;
+              const at = (k) => A[k] < -90 || B[k] < -90 ? null : [fx(A[k] + (B[k] - A[k]) * a), A[k + 1] + (B[k + 1] - A[k + 1]) * a];
+              return { ref: at(0), ar: [at(2), at(4)], co: [at(6), at(8)], fl: [[B[10] * hs, B[11]], [B[12] * hs, B[13]]], sh: [null, null] };
+            }
+            // (the third number is the way he faces, mirrored with the ends like a player's)
+            const T = m.tl, P = (p) => p ? [ix(p), iy(p), p._face === undefined ? null : m?.h2 ? Math.PI - p._face : p._face] : null;
+            return { ref: P(st.mePos?.ref), ar: T ? T.ar.map(P) : [null, null], co: T ? [P(T.co.home), P(T.co.away)] : [null, null],
+                     fl: T ? T.ar.map(a => [a.fx * hs, a.fy]) : [[0, 0], [0, 0]], sh: T ? [T.co.home, T.co.away] : [null, null] };
+          })();
+          const tlDot = (xy, key, ring) => { if (!xy || xy[1] > 70.6 || xy[1] < -5) return null;
+            const [x, y, fa] = xy, edge = ring || "var(--ui-official-edge)", r = R0 * 0.94;
+            const nose = fa == null || Number.isNaN(fa) ? null : (() => { const c = Math.cos(fa), sn = Math.sin(fa), tip = r + 0.4, bk = r * 0.55, w = r * 0.62;
+              return `${x + c * tip},${y + sn * tip} ${x + c * bk - sn * w},${y + sn * bk + c * w} ${x + c * bk + sn * w},${y + sn * bk - c * w}`; })();
+            return (
+              <g key={key}>
+                <ellipse cx={x + SH_X} cy={y + SH_Y} rx={R0 * 0.98} ry={R0 * 0.86} fill="#000" fillOpacity={0.3} />
+                {nose && <polygon points={nose} fill={edge} strokeLinejoin="round" />}
+                <circle cx={x} cy={y} r={r} fill={ring ? "var(--ui-official)" : "url(#lmStripe)"} stroke={edge} strokeWidth={ring ? 0.18 : 0.09} />
+              </g>); };
+          const tlLayer = () => !tlMen ? null : (
+            <g style={{ pointerEvents: "none" }}>
+              {tlDot(tlMen.ref, "ref")}
+              {tlMen.ar.map((xy, i) => { if (!xy || xy[1] > 70.6) return null;
+                const [vx, vy] = tlMen.fl[i], up = Math.hypot(vx, vy) > 0.05, ex = up ? vx : 0, ey = up ? vy : (i ? -1 : 1);
+                const l = Math.hypot(ex, ey) || 1, ux = ex / l, uy = ey / l, x1 = xy[0] + ex, y1 = xy[1] + ey;
+                return (<g key={"ar" + i}>
+                  <line x1={xy[0]} y1={xy[1]} x2={x1} y2={y1} stroke="var(--ui-official-edge)" strokeWidth={0.1} strokeLinecap="round" />
+                  <polygon points={`${x1},${y1} ${x1 - ux * 0.6},${y1 - uy * 0.6} ${x1 - ux * 0.3 - uy * 0.5},${y1 - uy * 0.3 + ux * 0.5}`}
+                           fill="var(--ui-warn)" stroke="rgba(0,0,0,.5)" strokeWidth={0.04} strokeLinejoin="round" />
+                  {tlDot(xy, "d")}
+                </g>); })}
+              {/* THE PHYSIO AND HIS MAN (engine/touchline.ts meTlCare): the man in his side's colour, flat on the grass while he
+                  is down or carried; the physio a pale dot with a cross; two bearers for a stretcher. */}
+              {!rep && (m.tl?.care || []).map((f, i) => { const x = ix(f), y = iy(f); if (y > 70.6 || y < -5 || x < -3.4 || x > 108.4) return null;
+                if (f.k === "man") { const clr = f.gk ? "#f5e663" : f.side === "home" ? hPitchClr : aPitchClr;
+                  return (<g key={"cm" + i}>
+                    <ellipse cx={x + SH_X} cy={y + SH_Y} rx={f.down ? R0 * 1.5 : R0} ry={f.down ? R0 * 0.72 : R0 * 0.9} fill="#000" fillOpacity={0.26} />
+                    <ellipse cx={x} cy={y} rx={f.down ? R0 * 1.5 : R0} ry={f.down ? R0 * 0.72 : R0} fill={clr} stroke="rgba(0,0,0,.6)" strokeWidth={0.08} />
+                  </g>); }
+                return (<g key={"cf" + i}>
+                  <ellipse cx={x + SH_X} cy={y + SH_Y} rx={R0 * 0.9} ry={R0 * 0.8} fill="#000" fillOpacity={0.26} />
+                  <circle cx={x} cy={y} r={R0 * 0.86} fill="var(--ui-official-edge)" stroke="rgba(0,0,0,.6)" strokeWidth={0.08} />
+                  {f.k === "physio" && <path d={`M ${x - 0.2} ${y} H ${x + 0.2} M ${x} ${y - 0.2} V ${y + 0.2}`} stroke="var(--ui-injury)" strokeWidth={0.13} strokeLinecap="round" />}
+                </g>); })}
+              {tlMen.co.map((xy, i) => { if (!xy || xy[1] > 70.6) return null;
+                const c = tlMen.sh[i], t = c && c.sh > 0 ? Math.max(0, c.sh - al) : 0, ph = uxReduced() ? 0.5 : 1 - ((t / 3) % 1);
+                return (<g key={"co" + i}>
+                  {t > 0 && [0, 1, 2].map(k => { const r = 0.8 + (k + ph) * 0.6, o = (1 - (k + ph) / 3) * 0.85 * Math.min(1, t / 2);
+                    return <path key={k} d={`M ${xy[0] - r * 0.574} ${xy[1] - r * 0.819} A ${r} ${r} 0 0 1 ${xy[0] + r * 0.574} ${xy[1] - r * 0.819}`}
+                                 fill="none" stroke="#fff" strokeOpacity={o} strokeWidth={0.13} strokeLinecap="round" />; })}
+                  {t > 0 && c.tag && <text x={Math.max(7, Math.min(98, xy[0]))} y={xy[1] - 3.1} textAnchor="middle" fill="#fff" fillOpacity={Math.min(1, t / 2)}
+                                           fontSize={0.95} fontWeight={700} stroke="rgba(0,0,0,.8)" strokeWidth={0.22} paintOrder="stroke">{c.tag}</text>}
+                  {tlDot(xy, "d", i ? aPitchClr : hPitchClr)}
+                </g>); })}
+            </g>);
           const pitchSvg = (fill) => (
   <svg viewBox={fill ? "-1 -5.4 107 75.8" : "-1 -2.4 107 72.8"} preserveAspectRatio="xMidYMid meet"
        style={fill ? { width: "100%", height: "100%", display: "block", background: "var(--ui-turf-out)" }
                    : { width: "100%", display: "block", borderRadius: 6, background: "var(--ui-turf-out)" }}>
-    {/* THE GRASS. Eight mown bands, which is the thing that reads as a football pitch before any
-        marking does -- a flat green rectangle reads as a diagram however good the lines on it are.
-        Two tones a shade apart, so it is texture rather than stripes you look at, and drawn only
-        inside the touchlines so the run-off stays plain. */}
-    {Array.from({ length: 8 }, (_, i) => (
-      <rect key={"mow" + i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
-            fill={i % 2 ? "var(--ui-turf-a)" : "var(--ui-turf-b)"} />
-    ))}
-    {/* The markings, and all of them. What was here had no penalty spots, no D-arcs and no corner
-        arcs -- and the D especially is what makes a pitch instantly legible as a pitch rather than
-        as boxes on green. Lifted to 44% white from 32%: real markings are painted, not suggested. */}
-    <g stroke="rgba(255,255,255,.44)" strokeWidth={0.24} fill="none">
-      <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-      <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-      <circle cx={52.5} cy={34} r={9.15} />
-      <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-      <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-      <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-      <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-      {/* The D: the arc of the ten-yard circle that falls OUTSIDE the box, which is all of it you
-          ever see. Centred on the penalty spot and swept between where r=9.15 crosses the box line
-          -- the box front sits 5.5 m from the spot, so the crossings are 34 +/- sqrt(9.15^2 - 5.5^2)
-          = 34 +/- 7.31, and the arc bulges away from goal in each case. */}
-      <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
-      <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
-      <path d="M 0.6 1.6 A 1 1 0 0 0 1.6 0.6" />
-      <path d="M 103.4 0.6 A 1 1 0 0 0 104.4 1.6" />
-      <path d="M 104.4 66.4 A 1 1 0 0 0 103.4 67.4" />
-      <path d="M 1.6 67.4 A 1 1 0 0 0 0.6 66.4" />
-    </g>
-    <g fill="rgba(255,255,255,.44)">
-      <circle cx={52.5} cy={34} r={0.34} />
-      <circle cx={11.6} cy={34} r={0.34} />
-      <circle cx={93.4} cy={34} r={0.34} />
-    </g>
-    <g stroke="rgba(255,255,255,.72)" strokeWidth={0.3} fill="none">
-      <rect x={-0.9} y={30.34} width={1.5} height={7.32} />
-      <rect x={104.4} y={30.34} width={1.5} height={7.32} />
-    </g>
-    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear" || ev.k === "head") && (
-      <line x1={fx(ev.x0)} y1={ev.y0} x2={fx(ev.x1)} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
-            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.16 : 0.34}
-            strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
-    )}
-    {ev && ev.k !== "pass" && <circle cx={fx(ev.x0)} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
-                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
+    {/* THE GROUND (PitchGround): the stand, the boards, the grass and its light, the markings, the nets and the flags.
+        When a goal goes in the back of that net is pushed out where the ball struck it and settles (the goal event's
+        own five slices). */}
+    <PitchGround bulge={fxGoal ? [fx(fxGoal.x) > 52.5 ? 1 : 0, 1.3 * Math.max(0, 1 - (fxTau - fxGoal.t) / 5) * Math.min(1, (fxTau - fxGoal.t) / 0.3), fxGoal.y] : null} />
+    <g style={{ pointerEvents: "none" }}>{fxDraw(true)}</g>
     {/* WHAT THE SECOND BRAIN IS DOING: a run as a dashed line to where it is going, the first presser
         as a line to the man on the ball, a marker as a faint line to his man, a screening man as a
         dotted one to the lane he is standing in. Under the dots, so the players stay readable. */}
-    {meOverlay && st?.brain === 2 && ["home", "away"].map(sd => st.players[sd].map((p, i) => {
+    {meOverlay && !rep && st?.brain === 2 && ["home", "away"].map(sd => st.players[sd].map((p, i) => {
       if (!p || p.off || p.pos === "GK") return null;
       const clr = sd === "home" ? hPitchClr : aPitchClr, x = ix(p), y = iy(p);
       const them = st.players[sd === "home" ? "away" : "home"];
@@ -21620,136 +23367,59 @@ export default function App() {
         already resolving both sides' real strips a few hundred lines up -- home or away by fixture,
         with a clash detector that switches one side, and readableClr/ensureMaxLum keeping whatever
         it lands on legible. All of that was being computed and thrown away here. */}
-    {st && st.players.home.map((p, i) => dot(p, hPitchClr, "h" + i,
-      st.mePos?.side === "home" && st.mePos?.idx === i))}
-    {st && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i,
-      st.mePos?.side === "away" && st.mePos?.idx === i))}
+    {tlLayer()}
+    {st && !rep && st.players.home.map((p, i) => dot(p, hPitchClr, "h" + i,
+      st.mePos?.side === "home" && st.mePos?.idx === i, i < 11 ? i : -1))}
+    {st && !rep && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i,
+      st.mePos?.side === "away" && st.mePos?.idx === i, i < 11 ? 11 + i : -1))}
     {/* THE MAN COMING OFF. meSub has already moved him into s.subbedOff, which the pitch has never
         drawn -- so without this he simply blinks out of existence at the moment of the change. */}
-    {m?.subAnim?.off.map((w, i) => dot(w.p, w.sd === "home" ? hPitchClr : aPitchClr, "sub" + i, false))}
+    {!rep && m?.subAnim?.off.map((w, i) => dot(w.p, w.sd === "home" ? hPitchClr : aPitchClr, "sub" + i, false))}
     {/* THE BENCH, running on for a late goal (meBenchStep). */}
-    {m?.benchCel?.figs.map((g, i) => dot(g.f, m.benchCel.sd === "home" ? hPitchClr : aPitchClr, "bc" + i, false))}
-    {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
-        it sits in pitch coordinates and scales with the pitch for free, at any window size. The
-        match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
-        thing moving on screen. Ball trail included: the whole point is to show the move, and a line
-        through where the ball has been says it better than a dot arriving does. */}
-    {m?.cel && (() => {
-      const c = m.cel, F = c.clip.frames;
-      const A = F[c.i], B = F[Math.min(F.length - 1, c.i + 1)], a = c.a;
-      const L = (u, v) => u + (v - u) * a;
-      // ALIGNED TO THE PITCH, not floated near it: the corner lands on the touchline corner with one
-      // uniform margin, so it belongs to the same rectangle as everything else on screen.
-      const PAD = 1.6, S = 0.335, PW = 105 * S, PH = 68 * S;
-      // THE CHROME IS GONE. This carried a header band with a pulsing tally light and a REPLAY
-      // label, a hairline, and a footer holding the buttons -- three stacked strips around a picture
-      // a third of the panel's height. The post-match reel is the same clip with none of that and it
-      // reads better, so this is now the same thing: the pitch, a scrubber inside it, the two
-      // controls floating over the grass, and one caption line under it. The dark backing stays --
-      // unlike the post-match card this one sits ON the live pitch, and text over grass is unreadable.
-      const FOOT = 2.9, W = PW, H = PH + FOOT;
-      // Strokes in the inset's own units. Deliberately NOT divided by S any more: the old 0.26/S
-      // came out about three times heavier than the same lines on the post-match card, because a
-      // scaled unit here is already about the size of an unscaled one there.
-      const sw = 0.26;
-      const pt = (f) => `${fx(f.bx).toFixed(1)},${f.by.toFixed(1)}`;
-      const seen = F.slice(0, c.i + 1);
-      // CLAMPED, because the last frame counts itself twice: meCelStep pins a to 1 when it reaches
-      // the final index, so (i + a) runs one whole frame past the end. On a short clip that is a
-      // scrubber 14% longer than the panel it lives in.
-      const prog = F.length < 2 ? 1 : Math.max(0, Math.min(1, (c.i + a) / (F.length - 1)));
-      // Floated over the bottom-right of the grass, the way the post-match card floats its one
-      // button. Close is always there -- it is how the match resumes; play only once there is
-      // something to play again.
+    {!rep && m?.benchCel?.figs.map((g, i) => dot(g.f, m.benchCel.sd === "home" ? hPitchClr : aPitchClr, "bc" + i, false))}
+    {/* THE REPLAY, on the whole pitch (see `rep` above). The same dots and the same ball as the match, how far through
+        along the bottom touchline, and the three controls over the grass: save it, play it again, close it. The scorebug
+        says Replay while it is up, and it is opened from there (MatchGfx) or from a goal's line in the feed. It holds on
+        its last frame until it is closed. */}
+    {rep && (() => {
+      const [qx, qy, qz] = rep.ball;
       const btn = (dx, on, kids) => (
-        <g transform={`translate(${PAD + PW - dx} ${PAD + PH - 2.1})`} onClick={on}
-           style={{ cursor: "pointer", pointerEvents: "auto" }}>
-          <circle r={1.05} fill="rgba(0,0,0,.45)" stroke="rgba(255,255,255,.28)" strokeWidth={0.13} />
-          {kids}
+        <g transform={`translate(${104.4 - dx} 64.4)`} onClick={on} style={{ cursor: "pointer", pointerEvents: "auto" }}>
+          <circle r={1.3} fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.3)" strokeWidth={0.13} />
+          <g transform="scale(1.24)">{kids}</g>
         </g>);
       return (
-        <g style={{ pointerEvents: "none" }}>
-          <rect x={PAD + 0.3} y={PAD + 0.38} width={W} height={H} rx={0.9} fill="rgba(0,0,0,.34)" />
-          <rect x={PAD} y={PAD} width={W} height={H} rx={0.9}
-                fill="#070c09" stroke="rgba(255,255,255,.26)" strokeWidth={0.14} />
-          <g transform={`translate(${PAD} ${PAD}) scale(${S})`}>
-            <clipPath id="me-cel-pitch"><rect x={0} y={0} width={105} height={68} rx={2.4} /></clipPath>
-            <g clipPath="url(#me-cel-pitch)">
-              <rect x={0} y={0} width={105} height={68} fill="#142c1a" />
-              {Array.from({ length: 6 }, (_, i) => (
-                <rect key={"rm" + i} x={i * 17.5} y={0} width={17.5} height={68}
-                      fill={i % 2 ? "#173119" : "#142c17"} />))}
-              <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
-                <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-                <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-                <circle cx={52.5} cy={34} r={9.15} />
-                <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-                <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-                <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-                <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-              </g>
-              {/* WHERE THE BALL HAS BEEN, twice: the whole move faint underneath and the last stretch
-                  bright on top. One flat line says the ball travelled; two say which way it is going. */}
-              {c.i > 0 && <polyline points={seen.map(pt).join(" ")} fill="none" stroke="#ffd166"
-                                    strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
-              {c.i > 0 && <polyline points={seen.slice(-7).map(pt).join(" ")} fill="none" stroke="#ffd166"
-                                    strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round"
-                                    strokeLinejoin="round" />}
-              {[0, 1].map(sd => Array.from({ length: 11 }, (_, i) => {
-                const k = sd * 22 + i * 2;
-                if (A.xy[k] < -50 || B.xy[k] < -50) return null;
-                return <circle key={"rp" + sd + i}
-                               cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
-                               r={1.02} fill={sd ? aPitchClr : hPitchClr}
-                               stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
-              }))}
-              <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={0.78}
-                      fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
-              {/* HOW FAR THROUGH, inside the picture along its bottom edge rather than in a strip of
-                  its own underneath it. */}
-              <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />
-              <rect x={0} y={67.2} width={105 * prog} height={0.8} fill="#ffd166" />
-            </g>
+        <g>
+          {rep.men[0].map((p, i) => p && dot(p, hPitchClr, "rh" + i, rep.cs === "home" && rep.ci === i, i))}
+          {rep.men[1].map((p, i) => p && dot(p, aPitchClr, "ra" + i, rep.cs === "away" && rep.ci === i, 11 + i))}
+          {ballG(rep.c, qx, qy, qz, "rball")}
+          <g style={{ pointerEvents: "none" }}>{fxDraw(false)}</g>
+          <g style={{ pointerEvents: "none" }}>
+            <rect x={0.6} y={68.15} width={103.8} height={0.32} fill="rgba(255,255,255,.14)" />
+            <rect x={0.6} y={68.15} width={103.8 * rep.prog} height={0.32} fill="#ffd166" />
+            {btn(rep.c.done ? 8.4 : 5.1, () => meClipGif(rep.c.clip, hPitchClr, aPitchClr), (
+              <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.18} strokeLinecap="round" strokeLinejoin="round" fill="none">
+                <title>Save GIF</title>
+                <path d="M 0 -0.52 L 0 0.22 M -0.32 -0.08 L 0 0.24 L 0.32 -0.08 M -0.44 0.52 L 0.44 0.52" />
+              </g>))}
+            {rep.c.done ? btn(5.1, () => meCelReplay(m), (
+              <path d="M -0.32 -0.49 L 0.47 0 L -0.32 0.49 Z" fill="#fff" fillOpacity={0.85} />)) : null}
+            {btn(1.8, () => meCelClose(m), (
+              <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.2} strokeLinecap="round">
+                <line x1={-0.38} y1={-0.38} x2={0.38} y2={0.38} />
+                <line x1={0.38} y1={-0.38} x2={-0.38} y2={0.38} />
+              </g>))}
           </g>
-          {/* Minute, what happened, score: one line, the same three things the post-match reel puts
-              under its pitch. */}
-          <text x={PAD + 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.85}>
-            {c.clip.min}&#39;</text>
-          {c.clip.txt && (() => {
-            const [who, par] = clipNames(c.clip.txt);
-            // The assist goes rather than wraps or runs into the score: who scored is the line.
-            const room = par && who.length + par.length + 3 <= 30;
-            return (
-              <text x={PAD + 4.2} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff">
-                <tspan fontWeight={700} fillOpacity={0.9}>{who}</tspan>
-                {room && <tspan fillOpacity={0.5}> ({par})</tspan>}
-              </text>);
-          })()}
-          <text x={PAD + W - 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.55}
-                textAnchor="end">{c.clip.score}</text>
-          {/* A play triangle, not a circular arrow. At this radius an arrowhead is three pixels and
-              turns to mush; a triangle stays a triangle at any size. */}
-          {c.done ? btn(4.7, () => meCelReplay(m), (
-            <path d="M -0.32 -0.49 L 0.47 0 L -0.32 0.49 Z" fill="#fff" fillOpacity={0.85} />)) : null}
-          {btn(2.1, () => meCelClose(m), (
-            <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.2} strokeLinecap="round">
-              <line x1={-0.38} y1={-0.38} x2={0.38} y2={0.38} />
-              <line x1={0.38} y1={-0.38} x2={-0.38} y2={0.38} />
-            </g>))}
         </g>
       );
     })()}
-    {st && (() => {
-      const bx = fx((st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al);
-      const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
-      // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc --
-      // a flat overhead view has no other way of saying "this one is over your head".
-      // Above about head height nobody but a keeper can touch it, and now you can see
-      // that before it lands rather than working it out from the ball not being taken.
-      const bz = (st.mePos._bpz ?? st.mePos.bz) + (st.mePos.bz - (st.mePos._bpz ?? st.mePos.bz)) * al;
-      const lift = Math.min(1, Math.max(0, bz - ME_CFG.ballR) / BALL_LIFT_H);
-      return <circle cx={bx} cy={by} r={R_BALL * (1 + lift * BALL_LIFT)} fill="#fff"
-                     stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />;
+    {st && !rep && <g style={{ pointerEvents: "none" }}>{fxDraw(false)}</g>}
+    {st && !rep && (() => {
+      const P = st.mePos;
+      // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc; its shadow stays on the grass and
+      // moves away from it as it climbs, so one that is over a man's head looks over his head (ballG).
+      return ballG(m, (P._bpx ?? P.bx) + (P.bx - (P._bpx ?? P.bx)) * al, (P._bpy ?? P.by) + (P.by - (P._bpy ?? P.by)) * al,
+                   (P._bpz ?? P.bz) + (P.bz - (P._bpz ?? P.bz)) * al, "ball");
     })()}
     {/* THE INTERVAL. Drawn last so it sits over everything, and only once the last man is actually
         down the tunnel -- walking off behind a modal defeats the point of walking off. Nothing here
@@ -21796,11 +23466,6 @@ export default function App() {
             // 66 in a 72px strip, with the inset cancelled, so the crest fills the bar's height
             // instead of sitting in it. row-reverse mirrors the away side without a second copy of
             // the markup: the badge stays outboard and the name reads in toward the score on both.
-            // Two sizes of the same board: the live strip, and the full-time report's, which has the
-            // band to itself.
-            const SB_LIVE = { name: 14, sub: 10, crest: 66, gap: 13, score: 30, clock: 13, small: 11, tag: 9, minW: 150 };
-            // Full Time's board fills the ground's photo (Moukden and Kirin, 12 October 2026); its sizes are in ui.css (.ux-ftban).
-            const SB_FT = { name: 19, sub: 11.5, crest: 76, gap: 16, score: 90, clock: 18, small: 18, tag: 15, minW: 300 };
             // THE ELEVEN ON THE PITCH, not the squad. Read off st.players, so it moves when a
             // substitute comes on and when a man is sent off -- which is the only reason to put it on
             // a live scoreboard rather than showing the team's static rating. One decimal, because
@@ -21891,30 +23556,6 @@ export default function App() {
             // been kicked. A shared best is not a best.
             const topMan = meBest && meRated.filter(x => (x[0]?.rating ?? 0) === (meBest[0]?.rating ?? 0)).length === 1
               ? meBest : null;
-            // THE BOARD IN PIECES. Full Time sets the score in the names' face, its top level with theirs, and FULL TIME level with
-            // the manager lines (Moukden and Kirin, 12 October 2026). What else hangs under the score (the shootout, extra time,
-            // the aggregate) shares one line under them, over the ground. A line is padded on the left by its own letter-spacing,
-            // which otherwise trails the last letter and pulls it off centre.
-            const sbScore = () => (
-                    <div className="ux-ftban-score">{out.goals.home}&ndash;{out.goals.away}</div>);
-            const sbClock = (z = SB_LIVE) => (
-                    <div className="ux-ftban-ft" style={{ opacity: brk ? 1 : 0.85 }}>
-                      {brk || clock}
-                      {/* Added time alongside, not folded into the clock: the number the period
-                          is played to stays legible and what is being played beyond it reads as
-                          the separate thing it is. */}
-                      {!brk && added && <span style={{ marginLeft: 6, color: "var(--ui-warn)",
-                        fontSize: z.small, letterSpacing: ".08em" }}>{added}</span>}</div>);
-            // A shootout is not part of the scoreline -- the goals are put back -- so the kicks are reported beside it rather
-            // than added to it, in the same white as the score: the shootout is part of the result, not a footnote beside it.
-            // Extra time and the aggregate are quieter, and a second leg is not played against the scoreline in front of you.
-            const sbExtra = () => {
-              const xs = [], sc = m.pk ? m.pk.st.sc : m.pens, agg = m.tourn?.agg || m.agg;
-              if (sc) xs.push(<b key="pk">{sc.home}&ndash;{sc.away} PENS</b>);
-              else if (m.et) xs.push(<span key="et">{m.ftDone ? "AET" : "EXTRA TIME"}</span>);
-              if (agg) xs.push(<span key="agg">AGG {out.goals.home + agg[0]}&ndash;{out.goals.away + agg[1]}</span>);
-              return xs.length ? <div className="ux-ftban-extra">{xs.map((x, i) => [i ? <i key={"s" + i}> · </i> : null, x])}</div> : null;
-            };
             // ── THE REPORT'S PARTS ────────────────────────────────────────────────────────────────
             // Shared by the Stats tab while a match runs and by the full-time report after it: the
             // same bars, team sheets and markers at two sizes, so the two can never disagree about a row.
@@ -22100,36 +23741,6 @@ export default function App() {
               const og = (out.owns?.[c.side === "home" ? "away" : "home"] || []).find(o => o.min === c.min);
               return og ? [shortName(og.full || og.name), "OG"] : ["", null];
             };
-            // The best game anyone had, as a card: the sidebar's while a match runs, the report's after.
-            const TOP_SIDE = { pad: "12px 15px", shot: 36, gap: 11, lab: 8, name: 11.5, meta: 9, crest: 11, rate: 14 };
-            const topCard = (z) => {
-              if (!topMan || !topMan[0]) return null;
-              const [p, side] = topMan;
-              return (
-                <div style={{ flexShrink: 0, padding: z.pad, display: "flex",
-                              alignItems: "center", gap: z.gap }}>
-                  <PlayerShot name={p.fullName || p.name} size={z.shot} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ ...sectionLabel, fontSize: z.lab, color: "var(--chrome-muted)",
-                                  marginBottom: 3 }}>Top Player</div>
-                    <div style={{ fontSize: z.name, fontWeight: 700, whiteSpace: "nowrap",
-                                  overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                    <div style={{ fontSize: z.meta, color: "var(--chrome-muted)", marginTop: 2,
-                                  display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                      <TeamCrest team={side === "home" ? m.hT : m.aT} size={z.crest} />
-                      {/* All four are mono. The position was and the three counts were not,
-                          so "CM" and "1A" sat side by side in two different faces. */}
-                      <span style={mono}>{p.spos || p.pos}</span>
-                      {!!p.goals && <span style={mono}>{p.goals}G</span>}
-                      {!!p.assists && <span style={mono}>{p.assists}A</span>}
-                      {!!p.saves && <span style={mono}>{p.saves} saves</span>}
-                    </div>
-                  </div>
-                  {/* Two decimals, like every other match statistic in the app. */}
-                  <span style={{ ...mono, fontSize: z.rate, fontWeight: 800, flexShrink: 0,
-                                 color: ratingColor(p.rating ?? 6.5) }}>{(p.rating ?? 6.5).toFixed(2)}</span>
-                </div>);
-            };
 
             // ── FULL TIME ─────────────────────────────────────────────────────────────────────────
             // ONE PAGE AT ONE SIZE, filling the window. Designed around 1600 x FT_PAGE_H and scaled by as much
@@ -22142,7 +23753,7 @@ export default function App() {
             // THE GROUND UNCROPPED (user, 11 October 2026: "show the full stadium image uncropped"). Every ground on file is a 5:1
             // panorama, so the banner is a fifth of the page's width tall and holds all of it; the page grew by what that took
             // (1600 x 900 to 1600 x FT_PAGE_H) rather than squeeze the squads.
-            const FT_W = 1600, FT_H = FT_PAGE_H, FT_LINE = 88, FT_GOALS = 214;
+            const FT_W = 1600, FT_H = FT_PAGE_H;
             const ftReport = () => {
               const other = (sd) => sd === "home" ? "away" : "home";
               // The timeline's events, off the engine's own ledgers rather than the feed: the feed keeps
@@ -22190,30 +23801,9 @@ export default function App() {
               const compLine = m.tourn
                 ? `${tSlots.find(sl => sl.id === tActiveSlot)?.name || "Tournament"} · ${lmFixtureName(m.tourn.target)}`
                 : m.agg ? "Friendly · Second Leg" : "Friendly";
-              const ftSide = (t, sd) => {
-                const away = sd === "away", pad = Math.round(126 * CREST_PAD_RATIO);
-                const mg = t?.manager ? splitSurname(t.manager, t.managerAbbr) : null;
-                return (
-                  <div className={"ux-ftban-side" + (away ? " ux-r" : "")}>
-                    <TeamCrest team={t} size={126} style={{ flexShrink: 0, marginTop: -pad, marginBottom: -pad }} />
-                    <div className="ux-ftban-id">
-                      <FitLine className="ux-ftban-name" end={away}>{t?.name || ""}</FitLine>
-                      <span className="ux-ftban-meta">
-                        <span className="ux-ftban-code">{t?.code || abbr(t?.name, t?.code)}</span>
-                        <span>{xiOvr(sd).toFixed(1)}</span>
-                        {t?.formation && <span>{t.formation}</span>}
-                      </span>
-                      {mg && (
-                        <span className="ux-ftban-mgr">
-                          <span className="ux-ftban-mface" aria-hidden="true"><PlayerShot name={t.manager} size="100%" /></span>
-                          <FitLine className="ux-ftban-mtext" end={away}><span>{mg.first && mg.first + " "}<b>{mg.last}</b></span>{uxStyleName(t.style)}</FitLine>
-                        </span>)}
-                    </div>
-                  </div>);
-              };
               const ftCopy = () => {
                 if (ftShot) return;
-                const pic = new Promise((res, rej) => setFtShot({ res, rej }));
+                const pic = new Promise((res, rej) => setFtShot({ res, rej, w: FT_W, h: FT_H }));
                 let w;
                 try { w = navigator.clipboard.write([new ClipboardItem({ "image/png": pic })]); }
                 catch (e) { w = Promise.reject(e); }
@@ -22221,182 +23811,310 @@ export default function App() {
                  .finally(() => setTimeout(() => setFtCopied(""), 2400));
               };
               ftCopyRef.current = ftCopy;
+              // THE PAGE, REDESIGNED (user, 23-24 November 2026; design/mock/fulltime.mjs is the mock it was approved from):
+              // the sidebar's language, the scorebug's slant and plates and the title face trimmed to its capitals, over the
+              // page's order: the result, the timeline, the two sheets with the numbers between them, every goal. On the screen
+              // it fills the window (FitCanvas: dw x dh, 1600 x FT_H at the least; extra width to the middle and the timeline,
+              // extra height to the goals). Copy Image draws the same page at exactly 1600 x FT_H, whatever the window, and
+              // takes it 1920 x 1310 (the user: "I asked for the copied report to be fixed dimensions").
               const page = (k, dw, dh, shot) => {
-                // Spare height: six parts in ten to the goals, the rest to the middle band.
-                const goalsH = FT_GOALS + Math.round((dh - FT_H) * 0.6), bandH = Math.round(dw / 5);
-                const MID = dh - bandH - FT_LINE - goalsH - 26;
-                // The team sheets are the tallest thing in the middle band, so their row height is what
-                // gives: about 19 px a man for a 22-man squad, tighter for a bigger one, never a scrollbar.
-                const rowH = Math.max(12, Math.min(22, Math.floor((MID - 26 - 16 - 3 - 9) / nRows)));
-                // The numbers have the centre to themselves now the ground is behind the score, so their rows grow into it.
-                // The numbers stand on the sheets' last line and the momentum chart keeps one height (MOM_H) whatever the window
-                // ("they need to stay the same height regardless", 12 October 2026: a wide window's taller photo had squeezed it
-                // to 40 px), so the numbers' rows give instead, 18 to 30 px. The sheet is its title (26), its column heads (18),
-                // its men and the rule over the bench (9); over the numbers sit the chart, its caption (18), the possession bar
-                // with its own (52) and the gap under it (18); the last line hangs half a row's difference past the foot.
-                const sheetH = 26 + 18 + nRows * rowH + (nRows > 11 ? 9 : 0), MOM_H = 90;
-                const statH = Math.max(18, Math.min(30, Math.floor((sheetH - MOM_H - 18 - 52 - 18 - rowH / 2 - 2) / 8.5)));
-                const zBar = { valW: 44, valFs: statH >= 25 ? 14 : 12.5, labW: 104, labFs: statH >= 25 ? 10.5 : 9.5, barH: 7, pad: 0,
-                               gap: 8, rowH: statH };
-                const zMen = { cols: "26px 32px 1fr 22px 22px 28px 28px 24px 36px 44px", gap: 3, pad: 0, rowH,
-                               fs: rowH >= 18 ? 11.5 : rowH >= 15 ? 10.5 : 9.5, posFs: 9.5, headFs: 8.5,
-                               badge: rowH >= 18 ? "sm" : "xs", mark: [6, 9], tagFs: 8.5 };
-                // THE GOALS, as big as the strip allows: one row, or two or three when that makes every
-                // card bigger, which it does once a tall window has height to spare for a lot of goals.
-                const n = clips.length, GAP = 14, cardsH = goalsH - 18 - 22;
-                let fit = { cw: 0, per: n };
-                for (let rows = 1; rows <= 3 && n; rows++) {
-                  const per = Math.ceil(n / rows);
-                  const byW = (dw - 48 - GAP * (per - 1)) / per;
-                  const byH = (head) => ((cardsH - GAP * (rows - 1)) / rows - head - 2) * 105 / 68;
-                  let cw = Math.min(byW, byH(26), 360);
-                  if (cw < 170) cw = Math.min(byW, byH(38), 360);
-                  if (cw > fit.cw) fit = { cw: Math.floor(cw), per };
-                }
-                const cw = fit.cw, narrow = cw < 170;
-                const sheet = (sd) => {
-                  const t = sd === "home" ? m.hT : m.aT;
+                const kit = { home: hClr2, away: aClr2 }, rd = { home: HC, away: AC }, tm = { home: m.hT, away: m.aT };
+                const ink = (sd) => (lumOf(kit[sd]) ?? 0) > 0.6 ? " ux-ink" : "";
+                const sn = (full, short) => splitSurname(full || short || "", short).last;
+                const plate = (sd, txt, key) => <span key={key} className={"ux-ft2-mk" + ink(sd)} style={{ background: kit[sd], "--ux-ft2-edge": rd[sd] }}><span>{txt}</span></span>;
+                const CX = dw / 2;
+                // ── THE BANNER ──────────────────────────────────────────────────────────────────────────────────────────────
+                // Each side's crest at its outer edge, its name, its manager with his style, and its code with the eleven's
+                // rating. The score's top level with the names' tops; the competition over it, FULL TIME (and AET, the
+                // shootout, the aggregate) under it. The scorers under all of that, a line each with all his minutes, four to
+                // a column, columns going out from the centre line (home's set to it from the left, away's from the right), up
+                // to five a side. The ground, its city and its nation along the foot.
+                // The crest's drawn art stands exactly as tall as the three lines beside it, from the name's capitals to the
+                // code's foot (the user, 24 November 2026: "the badge height is meant to match the text next to it", then "not
+                // fucking aligned": every crest file pads its art differently, so FtCrest measures it), and the two sit about the
+                // banner's middle ("the badge is meant to be roughly centered in the banner"), the score's top with the names'.
+                const NAME = 40, CAP = (px) => Math.round(px * 0.7), INFO_H = CAP(NAME) + 12 + 16 + 12 + 16, CREST = Math.round(INFO_H / 0.8);
+                const BAN = 306, NT = 104, SC0 = 212, SROW = 16, SCO = 86;
+                const side = (sd) => { const t = tm[sd], mg = t?.manager ? splitSurname(t.manager, t.managerAbbr) : null, r = sd === "away";
                   return (
-                    <div style={{ minWidth: 0, alignSelf: "start" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, height: 20, marginBottom: 6 }}>
-                        <TeamCrest team={t} size={18} />
-                        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase",
-                                       color: sd === "home" ? HC : AC, whiteSpace: "nowrap", overflow: "hidden",
-                                       textOverflow: "ellipsis" }}>{t?.name}</span>
+                    <div className={"ux-ft2-bs" + (r ? " ux-r" : "")} style={{ top: NT }}>
+                      <FtCrest team={t} h={INFO_H - 2} fallback={CREST} />
+                      <div className="ux-ft2-bi" style={{ height: INFO_H }}>
+                        <FitLine className="ux-ft2-bn ux-ft2-t" end={r}>{t?.name || ""}</FitLine>
+                        {mg && <span className="ux-ft2-bm"><span>{mg.first && mg.first + " "}<b>{mg.last}</b></span>{uxStyleName(t.style)}</span>}
+                        <span className="ux-ft2-bx"><span className="ux-ft2-t">{t?.code || abbr(t?.name, t?.code)}</span><span style={mono}>{xiOvr(sd).toFixed(1)}</span></span>
                       </div>
-                      {repMen(zMen, sd)}
-                    </div>);
-                };
+                    </div>); };
+                const scorerLines = (sd) => { const by = new Map(), add = (full, short, txt) => { const k2 = full || short; if (!by.has(k2)) by.set(k2, [sn(full, short), []]); by.get(k2)[1].push(txt); };
+                  for (const g of out.scorers?.[sd] || []) add(g.full, g.name, fmtMin(g.min, g.add) + (g.pen ? " (P)" : ""));
+                  for (const o of out.owns?.[sd === "home" ? "away" : "home"] || []) add(o.full, o.name, fmtMin(o.min, o.add) + " (OG)");
+                  return [...by.values()].map(([w, ms]) => [w, ms.join(", ")]); };
+                const scorers = (sd) => { const L = scorerLines(sd), n = L.length; if (!n) return null;
+                  const rows = Math.min(n, 4), nc = Math.ceil(n / rows);
+                  const est = Math.max(...L.map(([w, ms]) => ftTextW(w, "700 12.5px 'Neue Montreal', Inter, sans-serif") + ftTextW(ms, "400 11.5px 'JetBrains Mono', monospace") + 7));
+                  const cw = Math.floor(Math.min((CX - 40) / nc, Math.max(120, est + 22)));
+                  return Array.from({ length: nc }, (_, c) => (
+                    <div key={sd + c} className={"ux-ft2-sl" + (sd === "home" ? " ux-hm" : "")}
+                         style={{ top: SC0, left: sd === "home" ? CX - 18 - (c + 1) * cw : CX + 18 + c * cw, width: cw, gap: SROW - 13 }}>
+                      {L.slice(c * rows, c * rows + rows).map(([w, ms], i) => <div key={i} className="ux-ft2-sr"><b>{w}</b><span style={mono}>{ms}</span></div>)}
+                    </div>)); };
+                const xs = [], pk = m.pens, agg = m.tourn?.agg || m.agg;
+                if (m.et) xs.push("AET");
+                if (pk) xs.push(`${pk.home}–${pk.away} Pens`);
+                if (agg) xs.push(`Agg ${out.goals.home + agg[0]}–${out.goals.away + agg[1]}`);
+                const banner = (
+                  <div className="ux-ft2-ban" style={{ height: BAN }}>
+                    {/* The ground's photo, or the two kits, stop short of the banner's foot under a veil that is solid there:
+                        painted to the foot they showed through its last, part-covered line of pixels as a seam. */}
+                    <div className="ux-ft2-ph" style={{ backgroundImage: hasPhoto ? stadiumBg(venue) : sbBg }} aria-hidden="true" />
+                    <div className="ux-ft2-veil" aria-hidden="true" />
+                    {side("home")}{side("away")}
+                    <div className="ux-ft2-cmp">
+                      {m.tourn && uiTheme !== "default" && (
+                        <img src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />)}
+                      <i /><span className="ux-ft2-t">{compLine}</span></div>
+                    <div className="ux-ft2-sco ux-ft2-t" style={{ top: NT, height: CAP(SCO), fontSize: SCO }}>
+                      <span>{out.goals.home}</span><i /><span>{out.goals.away}</span></div>
+                    <div className="ux-ft2-ftl ux-ft2-t" style={{ top: NT + CAP(SCO) + 20 }}>{["Full Time", ...xs].join("  ·  ")}</div>
+                    {(out.goals.home + out.goals.away) > 0 && <span className="ux-ft2-ax" style={{ left: CX - 6, top: SC0 + 1 }}>{tlIcon("goal")}</span>}
+                    {scorers("home")}{scorers("away")}
+                    <div className="ux-ft2-grd" style={{ top: SC0 + 4 * SROW + 8 }}>
+                      {venue || "Neutral Venue"}{(_v.city || venueNat) && "  ·  "}
+                      {_v.city && <CityLink name={_v.city} />}{_v.city && venueNat ? ", " : ""}{venueNat || ""}
+                    </div>
+                  </div>);
+                // ── THE TIMELINE ────────────────────────────────────────────────────────────────────────────────────────────
+                // One line from kick-off to the last whistle; each event on a stem from its minute, home's above and away's
+                // below, its minute on a plate centred on the stem and what happened beside it (turned back from the right
+                // edge where it would run off). A side's events within a minute and a half share a label, each minute on its
+                // own plate. Placed from the right, a label takes the nearest lane where it touches no other label, its stem
+                // passes through none nearer the line and it covers no stem from further out. A side too crowded for its names
+                // shows minutes and icons only (every name is in the banner and under The Goals); past that a label joins its
+                // neighbour. Goals, cards, missed penalties and injuries, never changes, as before. As tall as its lanes.
+                const TW = dw - 48, X0 = 46, X1 = TW - 46, LH = 16, LG = 6, PW = 40;
+                const tev = evs.map(e => ({ ...e, who: String(e.who || "").replace(/^\p{L}\.\s+/u, ""), at: (e.min ?? 0) + (e.add || 0) }));
+                const Mx = Math.max(m.et ? 120 : 90, ...tev.map(e => e.at + 1));
+                const xOf = (v) => X0 + (X1 - X0) * Math.min(1, v / Mx);
+                const groups = [];
+                for (const e of [...tev].sort((a, b) => a.at - b.at)) { const x = xOf(e.at), g = groups.findLast(q => q.sd === e.side);
+                  if (g && x - g.x < 28) g.items.push(e); else groups.push({ sd: e.side, x, items: [e] }); }
+                const bare = { home: false, away: false }, NF = "700 12.5px 'Neue Montreal', Inter, sans-serif";
+                const same = (a, b) => a.min === b.min && (a.add || 0) === (b.add || 0);
+                const itemW = (e, i, all) => (i && !same(e, all[i - 1]) ? PW + 8 : 0) + 8 + 12 + (bare[e.side] ? 0 : 6 + ftTextW(e.who, NF));
+                let placed = [];
+                for (let tries = 0; tries < 60; tries++) {
+                  placed = []; let stuck = null;
+                  const order = groups.map(g => { const w = PW + g.items.reduce((a, e, i, all) => a + itemW(e, i, all), 0) + 4; return { g, w, flip: g.x - 20 + w > TW - 4 }; })
+                    .sort((p, q) => (Number(p.flip) - Number(q.flip)) || (q.g.x - p.g.x));
+                  for (const { g, w, flip } of order) {
+                    const lo = flip ? g.x + 20 - w : g.x - 20, hi = lo + w;
+                    const breaks = (k2) => placed.some(p => p.sd === g.sd && ((p.k === k2 && lo < p.hi + 10 && hi > p.lo - 10)
+                      || (p.k < k2 && g.x > p.lo - 6 && g.x < p.hi + 6) || (p.k > k2 && p.x > lo - 6 && p.x < hi + 6)));
+                    let k2 = 0; while (k2 < 6 && breaks(k2)) k2++;
+                    if (k2 === 6) { stuck = g; break; }
+                    placed.push({ ...g, flip, lo, hi, k: k2 });
+                  }
+                  if (!stuck) break;
+                  if (!bare[stuck.sd]) { bare[stuck.sd] = true; continue; }
+                  const mine = groups.filter(q => q.sd === stuck.sd).sort((p, q) => p.x - q.x), at = mine.indexOf(stuck), into = at > 0 ? mine[at - 1] : mine[at + 1];
+                  if (!into) break;
+                  into.items = [...into.items, ...stuck.items].sort((p, q) => p.at - q.at); groups.splice(groups.indexOf(stuck), 1);
+                }
+                const upL = 1 + Math.max(0, ...placed.filter(p => p.sd === "home").map(p => p.k)), dnL = 1 + Math.max(0, ...placed.filter(p => p.sd === "away").map(p => p.k));
+                const TMID = 8 + upL * (LH + LG) + 8, TH = TMID + 8 + dnL * (LH + LG) + 4;
+                const timeline = (
+                  <div className="ux-ft2-tl" style={{ width: TW, height: TH }}>
+                    <div className="ux-ft2-tla" style={{ left: X0, right: TW - X1, top: TMID - 1 }} />
+                    {[[0, "KO"], [45, "HT"], ...(m.et ? [[90, "ET"]] : []), [Mx, "FT"]].map(([v, l]) => <span key={l} className="ux-ft2-tlm ux-ft2-t" style={{ left: xOf(v), top: TMID }}>{l}</span>)}
+                    {placed.map((p, pi) => { const up = p.sd === "home", y = up ? TMID - 8 - LH - p.k * (LH + LG) : TMID + 8 + p.k * (LH + LG);
+                      const bk = []; for (const e of p.items) { const b0 = bk[bk.length - 1]; if (b0 && same(b0, e)) b0.evs.push(e); else bk.push({ min: e.min, add: e.add, evs: [e] }); }
+                      const it = (e, i, rev) => <span key={i} className="ux-ft2-it">{rev ? null : tlIcon(e.k)}{bare[p.sd] ? null : <b>{e.who}</b>}{rev ? tlIcon(e.k) : null}</span>;
+                      return (
+                        <Fragment key={pi}>
+                          <span className="ux-ft2-tls" style={{ left: p.x, background: rd[p.sd], ...(up ? { top: y + LH, height: TMID - y - LH } : { top: TMID, height: y - TMID }) }} />
+                          <span className="ux-ft2-tle" style={{ ...(p.flip ? { right: TW - p.x - 20 } : { left: p.x - 20 }), top: y, height: LH }}>
+                            {p.flip ? [...bk].reverse().map((b0, j) => <Fragment key={j}>{[...b0.evs].reverse().map((e, i) => it(e, i, true))}{plate(p.sd, fmtMin(b0.min, b0.add))}</Fragment>)
+                                    : bk.map((b0, j) => <Fragment key={j}>{plate(p.sd, fmtMin(b0.min, b0.add))}{b0.evs.map((e, i) => it(e, i, false))}</Fragment>)}
+                          </span>
+                        </Fragment>); })}
+                  </div>);
+                // ── THE SHEETS AND THE NUMBERS ──────────────────────────────────────────────────────────────────────────────
+                // A sheet is its plate in the side's kit, the column heads, the starters, a rule, the changes and the unused
+                // bench, a row each at RH. Between them the numbers, every row on one of the sheets' row lines: On The Ball and
+                // Off The Ball on the sheets' last lines, Possession three above their head, Momentum the rest, so the column
+                // ends with the player list however long it is.
+                const RH = 17, HH = 26, CH = 20, RULE = 7;
+                const menOf = (sd) => { const all = [...(m.s.players[sd] || []), ...(m.s.subbedOff?.[sd] || [])], bd = (q) => q._bd0 ?? q._bd ?? 0;
+                  const unused = (m.s.bench?.[sd] || []).filter(Boolean);
+                  return { start: all.filter(q => q._onAt === undefined).sort((u, v) => bd(u) - bd(v)),
+                           rest: [...all.filter(q => q._onAt !== undefined).sort((u, v) => bd(u) - bd(v)), ...unused], sat: new Set(unused) }; };
+                const MEN = { home: menOf("home"), away: menOf("away") };
+                const nStart = Math.max(MEN.home.start.length, MEN.away.start.length);
+                const nRows = Math.max(MEN.home.start.length + MEN.home.rest.length, MEN.away.start.length + MEN.away.rest.length);
+                const rowTop = (i) => HH + CH + i * RH + (i >= nStart ? RULE : 0);
+                const sheetH = rowTop(nRows);
+                const sheet = (sd) => { const t = tm[sd], { start, rest } = MEN[sd];
+                  const row = (q, i) => { const sat = MEN[sd].sat.has(q), played = !sat;
+                    const lab = q.own?.length ? (played && POS_ROLE[q.spos] ? (q.inGoal ? "GK" : q.spos) : q.own[0]) : q.pos, oop = played && uxOop(q.own, q.inGoal ? "GK" : q.spos);
+                    const top2 = topMan && topMan[1] === sd && (topMan[0].fullName || topMan[0].name) === (q.fullName || q.name);
+                    const z = (v, bo) => v ? <span className={bo ? "ux-ft2-k ux-b" : "ux-ft2-k"}>{v}</span> : <span className="ux-ft2-z">&ndash;</span>;
+                    const mn = (tk) => { const x = meTickMin(m, tk); return fmtMin(x.min, x.add); };
+                    const on = played && q._onAt !== undefined, off = played && !q.rc && q._offAt !== undefined;
+                    return (
+                      <div key={i} className={"ux-ft2-row" + (sat ? " ux-sat" : "")}>
+                        <span className="ux-ft2-p" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[lab] || POS_CLR[q.pos] || "var(--ux-text-3)" }} title={oop ? `Out Of Position, ${posText(q.own)}` : undefined}>{lab}</span>
+                        <span><OvrBadge v={hidMan(q.rid ?? ridByName.get(pFold(q.fullName || q.name))) ? null : q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)} sm /></span>
+                        <span className="ux-ft2-n"><span className="ux-ft2-nm">{boldSurname(q.fullName || q.name, q.name)}</span>
+                          {top2 && <svg viewBox="0 0 24 24" className="ux-ft2-star" role="img" aria-label="Top Player"><title>Top Player</title><path d="M12 2.6l2.85 5.9 6.5.85-4.75 4.5 1.2 6.45L12 17.2l-5.8 3.1 1.2-6.45-4.75-4.5 6.5-.85z" /></svg>}
+                          {q.rc ? <i className="ux-ft2-card ux-red" /> : q.yc ? <i className="ux-ft2-card" /> : null}
+                          {q.inj ? <span className="ux-ft2-inj">INJ</span> : null}
+                          {played && uxOopMark(q.ovr0 ?? q.ovr ?? 70, q.own, q.inGoal ? "GK" : q.spos, "ux-oopm-xs", { fontSize: 11 })}</span>
+                        {z(q.goals, 1)}{z(q.assists, 1)}{z(q.cc)}{z(q.defActs)}{z(q.pos === "GK" ? q.saves : 0)}
+                        <span className="ux-ft2-rt" style={{ color: played ? ratingColor(q.rating ?? 6.5) : "var(--ux-text-3)" }}>{played ? (q.rating ?? 6.5).toFixed(1) : "–"}</span>
+                        <span className="ux-ft2-tm">{on && <span className="ux-up"><UxArrow up />{mn(q._onAt)}</span>}{off && <span className="ux-down"><UxArrow />{mn(q._offAt)}</span>}</span>
+                      </div>); };
+                  return (
+                    <div className="ux-ft2-sh" style={{ height: sheetH }}>
+                      <div className={"ux-ft2-hd" + ink(sd)} style={{ height: HH, background: kit[sd], "--ux-ft2-edge": rd[sd] }}>
+                        <TeamCrest team={t} size={18} /><FitLine className="ux-ft2-hn ux-ft2-t">{t?.name || ""}</FitLine>
+                        <span className="ux-ft2-hc ux-ft2-t">{t?.code || abbr(t?.name, t?.code)}</span></div>
+                      <div className="ux-ft2-row ux-ch" style={{ height: CH }}>{["", "OVR", "Player", "G", "A", "CC", "DC", "SV", "RTG", ""].map((h, i) => <span key={i} className="ux-ft2-t">{h}</span>)}</div>
+                      {start.map((q, i) => row(q, i))}
+                      {rest.length > 0 && <div className="ux-ft2-rule" style={{ height: RULE }} />}
+                      {rest.map((q, i) => row(q, 100 + i))}
+                    </div>); };
+                const ON = [["xG", out.xgS?.home, out.xgS?.away, 2], ["Shots", out.shots.home, out.shots.away], ["On Target", out.onTarget.home, out.onTarget.away],
+                  ["Woodwork", out.woodworkSide?.home, out.woodworkSide?.away], ["Corners", out.corners.home, out.corners.away], ["Passes", out.passSide?.home, out.passSide?.away],
+                  ["Pass %", pctOf(out.passOkSide?.home, out.passSide?.home), pctOf(out.passOkSide?.away, out.passSide?.away), 0, 1], ["Carries", out.carriesSide?.home, out.carriesSide?.away],
+                  ["Offsides", out.offside?.home, out.offside?.away]];
+                const OFF = [["Saves", out.saves.home, out.saves.away], ["Blocks", out.blockedSide?.home, out.blockedSide?.away], ["Clearances", out.clearsSide?.home, out.clearsSide?.away],
+                  ["Tackles Won", out.tackleWonSide?.home, out.tackleWonSide?.away], ["Tackle %", pctOf(out.tackleWonSide?.home, out.tackleTrySide?.home), pctOf(out.tackleWonSide?.away, out.tackleTrySide?.away), 0, 1],
+                  ["Fouls", out.fouls.home, out.fouls.away], ["Yellows", out.yellows?.home, out.yellows?.away], ["Reds", out.reds?.home, out.reds?.away]];
+                const stRow = ([lab, h0, a0, dp, pc]) => { const h = num(h0), a = num(a0), mx = pc ? 100 : Math.max(h, a, 1), f = (v) => (dp ? v.toFixed(dp) : v) + (pc ? "%" : ""), hi = h > a, ai = a > h;
+                  return (
+                    <div key={lab} className="ux-ft2-st" style={{ height: RH }}>
+                      <span className={"ux-ft2-v ux-r" + (hi ? " ux-on" : "")} style={hi ? { color: HC } : undefined}>{f(h)}</span>
+                      <span className="ux-ft2-b ux-l"><i style={{ width: `${100 * h / mx}%`, ...(hi ? { background: HC } : null) }} /></span>
+                      <span className="ux-ft2-l ux-ft2-t">{lab}</span>
+                      <span className="ux-ft2-b"><i style={{ width: `${100 * a / mx}%`, ...(ai ? { background: AC } : null) }} /></span>
+                      <span className={"ux-ft2-v" + (ai ? " ux-on" : "")} style={ai ? { color: AC } : undefined}>{f(a)}</span>
+                    </div>); };
+                // The band is as tall as the longer sheet, or, where the benches are short, as tall as the starters and the
+                // numbers' rows under them: the rows go on as lines the sheets leave empty, and the numbers end on the last.
+                const nSt = Math.max(ON.length, OFF.length), bandRows = Math.max(nRows, nStart + nSt), bandH = rowTop(bandRows), stRow0 = bandRows - nSt;
+                const statsTop = rowTop(stRow0) - HH, possTop = rowTop(stRow0 - 3) - HH, chartH = possTop - HH - 16;
+                const head = (txt) => <div className="ux-ft2-h" style={{ height: HH }}><span className="ux-ft2-t">{txt}</span></div>;
+                const middle = (
+                  <div className="ux-ft2-band" style={{ height: bandH }}>
+                    {sheet("home")}
+                    <div className="ux-ft2-num" style={{ height: bandH }}>
+                      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: possTop }}>{head("Momentum")}
+                        <div className="ux-ft2-mc">
+                          <div className="ux-ft2-mk2" style={{ height: chartH }}><span className="ux-ft2-t" style={{ color: HC }}>{m.hT?.code || abbr(m.hT?.name, m.hT?.code)}</span>
+                            <span className="ux-ft2-t" style={{ color: AC }}>{m.aT?.code || abbr(m.aT?.name, m.aT?.code)}</span></div>
+                          <div style={{ flex: 1, minWidth: 0 }}><MomentumChart mom={m.mom} perMin={ME_MATCH_TICKS / 90} last={m.t} htAt={m.htAt} etAt={m.et ? m.etAt : null}
+                                                                               goals={momGoals} hc={HC} ac={AC} height={chartH} /></div>
+                        </div></div>
+                      <div style={{ position: "absolute", left: 0, right: 0, top: possTop }}>{head("Possession")}
+                        <div className="ux-ft2-pz" style={{ height: RH }}><span className="ux-ft2-v ux-r ux-on" style={{ color: HC }}>{pcH}%</span>
+                          <span className="ux-ft2-pb"><i style={{ width: `${pcH}%`, background: HC }} /><i style={{ flex: 1, background: AC }} /></span>
+                          <span className="ux-ft2-v ux-on" style={{ color: AC }}>{pcA}%</span></div></div>
+                      <div className="ux-ft2-two" style={{ top: statsTop }}>
+                        <div>{head("On The Ball")}{ON.map(stRow)}</div>
+                        <div>{head("Off The Ball")}{OFF.map(stRow)}
+                          {/* How many times a tournament's fixture was kicked off, on the page for good, in the line Off The Ball
+                              leaves under Reds: it is what a screenshot of a result is for. */}
+                          {m.tourn && OFF.length < ON.length && <div className="ux-ft2-rc" style={{ height: RH }}><RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>}</div></div>
+                    </div>
+                    {sheet("away")}
+                  </div>);
+                // ── THE GOALS ───────────────────────────────────────────────────────────────────────────────────────────────
+                // A card each, as big as the strip allows (one row, or two or three when that makes every card bigger): the
+                // minute's plate, the scorer and who made it, the score, then the move with its download and its replay. A
+                // narrow card names the scorer alone, a tiny one puts the score in the pitch's corner. Only once a pitch would be
+                // too small to read at all (under CARD_MIN wide, in up to four rows: user, 24 November 2026, "make pitches only
+                // turn to list when they're completely illegible") is every goal a row of a list instead, five across: minute,
+                // scorer, score, download, replay.
+                // ── THE INJURIES ────────────────────────────────────────────────────────────────────────────────────────────
+                // Beside The Goals, a row a man (over them it took their height, and the cards fell to the plain list) (user, 24 November 2026: "think of a way to show what injury it was and how long
+                // he'll be out. # of games, or ROS if the injury will be across multiple competitions"): the minute, the man,
+                // what he has, and the games it costs him (engine/injury.ts injLen), ROS for one that outlasts the competition
+                // (a long injury), Doubtful for a man who played on hurt. Treated and back on costs nothing and is in the feed.
+                const tcase = (s) => String(s || "").replace(/(^|\s)\S/g, c => c.toUpperCase());
+                const inj = [];
+                for (const sd of ["home", "away"]) for (const q of [...(m.s.players[sd] || []), ...(m.s.subbedOff?.[sd] || [])]) {
+                  const nm = q.fullName || q.name;
+                  if (q.inj) { const sev = ME_INJURY.find(v => v.id === q.injSev), j = (out.injured?.[sd] || []).find(e => (e.full || e.name) === nm);
+                    inj.push({ sd, min: j?.min ?? 0, add: j?.add || 0, who: sn(nm, q.name), dx: sev ? tcase(`${q.injPart || sev.part} ${sev.label}`) : "Injured",
+                               len: sev?.long ? "ROS" : q.injLen ? `${q.injLen} ${q.injLen === 1 ? "Game" : "Games"}` : sev ? `${sev.dur[0]}–${sev.dur[1]} Games` : "", dbt: false }); }
+                  else if (q.hurt) inj.push({ sd, min: q.hurtMin ?? 0, add: q.hurtAdd || 0, who: sn(nm, q.name), dx: q.hurtDx || "Hurt", len: "Doubtful", dbt: true });
+                }
+                inj.sort((a, b) => a.min - b.min || a.add - b.add);
+                // Under the away side's sheet, at its width (ux-ft2-band: 470 wide, 24 apart), and only when there are any.
+                const INJW = inj.length ? 470 : 0, GW = TW - (INJW ? INJW + 24 : 0);
+                const injuries = inj.length > 0 && (
+                  <div className="ux-ft2-ij" style={{ width: INJW }}>
+                  {head(inj.length === 1 ? "Injury" : "Injuries")}
+                  <div className="ux-ft2-ilist">
+                    {inj.map((e, i) => (
+                      <div key={i} className="ux-ft2-gx" style={{ boxShadow: `inset 3px 0 0 ${rd[e.sd]}` }}>
+                        {plate(e.sd, fmtMin(e.min, e.add))}{tlIcon("injury")}
+                        <span className="ux-ft2-gw"><b>{e.who}</b> <span className="ux-ft2-ga">{e.dx}</span></span>
+                        <span className={"ux-ft2-gs ux-ft2-il" + (e.dbt ? " ux-dbt" : "")} style={mono}>{e.len}</span>
+                      </div>))}
+                  </div></div>);
+                const top0 = BAN + TH + 8 + bandH + 12, goalsH = dh - top0 - HH - 6 - 14;
+                const n = clips.length, HEAD = 8 + 22 + 8 + 8, PA = 110.2 / 71.4;
+                let fit = { cw: 0, per: n };
+                const CARD_MIN = 96;
+                for (let rows = 1; rows <= 4 && n; rows++) { const per = Math.ceil(n / rows);
+                  const byW = (GW - 14 * (per - 1)) / per, byH = ((goalsH - 10 * (rows - 1)) / rows - HEAD) * PA + 19;
+                  const cw2 = Math.floor(Math.min(byW, byH, 340)); if (cw2 > fit.cw) fit = { cw: cw2, per }; }
+                const cw = fit.cw, narrow = cw < 240, tiny = cw < 190;
+                // The scorer in full and who made it, off the goal's own caption; an own goal has none, so clipWho's.
+                const goalWho = (c) => { const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(c.txt || "");
+                  if (c.txt) return { who: mt ? mt[1] : c.txt, ast: mt ? sn(mt[2], mt[2]) : null };
+                  const [w, par] = clipWho(c); return { who: w, ast: par }; };
+                const cardHead = (c) => { const { who, ast } = goalWho(c);
+                  return (<>{plate(c.side, fmtMin(c.min, c.add))}
+                    <span className="ux-ft2-gw">{narrow ? <b>{sn(who, who)}</b> : boldSurname(who, who)}{ast && !narrow && <span className="ux-ft2-ga"> {ast}</span>}</span></>); };
+                const gifBtn = (c) => (
+                  <button type="button" className="ux-btnreset ux-ft2-ib" title="Save GIF" aria-label="Save GIF" onClick={() => meClipGif(c, HC, AC)}>
+                    <svg viewBox="-1 -1 2 2" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={0.22} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M 0 -0.6 L 0 0.25 M -0.36 -0.1 L 0 0.27 L 0.36 -0.1 M -0.5 0.6 L 0.5 0.6" /></svg></button>);
+                const repBtn = (c) => (
+                  <button type="button" className="ux-btnreset ux-ft2-ib" title="Replay" aria-label="Replay" onClick={() => meCelOpen(m, c)}>
+                    <svg viewBox="-1 -1 2 2" width={8} height={8} aria-hidden="true"><path d="M -0.45 -0.65 L 0.7 0 L -0.45 0.65 Z" fill="currentColor" /></svg></button>);
+                const goals = (
+                  <div className="ux-ft2-goals" style={inj.length ? { display: "flex", gap: 24 } : undefined}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                    {head(n === 1 ? "The Goal" : n ? "The Goals" : "No Goals")}
+                    {n > 0 && (cw >= CARD_MIN ? (
+                      <div className="ux-ft2-cards" style={{ width: fit.per * cw + 14 * (fit.per - 1) }}>
+                        {clips.map((c, gi) => (
+                          <div key={gi} className="ux-ft2-gc" style={{ width: cw, boxShadow: `inset 3px 0 0 ${rd[c.side]}` }}>
+                            <div className="ux-ft2-gh">{cardHead(c)}{!tiny && <span className="ux-ft2-gs" style={mono}>{c.score}</span>}</div>
+                            <div className="ux-ft2-gp"><GoalReplay clip={c} hc={HC} ac={AC} onReplay={() => meCelOpen(m, c)} />
+                              {tiny && <span className="ux-ft2-gsc" style={mono}>{c.score}</span>}</div>
+                          </div>))}
+                      </div>) : (
+                      <div className="ux-ft2-list">
+                        {clips.map((c, gi) => (
+                          <div key={gi} className="ux-ft2-gx" style={{ boxShadow: `inset 3px 0 0 ${rd[c.side]}` }}>
+                            {plate(c.side, fmtMin(c.min, c.add))}<span className="ux-ft2-gw"><b>{sn(goalWho(c).who, goalWho(c).who)}</b></span>
+                            <span className="ux-ft2-gs" style={mono}>{c.score}</span>{gifBtn(c)}{repBtn(c)}
+                          </div>))}
+                      </div>))}
+                    </div>
+                    {injuries}
+                  </div>);
                 return (
-                  <div style={{ position: "relative", width: dw, height: dh, display: "flex", flexDirection: "column",
-                                color: "var(--ui-text)" }}>
-
-                    {/* THE RESULT over the ground it was played at, like Play Match's banner (Moukden and Kirin, 10 October
-                        2026): the competition and round over the score, the ground under it, and each side's name with its
-                        manager and shape. No photo on file keeps the kit colours running out from each half. */}
-                    <div className="ux-ftban" style={{ height: bandH, backgroundImage: hasPhoto ? "none" : sbBg }}>
-                      {hasPhoto && <div className="ux-mban-photo" style={{ backgroundImage: stadiumBg(venue) }} aria-hidden="true" />}
-                      {hasPhoto ? <div className="ux-mban-veil" aria-hidden="true" /> : <div className="ux-ftban-tint" aria-hidden="true" />}
-                      {/* The competition's own mark, drawn large, over a tournament's fixture only: a friendly has the word alone
-                          (Moukden and Kirin, 12 October 2026). */}
-                      <div className="ux-ftban-comp">
-                        {m.tourn && uiTheme !== "default" && (
-                          <img className="ux-ftban-art" src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt=""
-                               onError={(e) => { e.currentTarget.style.display = "none"; }} />)}
-                        <span>{compLine}</span>
-                      </div>
-                      {ftSide(m.hT, "home")}
-                      <div className="ux-ftban-board">
-                        {sbScore()}
-                        {sbClock(SB_FT)}
-                      </div>
-                      <div className="ux-ftban-foot">
-                        {sbExtra()}
-                        <div className="ux-ftban-ground">
-                          {venue || "Neutral Venue"}{(_v.city || venueNat) && " · "}
-                          {_v.city && <CityLink name={_v.city} />}{_v.city && venueNat ? ", " : ""}{venueNat || ""}
-                        </div>
-                      </div>
-                      {ftSide(m.aT, "away")}
-                    </div>
-
-                    <div style={{ height: FT_LINE, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)" }}>
-                      <MatchTimeline w={dw} h={FT_LINE} events={evs} hT={m.hT} aT={m.aT} hc={HC} ac={AC}
-                                     et={!!m.et} pens={out.pens || []} />
-                    </div>
-
-                    {/* The people either side, and between them how the match swung and the numbers. The band is as tall as
-                        the longer team sheet, and the middle column fills it from the bottom: the numbers' last line level with
-                        the sheets' last man however many sat on the bench, the possession bar over them, and the momentum chart
-                        taking what is left (Moukden and Kirin, 12 October 2026). */}
-                    <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "440px minmax(0,1fr) 440px",
-                                  alignContent: "start", gap: 24, padding: "14px 24px 12px" }}>
-                      {sheet("home")}
-                      <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-                        <MomentumChart mom={m.mom} perMin={ME_MATCH_TICKS / 90} last={m.t} htAt={m.htAt} etAt={m.et ? m.etAt : null}
-                                       goals={momGoals} hc={HC} ac={AC} height={MOM_H} />
-                        <div style={{ flexShrink: 0, fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
-                                      color: "var(--chrome-muted)", marginTop: 6 }}>Momentum</div>
-                        {/* Whatever the numbers' rows cannot take up lies over the possession bar, never over the chart. */}
-                        <div style={{ flexShrink: 0, marginTop: "auto", paddingTop: 16 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <span style={{ ...mono, width: 46, fontSize: 15, fontWeight: 700, color: HC }}>{pcH}%</span>
-                            <div style={{ flex: 1, display: "flex", height: 9, borderRadius: 5, overflow: "hidden" }}>
-                              <div style={{ width: `${pcH}%`, background: HC }} />
-                              <div style={{ width: `${pcA}%`, background: AC }} />
-                            </div>
-                            <span style={{ ...mono, width: 46, textAlign: "right", fontSize: 15, fontWeight: 700,
-                                           color: AC }}>{pcA}%</span>
-                          </div>
-                          <div style={{ fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
-                                        color: "var(--chrome-muted)", marginTop: 6 }}>Possession</div>
-                        </div>
-                        {/* Its last line's middle on the last man's: the rows differ in height, so the block hangs past the
-                            band's foot by half the difference (or stops short of it). */}
-                        <div style={{ flexShrink: 0, marginTop: 18, marginBottom: (rowH - statH) / 2, display: "grid",
-                                      gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
-                          <div>{statsWith(zBar)}</div>
-                          <div>
-                            {statsWithout(zBar)}
-                            {/* How many times the fixture was kicked off, on the page for good, in the
-                                slot under Reds that the shorter column leaves. It is what a screenshot of a
-                                result is for, so it never hides with the buttons. */}
-                            {m.tourn && (
-                              <div style={{ height: zBar.rowH, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>)}
-                          </div>
-                        </div>
-                      </div>
-                      {sheet("away")}
-                    </div>
-
-                    {/* EVERY GOAL, each card resting on its move and playing it under the pointer. */}
-                    <div style={{ height: goalsH, flexShrink: 0, padding: "0 24px 18px", display: "flex",
-                                  flexDirection: "column" }}>
-                      <div style={{ height: 22, flexShrink: 0, display: "flex", alignItems: "center", gap: 14,
-                                    fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
-                                    color: "var(--chrome-muted)" }}>
-                        <div style={{ flex: 1, height: 1, background: "var(--chrome-border)" }} />
-                        {n === 1 ? "The Goal" : n ? "The Goals" : "No Goals"}
-                        <div style={{ flex: 1, height: 1, background: "var(--chrome-border)" }} />
-                      </div>
-                      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <div style={{ width: fit.per * cw + GAP * (fit.per - 1), display: "flex", flexWrap: "wrap",
-                                      justifyContent: "center", gap: GAP }}>
-                          {clips.map((c, gi) => { const [who, par] = clipWho(c);
-                            const dot = <span style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0,
-                                                       background: c.side === "home" ? HC : AC }} />;
-                            const minute = <span style={{ ...mono, fontSize: 10.5, color: "var(--chrome-muted)", flexShrink: 0 }}>
-                                             {fmtMin(c.min, c.add)}</span>;
-                            const score = <span style={{ ...mono, fontSize: 10.5, color: "var(--chrome-muted)", flexShrink: 0,
-                                                         marginLeft: "auto" }}>{c.score}</span>;
-                            const name = <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
-                                                        whiteSpace: "nowrap", fontSize: 11.5, fontWeight: 600 }}>
-                                           {who}{par && (!narrow || par === "OG") &&
-                                             <span style={{ fontWeight: 400, color: "var(--chrome-muted)" }}> ({par})</span>}</span>;
-                            return (
-                            <div key={gi} style={{ width: cw, flexShrink: 0, overflow: "hidden", ...panel }}>
-                              {/* A narrow card gives the scorer a line of his own: squeezed in beside the
-                                  minute and the score he came out as a single letter. The assist goes. */}
-                              {narrow ? (
-                                <div style={{ padding: "5px 8px 4px" }}>
-                                  <div style={{ height: 13, display: "flex", alignItems: "center", gap: 6 }}>{dot}{minute}{score}</div>
-                                  <div style={{ height: 16, display: "flex", alignItems: "center" }}>{name}</div>
-                                </div>
-                              ) : (
-                                <div style={{ height: 26, display: "flex", alignItems: "center", gap: 7, padding: "0 10px" }}>
-                                  {dot}{minute}{name}{score}</div>)}
-                              <GoalReplay clip={c} hc={HC} ac={AC} />
-                            </div>); })}
-                        </div>
-                      </div>
-                    </div>
-
+                  <div className="ux-ft2" style={{ width: dw, height: dh }}>
+                    {banner}{timeline}{middle}{goals}
                     {!shot && <HoverDock style={{ position: "absolute", right: 24, bottom: 16, zIndex: 2, display: "flex",
-                                        alignItems: "center", gap: 8, padding: 8, borderRadius: 10,
-                                        background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)",
+                                        alignItems: "center", gap: 8, padding: 8, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)",
                                         boxShadow: "0 8px 28px rgba(0,0,0,.5)" }}>
-                      {/* The picture, without these buttons, at 1920 x 1310 whatever the window's shape. */}
+                      {/* The picture, without these buttons: the page as it stands, at 1920 wide. */}
                       <button onClick={ftCopy} disabled={!!ftShot} style={{ ...btn, minWidth: 116 }}>
                         {ftCopied === "ok" ? "Copied" : ftCopied === "fail" ? "Copy Failed" : ftShot ? "Copying" : "Copy Image"}</button>
                       {m.tourn ? (<>
@@ -22416,15 +24134,25 @@ export default function App() {
               return (
                 <div ref={ftPageRef} style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)" }}>
                   <FitCanvas w={FT_W} h={FT_H}>{(k, dw, dh) => page(k, dw, dh, false)}</FitCanvas>
-                  {/* The clipboard's copy: the page at its design size, out of sight, without its buttons. */}
+                  {/* The clipboard's copy: the page at the size it stands on the screen, out of sight, without its buttons. */}
                   {ftShot && (
-                    <div ref={ftShotRef} aria-hidden="true" style={{ position: "fixed", left: -20000, top: 0, width: FT_W, height: FT_H,
+                    <div ref={ftShotRef} aria-hidden="true" style={{ position: "fixed", left: -20000, top: 0, width: ftShot.w, height: ftShot.h,
                                                                    overflow: "hidden", background: "var(--chrome-bg)" }}>
-                      {page(1920 / FT_W, FT_W, FT_H, true)}
+                      {page(1920 / ftShot.w, ftShot.w, ftShot.h, true)}
                     </div>)}
                 </div>);
             };
-            if (m.ftDone && meView === "post") return ftReport();
+            // A goal's replay opened from Full Time takes the whole window over the page, wipe and all, as in the match.
+            if (m.ftDone && meView === "post") return (<>{ftReport()}
+              {(m.cel || meWipe) && (
+                <div className="ux-lm-ftrep" style={{ position: "fixed", inset: 0, zIndex: 70, background: m.cel ? "var(--ui-turf-out)" : "transparent", pointerEvents: m.cel ? "auto" : "none" }}>
+                  {m.cel && pitchSvg(true)}
+                  {meWipe && (
+                    <div key={meWipe.id} className="ux-wipe" aria-hidden="true"
+                         style={{ "--ux-wipe-c": meWipe.side === "away" ? aClr2 : hClr2, "--ux-wipe-i": (lumOf(meWipe.side === "away" ? aClr2 : hClr2) ?? 0) > 0.6 ? "#0b0d12" : "#fff" }}>
+                      <i /><i /><b>Replay</b>
+                    </div>)}
+                </div>)}</>);
             // ── THE SCOREBUG ─────────────────────────────────────────────────────────────────────────
             // A broadcast's score in the corner of the picture, in place of the strip across the top ("Own screen,
             // broadcast-style scoreboard instead of strip", then an MLS bug as the model: "Just do something like this",
@@ -22445,6 +24173,7 @@ export default function App() {
                       style={{ background: bg, "--ux-bug-div": div }}>
                   <span className="ux-bug-crest" aria-hidden="true"><TeamCrest team={t} size={112} /></span>
                   <b>{t?.code || abbr(t?.name, t?.code)}</b>
+                  {Array.from({ length: Math.min(3, out.reds?.[side] || 0) }, (_, i) => <i key={i} className="ux-bug-rc" title="Red Card" />)}
                   <UxSheen n={out.goals[side]} />
                 </span>);
             };
@@ -22468,10 +24197,37 @@ export default function App() {
               bugTags.push(<span key="toss" className="ux-bug-tag">{tt?.code || tt?.name} Won The Toss</span>); }
             else if (m.et && !pkLive) bugTags.push(<span key="et" className="ux-bug-tag">{m.ftDone ? "AET" : "Extra Time"}</span>);
             if (m.tourn?.agg || m.agg) { const ag = m.tourn?.agg || m.agg; bugTags.push(<span key="agg" className="ux-bug-tag">Agg {out.goals.home + ag[0]}–{out.goals.away + ag[1]}</span>); }
+            if (m.cel) bugTags.push(<span key="rep" className="ux-bug-tag">Replay</span>);
+            // WHAT THE PLATES UNDER THE SCOREBUG SAY (MatchGfx): the two sides' record together, worked out once a match
+            // from the archive as Play Match's Head To Head panel works it out; the numbers as they stand; who has scored.
+            if (m._h2h === undefined && pstats?.seasons) {
+              m._h2h = null;
+              try {
+                const kA = archKey(m.hT?.name), kB = archKey(m.aT?.name), comps = new Set([...regRecordComps(m.hT), ...regRecordComps(m.aT)]), rec = { p: 0, a: 0, d: 0, b: 0 };
+                for (const s of pstats.seasons) {
+                  if (s.hist || !s.md || !comps.has(s.comp)) continue;
+                  for (const r of uxAllRows(s) || []) if ((r.hk === kA && r.ak === kB) || (r.hk === kB && r.ak === kA)) {
+                    const aHome = r.hk === kA, ag = aHome ? r.hg : r.ag, bg = aHome ? r.ag : r.hg, pa = r.pens && (aHome ? r.pens : [r.pens[1], r.pens[0]]);
+                    rec.p++; if (ag > bg) rec.a++; else if (bg > ag) rec.b++; else if (pa) { if (pa[0] > pa[1]) rec.a++; else rec.b++; } else rec.d++;
+                  }
+                }
+                m._h2h = rec;
+              } catch { m._h2h = null; }
+            }
+            const gfxStats = [
+              { k: "Possession", h: pcH + "%", a: pcA + "%", hv: pcH, av: pcA },
+              { k: "Shots", h: num(out.shots.home), a: num(out.shots.away) },
+              { k: "On Target", h: num(out.onTarget.home), a: num(out.onTarget.away) },
+              { k: "xG", h: num(out.xgS?.home).toFixed(2), a: num(out.xgS?.away).toFixed(2), hv: num(out.xgS?.home), av: num(out.xgS?.away) },
+              { k: "Corners", h: num(out.corners.home), a: num(out.corners.away) },
+              { k: "Passes", h: num(out.passSide?.home), a: num(out.passSide?.away) },
+            ];
+            const gfxScorers = { home: [], away: [] };
+            for (const c of m.clips || []) gfxScorers[c.side]?.push({ who: shortName(c.og || c.scorer || ""), min: c.min, tag: c.og ? "(OG)" : c.pen ? "(Pen)" : "" });
             const scorebug = (
               <div className="ux-bug" aria-label="Score">
                 {bugSide(m.hT, "home")}
-                <span className="ux-bug-score"><UxRoll value={out.goals.home} delay={UX_SHEEN_LAG} /><i>-</i><UxRoll value={out.goals.away} delay={UX_SHEEN_LAG} /></span>
+                <span className="ux-bug-score"><UxRoll value={out.goals.home} delay={UX_GOAL_LAG} /><i>-</i><UxRoll value={out.goals.away} delay={UX_GOAL_LAG} /></span>
                 {bugSide(m.aT, "away")}
                 <span className={"ux-bug-clock" + (brk ? " ux-brk" : "")}>{brk || clock}{!brk && added && <i>{added}</i>}</span>
                 {pkLive && <>
@@ -22480,64 +24236,51 @@ export default function App() {
                   <span className="ux-bug-pkrow ux-r">{pkMarks("away")}</span>
                 </>}
                 {bugTags.length > 0 && <div className="ux-bug-sub">{bugTags}</div>}
+                <MatchGfx m={m} frame={meFrame} minute={minute} brk={m.brk?.phase === "wait" && m.brk.kind !== "ft" ? m.brk.kind : null}
+                          speed={ME_SPEEDS[meSpeedIx] ?? 1} h2h={m._h2h} stats={gfxStats} scorers={gfxScorers} hT={m.hT} aT={m.aT}
+                          hBg={hClr2} aBg={aClr2} hInk={(lumOf(hClr2) ?? 0) > 0.6} aInk={(lumOf(aClr2) ?? 0) > 0.6} hc={HC} ac={AC}
+                          replayOpen={!!m.cel} onReplay={(c) => meCelOpen(m, c)} />
               </div>);
             // ── THE SIDEBAR'S NEW PARTS ──────────────────────────────────────────────────────────────
-            // Live Stats, both elevens' ratings beside the feed, and the momentum chart (Moukden and Kirin, 10 October 2026).
-            const lsZ = { valW: 34, valFs: 11, labW: 78, labFs: 8.5, barH: 4, pad: 0, gap: 6, rowH: 17 };
-            const lsCards = (sd) => (
-              <span className="ux-ls-cards">
-                <i style={{ background: "var(--ui-warn)" }} title="Yellow Cards" />{num(out.yellows?.[sd])}
-                <i style={{ background: "var(--ui-danger)" }} title="Red Cards" />{num(out.reds?.[sd])}
-              </span>);
-            const liveStats = (
-              <section className="ux-lm-sec" aria-label="Live Stats">
-                <h3 className="ux-lm-h">Live Stats</h3>
-                <div className="ux-ls-poss">
-                  <span style={{ color: HC }}>{pcH}%</span><span className="ux-ls-l">Possession</span><span style={{ color: AC }}>{pcA}%</span>
-                </div>
-                <div className="ux-ls-pbar"><i style={{ width: `${pcH}%`, background: HC }} /><i style={{ width: `${pcA}%`, background: AC }} /></div>
-                {repBar(lsZ, "xG", out.xgS?.home, out.xgS?.away, 2)}
-                {repBar(lsZ, "Shots", out.shots.home, out.shots.away)}
-                {repBar(lsZ, "On Target", out.onTarget.home, out.onTarget.away)}
-                {repBar(lsZ, "Corners", out.corners.home, out.corners.away)}
-                <div className="ux-ls-row" style={{ gap: lsZ.gap, height: lsZ.rowH }}>
-                  <span style={{ width: lsZ.valW, textAlign: "right" }}>{lsCards("home")}</span><span style={{ flex: 1 }} />
-                  <span className="ux-ls-l" style={{ width: lsZ.labW }}>Cards</span><span style={{ flex: 1 }} />
-                  <span style={{ width: lsZ.valW }}>{lsCards("away")}</span>
-                </div>
-                {repBar(lsZ, "XI OVR", xiOvr("home"), xiOvr("away"), 1)}
-              </section>);
-            // Each side's men on the pitch now, with the rating each is having and the legs he has left; the men taken off
-            // follow, greyed, with the rating they left on.
+            // Both elevens' ratings under the feed, and the momentum chart (Moukden and Kirin, 10 October 2026). Live Stats
+            // stood here too until 22 November 2026 ("remove live stats from sidebar... feed and ratings should just both be
+            // there"): the numbers now come out from under the scorebug (MatchGfx) and fill the Stats panel.
+            // Each side's men on the pitch now: his place, his surname with any card, the legs he has left as a gauge filled
+            // from the bottom, and the rating he is having. Only the men on the pitch (user, 23 November 2026: "Ratings on the sidebar
+            // should only show the active men (red card if applicable), not subbed off men, or else the feed gets squished"):
+            // a man sent off stays, greyed with his card; a man taken off leaves the list for the one who came on.
             const ratCol = (side) => {
-              const t = side === "home" ? m.hT : m.aT;
-              const row = (p, i, gone) => {
-                const r = p.rating ?? 6.5, s2 = Math.max(0, Math.min(100, p.stamina ?? 100));
-                const sc = s2 > 60 ? "var(--ui-ok)" : s2 > 35 ? "var(--ui-warn)" : "var(--ui-danger)";
-                return (
-                  <div key={(gone ? "o" : "p") + i} className={"ux-lr-row" + (gone ? " ux-off" : "")}>
-                    <span className="ux-lr-rt" style={{ color: ratingColor(r) }}>{r.toFixed(1)}</span>
-                    <SlideName text={<>{splitSurname(p.fullName || p.name, p.name).last}{p.rc ? <i className="ux-lr-card ux-red" /> : p.yc ? <i className="ux-lr-card" /> : null}</>} />
-                    {gone ? <span /> : <span className="ux-lr-st" title={Math.round(s2) + "%"}><i style={{ width: s2 + "%", background: sc }} /></span>}
-                  </div>);
-              };
+              const t = side === "home" ? m.hT : m.aT, bg = side === "home" ? hClr2 : aClr2, edge = side === "home" ? HC : AC;
               return (
                 <div className="ux-lr-col">
-                  <div className="ux-lr-head"><TeamCrest team={t} size={14} /><b>{t?.code || abbr(t?.name, t?.code)}</b></div>
-                  {(st?.players?.[side] || []).map((p, i) => row(p, i, false))}
-                  {(st?.subbedOff?.[side] || []).map((p, i) => row(p, i, true))}
+                  <div className={"ux-lr-head" + ((lumOf(bg) ?? 0) > 0.6 ? " ux-ink" : "")} style={{ background: bg, "--ux-lr-edge": edge }}>
+                    <TeamCrest team={t} size={14} /><b>{t?.code || abbr(t?.name, t?.code)}</b></div>
+                  {(st?.players?.[side] || []).map((p, i) => { if (!p) return null;
+                    const r = p.rating ?? 6.5, s2 = Math.max(0, Math.min(100, p.stamina ?? 100)), gone = !!p.off;
+                    const sc = s2 > 60 ? "var(--ui-ok)" : s2 > 35 ? "var(--ui-warn)" : "var(--ui-danger)";
+                    const pl = p.inGoal ? "GK" : String(p.spos || p.pos || "").split("/")[0];
+                    return (
+                      <div key={i} className={"ux-lr-row" + (gone ? " ux-off" : "")}>
+                        <span className="ux-lr-pos" style={{ color: POS_CLR[pl] || "var(--ux-text-3)" }}>{pl}</span>
+                        <SlideName text={<>{splitSurname(p.fullName || p.name, p.name).last}{p.rc ? <i className="ux-lr-card ux-red" /> : p.yc ? <i className="ux-lr-card" /> : null}</>} />
+                        <span className="ux-lr-st" data-tip={gone ? undefined : "Stamina " + Math.round(s2) + "%"}>{!gone && <i style={{ height: s2 + "%", background: sc }} />}</span>
+                        <span className="ux-lr-rt" style={{ color: ratingColor(r) }}>{r.toFixed(1)}</span>
+                      </div>); })}
                 </div>);
             };
             // Who is on top, minute by minute: the home side's spells above the line and the away side's below, each goal a
             // dot at the side it went to, and the interval a dashed rule.
             const momChart = () => {
-              const mm = m.mom, P = ME_MATCH_TICKS / 90, W = 316, H = 54, MID = H / 2;
+              const mm = m.mom, P = ME_MATCH_TICKS / 90, W = 286, H = 54, MID = H / 2;
               const cur = Math.floor(m.t / P), N = Math.max(m.et ? 124 : 94, cur + 1), bw = W / N;
               const raw = Array.from({ length: cur + 1 }, (_, i) => { const b = mm?.b?.[i]; return b ? b.h - b.a : 0; });
               const sm = raw.map((v, i) => 0.25 * (raw[i - 1] ?? v) + 0.5 * v + 0.25 * (raw[i + 1] ?? v));
               const mx = Math.max(3, ...sm.map(Math.abs));
               const rule = (tk, key) => tk == null ? null : <line key={key} x1={tk / P * bw} x2={tk / P * bw} y1={2} y2={H - 2} className="ux-mom-div" />;
               return (
+                <div className="ux-mom-box">
+                <span className="ux-mom-k" style={{ color: HC }}>{m.hT?.code || abbr(m.hT?.name, m.hT?.code)}</span>
+                <span className="ux-mom-k ux-b" style={{ color: AC }}>{m.aT?.code || abbr(m.aT?.name, m.aT?.code)}</span>
                 <svg className="ux-mom" viewBox={`0 0 ${W} ${H}`} aria-label="Momentum">
                   <line x1={0} x2={W} y1={MID} y2={MID} className="ux-mom-axis" />
                   {rule(m.htAt, "ht")}{rule(m.etAt, "et")}
@@ -22545,13 +24288,14 @@ export default function App() {
                     return <rect key={i} x={i * bw + 0.3} width={Math.max(0.6, bw - 0.6)} y={v > 0 ? MID - h : MID} height={h} fill={v > 0 ? HC : AC} />; })}
                   {(mm?.g || []).map((g, k) => <circle key={"g" + k} cx={g.i * bw + bw / 2} cy={g.side === "home" ? 4.5 : H - 4.5} r={3.2}
                                                        fill={g.side === "home" ? HC : AC} stroke="#fff" strokeWidth={1.1} />)}
-                </svg>);
+                </svg></div>);
             };
             // Subs and Tactics pause the match while they are open, and closing either plays on (Moukden and Kirin, 10 October
             // 2026). Stats only reads, so it leaves the match running. Moving between the two that pause keeps it paused.
             const holds = (p) => p === "subs" || p === "tactics";
             const meOpenPanel = (id) => {
               const next = mePanel === id ? null : id;
+              if (next !== "subs") { meSubDraft.current = null; meSubPick.current = null; meSubDrag.current = null; }
               if (holds(next) && !holds(mePanel) && meRunning && !m.ftDone) { meStop(); mePanelHeld.current = true; }
               else if (!holds(next) && mePanelHeld.current) { mePanelHeld.current = false; if (!m.ftDone) mePlay(); }
               setMePanel(next);
@@ -22562,6 +24306,11 @@ export default function App() {
               <div className="ux-lm" style={{ position: "fixed", inset: 0, zIndex: 60 }}>
                 <div className="ux-lm-stage">
                   {pitchSvg(true)}
+                  {meWipe && (
+                    <div key={meWipe.id} className="ux-wipe" aria-hidden="true"
+                         style={{ "--ux-wipe-c": meWipe.side === "away" ? aClr2 : hClr2, "--ux-wipe-i": (lumOf(meWipe.side === "away" ? aClr2 : hClr2) ?? 0) > 0.6 ? "#0b0d12" : "#fff" }}>
+                      <i /><i /><b>Replay</b>
+                    </div>)}
                   {mePanel && (
                     <div className="ux-lm-panel">
                       {mePanel === "stats" && (() => {
@@ -22677,77 +24426,125 @@ export default function App() {
                                     </span>
                                     <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)", flexShrink: 0 }}>{c.score}</span>
                                   </div>
-                                  <GoalReplay clip={c} hc={HC} ac={AC} />
+                                  <GoalReplay clip={c} hc={HC} ac={AC} onReplay={() => meCelOpen(m, c)} />
                                 </div>); })}
                             </div>
                           </>)}
                         </div>);
                       })()}
                       {mePanel === "subs" && (() => {
+                        // DRAG AND DROP, AND SAVE (user, 23 November 2026: "Make substitutions drag and drop with a save button").
+                        // A man on the bench is dragged onto the man he replaces, or the other way round, and the two change places
+                        // in the lists at once: the replacement in the slot, the man coming off on the bench, greyed. Nothing reaches
+                        // the match until Save, which hands the changes to the queue the next stoppage plays and closes the panel;
+                        // closing without saving drops them. The draft opens on whatever is already queued, so a saved change can be
+                        // seen and taken back. A click on one row and then on a row in the other list pairs them as a drop does.
                         const q = mePending.current;
-                        const pick = (side, kind, idx) => {
+                        const dr = meSubDraft.current || (meSubDraft.current = {
+                          home: q.subs.filter(x => x.side === "home").map(x => [x.outIdx, x.benchIdx]),
+                          away: q.subs.filter(x => x.side === "away").map(x => [x.outIdx, x.benchIdx]) });
+                        const room = (side) => subLimit(m.s, side) - (m.s.subs?.[side] || 0);
+                        const rest = (side, o, b2) => dr[side].filter(([o2, b3]) => o2 !== o && b3 !== b2);
+                        const pair = (side, o, b2) => {
+                          const on = m.s.players[side] || [], bn = m.s.bench?.[side] || [];
+                          if (!on[o] || on[o].off || !bn[b2]) return;
+                          const L = rest(side, o, b2);
+                          if (L.length >= room(side)) return;
+                          dr[side] = [...L, [o, b2]]; setMeFrame(f => f + 1);
+                        };
+                        const unpair = (side, o) => { dr[side] = dr[side].filter(([o2]) => o2 !== o); setMeFrame(f => f + 1); };
+                        const saved = [...dr.home.map(([o, b2]) => "h" + o + ":" + b2), ...dr.away.map(([o, b2]) => "a" + o + ":" + b2)].sort().join();
+                        const was = q.subs.map(x => (x.side === "home" ? "h" : "a") + x.outIdx + ":" + x.benchIdx).sort().join();
+                        const dirty = saved !== was, nDraft = dr.home.length + dr.away.length;
+                        const save = () => {
+                          q.subs = [...dr.home.map(([o, b2]) => ({ side: "home", outIdx: o, benchIdx: b2 })),
+                                    ...dr.away.map(([o, b2]) => ({ side: "away", outIdx: o, benchIdx: b2 }))];
+                          meOpenPanel("subs");
+                        };
+                        // The other end of a drag or a click: the same side, the other list, and room for the change.
+                        const fits = (side, kind, idx, d) => {
+                          if (!d || d.side !== side || d.kind === kind) return false;
+                          const o = kind === "off" ? idx : d.idx, b2 = kind === "off" ? d.idx : idx;
+                          return rest(side, o, b2).length < room(side);
+                        };
+                        const take = (side, kind, idx, d) => kind === "off" ? pair(side, idx, d.idx) : pair(side, d.idx, idx);
+                        const hit = (side, kind, idx) => {
                           const cur = meSubPick.current;
-                          if (kind === "off") meSubPick.current = { side, outIdx: idx };
-                          else if (cur && cur.side === side) {
-                            const queued = q.subs.filter(x => x.side === side).length;
-                            if ((m.s.subs?.[side] || 0) + queued < subLimit(m.s, side))
-                              q.subs.push({ side, outIdx: cur.outIdx, benchIdx: idx });
-                            meSubPick.current = null;
-                          }
+                          if (cur && fits(side, kind, idx, cur)) { take(side, kind, idx, cur); meSubPick.current = null; }
+                          else meSubPick.current = cur && cur.side === side && cur.kind === kind && cur.idx === idx ? null : { side, kind, idx };
                           setMeFrame(f => f + 1);
+                        };
+                        const dnd = (side, kind, idx, live) => !live ? {} : {
+                          draggable: true,
+                          onDragStart: (e) => { meSubDrag.current = { side, kind, idx }; meSubPick.current = null;
+                            e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", kind + ":" + idx); } catch {} },
+                          onDragEnd: () => { meSubDrag.current = null; },
+                          onDragOver: (e) => { if (!fits(side, kind, idx, meSubDrag.current)) return;
+                            e.preventDefault(); e.dataTransfer.dropEffect = "move"; e.currentTarget.classList.add("ux-dropon"); },
+                          onDragLeave: (e) => e.currentTarget.classList.remove("ux-dropon"),
+                          onDrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove("ux-dropon");
+                            const d = meSubDrag.current; meSubDrag.current = null;
+                            if (fits(side, kind, idx, d)) take(side, kind, idx, d); },
                         };
                         const col = (side) => {
                           const t = side === "home" ? m.hT : m.aT;
                           const on = m.s.players[side] || [], bn = m.s.bench?.[side] || [];
-                          const sel = meSubPick.current?.side === side ? meSubPick.current.outIdx : -1;
-                          const used = (m.s.subs?.[side] || 0), capN = subLimit(m.s, side);
-                          const row = (p, i, kind) => { if (!p) return null;
+                          const inFor = new Map(dr[side]), outFor = new Map(dr[side].map(([o, b2]) => [b2, o]));
+                          const pk = meSubPick.current?.side === side ? meSubPick.current : null;
+                          const used = (m.s.subs?.[side] || 0), capN = subLimit(m.s, side), planned = used + dr[side].length;
+                          // One row: the man shown, the list he is in, the slot or bench place it stands for, and whether he is a
+                          // change in the draft ("in" coming on in that slot, "out" going off to that bench place).
+                          const row = (p, kind, idx, mark, place) => {
+                            const live = kind === "off" ? !on[idx]?.off : true;
                             const st2 = Math.max(0, Math.min(100, p.stamina ?? 100));
                             const stClr = st2 > 60 ? "var(--ui-ok)" : st2 > 35 ? "var(--ui-warn)" : "var(--ui-danger)";
-                            // The whole touchline truth on one chip. Coaching moves p.ovr off its
-                            // kickoff baseline (always up); tired legs take rating off him at what a point of stamina
-                            // was measured to cost a man of his rating (CFG.subLegsW), the figure his own manager
-                            // weighs a change by (match.ts meCoachSubs).
-                            // Where he plays (user, 11 October 2026): on the pitch his place, in goal GK; on the bench his own
-                            // first position, and the place he would take once a man is picked to come off. A man in goal
-                            // plays at half his rating (ovrAt), so his coaching is read against that, not against his own.
-                            const base = p.ovr0 ?? p.ovr ?? 70, place = kind === "off" ? (p.inGoal ? "GK" : p.spos || p.pos) : sel >= 0 ? on[sel]?.spos : null;
+                            // Coaching moves p.ovr off its kickoff baseline (always up); tired legs take rating off him at what a
+                            // point of stamina was measured to cost a man of his rating (CFG.subLegsW), the figure his own manager
+                            // weighs a change by (match.ts meCoachSubs). A man in goal plays at half his rating (ovrAt).
+                            const base = p.ovr0 ?? p.ovr ?? 70;
                             // A college man's rating is hidden on the match screens from everyone (DESIGN.md, The ANCC).
                             const hid = hidMan(p.rid ?? ridByName.get(pFold(p.fullName || p.name)));
-                            const lab = kind === "off" ? place : p.own?.[0] || p.pos, oop = !!place && uxOop(p.own, place);
-                            const dCoach = (p.ovr ?? 0) - (p.inGoal ? ovrAt(base, p.own, "GK") : p.ovr0 ?? p.ovr ?? 0);
-                            const lw = ME_CFG.subLegsW || [[0, 0.09]], rAt = p.inGoal ? ovrAt(base, p.own, "GK") : p.ovr ?? base;
+                            const lab = place || p.own?.[0] || p.pos, oop = !!place && uxOop(p.own, place);
+                            const inG = mark !== "in" && p.inGoal;
+                            const dCoach = mark === "in" ? 0 : (p.ovr ?? 0) - (inG ? ovrAt(base, p.own, "GK") : p.ovr0 ?? p.ovr ?? 0);
+                            const lw = ME_CFG.subLegsW || [[0, 0.09]], rAt = inG ? ovrAt(base, p.own, "GK") : p.ovr ?? base;
                             const lk = lw.findIndex(e => e[0] > rAt);
                             const lpw = lk < 0 ? lw[lw.length - 1][1] : lk === 0 ? lw[0][1]
                                       : lw[lk - 1][1] + (lw[lk][1] - lw[lk - 1][1]) * (rAt - lw[lk - 1][0]) / (lw[lk][0] - lw[lk - 1][0]);
-                            const dFat = -lpw * (100 - st2);
-                            const d = dCoach + dFat;
+                            const dFat = -lpw * (100 - st2), d = dCoach + dFat;
                             const dTip = "Coaching " + (dCoach >= 0 ? "+" : "") + dCoach.toFixed(1)
-                                       + "\nFatigue " + dFat.toFixed(1)
-                                       + "\nNet " + (d >= 0 ? "+" : "") + d.toFixed(1) + " OVR";
-                            // ...and the flow manager's personal orders sit on _ci.
-                            const ci = p._ci && Object.keys(p._ci).length ? p._ci : null;
+                                       + "\nFatigue " + dFat.toFixed(1) + "\nNet " + (d >= 0 ? "+" : "") + d.toFixed(1) + " OVR";
+                            const ci = mark !== "in" && p._ci && Object.keys(p._ci).length ? p._ci : null;
+                            const v = hid ? null : place && p.own?.length ? ovrAt(base, p.own, place) : base;
+                            const sel = pk && pk.kind === kind && pk.idx === idx;
+                            const key = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hit(side, kind, idx); } };
                             return (
-                              <button key={kind + i} type="button" disabled={!!p.off} onClick={() => pick(side, kind, i)}
-                                      className={"ux-btnreset ux-sub-row" + (kind === "off" && sel === i ? " ux-on" : "")}>
+                              <div key={kind + idx} role="button" tabIndex={live ? 0 : -1} aria-disabled={!live || undefined}
+                                   aria-pressed={sel || undefined} onClick={live ? () => hit(side, kind, idx) : undefined} onKeyDown={live ? key : undefined}
+                                   className={"ux-sub-row" + (sel ? " ux-on" : "") + (mark ? " ux-sub-" + mark : "") + (live ? "" : " ux-dis")}
+                                   {...dnd(side, kind, idx, live)}>
+                                <span className="ux-sub-grip" aria-hidden="true">{live && <svg viewBox="0 0 6 10" width="6" height="10"><circle cx="1.2" cy="1.5" r=".9" /><circle cx="4.8" cy="1.5" r=".9" /><circle cx="1.2" cy="5" r=".9" /><circle cx="4.8" cy="5" r=".9" /><circle cx="1.2" cy="8.5" r=".9" /><circle cx="4.8" cy="8.5" r=".9" /></svg>}</span>
                                 <span className="ux-sub-face"><PlayerShot name={p.fullName || p.name} size="100%" /></span>
-                                <span className="ux-sub-pos"><span className="ux-pos" style={{ color: kind === "off" && oop ? "var(--ux-loss)" : POS_CLR[lab] || "var(--ux-text-3)" }}>{lab}</span>
+                                <span className="ux-sub-pos"><span className="ux-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[lab] || "var(--ux-text-3)" }}>{lab}</span>
                                   {oop && uxOopMark(hid ? null : base, p.own, place)}</span>
-                                <SlideName text={boldSurname(p.fullName || p.name, p.name)} />
-                                {/* The manager's personal orders, when this man is carrying some. */}
-                                <span className="ux-sub-ci">{ci && <span data-tip={"Individual orders\n" + Object.entries(ci).map(([k2, v2]) => (STRAT_LABELS[k2]?.name || k2) + " " + (v2 > 0 ? "+" : "") + (Math.round(v2 * 10) / 10)).join("\n")}>
+                                <span className="ux-sub-nm">{mark && <UxArrow up={mark === "in"} />}<SlideName text={boldSurname(p.fullName || p.name, p.name)} /></span>
+                                <span className="ux-sub-ci">{ci && <span data-tip={"Individual Orders\n" + Object.entries(ci).map(([k2, v2]) => (STRAT_LABELS[k2]?.name || k2) + " " + (v2 > 0 ? "+" : "") + (Math.round(v2 * 10) / 10)).join("\n")}>
                                   <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="var(--ui-attack)"
                                        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M2 3.2l3 2.8-3 2.8" /><path d="M6.4 3.2l3 2.8-3 2.8" /></svg></span>}</span>
-                                {/* Coaching and legs against his listed rating, which is the one shown (base OVR, never live). */}
                                 <span className={"ux-sub-d" + (d > 0 ? " ux-up" : " ux-down")} data-tip={Math.abs(d) >= 0.05 ? dTip : undefined}>
                                   {Math.abs(d) >= 0.05 ? <><UxArrow up={d > 0} />{Math.abs(d).toFixed(1)}</> : ""}</span>
                                 <span className="ux-sub-st"><i style={{ width: `${st2}%`, background: stClr }} /></span>
                                 <span className="ux-sub-pc" style={st2 > 35 ? undefined : { color: "var(--ui-danger)" }}>{Math.round(st2)}%</span>
-                                {/* A substitute, once a man is picked to come off, at the rating he would play that place at. */}
-                                {(() => { const v = hid ? null : place && p.own?.length ? ovrAt(base, p.own, place) : base;
-                                  return <span title={v != null && v !== base ? `Plays ${place} As ${showOvr(v)}` : undefined}><OvrBadge v={v} sm /></span>; })()}
-                              </button>); };
+                                <span title={v != null && v !== base ? `Plays ${place} As ${showOvr(v)}` : undefined}><OvrBadge v={v} sm /></span>
+                                <span className="ux-sub-x">{mark && (
+                                  <button type="button" className="ux-btnreset" aria-label="Undo" title="Undo"
+                                          onClick={(e) => { e.stopPropagation(); unpair(side, kind === "off" ? idx : outFor.get(idx)); }}>
+                                    <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" /></svg></button>)}</span>
+                              </div>); };
+                          // A slot shows who will be in it, a bench place who will be on it; a bench man picked or dragged previews
+                          // the rating he would play the picked slot at.
+                          const pickPlace = pk && pk.kind === "off" ? (on[pk.idx]?.inGoal ? "GK" : on[pk.idx]?.spos || on[pk.idx]?.pos) : null;
                           return (
                             <section key={side} className="ux-panel ux-sub-col">
                               <div className="ux-sub-head">
@@ -22755,61 +24552,219 @@ export default function App() {
                                 <b className="ux-sub-team">{t?.name}</b>
                                 {t?.manager && <ManagerCard t={t} dense bare style={{ flexShrink: 0 }} />}
                               </div>
-                              <div className="ux-sub-lab"><span>On The Pitch</span><span className={used >= capN ? "ux-full" : undefined}>{used}/{capN}</span></div>
-                              {on.map((p, i) => row(p, i, "off"))}
+                              <div className="ux-sub-lab"><span>On The Pitch</span><span className={planned >= capN ? "ux-full" : undefined}>{planned}/{capN}</span></div>
+                              {on.map((p, i) => { if (!p) return null; const j = inFor.get(i), place = p.inGoal ? "GK" : p.spos || p.pos;
+                                return j != null && bn[j] ? row(bn[j], "off", i, "in", place) : row(p, "off", i, null, place); })}
                               <div className="ux-sub-lab"><span>Bench</span></div>
                               {bn.filter(Boolean).length === 0 && <div className="ux-empty-sm">{bn.length ? "Bench Used Up" : "No Bench"}</div>}
-                              {/* Index preserved: the nulls are the men already brought on, and
-                                  benchIdx has to keep pointing at the slot meSub will read. */}
-                              {bn.map((p, i) => row(p, i, "on"))}
+                              {/* Index preserved: the nulls are the men already brought on, and benchIdx has to keep pointing at
+                                  the slot meSub will read. */}
+                              {bn.map((p, j) => { if (!p) return null; const o = outFor.get(j);
+                                return o != null && on[o] ? row(on[o], "on", j, "out", null) : row(p, "on", j, null, pickPlace); })}
                             </section>);
                         };
                         return (<>
-                          <div className="ux-lm-ph"><h2>Substitutions</h2>{q.subs.length > 0 && <span className="ux-chip">{q.subs.length} Queued</span>}</div>
+                          <div className="ux-lm-ph"><h2>Substitutions</h2>
+                            {nDraft > 0 && <span className="ux-chip">{nDraft} {nDraft === 1 ? "Change" : "Changes"}</span>}
+                            <span className="ux-lm-ph-act">
+                              <button type="button" className="ux-btnreset ux-btn" disabled={!nDraft}
+                                      onClick={() => { dr.home = []; dr.away = []; meSubPick.current = null; setMeFrame(f => f + 1); }}>Clear</button>
+                              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!dirty} onClick={save}>Save</button>
+                            </span></div>
                           <div className="ux-lm-cols">{col("home")}{col("away")}</div>
                         </>);
                       })()}
                       {mePanel === "tactics" && (() => {
-                        const grp = [["possession", "Possession"], ["transition", "Transition"], ["defense", "Defense"]];
-                        const col = (side) => {
-                          const t = side === "home" ? m.hT : m.aT;
-                          const live = { ...(m.s.strategy?.[side] || {}), ...(mePending.current.strategy[side] || {}) };
-                          const mlog = (m.out?.mgrLog?.[side] || []).slice(-6).reverse();
-                          return (
-                            <section key={side} className="ux-panel ux-sub-col">
-                              <div className="ux-sub-head">
-                                <TeamCrest team={t} size={22} />
-                                <b className="ux-sub-team">{t?.name}</b>
-                                {t?.manager && <ManagerCard t={t} dense bare style={{ flexShrink: 0 }} />}
-                              </div>
-                              {grp.map(([g, gl]) => (
-                                <div key={g}>
-                                  <div className="ux-sub-lab"><span>{gl}</span></div>
-                                  {Object.entries(STRAT_LABELS).filter(([k, v]) => v.grp === g && STRAT_EDITABLE.includes(k)).map(([key, v]) => {
-                                    // The manager moves these during a match, sometimes to in-between values, so the switch
-                                    // lights the option nearest the one in force, and any option can be pressed to set it.
-                                    const x = Number(live[key] ?? 0);
-                                    const near = v.vals.reduce((b, [vv]) => Math.abs(vv - x) < Math.abs(b - x) ? vv : b, v.vals[0][0]);
-                                    return (
-                                      <div key={key} className="ux-tac-row">
-                                        <span className="ux-tac-l">{v.name}</span>
-                                        <div className="ux-seg ux-seg-in" role="group" aria-label={v.name}>{v.vals.map(([vv, lab]) => (
-                                          <button key={vv} type="button" className={"ux-btnreset" + (near === vv ? " ux-on" : "")} aria-pressed={near === vv}
-                                                  onClick={() => { const st2 = mePending.current.strategy;
-                                                                   st2[side] = { ...(st2[side] || {}), [key]: vv };
-                                                                   setMeFrame(f => f + 1); }}>{lab}</button>))}</div>
-                                      </div>);
-                                  })}
-                                </div>))}
-                              <div className="ux-sub-lab"><span>From The Dugout</span></div>
-                              {mlog.map((e, i2) => <MgrLogCard key={i2} e={e} />)}
-                              {!mlog.length && <div className="ux-empty-sm">No Changes Yet</div>}
-                            </section>);
+                        // EVERY DECISION THE MANAGER HAS MADE (user, 23 November 2026: "Have the tactics screen be more detailed
+                        // about every aspect of the manager's decisions"). Each side's column reads the engine's own state, so it
+                        // shows what is in force rather than a description of it: his log, the plan he went with before kick-off and
+                        // how hard he is pushing now (manager.ts, s.mgrRead; match.ts meChase), the four orders the touchline can
+                        // give, the rest of the sheet with every step he has moved off his style's, the style's plan by phase, the man
+                        // he marks and the man he attacks (s.threat, s.weak), set pieces (the corner aim and marking of the same
+                        // rework, and the penalty rule in setpiece.ts), the role he deals each man, and the changes he has made and
+                        // the men he is weighing for the next (match.ts meCoachSubs, on its own thresholds).
+                        // ONE TABLE, TWO COLUMNS (the user, the same day: "From the Dugout to the top", "Color-code instructions
+                        // (offensive/defensive)", "Height of everything in both columns need to match", "Marking, set pieces, roles:
+                        // no player portraits, arrange more neatly. Roles: surname only"). Each side builds the same sections with
+                        // the same rows, and the two are laid out a row at a time, the shorter list padded, so every row stands level
+                        // with its partner across the gap. Nothing in the panel carries a portrait.
+                        const S = m.s, mp = S.mePos || {}, mgrs = !!S.managers;
+                        const tc = (x) => String(x || "").replace(/(^|[\s-])\p{L}/gu, (c) => c.toUpperCase());
+                        const placeOf = (p) => p ? (p.inGoal ? "GK" : String(p.spos || p.pos || "").split("/")[0]) : "";
+                        // Read without leaving a cached copy on the man: the engine clears and rebuilds that cache itself.
+                        const peek = (p, f) => { const a0 = p._att; const v = f(p); if (!a0) p._att = a0; return v; };
+                        const posChip = (p) => { const k = placeOf(p); return <span className="ux-tc-pos" style={{ color: POS_CLR[k] || "var(--ux-text-3)" }}>{k}</span>; };
+                        const man = (p) => p ? <span className="ux-tc-man">{posChip(p)}<SlideName text={boldSurname(p.fullName || p.name, p.name)} /></span>
+                                             : <span className="ux-tc-none">None</span>;
+                        const kv = (k, v, key) => <div key={key || k} className="ux-tc-kv"><span className="ux-tc-k">{k}</span><div className="ux-tc-v">{v}</div></div>;
+                        const two = (x, y, key) => <div key={key} className="ux-tc-pair">{x}{y || <div />}</div>;
+                        const bar = (v, clr) => <span className="ux-tc-bar"><i style={{ width: Math.round(Math.max(0, Math.min(1, v)) * 100) + "%", background: clr }} /></span>;
+                        const nearOf = (v, x) => v.vals.reduce((b2, [vv]) => Math.abs(vv - x) < Math.abs(b2 - x) ? vv : b2, v.vals[0][0]);
+                        // Which way each instruction leans: +1 where a higher setting attacks, -1 where it holds, 0 where it does
+                        // neither. A setting is drawn in the attacking shapes' colour or the defensive shapes' (FORM_CLR), plain at
+                        // the middle.
+                        const LEAN = { approachPlay: 1, tempo: 1, passingDir: 1, width: 1, chanceCreation: 1, dribbling: 1, creativity: 1,
+                          timeWasting: -1, possLost: 1, possWon: 1, gkDist: 0, pressingLOE: 1, defLine: 1, dlBehavior: 1, tackling: 1 };
+                        const leanClr = (key, v) => { const t2 = (LEAN[key] ?? 0) * v;
+                          return t2 > 0 ? "var(--ui-attack)" : t2 < 0 ? "var(--ui-form-defensive)" : undefined; };
+                        const minuteNow = mp._min ?? Math.floor(m.t / (ME_MATCH_TICKS / 90));
+                        const side1 = (side) => {
+                          const opp = side === "home" ? "away" : "home";
+                          const rd = S.mgrRead?.[side];
+                          const style = S.styles?.[side] || "balanced", form = S.formations?.[side];
+                          const live = { ...(S.strategy?.[side] || {}), ...(mePending.current.strategy[side] || {}) };
+                          const base = mp.stratBase?.[side] || {};
+                          const ours = (S.players?.[side] || []).filter(p => p && !p.off);
+                          const theirs = (S.players?.[opp] || []).filter(p => p && !p.off);
+                          // FROM THE DUGOUT, the whole of it, newest first: what he did before kick-off is at 0'.
+                          const log = (m.out?.mgrLog?.[side] || []).slice().reverse().map((e, i2) => { const K = MGR_LOG_KIND[e.k] || MGR_LOG_KIND.orders;
+                            return (
+                              <div key={"l" + i2} className="ux-tc-lrow">
+                                <span className="ux-tc-lmin" style={mono}>{e.min}&#8242;</span>
+                                <svg viewBox="0 0 12 12" width="13" height="13" fill="none" stroke={K.clr} strokeWidth="1.4"
+                                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{K.icon}</svg>
+                                <span className="ux-tc-lk" style={{ color: K.clr }}>{tc(K.lbl)}</span>
+                                <span className="ux-tc-lt">{e.t}</span>
+                              </div>); });
+                          // THE PLAN
+                          const urg = S.matchUrg?.[side] ?? 0;
+                          const stakes = !m.tourn ? "Friendly" : urg <= -0.2 ? "Already Through" : urg < 0 ? "Nothing At Stake"
+                            : urg >= 0.6 ? "Must Win" : urg >= 0.2 ? "Important" : "Ordinary";
+                          const agg = S.aggLead?.[side];
+                          const k = mp.chaseT?.[side] ?? 0;
+                          const intent = k > 0.25 ? "Pushing On" : k < -0.25 ? "Seeing It Out" : "Steady";
+                          const mg = mp.mgr?.[side], ordOn = mg && mg.mode > 0.5 && mg.vec;
+                          const anyAgg = S.aggLead?.home != null || S.aggLead?.away != null;
+                          const plan = [
+                            kv("Style", <span className="ux-tc-two">{uxStyleName(style)}{rd && rd.style0 !== style && <span className="ux-tc-was">Own {STYLE_LBL[rd.style0] || rd.style0}</span>}</span>),
+                            kv("Read Of Them", rd?.read ? uxStyleName(rd.read) : <span className="ux-tc-none">None</span>),
+                            kv("Formation", <span className="ux-tc-two"><span style={{ ...mono, color: FORM_CLR[form] || "var(--ui-text)" }}>{form}</span>
+                              {rd?.form0 && rd.form0 !== form && <span className="ux-tc-was">Own <span style={mono}>{rd.form0}</span></span>}</span>),
+                            kv("Stakes", stakes),
+                            anyAgg ? kv("Aggregate", <span style={mono}>{agg > 0 ? "+" + agg : agg < 0 ? String(agg) : "Level"}</span>) : null,
+                            kv("Approach", <span className="ux-tc-two">{rd?.resp > 0 ? <>Sitting Deeper{bar(rd.resp, "var(--ui-form-defensive)")}</>
+                              : rd?.fav > 0 ? <>Going Wider{bar(rd.fav, "var(--ui-attack)")}</> : "Own Game"}</span>),
+                            kv("Intent", <span className="ux-tc-two"><span style={{ color: k > 0.25 ? "var(--ui-attack)" : k < -0.25 ? "var(--ui-form-defensive)" : undefined }}>{intent}</span>
+                              <span className="ux-tc-push"><i style={k >= 0 ? { left: "50%", width: Math.min(50, k / 2 * 50) + "%", background: "var(--ui-attack)" }
+                                              : { right: "50%", width: Math.min(50, -k / 2 * 50) + "%", background: "var(--ui-form-defensive)" }} /></span></span>),
+                            kv("Individual Orders", ordOn ? <span className="ux-tc-two"><b className="ux-tc-tag">{mg.kind === 0 ? "Def + Mid" : "Mid + Fwd"}</b>
+                              {Object.entries(mg.vec).map(([k2, v2]) => <span key={k2} className="ux-tc-ord" style={{ color: leanClr(k2, v2) }}>{STRAT_LABELS[k2]?.name || k2}<UxArrow up={v2 > 0} /></span>)}</span>
+                              : <span className="ux-tc-none">None</span>),
+                          ].filter(Boolean);
+                          // THE SHEET: the four the touchline can set, then the rest as they stand, two to a row, each with the way he
+                          // has moved it. Every setting in its lean's colour.
+                          const edit = STRAT_EDITABLE.filter(k2 => STRAT_LABELS[k2]).map(key => { const v = STRAT_LABELS[key], near = nearOf(v, Number(live[key] ?? 0));
+                            return (
+                              <div key={key} className="ux-tac-row">
+                                <span className="ux-tac-l">{v.name}</span>
+                                <div className="ux-seg ux-seg-in" role="group" aria-label={v.name}>{v.vals.map(([vv, lab]) => (
+                                  <button key={vv} type="button" className={"ux-btnreset" + (near === vv ? " ux-on" : "")} aria-pressed={near === vv}
+                                          style={near === vv && leanClr(key, vv) ? { color: leanClr(key, vv) } : undefined}
+                                          onClick={() => { const st2 = mePending.current.strategy;
+                                                           st2[side] = { ...(st2[side] || {}), [key]: vv };
+                                                           setMeFrame(f => f + 1); }}>{lab}</button>))}</div>
+                              </div>); });
+                          const sheet1 = Object.entries(STRAT_LABELS).filter(([key]) => !STRAT_EDITABLE.includes(key)).map(([key, v]) => {
+                            const x = Number(live[key] ?? 0), near = nearOf(v, x), b0 = Number(base[key] ?? x), mv = x - b0, clr = leanClr(key, near);
+                            return (
+                              <div key={key} className="ux-tc-kv">
+                                <span className="ux-tc-k">{v.name}</span>
+                                <div className="ux-tc-v" style={{ "--ux-tc-lean": clr || "var(--ux-text)" }}>
+                                  <span className="ux-tc-pips" aria-hidden="true">{v.vals.map(([vv]) => <i key={vv} className={vv === near ? "ux-on" : undefined} />)}</span>
+                                  <span className="ux-tc-val" style={{ color: clr }}>{v.vals.find(([vv]) => vv === near)?.[1]}</span>
+                                  {Math.abs(mv) >= 0.25 && <span className={"ux-tc-mv" + (mv > 0 ? " ux-up" : " ux-down")} data-tip={"From " + (v.vals.find(([vv]) => vv === nearOf(v, b0))?.[1] || "")}><UxArrow up={mv > 0} /></span>}</div>
+                              </div>); });
+                          const sheet = []; for (let i = 0; i < sheet1.length; i += 2) sheet.push(two(sheet1[i], sheet1[i + 1], "s" + i));
+                          // THE STYLE BY PHASE
+                          const ph = (meStyleDef(style) || { phases: {} }).phases || {};
+                          const phase1 = [
+                            kv("Build-Up", tc(PHASE_LBL.build[ph.build || "mixed"])), kv("Midfield", tc(PHASE_LBL.progress[ph.progress] || "Mixed")),
+                            kv("Final Third", tc(PHASE_LBL.final[ph.final] || "Mixed")), kv("Ball Won", tc(PHASE_LBL.onWin[ph.onWin] || "Standard")),
+                            kv("Ball Lost", tc(PHASE_LBL.onLoss[ph.onLoss] || "Standard")), kv("Block", tc(PHASE_LBL.block[ph.block || "mid"])),
+                            kv("Marking", tc(PHASE_LBL.marking[ph.marking] || "Standard")),
+                          ];
+                          const phase = []; for (let i = 0; i < phase1.length; i += 2) phase.push(two(phase1[i], phase1[i + 1], "p" + i));
+                          // THE MEN: the one he marks and his marker, the defender he goes at.
+                          const thr = mgrs ? S.threat?.[side] : null, weak = mgrs ? S.weak?.[side] : null;
+                          const marking = [
+                            kv("Danger Man", man(thr?.q)),
+                            kv("Marker", thr ? <span className="ux-tc-mk">{man(thr.m)}<span className="ux-tc-lvl" style={mono}>{Math.round(thr.lvl * 100)}%</span></span> : man(null)),
+                            kv("Weak Link", man(weak && !weak.off ? weak : null)),
+                          ];
+                          // SET PIECES. Who goes up for a corner and who stays, as mind/team.ts spCorner picks them: the side taking
+                          // it keeps back its most defensive men (never fewer than two, its centre-backs sent up), and the side
+                          // defending it leaves its pressers upfield and marks with the rest, best in the air on their best.
+                          const out1 = ours.filter(p => p.pos !== "GK"), out2 = theirs.filter(p => p.pos !== "GK");
+                          const best = (ps, f) => ps.reduce((b2, p) => !b2 || f(p) > f(b2) ? p : b2, null);
+                          const head = (p) => peek(p, (x) => meAttrs(x).strength * (1 + (meBadgeFx(x).spAir ?? 0)));
+                          const air = (p) => peek(p, aerialOf);
+                          const goUp = (ps, sd) => { const stayN = Math.max(2, (S.plan?.[sd]?.restN ?? 3) - 1);
+                            const sc = (p) => (p._role2?.rest ?? 0) - (/^cb(?!_cover|_lib)/.test(p._mr || "") ? 1.2 : 0) - air(p) / 100;
+                            const stay = [...ps].sort((a2, b2) => sc(b2) - sc(a2)).slice(0, stayN); return ps.filter(p => !stay.includes(p)); };
+                          const backFor = (ps, sd) => { const up = [...ps].sort((a2, b2) => ((b2._role2?.press ?? 0) + (b2._mr?.startsWith("st") ? 1 : 0))
+                            - ((a2._role2?.press ?? 0) + (a2._mr?.startsWith("st") ? 1 : 0))).slice(0, S.plan?.[sd]?.cornerUp ?? 1); return ps.filter(p => !up.includes(p)); };
+                          const ourGo = goUp(out1, side), theirGo = goUp(out2, opp), ourBack = backFor(out1, side);
+                          const dq = (p) => peek(p, (x) => meAttrs(x).shoot + (meBadgeFx(x).dead ?? 0) * 99 + (meBadgeFx(x).setTaker ?? 0));
+                          const pens = [...out1].sort((a2, b2) => dq(b2) - dq(a2)).slice(0, ME_CFG.penPool ?? 3);
+                          const mm = S.plan?.[side]?.manMark ?? 0;
+                          const setp = [
+                            // (Their best in the air and who marks him, best(theirGo, air) and best(ourBack, air), are worked out
+                            // above and not shown: the user, the same day, asked for them off the display only.)
+                            kv("Corner Target", man(mgrs ? best(ourGo, head) : null)),
+                            kv("Box At Corners", mm >= 0.75 ? "Man To Man" : mm <= 0.25 ? "Zonal" : "Mixed"),
+                            ...[0, 1, 2].map(i => kv(i ? "" : "Penalties", man(pens[i]), "pen" + i)),
+                          ];
+                          // THE ROLES he deals each man in his place (mind/roles.ts, p._mr), surname only.
+                          const roles = ours.map((p, i) => (
+                            <div key={"r" + i} className="ux-tc-role">{posChip(p)}<SlideName text={<b>{splitSurname(p.fullName || p.name, p.name).last}</b>} />
+                              <span className="ux-tc-rn">{ROLE_NAME[p._mr]?.[0] || ""}</span></div>));
+                          // THE CHANGES: made, and the men he is weighing, each on the threshold meCoachSubs uses for it.
+                          const usedN = S.subs?.[side] || 0, capN = subLimit(S, side), et = !!mp._et || minuteNow > 90;
+                          const win = S.subWin?.[side]?.used || 0, winN = (ME_CFG.subWindows || 3) + (et ? 1 : 0);
+                          const watch = ours.filter(p => p.pos !== "GK" && p._onAt == null).map(p => {
+                            const tags = [], stm = p.stamina ?? 100;
+                            if (stm < (ME_CFG.pressLegs ?? 40)) tags.push(["Legs Gone", "bad"]);
+                            if (p.treat) tags.push(["Treatment", "warn"]); else if (p.hurt) tags.push(["Hurt", "warn"]); else if (p.knock > 0) tags.push(["Knock", "warn"]);
+                            if (p.yc === 1 && !p.rc) tags.push((p._fl || 0) > (p._flYc ?? Infinity) && minuteNow >= (ME_CFG.subRiskFrom ?? 46) ? ["Still Fouling", "bad"] : ["Booked", "warn"]);
+                            if (minuteNow >= (ME_CFG.subLateMin ?? 60) && (p.rating ?? 6.5) < (ME_CFG.subPoorBar ?? 6.3)) tags.push(["Poor Game", "bad"]);
+                            return [p, tags, stm];
+                          }).filter(x => x[1].length).sort((a2, b2) => b2[1].length - a2[1].length || a2[2] - b2[2]);
+                          const changes = [
+                            two(kv("Made", <span style={mono}>{usedN}/{capN}</span>), kv("Windows", <span style={mono}>{win}/{winN}</span>), "mw"),
+                            ...(watch.length ? watch : [null]).map((w, i) => kv(i ? "" : "Watching", w ? (
+                              <span className="ux-tc-watch">{man(w[0])}<span className="ux-tc-pc" style={mono}>{Math.round(w[0].stamina ?? 100)}%</span>
+                                <span className="ux-tc-tags">{w[1].map(([tg, tone]) => <b key={tg} className={"ux-tc-tag ux-" + tone}>{tg}</b>)}</span></span>)
+                              : <span className="ux-tc-none">None</span>, "w" + i)),
+                          ];
+                          return [
+                            // The log is one box of a set height that scrolls, the same on both sides.
+                            ["From The Dugout", [<div key="log" className="ux-tc-logbox">{log.length ? log : <span className="ux-tc-none">None</span>}</div>]],
+                            ["Game Plan", plan], ["Touchline", edit], ["Instructions", sheet], ["Style", phase],
+                            ["Marking", marking], ["Set Pieces", setp], ["Roles", roles], ["Changes", changes],
+                          ];
                         };
+                        const head = (side) => { const t = side === "home" ? m.hT : m.aT;
+                          return (
+                            <div className="ux-sub-head">
+                              <TeamCrest team={t} size={22} />
+                              <b className="ux-sub-team">{t?.name}</b>
+                              {t?.manager && <ManagerCard t={t} dense bare style={{ flexShrink: 0 }} />}
+                            </div>); };
+                        const H = side1("home"), A = side1("away");
+                        const cells = [<div key="h0" className="ux-tc-cell ux-tc-top">{head("home")}</div>, <div key="a0" className="ux-tc-cell ux-tc-top">{head("away")}</div>];
+                        H.forEach(([title, hr], si) => {
+                          const ar = A[si][1];
+                          cells.push(<div key={"hs" + si} className="ux-tc-cell ux-tc-sh"><div className="ux-sub-lab"><span>{title}</span></div></div>,
+                                     <div key={"as" + si} className="ux-tc-cell ux-tc-sh"><div className="ux-sub-lab"><span>{title}</span></div></div>);
+                          for (let r = 0; r < Math.max(hr.length, ar.length); r++)
+                            cells.push(<div key={"h" + si + ":" + r} className="ux-tc-cell">{hr[r] || null}</div>,
+                                       <div key={"a" + si + ":" + r} className="ux-tc-cell">{ar[r] || null}</div>);
+                        });
+                        cells.push(<div key="hz" className="ux-tc-cell ux-tc-end" />, <div key="az" className="ux-tc-cell ux-tc-end" />);
                         const pend = Object.keys(mePending.current.strategy).length;
                         return (<>
                           <div className="ux-lm-ph"><h2>Tactics</h2>{pend > 0 && <span className="ux-chip">Changes Queued</span>}</div>
-                          <div className="ux-lm-cols">{col("home")}{col("away")}</div>
+                          <div className="ux-tc-table">{cells}</div>
                         </>);
                       })()}
                     </div>
@@ -22834,12 +24789,12 @@ export default function App() {
                       <span>{_v.city && <CityLink name={_v.city} />}{_v.city && venueNat ? " · " : ""}{venueNat || ""}</span>
                     </div>
                   </div>
-                  <div className="ux-lm-tabs">{uxSegIn("Sidebar", meSideTab, [["feed", "Feed"], ["ratings", "Ratings"]], setMeSideTab)}</div>
-
                   {/* The feed is the only thing here that grows, so it takes the slack and everything
                       else keeps its natural height. out.feed is unshifted, newest first. */}
+                  <section className="ux-lm-sec ux-lm-fd" aria-label="Feed">
+                  <h3 className="ux-lm-h">Feed</h3>
                   <div className="ux-lm-feed">
-                    {meSideTab === "ratings" && st ? <div className="ux-lr">{ratCol("home")}{ratCol("away")}</div> : (
+                    {(
                     (() => {
                       const code = (t) => t?.code || (t?.name || "").slice(0, 3).toUpperCase();
                       const mCell = (min, add) => (
@@ -22865,66 +24820,29 @@ export default function App() {
                                                    background: "var(--ui-warn)" }} />;
                       const RCARD = <span style={{ display: "inline-block", width: 7, height: 10, borderRadius: 1.5,
                                                    background: "var(--ui-danger)" }} />;
-                      // kind -> icon, header, colour, and whether it is a headline event
+                      // kind -> icon, header, colour, and whether it is a headline event. The icons are the timeline's own
+                      // drawn ones (tlIcon), not emoji.
                       const META = {
-                        goal:    { icon: "⚽", head: "GOAL", clr: "var(--ui-text)", big: true },
-                        // A PENALTY WEARS THE GOAL NET, scored or missed, and the outcome is carried
-                        // in colour instead of a written tag: green row, bar and name for one, red
-                        // for the other. An emoji glyph paints itself and ignores CSS `color`, so the
-                        // colour has to live on everything around it.
-                        pen:     { icon: "🥅", head: "PENALTY SCORED", clr: "var(--ui-ok)",
-                                   big: true, tint: "var(--ui-ok)" },
-                        penmiss: { icon: "🥅", head: "PENALTY MISSED",
-                                   clr: "var(--ui-danger)", big: true, tint: "var(--ui-danger)" },
-                        red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
-                        og:      { icon: "⚽", head: "OWN GOAL", clr: "var(--ui-danger)",
-                                   big: true, tint: "var(--ui-danger)" },
-                        pk:      { icon: "\uD83E\uDD45", clr: "var(--chrome-muted)" },
-                        sub:     { icon: "⇄", head: "SUB", clr: "var(--chrome-muted)", big: true },
-                        save:    { icon: "🧤", clr: "var(--ui-info)" },
-                        miss:    { icon: "💨", clr: "var(--chrome-muted)" },
-                        shot:    { icon: "🎯", clr: "var(--chrome-muted)" },
-                        block:   { icon: "🛡️", clr: "var(--ui-info)" },
-                        tackle:  { icon: "🛡️", clr: "var(--ui-info)" },
-                        clear:   { icon: "🛡️", clr: "var(--ui-info)" },
-                        cut:     { icon: "🛡️", clr: "var(--ui-info)" },
-                        foul:    { icon: "⚠️", clr: "var(--ui-warn)" },
-                        offside: { icon: "🚩", clr: "var(--ui-warn)" },
-                        yellow:  { icon: YCARD, clr: "var(--ui-warn)" },
-                        injury:  { icon: "\uD83C\uDFE5", clr: "var(--ui-injury)" },
-                        // An outfield player pulling the gloves on is the sort of thing a feed
-                        // should shout about, so it gets a head and the emphasis a goal gets.
-                        gloves:  { icon: "\uD83E\uDDE4", clr: "var(--ui-warn)", head: "IN GOAL", big: true },
-                        corner:  { icon: "\u2691", clr: "var(--chrome-muted)" },
-                        throw:   { icon: "\u21B7", clr: "var(--chrome-muted)" },
-                        goalkick:{ icon: "\u21E7", clr: "var(--chrome-muted)" },
-                      };
-                      // The offence, off the event rather than out of the wording. Reading it back
-                      // from the caption is how this worked before, and rewording the caption broke
-                      // it silently -- a time-wasting second yellow read as a serious foul.
-                      const RED_WHY = (why, second) =>
-                        `RED CARD (${ME_RED_WHY[why] || (second ? "2nd Yellow" : "Serious Foul Play")})`;
-                      const row = (i, min, add, side, k, body, headOver) => {
-                        const md = META[k] || {};
-                        const cl = side === "away" ? aClr : hClr;
-                        return (
-                          <div key={i} style={{ display: "flex", alignItems: "center", padding: md.big ? "6px 0" : "3px 0",
-                                                background: md.tint ? md.tint + "1e"
-                                                          : md.big ? "var(--chrome-bg-08)" : "transparent",
-                                                borderLeft: md.tint ? `2px solid ${md.tint}` : "2px solid transparent",
-                                                borderRadius: md.big ? 4 : 0,
-                                                borderBottom: "1px solid var(--chrome-border-33)" }}>
-                            {mCell(min, add)}
-                            {iCell(md.icon, md.big ? 13 : 10)}
-                            <div style={{ flex: 1, minWidth: 0, padding: "0 6px", lineHeight: 1.4 }}>
-                              {(headOver || md.head) && (
-                                <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em",
-                                              color: md.clr }}>{headOver || md.head}</div>)}
-                              <div style={{ fontSize: md.big ? 10.5 : 9.5,
-                                            color: md.big ? "var(--ui-text)" : (md.clr || "var(--chrome-muted)") }}>{body}</div>
-                            </div>
-                            {tCell(side)}
-                          </div>);
+                        goal:    { icon: tlIcon("goal"), head: "Goal", clr: "var(--ui-text)", big: true },
+                        // A PENALTY WEARS THE GOAL FRAME, scored or missed, and the outcome is carried in colour.
+                        pen:     { icon: tlIcon("pen"), head: "Penalty Scored", clr: "var(--ui-ok)", big: true, tint: "var(--ui-ok)" },
+                        penmiss: { icon: tlIcon("penmiss"), head: "Penalty Missed", clr: "var(--ui-danger)", big: true, tint: "var(--ui-danger)" },
+                        red:     { icon: tlIcon("red"), head: "Red Card", clr: "var(--ui-danger)", big: true },
+                        og:      { icon: tlIcon("og"), head: "Own Goal", clr: "var(--ui-danger)", big: true, tint: "var(--ui-danger)" },
+                        pk:      { icon: tlIcon("pk"), head: "Penalty", clr: "var(--chrome-muted)" },
+                        sub:     { icon: tlIcon("sub"), head: "Substitution", clr: "var(--chrome-muted)", big: true },
+                        foul:    { icon: tlIcon("foul"), head: "Foul", clr: "var(--chrome-muted)" },
+                        // The referee's own lines (engine/referee.ts): a foul he let run, and one he did not give.
+                        adv:     { icon: tlIcon("foul"), head: "Advantage", clr: "var(--ui-ok)" },
+                        playon:  { icon: tlIcon("foul"), head: "Waved Away", clr: "var(--chrome-muted)" },
+                        offside: { icon: tlIcon("offside"), head: "Offside", clr: "var(--ui-warn)" },
+                        yellow:  { icon: tlIcon("yellow"), head: "Yellow Card", clr: "var(--ui-warn)" },
+                        injury:  { icon: tlIcon("injury"), head: "Injury", clr: "var(--ui-injury)" },
+                        // An outfield player pulling the gloves on is the sort of thing a feed should shout about.
+                        gloves:  { icon: tlIcon("gloves"), head: "In Goal", clr: "var(--ui-warn)", big: true },
+                        corner:  { icon: tlIcon("corner"), head: "Corner", clr: "var(--chrome-muted)" },
+                        throw:   { icon: tlIcon("throw"), head: "Throw-In", clr: "var(--chrome-muted)" },
+                        goalkick:{ icon: tlIcon("goalkick"), head: "Goal Kick", clr: "var(--chrome-muted)" },
                       };
                       if (m.ftDone) {
                         const key = [];
@@ -23007,40 +24925,100 @@ export default function App() {
                       // fouls, offsides and every dead ball -- the play-by-play (passes, tackles,
                       // blocks, shots wide) stays in the engine's log but off the sidebar.
                       const FEED_KEEP = new Set(["goal", "pen", "penmiss", "og", "red", "yellow",
-                        "foul", "offside", "corner", "throw", "goalkick", "sub", "injury",
+                        "foul", "adv", "playon", "offside", "corner", "throw", "goalkick", "sub", "injury",
                         "gloves", "pk"]);
                       const all = (out.feed || []).filter(f => FEED_KEEP.has(f.k));
-                      if (!all.length) return (
-                        <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>Nothing yet.</div>);
+                      if (!all.length) return <div className="ux-fd-none">Nothing Yet</div>;
+                      // A HEADING, AND THE MAN UNDER IT (user, 22 November 2026: "Have headings like Injury, Foul, Yellow Card,
+                      // etc. and the player portrait/name below instead of stuffing it all on one line"). What happened is the
+                      // row's first line; whoever it happened to is the second, his portrait before his name, and what there
+                      // is to add about him after it. A change is two men: on, then off. A restart with nobody to name is its
+                      // heading alone. A goal's replay is opened from its own cell at the row's end.
+                      const cap = (t) => String(t || "").replace(/(^|[\s-])\p{L}/gu, (c) => c.toUpperCase());
+                      // ON ONE GRID, EVERY ROW (user, the same hour: "everything needs to be more neatly aligned"). Four columns
+                      // that never move: the minute, set to its right edge so the marks line up; the icon; the text; the side.
+                      // The first line is the minute, the icon, the heading and the side's code, centred on one another. The
+                      // man is on the line under the heading and starts where the heading starts, his portrait in the same
+                      // place in every row; a goal's replay sits under the side's code, centred on it. A long name slides
+                      // and what is said about him gives way first, so a name is never cut while there is room.
+                      const man = (key, full, det, tone, dim) => (
+                        <span key={key} className={"ux-fd-who" + (dim ? " ux-fd-dim" : "")}>
+                          <PlayerShot name={full} size={22} />
+                          <SlideName text={full} style={{ flex: "0 1 auto" }} />
+                          {det ? <i className={tone ? "ux-fd-" + tone : undefined}>{det}</i> : null}
+                        </span>);
                       return all.map((f, i) => {
-                        // A goal caption arrives as "Scorer Full Name (Assister Full Name)". The
-                        // scorer is the headline and the assist is a footnote, so they are set as
-                        // two different things rather than run together in one weight.
+                        const md = META[f.k] || {}, txt = String(f.txt || "");
+                        const names = feedWho.re ? (txt.match(feedWho.re) || []) : [];
+                        let head = md.head || "", icon = md.icon, lines = [], play = null;
                         if (f.k === "goal" || f.k === "pen") {
-                          const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(f.txt);
-                          const who = mt ? mt[1] : f.txt, ast = mt ? mt[2] : null;
-                          return row(i, f.min, f.add, f.side, f.k, (<>
-                            <b style={{ fontWeight: 700 }}>{who}</b>
-                            {ast ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(ast)}</span> : null}
-                          </>));
-                        }
-                        if (f.k === "red") {
-                          const mt = /^(.*?) is sent off(?:,\s*(.+))?$/.exec(f.txt || "");
-                          return row(i, f.min, f.add, f.side, f.k,
-                            <b style={{ fontWeight: 700 }}>{mt ? mt[1] : f.txt}</b>,
-                            RED_WHY(f.why, /second yellow/i.test(f.txt || "")));
-                        }
-                        return row(i, f.min, f.add, f.side, f.k, feedRich(f.txt));
+                          const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(txt), who = mt ? mt[1] : txt, ast = mt ? mt[2] : null;
+                          lines.push(man("w", who, ast && f.k === "goal" ? "Assist " + shortName(ast) : null));
+                          if (f.clip != null && m.clips?.[f.clip] && !m.ftDone && !m.fast) play = (
+                            <button type="button" className="ux-btnreset ux-fd-play" title="Replay" aria-label="Replay" onClick={() => meCelOpen(m, m.clips[f.clip])}>
+                              <svg viewBox="-1 -1 2 2" width={8} height={8} aria-hidden="true"><path d="M -0.45 -0.65 L 0.7 0 L -0.45 0.65 Z" fill="currentColor" /></svg>
+                            </button>);
+                        } else if (f.k === "sub") {
+                          const mt = /^(.*) on for (.*)$/.exec(txt);
+                          if (mt) { lines.push(man("on", mt[1], "On", "ok")); lines.push(man("off", mt[2], "Off", "bad", true)); }
+                        } else if (f.k === "red") {
+                          const mt = /^(.*?) is sent off/.exec(txt), second = f.why === "second" || /second yellow/i.test(txt);
+                          if (second) icon = tlIcon("red2");
+                          lines.push(man("w", mt ? mt[1] : names[0] || txt, ME_RED_WHY[f.why] || (second ? "2nd Yellow" : "Serious Foul Play")));
+                        } else if (names.length) {
+                          let det = null;
+                          // What he has, whatever happened next (user, 24 November 2026: "Instead of 'plays on hurt' and 'treated,'
+                          // just show what kind of injury it is"): the lesser ones carry it as dx (engine/injury.ts ME_KNOCK).
+                          if (f.k === "injury") det = f.dx || (f.lvl === "hurt" ? "Plays On Hurt" : f.lvl === "fine" ? "Treated" : /carries on/i.test(txt) ? "Carries On" : cap(txt.split(", ")[1] || "Cannot Continue"));
+                          else if (f.k === "yellow" && /time-wasting/i.test(txt)) det = "Time Wasting";
+                          else if (f.k === "pk") det = cap(txt.replace(names[0], "").replace(/^[\s,]+/, ""));
+                          if (f.k === "foul" && /^Handball/i.test(txt)) head = "Handball";
+                          if (f.k === "foul" && /^Soft foul/i.test(txt)) head = "Soft Foul";
+                          lines.push(man("w", names[0], det));
+                        } else if (txt && !md.head) lines.push(<span key="t" className="ux-fd-txt">{txt}</span>);
+                        const cl = f.side === "away" ? aClr : hClr, kit = f.side === "away" ? aClr2 : hClr2;
+                        return (
+                          <div key={i} className={"ux-fd-row" + (md.big ? " ux-fd-big" : "")}
+                               style={md.tint ? { background: md.tint + "1e", boxShadow: `inset 2px 0 0 ${md.tint}` } : md.big ? { boxShadow: `inset 2px 0 0 ${cl}` } : undefined}>
+                            <span className="ux-fd-min" style={mono}>{f.min == null ? "" : fmtMin(f.min, f.add)}</span>
+                            <span className="ux-fd-ic">{icon}</span>
+                            <span className="ux-fd-h" style={{ color: md.clr }}>{head}</span>
+                            <span className={"ux-fd-side" + ((lumOf(kit) ?? 0) > 0.6 ? " ux-ink" : "")} style={{ background: kit, "--ux-fd-edge": cl }}>{code(f.side === "away" ? m.aT : m.hT)}</span>
+                            {lines}
+                            {play}
+                          </div>);
                       });
                     })()
                     )}
                   </div>
-                  {liveStats}
+                  </section>
+                  {st && (
+                    <section className="ux-lm-sec ux-lm-rat" aria-label="Ratings">
+                      <h3 className="ux-lm-h">Ratings</h3>
+                      <div className="ux-lr">{ratCol("home")}{ratCol("away")}</div>
+                    </section>)}
                   <section className="ux-lm-sec" aria-label="Momentum">
                     <h3 className="ux-lm-h">Momentum</h3>
                     {momChart()}
                   </section>
-                  {topMan && topMan[0] && <div className="ux-lm-top">{topCard(TOP_SIDE)}</div>}
+                  {topMan && topMan[0] && (() => {
+                    const [p, side] = topMan, r = p.rating ?? 6.5;
+                    return (
+                      <section className="ux-lm-sec ux-lm-top" aria-label="Top Player">
+                        <h3 className="ux-lm-h">Top Player</h3>
+                        <div className="ux-lm-tp" style={{ "--ux-tp-c": side === "home" ? HC : AC }}>
+                          <PlayerShot name={p.fullName || p.name} size={38} />
+                          <div className="ux-lm-tp-t">
+                            <SlideName text={boldSurname(p.fullName || p.name, p.name)} />
+                            <span className="ux-lm-tp-m"><TeamCrest team={side === "home" ? m.hT : m.aT} size={12} />
+                              <b style={{ color: POS_CLR[String(p.spos || p.pos || "").split("/")[0]] || undefined }}>{String(p.spos || p.pos || "").split("/")[0]}</b>
+                              {!!p.goals && <b>{p.goals}G</b>}
+                              {!!p.assists && <b>{p.assists}A</b>}
+                              {!!p.saves && <b>{p.saves}SV</b>}</span>
+                          </div>
+                          <b className="ux-lm-tp-r" style={{ color: ratingColor(r) }}>{r.toFixed(2)}</b>
+                        </div>
+                      </section>); })()}
 
                   <div className="ux-lm-ctl">
                     {/* WHILE IT IS ON, the controls are the match. Once it is over they are the decision: what
