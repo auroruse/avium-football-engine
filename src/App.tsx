@@ -2514,6 +2514,8 @@ function parseVenuePool(text) {
 const SCOREBOARD_SHADOW = "0 1px 3px rgba(0,0,0,0.75)";
 // Crest: looks for an uploaded PNG at /<world>/badges/<CODE>.png first; falls back to a plain
 // shield in the team's home color, outlined in its away color, if none exists.
+// Whether a badge PNG is on file, by universe and code: asked once a session (the Editor's No Badge check).
+const BADGE_SEEN = new Map();
 function TeamCrest({ team, size = 22, style }) {
   const code = abbr(team?.name, team?.code);
   const [imgFailed, setImgFailed] = useState(false);
@@ -12277,7 +12279,7 @@ export default function App() {
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   // The sheet replaced the Teams, Players, Managers and Leagues pages; their forms are kept to review a request for a new
   // record, and the list form for Many. With neither open the editor is the sheet again.
-  useEffect(() => { if (!edNew && !["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(edSec)) setEdSec("home"); }, [edNew, edSec]);
+  useEffect(() => { if (!edNew && !["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers", "club", "league"].includes(edSec)) setEdSec("home"); }, [edNew, edSec]);
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
@@ -12291,7 +12293,21 @@ export default function App() {
   const [ucFill, setUcFill] = useState(null);        // Fill Open Places: { text, amin, amax, mode }
   const [ucCall, setUcCall] = useState(null);        // a call-up waiting for who makes way: { id, k, i }
   const [ucDet, setUcDet] = useState(null);          // a profile section being changed: { sec, ... }
-  const [ucPos, setUcPos] = useState(null);          // positions being changed or asked for: { id, a, b }
+  const [ucPos, setUcPos] = useState(null);
+  const [plEdit, setPlEdit] = useState(false);       // a player's own page open for editing
+  const [plSlot, setPlSlot] = useState(0);
+  const [plOvr, setPlOvr] = useState(null);         // the rating being typed on a player's page           // what a click on the pitch sets: 0 his position, 1 his second
+  const [ucAdd, setUcAdd] = useState("fa");          // where men come from beside a club's squad: "fa", "mine", "new"
+  const [ucQ, setUcQ] = useState("");                // the search over that list
+  const [ucLine2, setUcLine2] = useState("ALL");     // a national side's nationals by line
+  const [ucForOff, setUcForOff] = useState(false);   // the list's "for the place picked" let go
+  const [ucNew, setUcNew] = useState(null);          // the one new man being made beside a squad
+  const [ucMany, setUcMany] = useState(null);        // New Players, Many: { text, nat, into, side, amin, amax, mode, edits, cut, portrait, seed }
+  const ucManyRef = useRef({ key: null, men: [], bad: [] });
+  const [badgeHelp, setBadgeHelp] = useState(null);  // the badge guidelines open: { extra }
+  const [badgeVer, setBadgeVer] = useState(0);       // a badge's answer arrived
+  const [edDraftK, setEdDraftK] = useState(null);    // the new club ("new:<id>") or new league (its id) on its draft page
+  const [lgEdit, setLgEdit] = useState(false);       // a league's page open for editing          // positions being changed or asked for: { id, a, b }
   const ucDragRef = useRef(null), ucFillRef = useRef({ key: null, men: [] });
   const [edActMine, setEdActMine] = useState(false);  // Activity: one's own saves only
   const [inbPick, setInbPick] = useState(null);      // the Inbox's open save
@@ -12417,7 +12433,7 @@ export default function App() {
       if (t === "docs") { const p1 = (segs[1] || "").toLowerCase(), s2 = (segs[2] || "").toLowerCase(), has = (p) => p.sections.some(x => x.id === s2);
         const named = DOCS.find(p => p.id === (DOC_MOVED[p1] || p1)), pg = s2 && !(named && has(named)) ? DOCS.find(has) || named : named, id = pg && s2 && has(pg) ? s2 : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(s) ? (s === "requests" ? "inbox" : s) : "home"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers"].includes(s) ? (s === "requests" ? "inbox" : s) : "home"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -13665,6 +13681,7 @@ export default function App() {
         <div className="ux-drop-body">
           {cartList.map(it => {
             if (it.trade) return uxReqBlock(edTradeReq(it.trade), true, busy ? null : () => removeItem(it));
+            if (it.portrait) return uxPortraitBlock({ kind: "portrait", id: it.key, player: it.portrait.player }, true, busy ? null : () => removeItem(it));
             if (it.rec) return uxNewBlock({ ...it.rec, id: it.key }, it.key, false, busy ? null : () => removeItem(it));
             // A change to a code, a ground or a city, or to a player's positions, is the overseer's: for an editor it goes
             // as a request.
@@ -13758,7 +13775,19 @@ export default function App() {
         <span className="ux-chg-p" style={mono}><span className="ux-chg-o">{posText(p?.pos) || "–"}</span><span className="ux-chg-a" aria-label="to">&#8594;</span><span>{posText(r.patch?.pos) || "–"}</span></span>))}</div>
       <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r)}{uxReqActs(r, mine, remove)}</div>
     </div>); };
+  const uxPortraitBlock = (r, mine, remove) => {
+    const p = r.player ? recById.get(r.player) : null, nm = p?.name || r.teamName || "", side = r.side ? edTeamRec(r.side) : null;
+    return (
+    <div key={r.id} className="ux-rq">
+      <div className="ux-rq-h">
+        <span className="ux-rq-crest"><PlayerShot name={nm} size={28} /></span>
+        <span className="ux-rq-t"><b><SlideName text={fullDisplayName(nm)} /></b><span>Portrait{p ? null : side ? <>, New At <SlideName text={side.name.trim()} /></> : ", New Player"}</span></span>
+        {!remove && r.by && <span className="ux-rq-by"><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>}
+      </div>
+      <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r)}{uxReqActs(r, mine, remove)}</div>
+    </div>); };
   const uxReqBlock = (r, mine, remove) => {
+    if (r.kind === "portrait") return uxPortraitBlock(r, mine, remove);
     if (r.kind === "deal") return uxDealBlock(r);
     if (r.kind === "new") return uxNewBlock(r, r.id, overseer && !mine && !r.declined, remove);
     if (r.kind === "pos") return uxPosBlock(r, mine, remove);
@@ -14456,7 +14485,7 @@ export default function App() {
             </div>
             {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
             {review && <dl className="ux-ed-dl">{field("Note", <input className="ux-ed-in" placeholder="Sent Back With A Rejection" value={f.note || ""} onChange={e => upd({ note: e.target.value })} />)}</dl>}
-            {!review && <p className="ux-ed-rule">Portraits: a chest-up headshot, the subject in a plain white shirt. Send images as a zip to @auroruse on Discord.</p>}
+            {!review && <p className="ux-ed-rule">Portraits are made on request. Badges go to Kirin on Discord, zipped.</p>}
             <div className="ux-ed-tfoot">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdNew(null)}>Cancel</button>
               {review ? <span className="ux-ed-acts">
@@ -14561,8 +14590,8 @@ export default function App() {
                       onClick={() => upd({ squad: squad.map((x, j) => (j === i ? p.id : x)), q: "" })}>Add</button>
                   </div>); })}
               </div>)}
-            {!review && <p className="ux-ed-rule">{k === "teams" ? "Badge: 500 by 500 pixels, 50px of padding on every side and a 25px white outline."
-              : "Portrait: a chest-up headshot, the subject in a plain white shirt."} Send images as a zip to @auroruse on Discord.</p>}
+            {!review && <p className="ux-ed-rule">{k === "teams" ? "Badge: 500 by 500 PNG, transparent, 50px of padding on every side and a 25px white outline, zipped and DMed to Kirin on Discord."
+              : "Portraits are made on request."}</p>}
             {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
             <div className="ux-ed-tfoot">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdNew(null)}>Cancel</button>
@@ -14797,8 +14826,8 @@ export default function App() {
         </div>
         {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
         {review && <dl className="ux-ed-dl ux-ed-dl-n">{field("Note", <input className="ux-ed-in" placeholder="Sent Back With A Rejection" value={f.note || ""} onChange={e => upd({ note: e.target.value })} />)}</dl>}
-        {!review && <p className="ux-ed-rule">Badges for the league and each club: 500 by 500 pixels, 50px of padding on every side and a 25px white outline.
-          Portraits: a chest-up headshot in a plain white shirt. Send images as a zip to @auroruse on Discord.</p>}
+        {!review && <p className="ux-ed-rule">Badges for the league and each club: 500 by 500 PNG, transparent, 50px of padding on every side and a 25px white outline,
+          zipped and DMed to Kirin on Discord. Portraits are made on request.</p>}
         <div className="ux-ed-tfoot">
           <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdNew(null)}>Cancel</button>
           {review ? <span className="ux-ed-acts">
@@ -15589,7 +15618,7 @@ export default function App() {
   const [shFreeKind, setShFreeKind] = useState("p");     // the Free Agents panel's tab: players or managers
   const [shRowMenu, setShRowMenu] = useState(null);      // a club row's menu: { k, x, y, arm?, roll?, target? }
   // A New Player (one) or New Manager form belongs on the dock; a list of new players, a club and a league open full width.
-  useEffect(() => { if (edRev || !edNew || ["home", "inbox", "activity", "sheet", "trades", "requests", "draft"].includes(edSec)) return;
+  useEffect(() => { if (edRev || !edNew || ["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers", "club", "league"].includes(edSec)) return;
     if ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers") { setShFormOpen(edNew.kind); setShFormEdit(null); setShDock("rec"); setEdSec("sheet"); } },
     [edRev, edNew, edSec]);
   const shOrder = useRef(new Map()), shGrid = useRef(null), shFlat = useRef([]), shRowNo = useRef(new Map());
@@ -15812,7 +15841,7 @@ export default function App() {
     const nat = shSideNat(side), own = overseer || (scope.nations || []).includes(nat) ? nat : (scope.nations || [])[0] || nat;
     const T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
     const f = kind === "players"
-      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * (shCollege(side) ? 4 : 15))), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, fresh: true }
+      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * (shCollege(side) ? 4 : 15))), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, portrait: !overseer, fresh: true }
       : { kind, name: "", nat: own, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T?.style) || "balanced", ovr: "", side, fresh: true };
     setEdForms(m => ({ ...m, [kind]: f })); setEdFormOff(o => ({ ...o, [kind]: false }));
     setShFormEdit(null); setShFormOpen(kind); setShDock("rec"); setShMsg("");
@@ -15825,7 +15854,7 @@ export default function App() {
     shDropPristine(); setShFormOpen(null); setShDock("rec"); };
   const shFormObj = (kind, f) => (kind === "players"
     ? { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, pos: posList([f.pos, f.pos2].filter(Boolean)), ovr: shNum(f.ovr), badges: f.badges?.length ? badgeOrder(f.badges) : [],
-        ...(f.bornSet ? { bornSet: true } : null), ...(f.grad != null ? { grad: f.grad } : null) }
+        ...(f.bornSet ? { bornSet: true } : null), ...(f.grad != null ? { grad: f.grad } : null), ...(f.portrait && !overseer ? { portrait: true } : null) }
     : { name: (f.name || "").trim(), nat: f.nat, born: f.born || null, style: f.style || "balanced", ovr: shNum(f.ovr) });
   // Ready to go in: a name, nationality and date of birth; a position, or a style; a rating the person may leave blank
   // (the overseer's own go live, so his are rated, but a new club's men can wait for Roll Ratings); another nation's man
@@ -16418,7 +16447,7 @@ export default function App() {
           </dl>
         </section>
         {!isMg && shTraits(f.badges || [], f.ovr, (ids) => upd({ badges: ids }))}
-        <p className="ux-sh-rule">Portrait: a chest-up headshot, the subject in a plain white shirt. Send images as a zip to @auroruse on Discord.</p>
+        <p className="ux-sh-rule">Portraits are made on request. Badges go to Kirin on Discord, zipped.</p>
         <div className="ux-sh-recact">
           {mode === "edit" ? <>
               <button type="button" className="ux-btnreset ux-btn" onClick={shFormRemove}>{uxIcon("trash", "ux-s")}Remove</button>
@@ -16714,47 +16743,322 @@ export default function App() {
   // Profile sections changed in place go through the Sheet's own commit, so a side's cells are kept the one way.
   const ucCell = (k, c, v) => shCommit(k, c, v);
 
-  // ── THE CLUB PAGE, EDITING ──
-  const renderUxClubEdit = (t) => {
-    const k = t.rkey, T = edTeamRec(k);
-    if (!T) return renderUxClub(t);
-    const nt = isNational(T), sq = edSq(T), lab = edLab(T), staged = shNewAt(k), open = ucOpen(T), own = nt ? T.code : T.nation;
-    const nPlace = sq.length, pickId = ucPick != null ? sq[ucPick] : null, pickNew = ucPick != null && !pickId ? staged.get(ucPick) : null;
-    const myKeys = new Set(edHomeSides.map(teamKey));
+  // A man's page from his record's name, as the records write it or as the pages show it.
+  const manPageName = (name) => [name, fullDisplayName(name || "")].find(x => x && playerByName.has(x)) || null;
+  const canOpenMan = (name) => !!manPageName(name);
+  const openMan = (name) => { const n = manPageName(name); if (n) openPlayer(n); };
+  // ── THE EDITOR, ORGANISED (the user, 25 November 2026: "We gotta organize the editor bro ... Rethink", then "Make
+  // everything integrated better"). A thing is edited on its own page, and that page edits only what belongs to it: a man's
+  // record on his player page, a side's team, tactics and squad on its page, a league's name and clubs on its page. Every
+  // side edits on one page shaped the same way: its team and tactics, its squad, where men come from beside it (a
+  // national side's nationals; a club's free agents, its editor's other clubs, or one new man), then Checks and Changes.
+  // New clubs and leagues are draft pages filled in where they read. Nothing is uploaded: a portrait is asked for, and a
+  // badge is sent to Kirin as the guidelines say. ──
+  // Whether a side's badge is on file: its PNG asked for once, the answer kept (null while it is on its way).
+  const badgeHas = (code, world = WORLD) => { if (!code) return null; const k = world + "/" + code;
+    if (!BADGE_SEEN.has(k)) { BADGE_SEEN.set(k, null); const img = new Image();
+      img.onload = () => { BADGE_SEEN.set(k, true); setBadgeVer(v => v + 1); }; img.onerror = () => { BADGE_SEEN.set(k, false); setBadgeVer(v => v + 1); };
+      img.src = `${import.meta.env.BASE_URL}${world}/badges/${code}.png`; }
+    return BADGE_SEEN.get(k); };
+  // THE BADGE GUIDELINES (the user, 25 November 2026: "club badges must have the standard padding, outline, transparency,
+  // and should be sent in zipped batches to Kirin"), opened from any No Badge, with this person's sides still without one.
+  const renderBadgeHelp = () => {
+    if (!badgeHelp) return null;
+    const missing = [...(badgeHelp.extra || []), ...edHomeSides.filter(t => t.code && badgeHas(t.code, t.file === "ARTERRA" ? "arterra" : "avium") === false)
+      .map(t => ({ code: t.code, name: t.name.trim() }))].filter((x, i, a) => a.findIndex(y => y.code === x.code) === i);
+    return (<>
+      <div className="ux-scrim" onClick={() => setBadgeHelp(null)} />
+      <div className="ux-bh" role="dialog" aria-label="Sending A Badge" onKeyDown={e => { if (e.key === "Escape") setBadgeHelp(null); }}>
+        <div className="ux-ph"><h2 className="ux-pt">Sending A Badge</h2><span className="ux-ph-gap" />
+          <button type="button" className="ux-btnreset ux-cb-x" aria-label="Close" onClick={() => setBadgeHelp(null)}>{uxIcon("close", "ux-s")}</button></div>
+        <div className="ux-bh-b">
+          <div className="ux-bh-spec">
+            <span className="ux-bh-img" aria-hidden="true"><span className="ux-bh-pad"><svg width="74" height="80" viewBox="0 0 40 44"><path d="M20 3 L36 9 L36 21 C36 31 29 38.5 20 42 C11 38.5 4 31 4 21 L4 9 Z" fill="var(--ux-accent)" stroke="#fff" strokeWidth="3" strokeLinejoin="round" /></svg></span></span>
+            <dl className="ux-bh-dl">
+              <dt>Size</dt><dd style={mono}>500 &times; 500 PNG</dd>
+              <dt>Background</dt><dd>Transparent</dd>
+              <dt>Padding</dt><dd style={mono}>50 px Every Side</dd>
+              <dt>Outline</dt><dd style={mono}>25 px White</dd>
+              <dt>File Name</dt><dd style={mono}>{(missing[0]?.code || "ABC") + ".png"}</dd>
+            </dl></div>
+          <div className="ux-bh-send">{uxIcon("inbox", "ux-s")}<span>Zip your badges together and DM them to <b>Kirin</b> on Discord</span></div>
+          {missing.length > 0 && <>
+            <div className="ux-bh-h">Still Without A Badge</div>
+            <div className="ux-bh-list">{missing.map(x => <Fragment key={x.code}><span style={mono}>{x.code}.png</span><span><SlideName text={x.name} /></span></Fragment>)}</div></>}
+        </div>
+      </div></>);
+  };
+  // A man's positions set on the pitch: the first, or with Second picked, the one he also plays (clicked again, dropped).
+  const posOnPitch = (own, ps, slot) => { const a = own[0] || null, b = own[1] || null;
+    if (slot === 0) return posList([ps, ...(b && b !== ps ? [b] : a && a !== ps && b ? [] : [])]);
+    if (!a || ps === a) return own; return posList(b === ps ? [a] : [a, ps]); };
+  const uxPosPitch = (own, onSet, slot, setSlot, title = "Positions") => uxPanel(title, (<>
+    <span className="ux-ph-gap" />
+    <div className="ux-seg" role="group" aria-label="Which Position">{[[0, "Primary"], [1, "Second"]].map(([v, l]) => (
+      <button key={l} type="button" className={"ux-btnreset" + (slot === v ? " ux-on" : "")} aria-pressed={slot === v} onClick={() => setSlot(v)}>{l}</button>))}</div></>), (
+    <div className="ux-pitch-wrap"><div className="ux-pitch ux-pitch-ed" role="group" aria-label="Positions">
+      {UX_PITCH_LINES}
+      {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const i = own.indexOf(ps);
+        return (
+          <button key={ps} type="button" className={"ux-btnreset ux-spot" + (i === 0 ? " ux-on" : i === 1 ? " ux-on ux-spot2" : "")} title={ps}
+            style={{ left: x + "%", top: y + "%", ["--pos"]: POS_CLR[ps] }} onClick={() => onSet(posOnPitch(own, ps, slot))}>
+            {i >= 0 && <span style={mono}>{ps}</span>}</button>); })}
+    </div></div>), true);
+  // A portrait asked for: one in the cart for this man, or one already waiting.
+  const portraitAsked = (id) => (draft.portraits || []).some(x => x.player === id) || requests.some(r => r.kind === "portrait" && r.player === id && !r.declined);
+  const askPortrait = (id) => { if (portraitAsked(id)) return; edPut({ ...draft, portraits: [...(draft.portraits || []), { id: edUid(), player: id }] }); };
+  // A man this person keeps: of their nation, or at one of their sides.
+  const plMine = (id) => overseer || (isEditor && ((scope.nations || []).includes(recNow(id)?.nat)
+    || [whereIs.get(id)?.club?.key, whereIs.get(id)?.nt?.key].some(k => k && edMine(k))));
+  // THE CHANGES PANEL: what was done here this sitting, each with its undo, marked Live or For Review, and Send.
+  const uxChangesPanel = (items, title = "Changes") => {
+    const asks = preview?.requests || [];
+    const itemLive = (it) => { if (overseer) return true; if (it.trade || it.portrait) return false;
+      if (it.rec) return it.rec.what === "players" && !!it.rec.side && !it.rec.side.startsWith("new:") && !!edTeamRec(it.rec.side) && ucLive(edTeamRec(it.rec.side), it.rec);
+      return !asks.some(r => (r.kind === "details" && it.groups.some(g => g.kind === "teams" && g.id === r.team)) || (r.kind === "pos" && it.groups.some(g => g.kind === "players" && g.id === r.player))); };
+    const nLive = items.filter(itemLive).length, others = cartList.length - items.length;
+    const problems = saveState?.errors?.length ? saveState.errors : session && cartList.length ? preview?.errors || [] : [];
+    const busy = !!saveState?.busy;
+    const st = (live) => <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>;
+    const undo = (it) => <button type="button" className="ux-btnreset ux-cb-x" title="Undo" aria-label="Undo" disabled={busy} onClick={() => removeItem(it)}>{uxIcon("undo", "ux-s")}</button>;
+    const row = (it) => { const live = itemLive(it);
+      if (it.portrait) { const r = recNow(it.portrait.player);
+        return <div key={it.key} className="ux-uce-ch"><span className="ux-uce-chn"><b><SlideName text={fullDisplayName(r?.name || "")} /></b><span>Portrait Asked For</span></span>{st(false)}{undo(it)}</div>; }
+      if (it.rec) { const n = it.rec, pos = posList(n.pos)[0];
+        const title = n.what === "batch" ? `${(n.men || []).length} Players` : n.what === "teams" ? (n.name || "").trim() || "New Club" : n.what === "leagues" ? (n.name || "").trim() || "New League" : fullDisplayName(n.name || "");
+        const sub = n.what === "teams" ? "New Club" : n.what === "leagues" ? `New League, ${(n.clubs || []).length} ${(n.clubs || []).length === 1 ? "Club" : "Clubs"}` : n.what === "managers" ? "New Manager" : "New Player";
+        return (
+          <div key={it.key} className="ux-uce-ch">
+            {n.what === "players" ? <b className="ux-uce-chp" style={{ ...mono, color: POS_CLR[pos] }}>{pos || "–"}</b> : null}
+            <span className="ux-uce-chn"><b><SlideName text={title} /></b><span>{sub}</span></span>{st(live)}
+            {n.what === "players" && (n.ovr != null ? uxBadge(n.ovr) : <span className="ux-dim">–</span>)}{undo(it)}
+          </div>); }
+      return (
+        <div key={it.key} className="ux-uce-ch ux-uce-chg">
+          <div className="ux-uce-chh">
+            <span className="ux-uce-chn"><b><SlideName text={it.trade ? "Trade" : it.groups.map(g => (g.kind === "players" ? fullDisplayName(g.name) : g.name)).join(", ")} /></b>
+              <span>{it.trade ? edTradeReq(it.trade).otherName : it.groups.flatMap(g => g.rows.map(c => FIELD_LBL[c.field] || c.field)).filter((x, i, a) => a.indexOf(x) === i).join(", ")}</span></span>
+            {st(live)}{undo(it)}
+          </div>
+          {!it.trade && it.groups.map(g => g.rows.filter(c => c.field !== "squad").map(c => uxCbRow(c.field + g.key, FIELD_LBL[c.field] || c.field, renderChange(c, draft.teams?.[c.id]?.formation))))}
+        </div>); };
+    return uxPanel(title, <b className="ux-drop-n" style={mono}>{items.length}</b>, (<>
+      <div className="ux-pbody ux-uce-chs">{items.length ? items.map(row) : <div className="ux-empty">None</div>}</div>
+      <div className="ux-uce-foot">
+        <div className={"ux-uce-sum" + (problems.length || saveState?.err ? " ux-bad" : saveState?.ok ? " ux-good" : "")} role={problems.length ? "alert" : "status"}>
+          {problems.length ? problems.slice(0, 3).map((p, i) => <div key={i}>{p}</div>)
+            : saveState?.busy ? "Sending"
+            : saveState?.ok && !cartList.length ? (saveState.applied || saveState.asked ? <>Sent{saveState.applied ? <>, <b style={mono}>{saveState.applied}</b> Live</> : null}{saveState.asked ? <>, <b style={mono}>{saveState.asked}</b> For Review</> : null}</> : "Nothing To Send")
+            : saveState?.err ? saveState.err
+            : <><b style={mono}>{nLive}</b> Live · <b style={mono}>{items.length - nLive}</b> For Review{others > 0 && <> · <b style={mono}>{others}</b> Elsewhere</>}</>}
+        </div>
+        {session ? <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !cartList.length || problems.length > 0} onClick={saveCart}>{busy ? "Sending" : "Send"}</button>
+          : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={signIn}>Sign In</button>}
+      </div></>), true, null, "ux-uce-chp-panel");
+  };
+  // ONE NEW MAN, made beside a squad for the place picked (the user, 25 November 2026: "add back the option to add new
+  // player for Club, though one at a time only"): name, positions, nationality, age, rating against the club's level,
+  // traits, and for an editor his portrait asked for with him.
+  const ucNewSeed = (T, place, nat) => ({ name: "", pos: shDefPos(place) || "CM", pos2: "", nat, age: 18 + Math.floor(Math.random() * 15), born: null, ovr: "", badges: [], portrait: !overseer, tsel: false });
+  const uxNewManForm = (T, k, i, place, onAdd) => {
+    const nat0 = isNational(T) ? T.code : T.nation || (scope.nations || [])[0] || "";
+    const f = ucNew && ucNew.k === k ? ucNew : { k, ...ucNewSeed(T, place, nat0) };
+    const upd = (p) => setUcNew({ ...f, ...p });
+    const born = f.born || edBornFor(+f.age || 24), man = { what: "players", side: k, at: i, name: (f.name || "").trim(), nat: f.nat, born, pos: posList([f.pos, f.pos2].filter(Boolean)),
+      ovr: +f.ovr > 0 ? Math.round(+f.ovr) : null, ...(f.badges?.length ? { badges: badgeOrder(f.badges) } : null), ...(f.portrait && !overseer ? { portrait: true } : null) };
+    const lvl = T.squad ? clubLevel(T, man.pos, judge) : null, live = !k.startsWith("new:") && T.squad && ucLive(T, man);
+    const cap = edCapOf(f.nat), okRating = man.ovr == null ? !overseer || k.startsWith("new:") : man.ovr >= 25 && man.ovr <= 99 && edUnderCap(f.nat, man.ovr);
+    const ready = man.name && man.pos.length && f.nat && okRating && (overseer || !traitsProblem(man.badges, man.ovr));
+    const posSel = (label, v, set, none, skip) => (
+      <label className="ux-pick ux-uce-psel"><select aria-label={label} value={v || ""} onChange={e => set(e.target.value)}>
+        {none && <option value="">{none}</option>}{POSITIONS.filter(c => c !== skip).map(c => <option key={c} value={c}>{c}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+    return (
+      <div className="ux-uce-nf">
+        <label className="ux-uce-f"><span>Name</span><input className="ux-ed-in" autoFocus placeholder="Given SURNAME" value={f.name} onChange={e => upd({ name: e.target.value })}
+          onKeyDown={e => { if (e.key === "Enter" && ready) { onAdd(man); setUcNew(null); } }} /></label>
+        <div className="ux-uce-f2">
+          <label className="ux-uce-f"><span>Position</span>{posSel("Position", f.pos, v => upd({ pos: v, ...(f.pos2 === v ? { pos2: "" } : null) }))}</label>
+          <label className="ux-uce-f"><span>Second Position</span>{posSel("Second Position", f.pos2, v => upd({ pos2: v }), "None", f.pos)}</label></div>
+        <div className="ux-uce-f2">
+          <div className="ux-uce-f"><span>Nationality</span><UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} /></div>
+          <div className="ux-uce-f"><span>Age</span><span className="ux-uce-age">
+            <input className="ux-ed-in" style={mono} type="number" min={14} max={45} aria-label="Age" value={f.age} onChange={e => upd({ age: e.target.value, born: null })} />
+            <button type="button" className="ux-btnreset ux-cb-x" title="Another Date For This Age" aria-label="Another Date For This Age" onClick={() => upd({ born: edBornFor(+f.age || 24) })}>{uxIcon("dice", "ux-s")}</button>
+            <span className="ux-dim" style={mono}>{uxDate(born)}</span></span></div></div>
+        <div className="ux-uce-f2">
+          <label className="ux-uce-f"><span>Rating</span><span className="ux-uce-age">
+            <input className={"ux-ed-in" + (!okRating && f.ovr !== "" ? " ux-need" : "")} style={mono} inputMode="numeric" aria-label="Rating" placeholder={cap != null ? `< ${cap}` : lvl != null ? String(lvl) : "Blank"}
+              value={f.ovr} onChange={e => upd({ ovr: e.target.value.replace(/\D/g, "").slice(0, 2) })} />
+            {lvl != null && <span className="ux-dim">Level <b style={mono}>{showOvr(lvl)}</b></span>}</span></label>
+          <div className="ux-uce-f"><span>On Send</span><span className="ux-uce-age"><span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span></span></div></div>
+        <div className="ux-uce-f"><span>Traits</span>
+          <button type="button" className={"ux-btnreset ux-ed-btr ux-uce-tr" + (f.tsel ? " ux-on" : "") + (!overseer && traitsProblem(man.badges, man.ovr) ? " ux-need" : "")} aria-expanded={f.tsel} onClick={() => upd({ tsel: !f.tsel })}>
+            {(f.badges || []).length ? badgeOrder(f.badges).map(id => <BadgeIcon key={id} id={id} size={16} />) : <span className="ux-dim">Add</span>}</button>
+          {f.tsel && edTraitList(f.badges, (ks) => upd({ badges: ks }), man.ovr, !overseer)}</div>
+        {!overseer && <div className="ux-uce-f"><span>Portrait</span>
+          <button type="button" className={"ux-btnreset ux-uce-pq" + (f.portrait ? " ux-on" : "")} aria-pressed={!!f.portrait} onClick={() => upd({ portrait: !f.portrait })}>
+            {f.portrait ? <>{uxIcon("check", "ux-xs")}Portrait Asked For</> : "Ask For A Portrait"}</button></div>}
+        <div className="ux-uce-nfa">
+          <button type="button" className="ux-btnreset ux-btn" onClick={() => setUcNew(null)}>Clear</button>
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready} onClick={() => { onAdd(man); setUcNew(null); }}>{uxIcon("plus", "ux-s")}Add To Squad</button></div>
+      </div>);
+  };
+  // WHERE MEN COME FROM, beside a club's squad: Free Agents, My Clubs, or one New Player, for the open place picked.
+  const uxAddPanel = (T, k, i, sqIds, lab, onTake, onNew) => {
+    const place = i != null ? lab[i] : null, forOn = place && !ucForOff;
+    const f = edFold(ucQ), hit = (n) => !f || (" " + edFold(n)).includes(" " + f);
+    const fit = (id) => (place ? posFitCost(ownOfId(id).length ? ownOfId(id) : ["CM"], place) : 0);
+    let ids = [];
+    if (ucAdd === "fa") ids = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat))).map(p => p.id);
+    else if (ucAdd === "mine") ids = edHomeSides.filter(x => !isNational(x) && teamKey(x) !== k).flatMap(x => edSq(x).filter(Boolean));
+    ids = ids.filter(id => !sqIds.includes(id) && hit(recNow(id)?.name) && !edLockedMen.has("p:" + id))
+      .sort((a, b) => (forOn ? fit(a) - fit(b) : 0) || (seen(b, recNow(b)?.ovr) ?? 0) - (seen(a, recNow(a)?.ovr) ?? 0)).slice(0, 60);
+    const tabs = [["fa", "Free Agents"], ["mine", "My Clubs"], ["new", "New Player"]];
+    return uxPanel(place ? `Add To ${place}${i >= 11 ? ", Bench" : ""}` : "Add Players", null, (<>
+      <div className="ux-uce-tabs">
+        <div className="ux-seg" role="tablist" aria-label="From">{tabs.map(([v, l]) => (
+          <button key={v} type="button" role="tab" aria-selected={ucAdd === v} className={"ux-btnreset" + (ucAdd === v ? " ux-on" : "")} onClick={() => { setUcAdd(v); setUcQ(""); }}>{l}</button>))}</div>
+        {ucAdd !== "new" && <>
+          {place && <button type="button" className={"ux-btnreset ux-uce-for" + (forOn ? " ux-on" : "")} aria-pressed={!!forOn} onClick={() => setUcForOff(!ucForOff)}>For {place}</button>}
+          <input className="ux-ed-in ux-uce-q" placeholder="Search" aria-label="Search" value={ucQ} onChange={e => setUcQ(e.target.value)} /></>}
+      </div>
+      {i == null ? <div className="ux-empty">Squad Full</div>
+        : ucAdd === "new" ? <div className="ux-pbody">{uxNewManForm(T, k, i, place, onNew)}</div>
+        : (
+        <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-pool">
+          <colgroup><col style={{ width: 64 }} /><col /><col style={{ width: ucAdd === "mine" ? 150 : 34 }} /><col style={{ width: 38 }} /><col style={{ width: 48 }} /><col style={{ width: 82 }} /></colgroup>
+          <thead><tr><th>Pos</th><th>Player</th><th>{ucAdd === "mine" ? "Club" : "Nat"}</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th /></tr></thead>
+          <tbody>{ids.map(id => { const r = recNow(id), own = ownOfId(id), at = whereIs.get(id)?.club, natT = natTeamByCode.get(r?.nat);
+            return (
+              <tr key={id}>
+                <td><b style={{ ...mono, color: POS_CLR[own[0] || posOfId(id)] }}>{own[0] || posOfId(id)}</b>{own[1] && <span className="ux-uce-p2" style={{ color: POS_CLR[own[1]] }}>{own[1]}</span>}</td>
+                <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={r?.name || ""} size="100%" /></span>
+                  <button type="button" className="ux-btnreset ux-strong ux-sqnm ux-a" onClick={() => openMan(r?.name)}><SlideName text={fullDisplayName(r?.name || id)} /></button></div></td>
+                <td>{ucAdd === "mine" ? <div className="ux-tc">{at && teamOfKey(at.key) && <TeamCrest team={teamOfKey(at.key)} size={16} />}<span className="ux-uce-fort">{edTeamRec(at?.key)?.name.trim() || ""}</span></div>
+                  : natT ? <span title={natT.name}><TeamCrest team={natT} size={16} /></span> : null}</td>
+                <td className="ux-n" style={mono}>{r?.born ? ageOf(r.born) : "–"}</td>
+                <td className="ux-c">{manBadge(id, r?.ovr)}</td>
+                <td className="ux-c"><button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => onTake(id)}>{uxIcon("plus", "ux-xs")}{ucAdd === "mine" ? "Move" : "Sign"}</button></td>
+              </tr>); })}
+            {!ids.length && <tr><td colSpan={6} className="ux-dim">None</td></tr>}</tbody>
+        </table></div>)}</>), true);
+  };
+  // A NATIONAL SIDE'S NATIONALS, always beside its squad (the user, 25 November 2026: "selection itself is tedious because
+  // I have to cut players to see who's available"): every eligible man, best first, by line; picking a squad man narrows
+  // it to the men who can play his place, each with Swap In; an open place picked, Call Up.
+  const uxNationals = (T, k, sqIds, lab, pickI, onTake, acts) => {
+    const pickId = pickI != null ? sqIds[pickI] : null, place = pickI != null ? lab[pickI] : null, forOn = place && !ucForOff;
+    const f = edFold(ucQ), hit = (n) => !f || (" " + edFold(n)).includes(" " + f);
+    const grp = (id) => GROUP_OF[ownOfId(id)[0] || posOfId(id)] || "MID";
+    const fit = (id) => (place ? posFitCost(ownOfId(id).length ? ownOfId(id) : ["CM"], place) : 0);
+    const all = curRecs.players.filter(p => !p.retired && p.nat === T.code && !sqIds.includes(p.id));
+    const ids = all.map(p => p.id).filter(id => hit(recNow(id)?.name) && (ucLine2 === "ALL" || grp(id) === ucLine2) && (!forOn || fit(id) <= 1) && !edLockedMen.has("p:" + id))
+      .sort((a, b) => (forOn ? fit(a) - fit(b) : 0) || (seen(b, recNow(b)?.ovr) ?? 0) - (seen(a, recNow(a)?.ovr) ?? 0)).slice(0, 80);
+    const open = pickI == null ? sqIds.findIndex((v, j) => !v && j >= 0) : -1;
+    const act = pickI != null ? (pickId ? "Swap In" : "Call Up") : open >= 0 ? "Call Up" : null, at = pickI != null ? pickI : open;
+    const who = pickId ? recNow(pickId) : null;
+    return uxPanel("Nationals", <b className="ux-drop-n" style={mono}>{all.length}</b>, (<>
+      <div className="ux-uce-tabs">
+        {place && <span className="ux-uce-forp">
+          <button type="button" className={"ux-btnreset ux-uce-for" + (forOn ? " ux-on" : "")} aria-pressed={!!forOn} onClick={() => setUcForOff(!ucForOff)}>
+            {uxIcon("swap", "ux-xs")}<span className="ux-uce-fort">{who ? `For ${fullDisplayName(who.name)}, ${place}` : `For ${place}`}</span></button>
+          <button type="button" className="ux-btnreset ux-cb-x" aria-label="Let Go" onClick={() => setUcPick(null)}>{uxIcon("close", "ux-xs")}</button></span>}
+        <div className="ux-seg" role="group" aria-label="Line">{["ALL", "GK", "DEF", "MID", "FWD"].map(v => (
+          <button key={v} type="button" className={"ux-btnreset" + (ucLine2 === v ? " ux-on" : "")} aria-pressed={ucLine2 === v} onClick={() => setUcLine2(v)}>{v === "ALL" ? "All" : v}</button>))}</div>
+        <input className="ux-ed-in ux-uce-q" placeholder="Search" aria-label="Search" value={ucQ} onChange={e => setUcQ(e.target.value)} />
+      </div>
+      {acts}
+      <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-pool">
+        <colgroup><col style={{ width: 58 }} /><col style={{ width: "38%" }} /><col /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 92 }} /></colgroup>
+        <thead><tr><th>Pos</th><th>Player</th><th>Club</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th /></tr></thead>
+        <tbody>{ids.map(id => { const r = recNow(id), own = ownOfId(id), at2 = whereIs.get(id)?.club, cT = at2 ? teamOfKey(at2.key) : null;
+          return (
+            <tr key={id}>
+              <td><b style={{ ...mono, color: POS_CLR[own[0] || posOfId(id)] }}>{own[0] || posOfId(id)}</b>{own[1] && <span className="ux-uce-p2" style={{ color: POS_CLR[own[1]] }}>{own[1]}</span>}</td>
+              <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={r?.name || ""} size="100%" /></span>
+                <button type="button" className="ux-btnreset ux-strong ux-sqnm ux-a" onClick={() => openMan(r?.name)}><SlideName text={fullDisplayName(r?.name || id)} /></button></div></td>
+              <td><div className="ux-tc">{cT && <TeamCrest team={cT} size={16} />}<span className="ux-uce-fort">{at2 ? edTeamRec(at2.key)?.name.trim() || "" : "Free Agent"}</span></div></td>
+              <td className="ux-n" style={mono}>{r?.born ? ageOf(r.born) : "–"}</td>
+              <td className="ux-c">{manBadge(id, r?.ovr)}</td>
+              <td className="ux-c">{act && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => onTake(id, at)}>{uxIcon(act === "Swap In" ? "swap" : "up", "ux-xs")}{act}</button>}</td>
+            </tr>); })}
+          {!ids.length && <tr><td colSpan={6} className="ux-dim">None</td></tr>}</tbody>
+      </table></div></>), true);
+  };
+  // THE TEAM COLUMN: crest, name and code; tactics (formation, time wasting, and the style, the manager's); manager; kits;
+  // stadium. The same for a club, a national side and a new club's draft.
+  const uxTeamCol = (T, k, opts = {}) => {
+    const nt = isNational(T), isNew = k.startsWith("new:"), det = ucDet, put = (c, v) => ucCell(k, c, v);
+    const st = stripVenue(T.stadium || ""), cap = venueCap(T.stadium) || "", city = stripVenue(T.location || "");
+    const mgrV = T.manager, mgrId = typeof mgrV === "string" ? mgrV : idOf(mgrV), mgr = mgrId ? mgrNow(mgrId) : mgrV && typeof mgrV === "object" ? mgrV : null;
+    const secH = (title, sec, init, lockIt) => (
+      <h3 className="ux-psec-h ux-uce-sh">{title}{lockIt ? <span className="ux-uce-lk">{edLock}</span>
+        : <button type="button" className="ux-btnreset ux-uce-edit" onClick={() => setUcDet(det?.sec === sec ? null : { sec, ...init })}>{uxIcon("edit", "ux-xs")}{det?.sec === sec ? "Close" : "Edit"}</button>}</h3>);
+    const freeMgrs = det?.sec === "manager" ? curRecs.managers.filter(m => !edSidesOfMgr(m.id).some(x => !isNational(x)) && (arterraOn || !artNats.has(m.nat)) && !edLockedMen.has("m:" + m.id)
+      && (!det.q || (" " + edFold(m.name)).includes(" " + edFold(det.q)))).sort((a, b) => b.ovr - a.ovr).slice(0, 30) : [];
+    const tw = T.timeWasting || "Never", styleNow = styleKeyOf(T.style) || "balanced";
+    const cat = !isNew ? teamOfKey(k) : null, noBadge = T.code ? badgeHas(T.code, T.file === "ARTERRA" ? "arterra" : "avium") === false : true;
+    return uxPanel(nt ? "Team" : "Club", null, (
+      <div className="ux-psb ux-uce-team">
+        <div className="ux-uce-id">
+          {cat && !noBadge ? <TeamCrest team={cat} size={72} />
+            : <button type="button" className="ux-btnreset ux-uce-nob" onClick={() => setBadgeHelp({ extra: T.code ? [{ code: T.code, name: (T.name || "").trim() || "New Club" }] : [] })}>{uxIcon("image", "ux-s")}<span>No Badge</span><b>How To Send</b></button>}
+          <input className="ux-ed-in ux-uce-nm" aria-label="Name" placeholder="Club Name" key={"nm" + k + (T.name || "")} defaultValue={(T.name || "").trim()}
+            onBlur={e => { const v = e.target.value.trim(); if (v && v !== (T.name || "").trim()) put("name", v); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+          <span className="ux-uce-code">
+            <input className="ux-ed-in" style={mono} aria-label="Code" placeholder="ABC" maxLength={4} key={"cd" + k + (T.code || "")} defaultValue={T.code || ""} disabled={nt && !overseer}
+              onBlur={e => { const v = e.target.value.trim().toUpperCase(); if (v && v !== T.code) put("code", v); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+            {!overseer && !isNew && !nt && <span className="ux-uce-req" title="For Review">{uxIcon("lock", "ux-xs")}For Review</span>}</span>
+          {opts.league}
+        </div>
+        <section className="ux-psec"><h3 className="ux-psec-h ux-uce-sh">Tactics</h3>
+          <div className="ux-uce-tac">
+            <label className="ux-uce-f"><span>Formation</span>{uxPick("Formation", String(T.formation || "4-3-3").trim(), FORMATIONS.map(x => [x, x]), v => put("formation", v))}</label>
+            <div className="ux-uce-f"><span>Time Wasting</span><div className="ux-seg" role="group" aria-label="Time Wasting">{SH_TW.map(v => (
+              <button key={v} type="button" className={"ux-btnreset" + (tw === v ? " ux-on" : "")} aria-pressed={tw === v} onClick={() => put("tw", v)}>{v}</button>))}</div></div>
+            <div className="ux-uce-f"><span>Style</span>{overseer && !isNew ? uxPick("Style", styleNow, STYLES.map(s => [s, STYLE_LBL[s]]), v => shPut(draftWith(draft, recBase, k, { style: STYLE_LBL[v] }, "teams")))
+              : <span className="ux-uce-sty"><b style={{ color: `var(--ui-style-${styleNow})` }}>{uxStyleName(styleNow)}</b><span className="ux-dim">{uxIcon("lock", "ux-xs")}The Manager's</span></span>}</div>
+          </div></section>
+        <section className="ux-psec">{secH("Manager", "manager", { q: "" })}
+          {det?.sec === "manager" ? (
+            <div className="ux-uce-form">
+              <input className="ux-ed-in" autoFocus placeholder="Search Free Managers" aria-label="Search Free Managers" value={det.q} onChange={e => setUcDet({ ...det, q: e.target.value })} />
+              <div className="ux-uce-pl ux-uce-mgrs">{freeMgrs.map(m => (
+                <button key={m.id} type="button" className="ux-btnreset ux-uce-pr" onClick={() => { shMoveMgr({ id: m.id, from: {} }, k); setUcDet(null); }}>
+                  <span className="ux-uce-pn"><SlideName text={fullDisplayName(m.name)} /></span><span className="ux-dim">{uxStyleName(edStyleOfMgr(m.id))}</span>{uxBadge(m.ovr)}</button>))}
+                {!freeMgrs.length && <div className="ux-empty-sm">None</div>}</div>
+              {mgr && !isNew && uxArmBtn("sack:" + k, "Sack " + fullDisplayName(mgr.name), "Confirm Sack", () => { shSack({ from: { k } }); setUcDet(null); })}
+              {mgr && isNew && <button type="button" className="ux-btnreset ux-btn" onClick={() => { shSetClub(k, { manager: null }); setUcDet(null); }}>Remove {fullDisplayName(mgr.name)}</button>}
+            </div>)
+            : <div className="ux-pmgr"><span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={mgr?.name || ""} size="100%" /></span>
+                <div className="ux-pmgr-id"><span className="ux-pmgr-nm">{mgr ? fullDisplayName(mgr.name) : "None"}{mgr && mgr.ovr != null && <span style={{ ...ovrBlock(mgr.ovr, true), ...mono }}>{showOvr(mgr.ovr)}</span>}</span></div></div>}</section>
+        <section className="ux-psec">{secH("Kits", "kits", {})}
+          {det?.sec === "kits" ? (
+            <div className="ux-uce-form">{["home", "away"].map(f => (
+              <label key={f} className="ux-uce-kitf"><span>{f === "home" ? "Home" : "Away"}</span>
+                <input type="color" className="ux-uce-col" value={String(T[f] || "#888888")} onChange={e => put(f, e.target.value)} />
+                <span style={mono}>{String(T[f] || "").toUpperCase()}</span></label>))}</div>)
+            : <div className="ux-pkits">{[["Home", T.home], ["Away", T.away]].map(([l, c]) => (
+              <div key={l} className="ux-pkit"><svg className="ux-kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z" fill={c || "var(--ux-panel-3)"} stroke="rgba(255,255,255,.55)" strokeWidth="1" /></svg>
+                <span><b>{l}</b><span style={mono}>{String(c || "–").toUpperCase()}</span></span></div>))}</div>}</section>
+        <section className="ux-psec">{secH("Stadium", "stadium", { g: st, c: cap })}
+          {det?.sec === "stadium" ? (
+            <div className="ux-uce-form">
+              <label className="ux-uce-f"><span>Ground</span><input className="ux-ed-in" value={det.g} onChange={e => setUcDet({ ...det, g: e.target.value })} onBlur={() => det.g.trim() && det.g.trim() !== st && put("ground", det.g)} /></label>
+              <label className="ux-uce-f"><span>Capacity</span><input className="ux-ed-in" style={mono} value={det.c} onChange={e => setUcDet({ ...det, c: e.target.value })} onBlur={() => String(det.c) !== String(cap) && put("cap", det.c)} /></label>
+              <div className="ux-uce-f"><span>City</span><UxSidePick label="City" value={city} placeholder="Search Cities" onPick={it => put("city", it.k)} groups={edCities} /></div>
+            </div>)
+            : <div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b><span>{city && <span>{city}</span>}{cap && <span>Capacity {cap}</span>}</span></div>}</section>
+        {opts.foot}
+      </div>), true);
+  };
+  // A SIDE'S SQUAD, as a list to edit: the eleven, then the bench; a man picked opens his card, an open place picked opens
+  // where men come from. Men are dragged between places, onto a man the two change places.
+  const uxSquadEdit = (T, k, sq, lab, staged, own, extra, lit = null) => {
+    const nt = isNational(T);
     const ageOfId = (id) => { const b = recNow(id)?.born; return b ? ageOf(b) : null; };
     const valOf = (id) => (pstats && !veiled(id) ? trValueAll("player", id) : null);
-    const fitCost = (id, i) => posFitCost(ownOfId(id).length ? ownOfId(id) : [lab[i]], lab[i]);
-    // Moves, each one step into the cart: a man to another place (onto a man, the two change places), released, called up.
     const moveTo = (i, j) => { const id = sq[i]; if (!id || i === j) return; shMovePlayer({ id, from: { k, i } }, k, j); setUcPick(j); setUcSwap(null); };
-    const toBench = (i) => { const id = sq[i]; if (!id || i >= 11) return;
-      const openB = sq.map((v, x) => (x >= 11 && !v && !staged.has(x) ? x : -1)).filter(x => x >= 0);
-      // Onto the bench, the best bench man for his place coming into the eleven.
-      const subs = sq.map((v, x) => (x >= 11 && v ? x : -1)).filter(x => x >= 0).sort((a, b) => fitCost(sq[a], i) - fitCost(sq[b], i) || (recNow(sq[b])?.ovr ?? 0) - (recNow(sq[a])?.ovr ?? 0));
-      if (subs.length) moveTo(i, subs[0]); else if (openB.length) shSay("Someone Has To Take His Place In The Eleven"); };
-    const release = (i) => { const id = sq[i]; if (!id) return; shRelease({ id, from: { k, i } }); setUcPick(null); };
-    const ntOf = (id) => curRecs.teams.find(x => isNational(x) && x.code === recNow(id)?.nat) || null;
-    const callUp = (i) => { const id = sq[i], N = ntOf(id); if (!N) return; const nk = teamKey(N), nsq = edSq(N);
-      if (nsq.includes(id)) return shSay("Already In The Squad");
-      const j = ucOpen(N)[0];
-      if (j != null) { shMovePlayer({ id, from: { k, i } }, nk, j); shSay(`Called Up To ${N.name.trim()}`); return; }
-      setUcCall({ id, k, i }); ucGo(nk); };
-    // A man typed into an open place, rated at the side's level unless a rating is typed; Enter goes on to the next open place.
-    const typeIn = (i, text) => { const { men, bad } = ucMen(T, [text], [i], ucLine(text)?.ovr != null ? "typed" : "level", nt ? 20 : 18, nt ? 32 : 32);
-      if (bad.length) { shSay(`${bad[0].name}: ${uxTitle(bad[0].bad[0])}`); return false; }
-      if (!men.length) return false;
-      shPut({ ...draft, new: [...shNew, { ...men[0], at: i }] }); return true; };
-    const nextOpen = (i) => open.find(x => x > i) ?? null;
-    // Free agents, men at one's other clubs, or for a national side its nationals, best fitting the place first.
-    const pool = (src, i, q) => { const f = edFold(q || ""), hit = (n) => !f || (" " + edFold(n)).includes(" " + f);
-      let ids;
-      if (nt) ids = curRecs.players.filter(p => !p.retired && p.nat === T.code && !sq.includes(p.id)).map(p => p.id);
-      else if (src === "fa") ids = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat))).map(p => p.id);
-      else ids = edHomeSides.filter(x => !isNational(x) && teamKey(x) !== k).flatMap(x => edSq(x).filter(Boolean));
-      return ids.filter(id => hit(recNow(id)?.name) && !edLockedMen.has("p:" + id)).sort((a, b) => fitCost(a, i) - fitCost(b, i) || (seen(b, recNow(b)?.ovr) ?? 0) - (seen(a, recNow(a)?.ovr) ?? 0)).slice(0, 40); };
-    const take = (id, i) => { const at = whereIs.get(id)?.club;
-      shMovePlayer({ id, from: !nt && at && at.key !== k ? { k: at.key, i: edSq(edTeamRec(at.key)).indexOf(id) } : { pool: nt ? "nat" : "fa" } }, k, i); setUcFrom(null); setUcPick(i); };
-    // The rows: the eleven, then the bench.
-    const tagNew = (n) => <span className="ux-uce-new">New</span>;
     const row = (i) => {
       const id = sq[i], n = staged.get(i), on = ucPick === i, swapOn = ucSwap != null, place = lab[i];
       const common = { onDragOver: (e) => { if (ucDragRef.current != null) { e.preventDefault(); e.currentTarget.classList.add("ux-dropon"); } },
@@ -16764,9 +17068,8 @@ export default function App() {
         return (
         <tr key={i} {...common} className={"ux-uce-r" + (on ? " ux-on" : "") + (swapOn && ucSwap !== i ? " ux-uce-target" : "")} draggable={!edLockedMen.has("p:" + id)}
           onDragStart={(e) => { ucDragRef.current = i; e.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => { ucDragRef.current = null; }}
-          onClick={() => { if (ucCall && nt) { shMovePlayer({ id: ucCall.id, from: { k: ucCall.k, i: ucCall.i } }, k, i); setUcCall(null); return; }
-            if (swapOn && ucSwap !== i) { moveTo(ucSwap, i); return; } setUcSwap(null); setUcPick(on ? null : i); }}>
-          <td><span className="ux-uce-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[i < 11 ? place : posOfId(id)] || POS_CLR[place] }}>{i < 11 ? place : place}</span></td>
+          onClick={() => { if (swapOn && ucSwap !== i) { moveTo(ucSwap, i); return; } setUcSwap(null); setUcPick(on ? null : i); setUcForOff(false); }}>
+          <td><span className="ux-uce-pos" style={{ color: oop ? "var(--ux-loss)" : POS_CLR[i < 11 ? place : posOfId(id)] || POS_CLR[place] }}>{place}</span></td>
           <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(nm)} /></span>
             {edLockedMen.has("p:" + id) && <span className="ux-uce-wait" title="Waiting On A Request">{uxIcon("lock", "ux-xs")}</span>}</div></td>
           <td><div className="ux-sqtr">{traitsTop(seen(id, r?.badges) || []).map(b => <BadgeIcon key={b} id={b} size={14} />)}</div></td>
@@ -16775,16 +17078,15 @@ export default function App() {
           <td className="ux-c">{manBadge(id, r?.ovr)}</td>
           <td className={"ux-n" + (v != null ? "" : " ux-dim")} style={mono}>{v != null ? moneyLabel(v) : "–"}</td>
         </tr>); }
-      if (n) { const live = !n.batch && ucLive(T, n);
+      if (n) { const live = !n.batch && !k.startsWith("new:") && ucLive(T, n);
         return (
         <tr key={i} {...common} className={"ux-uce-r ux-uce-staged" + (on ? " ux-on" : "")} onClick={() => setUcPick(on ? null : i)}>
           <td><span className="ux-uce-pos" style={{ color: POS_CLR[posList(n.pos)[0]] || POS_CLR[place] }}>{place}</span></td>
-          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={n.name} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(n.name)} /></span>{tagNew(n)}</div></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={n.name} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(n.name)} /></span><span className="ux-uce-new">New</span></div></td>
           <td /><td /><td className="ux-n" style={mono}>{n.born ? ageOf(n.born) : "–"}</td>
           <td className="ux-c">{n.ovr != null ? uxBadge(n.ovr) : <span className="ux-dim">Blank</span>}</td>
-          <td className="ux-n"><span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span></td>
+          <td className="ux-n">{!k.startsWith("new:") && <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>}</td>
         </tr>); }
-      // A new man asked for in this place, waiting for review: shown in it, faint, his request's own.
       const wr = reqWaitAt.get(k + "|" + i);
       if (wr) { const w = wr.rec;
         return (
@@ -16795,222 +17097,420 @@ export default function App() {
           <td className="ux-c">{w.ovr != null ? uxBadge(w.ovr) : <span className="ux-dim">Blank</span>}</td>
           <td className="ux-n"><span className="ux-uce-st ux-rev">For Review</span></td>
         </tr>); }
-      const typing = ucType?.i === i, from = ucFrom?.i === i ? ucFrom : null;
       return (
-        <tr key={i} {...common} className={"ux-uce-r ux-uce-open" + (typing || from ? " ux-on" : "") + (swapOn ? " ux-uce-target" : "")}
-          onClick={() => { if (ucCall && nt) { shMovePlayer({ id: ucCall.id, from: { k: ucCall.k, i: ucCall.i } }, k, i); setUcCall(null); return; } if (swapOn) moveTo(ucSwap, i); }}>
+        <tr key={i} {...common} className={"ux-uce-r ux-uce-open" + (on || (ucPick == null && lit === i) ? " ux-on" : "") + (swapOn ? " ux-uce-target" : "")}
+          onClick={() => { if (swapOn) { moveTo(ucSwap, i); return; } setUcPick(on ? null : i); setUcForOff(false); }}>
           <td><span className="ux-uce-pos" style={{ color: POS_CLR[place] }}>{place}</span></td>
-          <td colSpan={6}>
-            <div className="ux-uce-add">
-              {typing ? (
-                <input className="ux-ed-in ux-uce-in" autoFocus value={ucType.v} placeholder="Name, Or (Rating) Name, Position, Age" aria-label={"New Player, " + place}
-                  onChange={e => setUcType({ i, v: e.target.value })}
-                  onKeyDown={e => { if (e.key === "Escape") setUcType(null);
-                    if (e.key === "Enter") { e.preventDefault(); if (!ucType.v.trim()) { setUcType(null); return; }
-                      if (typeIn(i, ucType.v)) { const nx = nextOpen(i); setUcType(nx != null ? { i: nx, v: "" } : null); } } }}
-                  onBlur={() => setTimeout(() => setUcType(x => (x && x.i === i && !x.v.trim() ? null : x)), 150)} />)
-                : <button type="button" className="ux-btnreset ux-uce-plus" onClick={(e) => { e.stopPropagation(); if (swapOn) { moveTo(ucSwap, i); return; } setUcFrom(null); setUcType({ i, v: "" }); }}>
-                    <i aria-hidden="true">{uxIcon("plus", "ux-xs")}</i>Add Player</button>}
-              {(typing || from) && !swapOn && (nt ? [["nat", "Nationals"]] : [["fa", "Free Agents"], ["mine", "My Clubs"]]).map(([s, l]) => (
-                <button key={s} type="button" className={"ux-btnreset ux-btn ux-uce-src" + (from?.src === s ? " ux-on" : "")} onMouseDown={e => e.preventDefault()}
-                  onClick={(e) => { e.stopPropagation(); setUcType(null); setUcFrom(from?.src === s ? null : { i, src: s, q: "" }); }}>{l}</button>))}
-            </div>
-            {from && (
-              <div className="ux-uce-pool" onClick={e => e.stopPropagation()}>
-                <input className="ux-ed-in" autoFocus placeholder="Search" aria-label="Search" value={from.q} onChange={e => setUcFrom({ ...from, q: e.target.value })}
-                  onKeyDown={e => { if (e.key === "Escape") setUcFrom(null); }} />
-                <div className="ux-uce-pl">{pool(from.src, i, from.q).map(pid => { const r = recNow(pid), at = whereIs.get(pid)?.club;
-                  return (
-                  <button key={pid} type="button" className="ux-btnreset ux-uce-pr" onClick={() => take(pid, i)}>
-                    <b style={{ ...mono, color: POS_CLR[posOfId(pid)] }}>{posText(ownOfId(pid)) || posOfId(pid)}</b>
-                    <span className="ux-uce-pn"><SlideName text={fullDisplayName(r?.name || pid)} /></span>
-                    <span className="ux-dim">{at ? <SlideName text={edTeamRec(at.key)?.name.trim() || ""} /> : r?.born ? ageOf(r.born) : ""}</span>
-                    {manBadge(pid, r?.ovr)}</button>); })}
-                  {!pool(from.src, i, from.q).length && <div className="ux-empty-sm">None</div>}</div>
-              </div>)}
-          </td>
+          <td colSpan={6}><div className="ux-uce-add"><span className="ux-uce-plus"><i aria-hidden="true">{uxIcon("plus", "ux-xs")}</i>{on || (ucPick == null && lit === i) ? (nt ? "Pick From Nationals" : "Choosing") : nt ? "Call Up" : "Add Player"}</span></div></td>
         </tr>);
     };
+    return uxPanel("Squad", (<>
+      {(shMsg || ucCall) && <span className="ux-uce-msg">{shMsg}</span>}
+      <span className="ux-ph-gap" />{extra}</>),
+      <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-sq">
+        <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 78 }} /></colgroup>
+        <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>Nat</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th></tr></thead>
+        <tbody>{Array.from({ length: Math.min(11, sq.length) }, (_, i) => row(i))}<tr className="ux-sep"><td colSpan={7} /></tr>
+          {Array.from({ length: Math.max(0, sq.length - 11) }, (_, x) => row(11 + x))}</tbody>
+      </table></div>, true);
+  };
+  // ── A SIDE'S PAGE, EDITING: a club or a national side, the same page ──
+  const renderUxClubEdit = (t) => {
+    const k = t.rkey, T = edTeamRec(k);
+    if (!T) return renderUxClub(t);
+    const nt = isNational(T), sq = edSq(T), lab = edLab(T), staged = shNewAt(k), open = ucOpen(T), own = nt ? T.code : T.nation;
+    const pickId = ucPick != null ? sq[ucPick] : null, pickNew = ucPick != null && !pickId ? staged.get(ucPick) : null;
+    const target = ucPick != null && !pickId && !pickNew ? ucPick : open[0] ?? null;
+    const myKeys = new Set(edHomeSides.map(teamKey));
+    const toBench = (i) => { const id = sq[i]; if (!id || i >= 11) return;
+      const fitCost = (x, j) => posFitCost(ownOfId(x).length ? ownOfId(x) : [lab[j]], lab[j]);
+      const subs = sq.map((v, x) => (x >= 11 && v ? x : -1)).filter(x => x >= 0).sort((a, b) => fitCost(sq[a], i) - fitCost(sq[b], i) || (recNow(sq[b])?.ovr ?? 0) - (recNow(sq[a])?.ovr ?? 0));
+      if (subs.length) { shMovePlayer({ id, from: { k, i } }, k, subs[0]); setUcPick(subs[0]); } else shSay("Someone Has To Take His Place In The Eleven"); };
+    const release = (i) => { const id = sq[i]; if (!id) return; shRelease({ id, from: { k, i } }); setUcPick(null); };
+    const ntOf = (id) => curRecs.teams.find(x => isNational(x) && x.code === recNow(id)?.nat) || null;
+    const callUp = (i) => { const id = sq[i], N = ntOf(id); if (!N) return; const nk = teamKey(N), nsq = edSq(N);
+      if (nsq.includes(id)) return shSay("Already In The Squad");
+      const j = ucOpen(N)[0];
+      if (j != null) { shMovePlayer({ id, from: { k, i } }, nk, j); shSay(`Called Up To ${N.name.trim()}`); return; }
+      shSay(`${N.name.trim()} Is Full: Swap Him In From Its Page`); };
+    const take = (id, i) => { const at = whereIs.get(id)?.club;
+      shMovePlayer({ id, from: !nt && at && at.key !== k ? { k: at.key, i: edSq(edTeamRec(at.key)).indexOf(id) } : { pool: nt ? "nat" : "fa" } }, k, i); setUcPick(null); };
+    const addNew = (man) => { shPut({ ...draft, new: [...shNew, { id: edUid(), ...man }] }); setUcPick(null); };
+    // The man picked: his card and what can be done with him.
+    const card = (() => {
+      if (pickNew) { const n = pickNew;
+        return uxPanel("Player", null, (
+          <div className="ux-pbody ux-uce-card">
+            <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={n.name} size="100%" /></span>
+              <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(n.name)} /></b><span>{edDots(posText(n.pos), n.born ? `Age ${ageOf(n.born)}` : null, natOptions.name.get(n.nat) || n.nat)}</span></span>
+              {n.ovr != null ? uxBadge(n.ovr, true) : null}</div>
+            <dl className="ux-uce-dl">
+              <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
+              {!n.batch && <div><dt>Rating</dt><dd><input className="ux-ed-in ux-uce-rt" type="number" min={25} max={99} style={mono} aria-label="Rating" value={n.ovr ?? ""} placeholder="Blank"
+                onChange={e => { const v = parseInt(e.target.value, 10); shSetNew(n.id, { ovr: Number.isFinite(v) ? v : null }); }} />
+                <span className="ux-dim">Level <span style={mono}>{showOvr(clubLevel(T, posList(n.pos), judge))}</span></span></dd></div>}
+              <div><dt>On Send</dt><dd><span className={"ux-uce-st " + (!n.batch && ucLive(T, n) ? "ux-live" : "ux-rev")}>{!n.batch && ucLive(T, n) ? "Live" : "For Review"}</span></dd></div>
+            </dl>
+            <div className="ux-uce-acts">{!n.batch && <button type="button" className="ux-btnreset ux-uce-act ux-bad" onClick={() => { shDropNew(n.id); setUcPick(null); }}>{uxIcon("close", "ux-s")}Remove</button>}</div>
+          </div>), true); }
+      if (!pickId) return null;
+      const r = recNow(pickId), nm = r?.name || pickId, N = ntOf(pickId), inNT = N && edSq(N).includes(pickId), lockd = edLockedMen.has("p:" + pickId);
+      const ask = ucPos?.id === pickId ? ucPos : null, v = pstats && !veiled(pickId) ? trValueAll("player", pickId) : null;
+      return uxPanel("Player", canOpenMan(nm) ? <button type="button" className="ux-btnreset ux-btn" onClick={() => openMan(nm)}>Open His Page{uxIcon("fwd", "ux-s")}</button> : null, (
+        <div className="ux-pbody ux-uce-card">
+          <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={nm} size="100%" /></span>
+            <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(nm)} /></b><span>{edDots(posText(ownOfId(pickId)) || posOfId(pickId), r?.born ? `Age ${ageOf(r.born)}` : null, natOptions.name.get(r?.nat) || r?.nat)}</span></span>
+            {manBadge(pickId, r?.ovr, true)}</div>
+          <dl className="ux-uce-dl">
+            <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
+            <div><dt>Positions</dt><dd>{ask ? (
+                <span className="ux-uce-posask">
+                  {[["a", true], ["b", false]].map(([f, need]) => (
+                    <select key={f} className="ux-ed-in" aria-label={need ? "Position" : "Second Position"} value={ask[f]} onChange={e => setUcPos({ ...ask, [f]: e.target.value })}>
+                      {!need && <option value="">None</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select>))}
+                  <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => { shPut(draftWith(draft, recBase, pickId, { pos: posList([ask.a, ask.b].filter(Boolean)) }, "players")); setUcPos(null); }}>{overseer ? "Set" : "Request"}</button>
+                  <button type="button" className="ux-btnreset ux-cb-x" aria-label="Cancel" onClick={() => setUcPos(null)}>{uxIcon("close", "ux-s")}</button></span>)
+              : <><span className="ux-uce-ptags">{ownOfId(pickId).map(p => <b key={p} style={{ ...mono, color: POS_CLR[p] }}>{p}</b>)}</span>
+                  <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setUcPos({ id: pickId, a: ownOfId(pickId)[0] || "CM", b: ownOfId(pickId)[1] || "" })}>{overseer ? "Change" : "Request Change"}</button></>}</dd></div>
+            <div><dt>Value</dt><dd style={mono}>{v != null ? moneyLabel(v) : "–"}</dd></div>
+          </dl>
+          {lockd ? <div className="ux-uce-note">Waiting On A Request</div> : (
+          <div className="ux-uce-acts">
+            <button type="button" className={"ux-btnreset ux-uce-act" + (ucSwap === ucPick ? " ux-on" : "")} onClick={() => setUcSwap(ucSwap === ucPick ? null : ucPick)}>{uxIcon("swap", "ux-s")}{ucSwap === ucPick ? "Pick Who To Swap With" : "Swap"}</button>
+            {ucPick < 11 && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => toBench(ucPick)}>{uxIcon("back", "ux-s")}Move To Bench</button>}
+            {!nt && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => { setTab("editor"); setEdSec("trades"); }}>{uxIcon("swap", "ux-s")}Trade</button>}
+            {!nt && N && myKeys.has(teamKey(N)) && !inNT && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => callUp(ucPick)}>{uxIcon("up", "ux-s")}Call Up</button>}
+            {uxArmBtn("rel:" + pickId, <>{uxIcon("close", "ux-s")}{nt ? "Drop" : "Release"}</>, nt ? "Confirm Drop" : "Confirm Release", () => release(ucPick))}
+          </div>)}
+        </div>), !nt);
+    })();
     // CHECKS: the side read in words.
     const gks = [...sq.filter(Boolean).map(id => ownOfId(id)), ...[...staged.values()].map(n => posList(n.pos))].filter(p => p.includes("GK")).length;
     const xiGap = sq.slice(0, 11).filter((v, i) => !v && !staged.has(i)).length, oopN = sq.slice(0, 11).filter((id, i) => id && uxOop(ownOfId(id), lab[i])).length;
+    const noBadge = badgeHas(T.code, T.file === "ARTERRA" ? "arterra" : "avium") === false;
     const checks = [
       [xiGap === 0, xiGap ? `${xiGap} Empty In The Eleven` : "Eleven Complete"],
-      [gks >= 2, gks >= 2 ? "Two Goalkeepers" : gks === 1 ? "One Goalkeeper" : "No Goalkeeper"],
+      [gks >= 2, gks >= 2 ? (gks === 2 ? "Two Goalkeepers" : `${gks} Goalkeepers`) : gks === 1 ? "One Goalkeeper" : "No Goalkeeper"],
       [!open.length, open.length ? `${open.length} Open Place${open.length > 1 ? "s" : ""}` : "Squad Full"],
       [!!idOf(T.manager), idOf(T.manager) ? "Manager" : "No Manager"],
       ...(oopN ? [[false, `${oopN} Out Of Position`]] : []),
+      ...(noBadge ? [[false, "No Badge", "badge"]] : []),
     ];
-    // CHANGES: this side's part of the cart, each with its undo, marked Live or For Review.
     const mineItems = cartList.filter(it => it.groups.some(g => g.kind === "teams" && g.id === k) || it.rec?.side === k || it.trade?.side === k || it.trade?.other === k
-      || it.groups.some(g => g.kind === "players" && sq.includes(g.id)));
-    const asks = preview?.requests || [];
-    const itemLive = (it) => { if (overseer) return true; if (it.trade) return false;
-      if (it.rec) return it.rec.what === "players" && !!it.rec.side && ucLive(edTeamRec(it.rec.side), it.rec);
-      return !asks.some(r => (r.kind === "details" && it.groups.some(g => g.kind === "teams" && g.id === r.team)) || (r.kind === "pos" && it.groups.some(g => g.kind === "players" && g.id === r.player))); };
-    const nLive = mineItems.filter(itemLive).length, others = cartList.length - mineItems.length;
-    const problems = saveState?.errors?.length ? saveState.errors : session && cartList.length ? preview?.errors || [] : [];
-    const busy = !!saveState?.busy;
-    const chRow = (it) => { const live = itemLive(it);
-      if (it.rec) { const n = it.rec, pos = posList(n.pos)[0];
-        return (
-        <div key={it.key} className="ux-uce-ch">
-          <b className="ux-uce-chp" style={{ ...mono, color: POS_CLR[pos] }}>{pos || "–"}</b>
-          <span className="ux-uce-chn"><b><SlideName text={n.what === "batch" ? `${(n.men || []).length} Players` : fullDisplayName(n.name || "")} /></b><span>New {n.what === "managers" ? "Manager" : "Player"}</span></span>
-          <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>
-          {n.ovr != null ? uxBadge(n.ovr) : <span className="ux-dim">–</span>}
-          <button type="button" className="ux-btnreset ux-cb-x" title="Undo" aria-label="Undo" disabled={busy} onClick={() => removeItem(it)}>{uxIcon("undo", "ux-s")}</button>
-        </div>); }
-      return (
-        <div key={it.key} className="ux-uce-ch ux-uce-chg">
-          <div className="ux-uce-chh">
-            <span className="ux-uce-chn"><b><SlideName text={it.trade ? "Trade" : it.groups.map(g => (g.kind === "players" ? fullDisplayName(g.name) : g.name)).join(", ")} /></b>
-              <span>{it.trade ? edTradeReq(it.trade).otherName : it.groups.flatMap(g => g.rows.map(c => FIELD_LBL[c.field] || c.field)).filter((x, i, a) => a.indexOf(x) === i).join(", ")}</span></span>
-            <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>
-            <button type="button" className="ux-btnreset ux-cb-x" title="Undo" aria-label="Undo" disabled={busy} onClick={() => removeItem(it)}>{uxIcon("undo", "ux-s")}</button>
-          </div>
-          {!it.trade && it.groups.map(g => g.rows.filter(c => c.field !== "squad").map(c => uxCbRow(c.field + g.key, FIELD_LBL[c.field] || c.field, renderChange(c, draft.teams?.[c.id]?.formation))))}
-        </div>); };
-    // THE MAN PICKED: his card and what can be done with him.
-    const card = (() => {
-      if (pickNew) { const n = pickNew;
-        return (<>
-          <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={n.name} size="100%" /></span>
-            <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(n.name)} /></b><span>{edDots(posText(n.pos), n.born ? `Age ${ageOf(n.born)}` : null, natOptions.name.get(n.nat) || n.nat)}</span></span>
-            {n.ovr != null ? uxBadge(n.ovr, true) : null}</div>
-          <dl className="ux-uce-dl">
-            <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
-            {!n.batch && <div><dt>Rating</dt><dd><input className="ux-ed-in ux-uce-rt" type="number" min={25} max={99} style={mono} aria-label="Rating" value={n.ovr ?? ""} placeholder="Blank"
-              onChange={e => { const v = parseInt(e.target.value, 10); shSetNew(n.id, { ovr: Number.isFinite(v) ? v : null }); }} />
-              <span className="ux-dim">Level <span style={mono}>{showOvr(clubLevel(T, posList(n.pos), judge))}</span></span></dd></div>}
-            <div><dt>On Send</dt><dd><span className={"ux-uce-st " + (!n.batch && ucLive(T, n) ? "ux-live" : "ux-rev")}>{!n.batch && ucLive(T, n) ? "Live" : "For Review"}</span></dd></div>
-          </dl>
-          <div className="ux-uce-acts">
-            {!n.batch && <button type="button" className="ux-btnreset ux-uce-act ux-bad" onClick={() => { shDropNew(n.id); setUcPick(null); }}>{uxIcon("close", "ux-s")}Remove</button>}
-          </div></>); }
-      if (!pickId) return <div className="ux-empty">Pick A Player</div>;
-      const r = recNow(pickId), nm = r?.name || pickId, N = ntOf(pickId), inNT = N && edSq(N).includes(pickId), lockd = edLockedMen.has("p:" + pickId);
-      const ask = ucPos?.id === pickId ? ucPos : null, v = valOf(pickId);
-      return (<>
-        <div className="ux-uce-ph"><span className="ux-uce-face"><PlayerShot name={nm} size="100%" /></span>
-          <span className="ux-uce-pid"><b><SlideName text={fullDisplayName(nm)} /></b><span>{edDots(posText(ownOfId(pickId)) || posOfId(pickId), ageOfId(pickId) != null ? `Age ${ageOfId(pickId)}` : null, natOptions.name.get(r?.nat) || r?.nat)}</span></span>
-          {manBadge(pickId, r?.ovr, true)}</div>
-        <dl className="ux-uce-dl">
-          <div><dt>Plays</dt><dd>{ucPick < 11 ? "Starting Eleven" : "Bench"}, {lab[ucPick]}</dd></div>
-          <div><dt>Rating</dt><dd>{overseer
-            ? <input className="ux-ed-in ux-uce-rt" type="number" min={25} max={99} style={mono} aria-label="Rating" value={r?.ovr ?? ""}
-                onChange={e => { const x = parseInt(e.target.value, 10); if (x >= 25 && x <= 99) shPut(draftWith(draft, recBase, pickId, { ovr: x }, "players")); }} />
-            : <>{manBadge(pickId, r?.ovr)}{edLock}</>}</dd></div>
-          <div><dt>Positions</dt><dd>{ask ? (
-              <span className="ux-uce-posask">
-                {[["a", true], ["b", false]].map(([f, need]) => (
-                  <select key={f} className="ux-ed-in" aria-label={need ? "Position" : "Second Position"} value={ask[f]} onChange={e => setUcPos({ ...ask, [f]: e.target.value })}>
-                    {!need && <option value="">None</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select>))}
-                <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => { shPut(draftWith(draft, recBase, pickId, { pos: posList([ask.a, ask.b].filter(Boolean)) }, "players")); setUcPos(null); }}>{overseer ? "Set" : "Request"}</button>
-                <button type="button" className="ux-btnreset ux-cb-x" aria-label="Cancel" onClick={() => setUcPos(null)}>{uxIcon("close", "ux-s")}</button></span>)
-            : <><span className="ux-uce-ptags">{ownOfId(pickId).map(p => <b key={p} style={{ ...mono, color: POS_CLR[p] }}>{p}</b>)}</span>
-                <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setUcPos({ id: pickId, a: ownOfId(pickId)[0] || "CM", b: ownOfId(pickId)[1] || "" })}>{overseer ? "Change" : "Request Change"}</button></>}</dd></div>
-          <div><dt>Value</dt><dd style={mono}>{v != null ? moneyLabel(v) : "–"}</dd></div>
-        </dl>
-        {lockd ? <div className="ux-uce-note">Waiting On A Request</div> : (
-        <div className="ux-uce-acts">
-          <button type="button" className={"ux-btnreset ux-uce-act" + (ucSwap === ucPick ? " ux-on" : "")} onClick={() => setUcSwap(ucSwap === ucPick ? null : ucPick)}>{uxIcon("swap", "ux-s")}{ucSwap === ucPick ? "Pick Who To Swap With" : "Swap"}</button>
-          {ucPick < 11 && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => toBench(ucPick)}>{uxIcon("back", "ux-s")}Move To Bench</button>}
-          {!nt && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => { setTab("editor"); setEdSec("trades"); }}>{uxIcon("swap", "ux-s")}Trade</button>}
-          {!nt && N && myKeys.has(teamKey(N)) && !inNT && <button type="button" className="ux-btnreset ux-uce-act" onClick={() => callUp(ucPick)}>{uxIcon("up", "ux-s")}Call Up</button>}
-          {uxArmBtn("rel:" + pickId, <>{uxIcon("close", "ux-s")}{nt ? "Drop" : "Release"}</>, nt ? "Confirm Drop" : "Confirm Release", () => release(ucPick))}
-        </div>)}</>);
-    })();
-    // THE PROFILE, as the page has it, each section with Edit.
-    const det = ucDet, st = stripVenue(T.stadium || ""), cap = venueCap(T.stadium) || "", city = stripVenue(T.location || "");
-    const secH = (title, sec, init, lockIt) => (
-      <h3 className="ux-psec-h ux-uce-sh">{title}{lockIt ? <span className="ux-uce-lk">{edLock}</span>
-        : <button type="button" className="ux-btnreset ux-uce-edit" onClick={() => setUcDet(det?.sec === sec ? null : { sec, ...init })}>{uxIcon("edit", "ux-xs")}{det?.sec === sec ? "Close" : "Edit"}</button>}</h3>);
-    const mgrId = idOf(T.manager), mgr = mgrId ? mgrNow(mgrId) : null;
-    const freeMgrs = det?.sec === "manager" ? curRecs.managers.filter(m => !edSidesOfMgr(m.id).some(x => !isNational(x)) && (arterraOn || !artNats.has(m.nat))
-      && (!det.q || (" " + edFold(m.name)).includes(" " + edFold(det.q)))).sort((a, b) => b.ovr - a.ovr).slice(0, 30) : [];
+      || it.groups.some(g => g.kind === "players" && sq.includes(g.id)) || (it.portrait && sq.includes(it.portrait.player)));
+    const third = nt
+      ? uxNationals(T, k, sq, lab, ucPick, (id, at) => take(id, at), pickId && !edLockedMen.has("p:" + pickId) ? (
+          <div className="ux-uce-pacts">
+            <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => openMan(recNow(pickId)?.name)}>Open His Page{uxIcon("fwd", "ux-xs")}</button>
+            {ucPick < 11 && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => toBench(ucPick)}>{uxIcon("back", "ux-xs")}Move To Bench</button>}
+            {uxArmBtn("rel:" + pickId, <>{uxIcon("close", "ux-xs")}Drop</>, "Confirm Drop", () => release(ucPick))}
+          </div>) : null)
+      : pickId || pickNew ? card
+      : uxAddPanel(T, k, target, sq, lab, (id) => take(id, target), addNew);
+    const extra = !nt && open.length > 0 ? <><span className="ux-uce-open-n"><b style={mono}>{open.length}</b> Open</span>
+      <button type="button" className="ux-btnreset ux-btn" onClick={() => edGoMany(k)}>{uxIcon("expand", "ux-s")}Many</button></> : null;
     return (
-      <div className="ux-body ux-uce">
-        <div className="ux-col">
-          {uxPanel(nt ? "Team" : "Club", null, (
-            <div className="ux-psb">
-              <div className="ux-prof ux-uce-prof">
-                <TeamCrest team={t} size={120} />
-                <FitLine className="ux-prof-nm" mid>{T.name.trim()}</FitLine>
-                <span className="ux-prof-sub" style={mono}>{T.code}{!overseer && <span className="ux-uce-req" title="The Overseer's">{uxIcon("lock", "ux-xs")}Request</span>}</span>
-              </div>
-              <section className="ux-psec">{secH("Kits", "kits", { home: T.home, away: T.away })}
-                {det?.sec === "kits" ? (
-                  <div className="ux-uce-form">{["home", "away"].map(f => (
-                    <label key={f}><span>{f === "home" ? "Home" : "Away"}</span>
-                      <input type="color" className="ux-uce-col" value={String(T[f] || "#888888")} onChange={e => ucCell(k, f, e.target.value)} />
-                      <span style={mono}>{String(T[f] || "").toUpperCase()}</span></label>))}</div>)
-                  : <div className="ux-pkits">{[["Home", T.home], ["Away", T.away]].map(([l, c]) => (
-                    <div key={l} className="ux-pkit"><svg className="ux-kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z" fill={c || "var(--ux-panel-3)"} stroke="rgba(255,255,255,.55)" strokeWidth="1" /></svg>
-                      <span><b>{l}</b><span style={mono}>{String(c || "–").toUpperCase()}</span></span></div>))}</div>}</section>
-              <section className="ux-psec">{secH("Stadium", "stadium", { g: st, c: cap, city })}
-                {det?.sec === "stadium" ? (
-                  <div className="ux-uce-form">
-                    <label><span>Ground</span><input className="ux-ed-in" value={det.g} onChange={e => setUcDet({ ...det, g: e.target.value })} onBlur={() => det.g.trim() && det.g.trim() !== st && ucCell(k, "ground", det.g)} /></label>
-                    <label><span>Capacity</span><input className="ux-ed-in" style={mono} value={det.c} onChange={e => setUcDet({ ...det, c: e.target.value })} onBlur={() => String(det.c) !== String(cap) && ucCell(k, "cap", det.c)} /></label>
-                    <label><span>City</span><UxSidePick label="City" value={city} placeholder="Search Cities" onPick={it => ucCell(k, "city", it.k)} groups={edCities} /></label>
-                  </div>)
-                  : <div className="ux-pstad-cap"><b><FitLine>{st || "–"}</FitLine></b><span>{city && <span>{city}</span>}{cap && <span>Capacity {cap}</span>}</span></div>}</section>
-              <section className="ux-psec">{secH("Manager", "manager", { q: "" })}
-                {det?.sec === "manager" ? (
-                  <div className="ux-uce-form">
-                    <input className="ux-ed-in" autoFocus placeholder="Search Free Managers" aria-label="Search Free Managers" value={det.q} onChange={e => setUcDet({ ...det, q: e.target.value })} />
-                    <div className="ux-uce-pl ux-uce-mgrs">{freeMgrs.map(m => (
-                      <button key={m.id} type="button" className="ux-btnreset ux-uce-pr" onClick={() => { shMoveMgr({ id: m.id, from: {} }, k); setUcDet(null); }}>
-                        <span className="ux-uce-pn"><SlideName text={fullDisplayName(m.name)} /></span><span className="ux-dim">{uxStyleName(edStyleOfMgr(m.id))}</span>{uxBadge(m.ovr)}</button>))}
-                      {!freeMgrs.length && <div className="ux-empty-sm">None</div>}</div>
-                    {mgr && uxArmBtn("sack:" + k, "Sack " + fullDisplayName(mgr.name), "Confirm Sack", () => { shSack({ from: { k } }); setUcDet(null); })}
-                  </div>)
-                  : <div className="ux-pmgr"><span className="ux-pmgr-face" aria-hidden="true"><PlayerShot name={mgr?.name || ""} size="100%" /></span>
-                      <div className="ux-pmgr-id"><span className="ux-pmgr-nm">{mgr ? fullDisplayName(mgr.name) : "None"}{mgr && <span style={{ ...ovrBlock(mgr.ovr, true), ...mono }}>{showOvr(mgr.ovr)}</span>}</span>
-                        <span className="ux-pmgr-st">{uxStyleName(styleKeyOf(T.style) || "balanced")}<span style={mono}>{String(T.formation || "4-3-3").trim()}</span></span></div></div>}</section>
-            </div>), true)}
-        </div>
-        <div className="ux-col">
-          {uxPanel("Squad", (<>
-            {(shMsg || ucCall) && <span className="ux-uce-msg">{ucCall && nt ? `Call Up ${fullDisplayName(recNow(ucCall.id)?.name || "")}: Pick Who Makes Way` : shMsg}</span>}
-            <span className="ux-ph-gap" />
-            {ucCall && <button type="button" className="ux-btnreset ux-btn" onClick={() => setUcCall(null)}>Cancel</button>}
-            {open.length > 0 && <span className="ux-uce-open-n"><b style={mono}>{open.length}</b> Open</span>}
-            {open.length > 0 && <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => setUcFill({ text: "", amin: nt ? 20 : 18, amax: shCollege(k) ? 21 : 32, mode: "level" })}>{uxIcon("plus", "ux-s")}Fill Open Places</button>}</>),
-            <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-sq">
-              <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 78 }} /></colgroup>
-              <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>Nat</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th></tr></thead>
-              <tbody>{Array.from({ length: Math.min(11, nPlace) }, (_, i) => row(i))}<tr className="ux-sep"><td colSpan={7} /></tr>
-                {Array.from({ length: Math.max(0, nPlace - 11) }, (_, x) => row(11 + x))}</tbody>
-            </table></div>, true)}
-        </div>
-        <div className="ux-col">
-          {uxPanel("Player", pickId && playerByName.has(recNow(pickId)?.name) ? <button type="button" className="ux-btnreset ux-btn" onClick={() => openPlayer(recNow(pickId).name)}>Open His Page{uxIcon("fwd", "ux-s")}</button> : null,
-            <div className="ux-pbody ux-uce-card">{card}</div>, true)}
-        </div>
+      <div className="ux-body ux-uce ux-uce2">
+        <div className="ux-col">{uxTeamCol(T, k, { foot: overseer && !nt ? <section className="ux-psec ux-uce-danger">{uxArmBtn("rmclub:" + k, <>{uxIcon("trash", "ux-s")}Remove Club</>, "Confirm Remove", () => shRemoveClub(k))}</section> : null })}</div>
+        <div className="ux-col">{uxSquadEdit(T, k, sq, lab, staged, own, extra, nt ? null : target)}</div>
+        <div className="ux-col">{third}{nt && pickNew ? card : null}</div>
         <div className="ux-col">
           {uxPanel("Checks", null, (
-            <div className="ux-uce-checks">{checks.map(([ok, l]) => (
+            <div className="ux-uce-checks">{checks.map(([ok, l, kind]) => (
               <div key={l} className={"ux-uce-chk" + (ok ? " ux-ok" : "")}>{ok ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{l}</span>
-                {!ok && /Open Place/.test(l) && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setUcFill({ text: "", amin: nt ? 20 : 18, amax: shCollege(k) ? 21 : 32, mode: "level" })}>Fill</button>}</div>))}</div>), false)}
-          {uxPanel("Changes", <b className="ux-drop-n" style={mono}>{mineItems.length}</b>, (<>
-            <div className="ux-pbody ux-uce-chs">{mineItems.length ? mineItems.map(chRow) : <div className="ux-empty">None</div>}</div>
-            <div className="ux-uce-foot">
-              <div className={"ux-uce-sum" + (problems.length || saveState?.err ? " ux-bad" : saveState?.ok ? " ux-good" : "")} role={problems.length ? "alert" : "status"}>
-                {problems.length ? problems.slice(0, 3).map((p, i) => <div key={i}>{p}</div>)
-                  : saveState?.busy ? "Sending"
-                  : saveState?.ok && !cartList.length ? (saveState.applied || saveState.asked ? <>Sent{saveState.applied ? <>, <b style={mono}>{saveState.applied}</b> Live</> : null}{saveState.asked ? <>, <b style={mono}>{saveState.asked}</b> For Review</> : null}</> : "Nothing To Send")
-                  : saveState?.err ? saveState.err
-                  : <><b style={mono}>{nLive}</b> Live · <b style={mono}>{mineItems.length - nLive}</b> For Review{others > 0 && <> · <b style={mono}>{others}</b> Elsewhere</>}</>}
-              </div>
-              {session ? <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !cartList.length || problems.length > 0} onClick={saveCart}>{busy ? "Sending" : "Send"}</button>
-                : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={signIn}>Sign In</button>}
-            </div></>), true, null, "ux-uce-chp-panel")}
+                {kind === "badge" && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setBadgeHelp({ extra: [{ code: T.code, name: T.name.trim() }] })}>How To Send</button>}</div>))}</div>), false)}
+          {uxChangesPanel(mineItems)}
         </div>
-        {ucFill && renderUcFill(T)}
+        {renderBadgeHelp()}
       </div>);
   };
+  // ── A NEW CLUB'S DRAFT PAGE: the club page, blank, filled where it reads (the user, 25 November 2026: "Clubs and leagues
+  // should be intuitive and connected") ──
+  const edNewClub = (nation, group, lgId = null) => {
+    const c = shClubSeed(nation, group);
+    if (lgId) shPut({ ...draft, new: shNew.map(n => (n.id === lgId ? { ...n, clubs: [...(n.clubs || []), c] } : n)) });
+    else shPut({ ...draft, new: [...shNew, { ...c, what: "teams", nation }] });
+    setTab("editor"); setEdSec("club"); setEdDraftK("new:" + c.id); setUcPick(null); setUcDet(null); };
+  const edNewLeague = (nation) => { const tiers = (curRecs.leagues || []).filter(l => l.nation === nation).map(l => l.tier ?? 1);
+    const id = edUid(); shPut({ ...draft, new: [...shNew, { id, what: "leagues", nation, name: "", tier: tiers.length ? Math.min(5, Math.max(...tiers) + 1) : 1, cup: null, clubs: [] }] });
+    setTab("editor"); setEdSec("league"); setEdDraftK(id); };
+  const edClubTodo = (c) => { const sq = padSq(c.squad);
+    return [!(c.name || "").trim() && "Name", !/^[A-Z0-9]{2,4}$/.test(c.code || "") && "Code", !c.location && "City", !stripVenue(c.stadium || "") && "Ground",
+      !c.manager && "Manager", sq.slice(0, 11).some(v => !v) && `${sq.slice(0, 11).filter(v => !v).length} In The Eleven`].filter(Boolean); };
+  const renderClubDraft = (k) => {
+    const x = shClubOf(k);
+    if (!x) return <div className="ux-body"><div className="ux-panel ux-grow"><div className="ux-empty">This New Club Is Gone</div></div></div>;
+    const c = x.c, T = shRowOf(k), raw = padSq(c.squad), sq = raw.map(v => (typeof v === "string" ? v : null)), lab = slotLabels(String(c.formation || "4-3-3"), raw.length, true);
+    const staged = new Map(raw.map((v, i) => [i, v]).filter(([, v]) => v && typeof v === "object").map(([i, v]) => [i, { ...v, id: k + ":" + i }]));
+    const open = raw.map((v, i) => (!v ? i : -1)).filter(i => i >= 0), target = ucPick != null && !raw[ucPick] ? ucPick : open[0] ?? null;
+    const nation = c.nation || shNew.find(n => n.id === x.lg)?.nation || "", lgDraft = x.lg ? shNew.find(n => n.id === x.lg) : null;
+    const leagues = (curRecs.leagues || []).filter(l => l.nation === nation).sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9));
+    const take = (id, i) => { const at = whereIs.get(id)?.club; shMovePlayer({ id, from: at ? { k: at.key, i: edSq(edTeamRec(at.key)).indexOf(id) } : { pool: "fa" } }, k, i); setUcPick(null); };
+    const addNew = (man) => { const s = padSq(c.squad); const { what, side, at, ...m } = man; s[man.at] = m; shSetClub(k, { squad: s }); setUcPick(null); };
+    const todo = edClubTodo(c), item = cartList.find(it => it.rec && (it.rec.id === c.id || it.rec.id === x.lg));
+    const leagueSel = lgDraft
+      ? <button type="button" className="ux-btnreset ux-uce-lg" onClick={() => { setEdSec("league"); setEdDraftK(lgDraft.id); }}><SlideName text={lgDraft.name || "New League"} />{uxIcon("fwd", "ux-xs")}</button>
+      : <label className="ux-uce-f"><span>League</span>{uxPick("League", c.group || "", leagues.map(l => [l.name, l.name]), v => shSetClub(k, { group: v }))}</label>;
+    const row = (i) => { const v = raw[i], on = ucPick === i, place = lab[i];
+      if (typeof v === "string") { const r = recNow(v);
+        return (<tr key={i} className={"ux-uce-r" + (on ? " ux-on" : "")} onClick={() => setUcPick(on ? null : i)}>
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[place] }}>{place}</span></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={r?.name || ""} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(r?.name || v)} /></span></div></td>
+          <td className="ux-n" style={mono}>{r?.born ? ageOf(r.born) : "–"}</td><td className="ux-c">{manBadge(v, r?.ovr)}</td>
+          <td className="ux-c"><button type="button" className="ux-btnreset ux-cb-x" aria-label="Take Out" onClick={(e) => { e.stopPropagation(); const s = padSq(c.squad); s[i] = null; shSetClub(k, { squad: s }); }}>{uxIcon("close", "ux-xs")}</button></td></tr>); }
+      if (v) return (<tr key={i} className={"ux-uce-r ux-uce-staged" + (on ? " ux-on" : "")} onClick={() => setUcPick(on ? null : i)}>
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[posList(v.pos)[0]] || POS_CLR[place] }}>{place}</span></td>
+          <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={v.name} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(v.name)} /></span><span className="ux-uce-new">New</span></div></td>
+          <td className="ux-n" style={mono}>{v.born ? ageOf(v.born) : "–"}</td><td className="ux-c">{v.ovr != null ? uxBadge(v.ovr) : <span className="ux-dim">Blank</span>}</td>
+          <td className="ux-c"><button type="button" className="ux-btnreset ux-cb-x" aria-label="Take Out" onClick={(e) => { e.stopPropagation(); const s = padSq(c.squad); s[i] = null; shSetClub(k, { squad: s }); }}>{uxIcon("close", "ux-xs")}</button></td></tr>);
+      return (<tr key={i} className={"ux-uce-r ux-uce-open" + (on ? " ux-on" : "")} onClick={() => setUcPick(on ? null : i)}>
+          <td><span className="ux-uce-pos" style={{ color: POS_CLR[place] }}>{place}</span></td>
+          <td colSpan={4}><div className="ux-uce-add"><span className="ux-uce-plus"><i aria-hidden="true">{uxIcon("plus", "ux-xs")}</i>{on ? "Pick Beside" : "Add Player"}</span></div></td></tr>);
+    };
+    return (
+      <div className="ux-body ux-uce ux-uce2">
+        <div className="ux-col">{uxTeamCol(T, k, { league: leagueSel, foot: <section className="ux-psec ux-uce-danger"><button type="button" className="ux-btnreset ux-btn ux-danger"
+          onClick={() => { if (x.lg) shPut({ ...draft, new: shNew.map(n => (n.id === x.lg ? { ...n, clubs: (n.clubs || []).filter(y => y.id !== c.id) } : n)) }); else shDropNew(c.id);
+            if (x.lg) { setEdSec("league"); setEdDraftK(x.lg); } else setEdSec("home"); }}>{uxIcon("trash", "ux-s")}Discard Club</button></section> })}</div>
+        <div className="ux-col">{uxPanel("Squad", <><span className="ux-ph-gap" /><span className="ux-uce-open-n"><b style={mono}>{open.length}</b> Open</span></>, (
+          <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-sq">
+            <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 40 }} /><col style={{ width: 50 }} /><col style={{ width: 34 }} /></colgroup>
+            <thead><tr><th>Pos</th><th>Player</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th /></tr></thead>
+            <tbody>{Array.from({ length: 11 }, (_, i) => row(i))}<tr className="ux-sep"><td colSpan={5} /></tr>{Array.from({ length: Math.max(0, raw.length - 11) }, (_, j) => row(11 + j))}</tbody>
+          </table></div>), true)}</div>
+        <div className="ux-col">{uxAddPanel(T, k, target, sq, lab, (id) => take(id, target), addNew)}</div>
+        <div className="ux-col">
+          {uxPanel("Checks", <b className="ux-drop-n" style={mono}>{todo.length + 1}</b>, (
+            <div className="ux-uce-checks">
+              {[["Name", (c.name || "").trim()], ["Code", c.code], ["City", c.location], ["Ground", stripVenue(c.stadium || "")], ["Manager", c.manager]].map(([l, ok]) => (
+                <div key={l} className={"ux-uce-chk" + (ok ? " ux-ok" : "")}>{ok ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{ok ? l : "No " + l}</span></div>))}
+              {(() => { const n = raw.slice(0, 11).filter(v => !v).length; return <div className={"ux-uce-chk" + (!n ? " ux-ok" : "")}>{!n ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{n ? `${n} Empty In The Eleven` : "Eleven Complete"}</span></div>; })()}
+              <div className="ux-uce-chk"><i className="ux-uce-dot" aria-hidden="true" /><span>No Badge</span>
+                <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => setBadgeHelp({ extra: c.code ? [{ code: c.code, name: (c.name || "").trim() || "New Club" }] : [] })}>How To Send</button></div>
+            </div>), false)}
+          {uxChangesPanel(item ? [item] : [])}
+        </div>
+        {renderBadgeHelp()}
+      </div>);
+  };
+  // ── A LEAGUE'S PAGE, EDITING: a new league's draft, or one on file. Its name, tier and cup; its clubs, each opening its
+  // own page; New Club; and the overseer's moves of clubs in and out ──
+  const renderLeagueEdit = (ref) => {
+    const lgD = ref.draft ? shNew.find(n => n.id === ref.draft && n.what === "leagues") : null, lg = ref.id ? (curRecs.leagues || []).find(l => l.id === ref.id) : null;
+    if (!lgD && !lg) return <div className="ux-body"><div className="ux-panel ux-grow"><div className="ux-empty">This League Is Gone</div></div></div>;
+    const nation = (lgD || lg).nation, mine = overseer || clubNations(scope).includes(nation), cur = lgD || lg;
+    const set = (p) => (lgD ? shSetNew(lgD.id, p) : shPut(draftWith(draft, recBase, lg.id, p, "leagues")));
+    const cups = [...new Set((curRecs.leagues || []).filter(l => l.nation === nation && l.cup).map(l => l.cup))];
+    const onFile = lg ? curRecs.teams.filter(t => !isNational(t) && t.nation === nation && t.group === lg.name).sort((a, b) => (shNums(b).xi || 0) - (shNums(a).xi || 0)) : [];
+    const drafts = lgD ? (lgD.clubs || []).map(c => ({ c, k: "new:" + c.id })) : shNew.filter(n => n.what === "teams" && n.nation === nation && lg && n.group === lg.name).map(c => ({ c, k: "new:" + c.id }));
+    const others = overseer && lg ? curRecs.teams.filter(t => !isNational(t) && t.nation === nation && t.group !== lg.name) : [];
+    const fileOf = lg ? onFile[0]?.file || nation : nation;
+    const nameFree = lgD ? !!(lgD.name || "").trim() && !(curRecs.leagues || []).some(l => l.name.toLowerCase() === lgD.name.trim().toLowerCase()) : true;
+    const item = lgD ? cartList.find(it => it.rec?.id === lgD.id) : null;
+    const lgItems = lgD ? (item ? [item] : []) : cartList.filter(it => it.groups.some(g => (g.kind === "leagues" && g.id === lg.id) || (g.kind === "teams" && onFile.some(t => teamKey(t) === g.id) && g.rows.some(r => r.field === "group")))
+      || (it.rec?.what === "teams" && it.rec.group === lg.name && it.rec.nation === nation));
+    return (
+      <div className="ux-body ux-lge">
+        <div className="ux-col">
+          {uxPanel("League", null, (
+            <div className="ux-lge-f">
+              <label className="ux-uce-f ux-lge-nm"><span>Name</span><input className={"ux-ed-in" + (lgD && !nameFree ? " ux-need" : "")} disabled={!mine} key={"lgn" + (lgD?.id || lg.id) + (lg?.name || "")} defaultValue={cur.name || ""} placeholder="League Name"
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== cur.name) set({ name: v }); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>
+              <label className="ux-uce-f"><span>Tier</span>{uxPick("Tier", String(cur.tier ?? ""), [["", "None"], ...[1, 2, 3, 4, 5].map(x => [String(x), String(x)])], v => set({ tier: v === "" ? null : +v }))}</label>
+              <label className="ux-uce-f"><span>Cup</span>{uxPick("Cup", cur.cup || "", [["", "None"], ...cups.map(x => [x, x])], v => set({ cup: v || null }))}</label>
+            </div>), false)}
+          {uxPanel("Clubs", (<>
+            <b className="ux-drop-n" style={mono}>{onFile.length + drafts.length}</b><span className="ux-ph-gap" />
+            {others.length > 0 && <UxSidePick label="Move A Club In" value="" placeholder="Move A Club In" groups={[[null, others.map(t => ({ k: teamKey(t), name: t.name.trim() }))]]}
+              onPick={it => it.k && shPut(draftWith(draft, recBase, it.k, { group: lg.name, file: fileOf }, "teams"))} />}
+            {mine && <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => edNewClub(nation, lgD ? lgD.name : lg.name, lgD ? lgD.id : null)}>{uxIcon("plus", "ux-s")}New Club</button>}</>), (
+            <div className="ux-pbody"><table className="ux-tbl ux-lge-t">
+              <colgroup><col /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 200 }} /><col style={{ width: 150 }} /></colgroup>
+              <thead><tr><th>Club</th><th className="ux-c">OVR</th><th className="ux-c">XI</th><th>Manager</th><th /></tr></thead>
+              <tbody>
+                {onFile.map(t => { const k = teamKey(t), tm = teamOfKey(k), nums = shNums(t), m = mgrNow(idOf(t.manager));
+                  const lgs = (curRecs.leagues || []).filter(l => l.nation === nation && l.name !== lg.name);
+                  return (
+                    <tr key={k}>
+                      <td><div className="ux-tc">{tm && <TeamCrest team={tm} size={18} />}<button type="button" className="ux-btnreset ux-a ux-strong" onClick={() => tm && openTeam(tm)}><SlideName text={t.name.trim()} /></button></div></td>
+                      <td className="ux-c">{nums.ovr != null ? uxBadge(Math.round(nums.ovr)) : "–"}</td><td className="ux-c">{nums.xi != null ? uxBadge(Math.round(nums.xi)) : "–"}</td>
+                      <td><SlideName text={m ? fullDisplayName(m.name) : "–"} /></td>
+                      <td className="ux-n"><span className="ux-lge-acts">
+                        {edMine(k) && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => ucGo(k)}>{uxIcon("edit", "ux-xs")}Edit</button>}
+                        {overseer && lgs.length > 0 && uxPick("Move To", "", [["", "Move To"], ...lgs.map(l => [l.name, l.name])], v => v && shPut(draftWith(draft, recBase, k, { group: v, file: curRecs.teams.find(y => !isNational(y) && y.group === v)?.file || t.file }, "teams")))}</span></td>
+                    </tr>); })}
+                {drafts.map(({ c, k }) => { const todo = edClubTodo(c);
+                  return (
+                    <tr key={k} className="ux-lge-new">
+                      <td><div className="ux-tc"><span className="ux-lge-nob" aria-hidden="true" /><button type="button" className="ux-btnreset ux-a ux-strong" onClick={() => { setEdSec("club"); setEdDraftK(k); setUcPick(null); }}><SlideName text={(c.name || "").trim() || "New Club"} /></button><span className="ux-uce-new">New</span></div></td>
+                      <td /><td />
+                      <td className="ux-dim"><SlideName text={c.location ? stripVenue(c.location) : "–"} /></td>
+                      <td className="ux-n"><span className="ux-lge-acts">
+                        <span className={"ux-uce-st " + (todo.length ? "ux-rev" : "ux-live")}>{todo.length ? `${todo.length} To Do` : "Ready"}</span>
+                        <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => { setEdSec("club"); setEdDraftK(k); setUcPick(null); }}>Open{uxIcon("fwd", "ux-xs")}</button></span></td>
+                    </tr>); })}
+                {!onFile.length && !drafts.length && <tr><td colSpan={5} className="ux-dim">No Clubs Yet</td></tr>}
+              </tbody></table></div>), true)}
+        </div>
+        <div className="ux-col">
+          {lgD && uxPanel("Checks", null, (
+            <div className="ux-uce-checks">
+              <div className={"ux-uce-chk" + (nameFree ? " ux-ok" : "")}>{nameFree ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{!(lgD.name || "").trim() ? "No Name" : nameFree ? "Name Free" : "Name Taken"}</span></div>
+              <div className={"ux-uce-chk" + (drafts.length ? " ux-ok" : "")}>{drafts.length ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{drafts.length ? `${drafts.length} ${drafts.length === 1 ? "Club" : "Clubs"}` : "No Clubs Yet"}</span></div>
+              {drafts.map(({ c, k }) => { const todo = edClubTodo(c); return todo.length ? (
+                <div key={k} className="ux-uce-chk"><i className="ux-uce-dot" aria-hidden="true" /><span><SlideName text={`${(c.name || "").trim() || "New Club"}: ${todo.length} To Do`} /></span>
+                  <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => { setEdSec("club"); setEdDraftK(k); setUcPick(null); }}>Open</button></div>) : null; })}
+            </div>), false)}
+          {uxChangesPanel(lgItems)}
+          {lgD && <button type="button" className="ux-btnreset ux-btn ux-danger ux-lge-discard" onClick={() => { shDropNew(lgD.id); setEdSec("home"); }}>{uxIcon("trash", "ux-s")}Discard League</button>}
+        </div>
+      </div>);
+  };
+  // ── NEW PLAYER, ONE: a player's page, blank, filled where it reads (his portrait the default until one is made) ──
+  const edGoNewPlayer = (side = null, at = null) => { shOpenNew("players", side, at); setTab("editor"); setEdSec("newplayer"); };
+  const renderNewPlayer = () => {
+    const f = edForms.players && edForms.players.mode !== "many" ? edForms.players : null;
+    if (!f) return <div className="ux-body"><div className="ux-panel ux-grow"><div className="ux-empty"><button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => edGoNewPlayer()}>{uxIcon("plus", "ux-s")}New Player</button></div></div></div>;
+    const upd = (p) => setEdForms(m => (m.players ? { ...m, players: { ...m.players, ...p, fresh: false } } : m));
+    const own = posList([f.pos, f.pos2].filter(Boolean)), age = f.born ? ageOf(f.born) : null, natT = natTeamByCode.get(f.nat) || null;
+    const T = f.side && !f.side.startsWith("new:") ? edTeamRec(f.side) : null, clubT = T ? teamOfKey(teamKey(T)) : null;
+    const cap = edCapOf(f.nat), ovr = +f.ovr > 0 ? Math.round(+f.ovr) : null, lvl = T ? clubLevel(T, own, judge) : null;
+    const man = { what: "players", side: f.side || null, at: f.at, name: f.name, nat: f.nat, born: f.born, pos: own, ovr };
+    const live = overseer || (!!T && liveNewMan(T, man, judge)), ready = shFormReady("players", f);
+    const opens = T ? ucOpen(T) : [], lab = T ? edLab(T) : [];
+    const disp = (f.name || "").trim() ? fullDisplayName(f.name.trim()) : "New Player", word = splitSurname(disp, f.name || "").last.toUpperCase() || "NEW";
+    const c1 = (clubT || natT)?.primaryColor || "var(--ux-panel-3)", c2 = (clubT || natT)?.secondaryColor || c1;
+    const add = (next) => { const side = f.side, at = f.at; shAddNew("players");
+      if (next && side && T) { const rest = ucOpen(T).filter(i => i !== at); if (rest.length) setTimeout(() => shOpenNew("players", side, rest[0]), 0); else setEdSec("home"); }
+      else if (side && T && teamOfKey(side)) ucGo(side); else setEdSec("home"); };
+    return (
+      <div className="ux-body ux-np" style={{ gridTemplateColumns: "minmax(300px, 0.8fr) minmax(0, 1.6fr) minmax(280px, 0.9fr)", gridTemplateRows: "auto minmax(0, 1fr)" }}>
+        <section className="ux-panel ux-plb-panel" aria-label={disp}>
+          <div className="ux-banner ux-plb" style={{ ["--c1"]: c1, ["--c2"]: c2, ["--word"]: c2 }}>
+            <UxSurname key={word} word={word} />
+            <div className="ux-plb-light" aria-hidden="true" />
+            <div className="ux-plb-face"><UxFace key={disp} name={disp} /></div>
+            <div className="ux-plb-crests">{[natT, clubT].filter(Boolean).map(t => <span key={t.id} className="ux-plb-crest"><TeamCrest team={t} size={96} /></span>)}</div>
+            <dl className="ux-plb-facts">
+              <div className="ux-np-ed"><dt>OVR</dt><dd><input className="ux-np-ovr" style={{ ...mono, background: ovr ? ovrSheen(ovrMetal(ovr)) : undefined }} inputMode="numeric" aria-label="Rating"
+                placeholder={cap != null ? `<${cap}` : lvl != null ? String(lvl) : "–"} value={f.ovr ?? ""} onChange={e => upd({ ovr: e.target.value.replace(/\D/g, "").slice(0, 2) })} /></dd></div>
+              <div><dt>{own.length > 1 ? "Positions" : "Position"}</dt><dd>{own.length ? own.map(x => <span key={x} style={{ color: POS_CLR[x] || "inherit" }}>{x}</span>) : "–"}</dd></div>
+              <div><dt>Age</dt><dd>{age ?? "–"}{f.born && <small style={mono}>{uxDate(f.born)}</small>}</dd></div>
+              <div><dt>Joins</dt><dd className="ux-np-joins"><SlideName text={T ? T.name.trim() : "Free Agent"} /></dd></div>
+            </dl>
+          </div>
+        </section>
+        <div className="ux-col">
+          {uxPosPitch(own, (ps) => upd({ pos: ps[0] || "", pos2: ps[1] || "" }), plSlot, setPlSlot)}
+          {uxPanel("Traits", null, <div className="ux-pbody ux-np-tr"><TraitPicker keys={f.badges || []} onSet={(ids) => upd({ badges: ids })} ovr={ovr || 0} limit={!overseer} /></div>, false)}
+        </div>
+        <div className="ux-col">
+          {uxPanel("Record", null, (
+            <div className="ux-np-rec">
+              <label className="ux-uce-f ux-np-wide"><span>Name</span><input className="ux-ed-in" autoFocus placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} /></label>
+              <div className="ux-uce-f"><span>Nationality</span><UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} /></div>
+              <div className="ux-uce-f"><span>Born</span><span className="ux-uce-age">
+                <input className="ux-ed-in" type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "", bornSet: true })} />
+                <input className="ux-ed-in ux-np-age" style={mono} aria-label="Age" key={"age" + (f.born || "")} defaultValue={age ?? ""}
+                  onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= 60 && y !== age) upd({ born: edBornFor(y), bornSet: true }); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                <button type="button" className="ux-btnreset ux-cb-x" title="Another Date For This Age" aria-label="Another Date For This Age" disabled={!f.born} onClick={() => upd({ born: edBornFor(ageOf(f.born)), bornSet: true })}>{uxIcon("dice", "ux-s")}</button></span></div>
+              <div className="ux-uce-f"><span>Joins</span><UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true, true)} placeholder="Search Clubs" onPick={it => { const s = it.k || null, Tn = s ? edTeamRec(s) : null; upd({ side: s, at: Tn ? ucOpen(Tn)[0] ?? null : null }); }} /></div>
+              {T && <label className="ux-uce-f"><span>Place</span>{uxPick("Place", f.at != null ? String(f.at) : "", [["", "Best Fit"], ...opens.map(i => [String(i), `${lab[i]}, ${i < 11 ? "Eleven" : "Bench"}`])], v => upd({ at: v === "" ? null : +v }))}</label>}
+              {shCollege(f.side) && <label className="ux-uce-f"><span>Year</span>{uxPick("Year", String(yearOf(f.grad ?? gradFor(age)) || 1), YEARS.map((y, i) => [String(i + 1), y]), v => upd({ grad: COLLEGE_SEASON + 4 - +v }))}</label>}
+              {!overseer && <div className="ux-uce-f"><span>Portrait</span><button type="button" className={"ux-btnreset ux-uce-pq" + (f.portrait ? " ux-on" : "")} aria-pressed={!!f.portrait} onClick={() => upd({ portrait: !f.portrait })}>
+                {f.portrait ? <>{uxIcon("check", "ux-xs")}Portrait Asked For</> : "Ask For A Portrait"}</button></div>}
+            </div>), false)}
+          {uxPanel("On Save", null, (
+            <div className="ux-uce-checks">
+              {lvl != null && <div className="ux-uce-chk ux-ok"><span>Club Level At {own[0] || "His Place"}</span><b style={mono}>{showOvr(lvl)}</b></div>}
+              <div className="ux-uce-chk ux-ok"><span>Goes In</span><span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Right Away" : "For Review"}</span></div>
+            </div>), false)}
+          <div className="ux-np-acts">
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => { shCancelNew("players"); setEdSec("home"); }}>Cancel</button>
+            {T && opens.length > 1 && <button type="button" className="ux-btnreset ux-btn" disabled={!ready} onClick={() => add(true)}>Add And Next</button>}
+            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready} onClick={() => add(false)}>{uxIcon("plus", "ux-s")}Add Player</button>
+          </div>
+        </div>
+      </div>);
+  };
+  // ── NEW PLAYERS, MANY: pasted, a line a man, then a table to put right before they go in; into one club's open places
+  // or to free agency ──
+  const edGoMany = (side = null) => { setUcMany(m => ({ text: m?.text || "", nat: (side && edTeamRec(side) ? (isNational(edTeamRec(side)) ? edTeamRec(side).code : edTeamRec(side).nation) : null) || m?.nat || (scope.nations || [])[0] || "",
+    side: side || m?.side || (ucRun[0] && !isNational(ucRun[0]) ? teamKey(ucRun[0]) : null), into: side ? "club" : m?.into || "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: !overseer, seed: Date.now() }));
+    setTab("editor"); setEdSec("newplayers"); };
+  const renderNewMany = () => {
+    const f = ucMany || { text: "", nat: (scope.nations || [])[0] || "", side: null, into: "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: !overseer, seed: 0 };
+    const upd = (p) => setUcMany({ ...f, ...p });
+    const T = f.into === "club" && f.side ? edTeamRec(f.side) : null, lines = f.text.split(/\r?\n/).filter(x => x.trim());
+    const key = JSON.stringify([f.text, f.side, f.into, f.mode, f.amin, f.amax, f.nat, f.seed]);
+    if (ucManyRef.current.key !== key) {
+      let men = [], bad = [];
+      if (T) { const r = ucMen(T, lines, ucOpen(T), f.mode, Math.min(f.amin, f.amax), Math.max(f.amin, f.amax)); men = r.men; bad = r.bad; }
+      else if (f.into === "fa") for (const raw of lines) { const p = ucLine(raw); if (!p) continue; if (p.bad.length) { bad.push(p); continue; }
+        const age = p.age ?? (Math.min(f.amin, f.amax) + Math.floor(Math.random() * (Math.abs(f.amax - f.amin) + 1)));
+        men.push({ id: edUid(), what: "players", name: p.name, nat: p.nat && natTeamByCode.get(p.nat) ? p.nat : f.nat, born: edBornFor(age), pos: p.pos, ovr: f.mode === "blank" ? null : p.ovr ?? null,
+          ...(p.badges.length ? { badges: p.badges } : null) }); }
+      if (T) men = men.map(m => ({ ...m, nat: lines.length && m.nat === (isNational(T) ? T.code : T.nation) ? f.nat || m.nat : m.nat }));
+      ucManyRef.current = { key, men, bad };
+    }
+    const men = ucManyRef.current.men.filter(m => !f.cut.includes(m.id)).map(m => ({ ...m, ...(f.edits[m.id] || {}) })), bad = ucManyRef.current.bad;
+    const lab = T ? edLab(T) : [];
+    const why = (m) => !posList(m.pos).length ? "Position Needed" : m.ovr != null && !(m.ovr >= 25 && m.ovr <= 99) ? "Rating 25 To 99" : !edUnderCap(m.nat, m.ovr) && m.ovr != null ? `Below ${edCapOf(m.nat)}` : !overseer && traitsProblem(m.badges, m.ovr) ? "Too Many Traits" : overseer && m.ovr == null ? "Rating Needed" : null;
+    const fix = men.filter(why).length, ok = men.filter(m => !why(m)), nLive = ok.filter(m => (T ? ucLive(T, m) : overseer)).length;
+    const setE = (id, p) => upd({ edits: { ...f.edits, [id]: { ...(f.edits[id] || {}), ...p } } });
+    const addAll = () => { shPut({ ...draft, new: [...shNew, ...ok.map(m => ({ ...m, id: edUid(), ...(f.portrait && !overseer ? { portrait: true } : null) }))] });
+      ucManyRef.current = { key: null, men: [], bad: [] }; setUcMany(null); if (T && teamOfKey(f.side)) ucGo(f.side); else setEdSec("home"); };
+    return (
+      <div className="ux-body ux-many" style={{ gridTemplateColumns: "minmax(300px, 0.55fr) minmax(0, 2fr)" }}>
+        <div className="ux-col">{uxPanel("Paste", null, (
+          <div className="ux-np-rec ux-many-l">
+            <textarea className="ux-ed-in ux-many-ta" autoFocus spellCheck={false} value={f.text} placeholder={"(74) Haruki SENDO, GK, 27\nKaito MORIZANE, CB, 22\nRen TAKAMINE, DM, 29, Tackler"} onChange={e => upd({ text: e.target.value })} aria-label="Players, One A Line" />
+            <div className="ux-uce-f"><span>Nationality</span><UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} /></div>
+            <div className="ux-uce-f"><span>Into</span><div className="ux-seg" role="group" aria-label="Into">{[["club", "A Club's Open Places"], ["fa", "Free Agents"]].map(([v, l]) => (
+              <button key={v} type="button" className={"ux-btnreset" + (f.into === v ? " ux-on" : "")} aria-pressed={f.into === v} onClick={() => upd({ into: v })}>{l}</button>))}</div></div>
+            {f.into === "club" && <div className="ux-uce-f"><span>Club</span><UxSidePick label="Club" value={f.side || ""} groups={edSideChoices(false, true)} placeholder="Search Clubs" onPick={it => upd({ side: it.k || null })} /></div>}
+            <div className="ux-uce-f"><span>Ages Not Given</span><span className="ux-uce-age">
+              <input className="ux-ed-in ux-np-age" type="number" min={14} max={45} style={mono} aria-label="Youngest" value={f.amin} onChange={e => upd({ amin: +e.target.value || 18 })} />
+              <span className="ux-dim">To</span>
+              <input className="ux-ed-in ux-np-age" type="number" min={14} max={45} style={mono} aria-label="Oldest" value={f.amax} onChange={e => upd({ amax: +e.target.value || 32 })} />
+              <button type="button" className="ux-btnreset ux-cb-x" title="Draw Again" aria-label="Draw Again" onClick={() => upd({ seed: Date.now() })}>{uxIcon("dice", "ux-s")}</button></span></div>
+            <div className="ux-uce-f"><span>Ratings Not Given</span><div className="ux-seg" role="group" aria-label="Ratings">{(T ? [["level", "Club Level"], ["blank", "Blank"]] : [["blank", "Blank"]]).map(([v, l]) => (
+              <button key={v} type="button" className={"ux-btnreset" + ((f.mode === v || (!T && v === "blank")) ? " ux-on" : "")} aria-pressed={f.mode === v} onClick={() => upd({ mode: v })}>{l}</button>))}</div></div>
+            {!overseer && <div className="ux-uce-f"><span>Portraits</span><button type="button" className={"ux-btnreset ux-uce-pq" + (f.portrait ? " ux-on" : "")} aria-pressed={!!f.portrait} onClick={() => upd({ portrait: !f.portrait })}>
+              {f.portrait ? <>{uxIcon("check", "ux-xs")}Asked For With Them</> : "Ask For Portraits"}</button></div>}
+          </div>), true)}</div>
+        <div className="ux-col">{uxPanel(`${men.length} New ${men.length === 1 ? "Player" : "Players"}`, T ? <span className="ux-uce-fclub" style={{ marginLeft: 8 }}><TeamCrest team={teamOfKey(f.side)} size={14} />{T.name.trim()}<span className="ux-dim">, <b style={mono}>{ucOpen(T).length}</b> Open</span></span> : null, (<>
+          {bad.length > 0 && <div className="ux-uce-fbad" role="alert">{bad.slice(0, 3).map((b, i) => <div key={i}>{b.name}: {uxTitle(b.bad[0])}</div>)}</div>}
+          <div className="ux-pbody"><table className="ux-tbl ux-sq ux-many-t">
+            <colgroup><col style={{ width: 30 }} /><col /><col style={{ width: 70 }} /><col style={{ width: 56 }} /><col style={{ width: 130 }} /><col style={{ width: 64 }} /><col style={{ width: 90 }} />{T && <col style={{ width: 96 }} />}<col style={{ width: 104 }} /><col style={{ width: 32 }} /></colgroup>
+            <thead><tr><th /><th>Name</th><th>Pos</th><th className="ux-n">Age</th><th>Nat</th><th className="ux-c">Rtg</th><th>Traits</th>{T && <th>Place</th>}<th>On Save</th><th /></tr></thead>
+            <tbody>{men.map((m, i) => { const w = why(m), live = !w && (T ? ucLive(T, m) : overseer);
+              return (
+                <tr key={m.id} className={w ? "ux-many-bad" : undefined}>
+                  <td className="ux-dim" style={mono}>{i + 1}</td>
+                  <td><input className="ux-many-in" value={m.name} aria-label="Name" onChange={e => setE(m.id, { name: e.target.value })} /></td>
+                  <td><select className="ux-many-in" style={{ ...mono, color: POS_CLR[posList(m.pos)[0]] }} aria-label="Position" value={posList(m.pos)[0] || ""} onChange={e => setE(m.id, { pos: posList([e.target.value, ...posList(m.pos).slice(1)]) })}>
+                    {!posList(m.pos).length && <option value="">–</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></td>
+                  <td className="ux-n"><input className="ux-many-in ux-many-num" style={mono} aria-label="Age" defaultValue={m.born ? ageOf(m.born) : ""} key={"a" + m.id + m.born}
+                    onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= 60 && y !== ageOf(m.born)) setE(m.id, { born: edBornFor(y) }); }} /></td>
+                  <td><span className="ux-tc">{natTeamByCode.get(m.nat) && <TeamCrest team={natTeamByCode.get(m.nat)} size={14} />}<SlideName text={natOptions.name.get(m.nat) || m.nat} /></span></td>
+                  <td className="ux-c"><input className={"ux-many-in ux-many-num" + (w && /Rating|Below/.test(w) ? " ux-need" : "")} style={mono} aria-label="Rating" placeholder="–" value={m.ovr ?? ""}
+                    onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); setE(m.id, { ovr: v ? +v : null }); }} /></td>
+                  <td>{(m.badges || []).length ? <span className="ux-tc">{badgeOrder(m.badges).map(id => <BadgeIcon key={id} id={id} size={15} />)}</span> : <span className="ux-dim">–</span>}</td>
+                  {T && <td className="ux-dim">{lab[m.at]}, {m.at < 11 ? "Eleven" : "Bench"}</td>}
+                  <td>{w ? <span className="ux-uce-st ux-bad2">{w}</span> : <span className={"ux-uce-st " + (live ? "ux-live" : "ux-rev")}>{live ? "Live" : "For Review"}</span>}</td>
+                  <td><button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + m.name} onClick={() => upd({ cut: [...f.cut, m.id] })}>{uxIcon("close", "ux-xs")}</button></td>
+                </tr>); })}
+              {!men.length && <tr><td colSpan={T ? 10 : 9} className="ux-dim">{f.into === "club" && !T ? "Pick A Club" : "Paste Names, One A Line"}</td></tr>}</tbody>
+          </table></div>
+          <div className="ux-uce-foot">
+            <div className="ux-uce-sum"><b style={mono}>{men.length}</b> Players · <b style={mono}>{nLive}</b> Live · <b style={mono}>{ok.length - nLive}</b> For Review{fix > 0 && <> · <b style={{ ...mono, color: "var(--ux-loss)" }}>{fix}</b> To Fix</>}</div>
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => { setUcMany(null); ucManyRef.current = { key: null, men: [], bad: [] }; setEdSec("home"); }}>Cancel</button>
+            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ok.length} onClick={addAll}>{uxIcon("plus", "ux-s")}Add {ok.length} {ok.length === 1 ? "Player" : "Players"}</button>
+          </div></>), true)}</div>
+      </div>);
+  };
+
   // FILL OPEN PLACES: a pasted list, a name a line, into every open place at once, each shown in his place first.
   const renderUcFill = (T) => {
     const f = ucFill, k = teamKey(T), places = ucOpen(T), lines = f.text.split(/\r?\n/).filter(x => x.trim());
@@ -17096,11 +17596,14 @@ export default function App() {
       offers.length > 0 && ["Offers", offers.length, "Open", () => setEdSec("trades")],
       declined.length > 0 && ["Declined", declined.length, "Open", () => setEdSec("inbox")],
       cartList.length > 0 && ["Not Sent", cartList.length, "Review", () => setDraftOpen(true)],
+      (() => { const n = sides.filter(t => t.code && badgeHas(t.code, t.file === "ARTERRA" ? "arterra" : "avium") === false).length; return n > 0 && ["Missing Badges", n, "How To Send", () => setBadgeHelp({})]; })(),
+      ...shNew.filter(n => n.what === "leagues").map(n => [`Draft: ${(n.name || "").trim() || "New League"}`, (n.clubs || []).length, "Open", () => { setEdSec("league"); setEdDraftK(n.id); }]),
+      ...shNew.filter(n => n.what === "teams").map(n => [`Draft: ${(n.name || "").trim() || "New Club"}`, edClubTodo(n).length, "Open", () => { setEdSec("club"); setEdDraftK("new:" + n.id); setUcPick(null); }]),
     ].filter(Boolean);
     const newMenu = (code) => [
-      ["New Player", () => { setTab("editor"); setEdSec("sheet"); shOpenNew("players"); }],
-      ["New Club", () => { setTab("editor"); setEdSec("sheet"); if (code) shOpenTab(code); }],
-      ["New League", () => { setTab("editor"); setEdSec("sheet"); if (code) { shOpenTab(code); shAddLeague(code); } }],
+      ["New Player", () => edGoNewPlayer()],
+      ["New Club", () => { const lg0 = (curRecs.leagues || []).filter(l => l.nation === code).sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9))[0]; if (code) edNewClub(code, lg0?.name || ""); }],
+      ["New League", () => { if (code) edNewLeague(code); }],
       ["New Deal", () => setEdSec("trades")]];
     const code = nat?.code || (scope.nations || [])[0] || clubNations(scope)[0];
     return (
@@ -17156,6 +17659,7 @@ export default function App() {
           {uxPanel("Activity", <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdSec("activity")}>All{uxIcon("fwd", "ux-s")}</button>, (
             <div className="ux-edh-list ux-edh-acts">{acts.map(e => edActRow(e, true))}{!acts.length && <div className="ux-empty-sm">None</div>}</div>), true)}
         </div>
+        {renderBadgeHelp()}
       </div>);
   };
 
@@ -17277,7 +17781,13 @@ export default function App() {
         </div>
       </div>);
   };
+  const lgOfComp = (name) => (name ? (curRecs.leagues || []).find(l => l.name === name || (l.formerly || []).includes(name)) || null : null);
+  const lgCanEdit = (l) => !!l && (overseer || (isEditor && clubNations(scope).includes(l.nation)));
   const renderUxEditor = () => {
+    if (edSec === "newplayer") return renderNewPlayer();
+    if (edSec === "newplayers") return renderNewMany();
+    if (edSec === "club" && edDraftK) return renderClubDraft(edDraftK);
+    if (edSec === "league" && edDraftK) return renderLeagueEdit({ draft: edDraftK });
     if (edSec === "draft" && draftSees) return renderEdDraft();
     if (edSec === "home") return renderEdHome();
     if (edSec === "inbox") return renderEdInbox();
@@ -17437,6 +17947,9 @@ export default function App() {
           <LeagueCrest league={c.name} size={22} /><h1>{c.name}</h1></>);
         [["overview", "Overview"], ["season", "Season"], ["records", "Records"], ...(drDoneOf(c.name).length ? [["draft", "Draft"]] : [])]
           .forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoComp(c.name, id))));
+        // A league's page edits in place for its nation's editors (DESIGN.md, the Editor organised).
+        { const lgR = lgOfComp(c.name); if (lgR && lgCanEdit(lgR) && cur === "overview") right = (
+          <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (lgEdit ? " ux-on" : "")} aria-pressed={lgEdit} onClick={() => setLgEdit(!lgEdit)}>{uxIcon("edit", "ux-s")}{lgEdit ? "Editing" : "Edit"}</button>); }
         const pages = c.seasons.filter(s => !s.hist);
         if (cur === "season" && pages.length) {
           const opts = pages.map(s => [urlSlug(s.season), uxSeasonName(s)]), now = opts.some(([v]) => v === reg.season) ? reg.season : opts[opts.length - 1][0];
@@ -17464,7 +17977,8 @@ export default function App() {
       [["overview", "Overview"], ["history", "History"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === "history" ? "history" : null })))));
       right = (<>
         {uxPl.hofRow && <span className="ux-chip ux-hof">Hall Of Fame <span style={mono}>{uxPl.hofRow.inducted}</span></span>}
-        {isEditor && uxPl.rid && <button type="button" className="ux-btnreset ux-btn" onClick={() => shOpenMan(uxPl.rid)}>{uxIcon("edit", "ux-s")}Edit Player</button>}</>);
+        {uxPl.rid && plMine(uxPl.rid) && cur === "overview" && <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (plEdit ? " ux-on" : "")} aria-pressed={plEdit}
+          onClick={() => { setPlEdit(!plEdit); setPlSlot(0); }}>{uxIcon("edit", "ux-s")}{plEdit ? "Editing" : "Edit Player"}</button>}</>);
     } else if (tab === "leagues" && reg.sec === "nations") {
       const t = regTeamObj, n = t ? regNationBy.get(nationCodeOf(t)) : reg.nation ? regNationBy.get(reg.nation) : null;
       if (t) {
@@ -17517,6 +18031,29 @@ export default function App() {
         <h1>Play Match</h1></>);
       tabs.push(pageTab("match", lmFixtureName(tg), true));
       right = renderUxMatchBar();
+    } else if (tab === "editor" && (edSec === "newplayer" || edSec === "newplayers" || ((edSec === "club" || edSec === "league") && edDraftK))) {
+      // The new pages: a new player, many, and a new club's or league's draft, each under its nation.
+      const back = (code) => { const nt = code ? natTeamByCode.get(code) : null; return nt ? <button type="button" className="ux-btnreset ux-pb-up" onClick={() => openNation(code)}><TeamCrest team={nt} size={18} />{nt.name.trim()}{uxIcon("fwd", "ux-s")}</button> : null; };
+      const one = edSec === "newplayer" || edSec === "newplayers";
+      if (one) {
+        const side = edSec === "newplayer" ? edForms.players?.side : ucMany?.side, T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
+        title = (<>{T ? <button type="button" className="ux-btnreset ux-pb-up" onClick={() => ucGo(side)}>{teamOfKey(side) && <TeamCrest team={teamOfKey(side)} size={18} />}{T.name.trim()}{uxIcon("fwd", "ux-s")}</button>
+          : <button type="button" className="ux-btnreset ux-pb-up" onClick={() => setEdSec("home")}>Editor{uxIcon("fwd", "ux-s")}</button>}<h1>{edSec === "newplayer" ? "New Player" : "New Players"}</h1></>);
+        right = (
+          <div className="ux-seg" role="group" aria-label="How Many">
+            <button type="button" className={"ux-btnreset" + (edSec === "newplayer" ? " ux-on" : "")} aria-pressed={edSec === "newplayer"} onClick={() => edSec !== "newplayer" && edGoNewPlayer(T ? side : null, T ? ucOpen(T)[0] ?? null : null)}>One</button>
+            <button type="button" className={"ux-btnreset" + (edSec === "newplayers" ? " ux-on" : "")} aria-pressed={edSec === "newplayers"} onClick={() => edSec !== "newplayers" && edGoMany(T ? side : null)}>Many</button></div>);
+      } else if (edSec === "club") {
+        const x = shClubOf(edDraftK), c = x?.c, lgD = x?.lg ? shNew.find(n => n.id === x.lg) : null, nat = c ? c.nation || lgD?.nation : null;
+        title = (<>{back(nat)}{lgD && <button type="button" className="ux-btnreset ux-pb-up" onClick={() => { setEdSec("league"); setEdDraftK(lgD.id); }}>{lgD.name || "New League"}{uxIcon("fwd", "ux-s")}</button>}
+          {!lgD && c?.group && lgOfComp(c.group) && <button type="button" className="ux-btnreset ux-pb-up" onClick={() => uxGoComp(c.group)}>{c.group}{uxIcon("fwd", "ux-s")}</button>}
+          <h1>{(c?.name || "").trim() || "New Club"}</h1></>);
+        right = <span className="ux-pb-draft">Draft</span>;
+      } else {
+        const lgD = shNew.find(n => n.id === edDraftK && n.what === "leagues");
+        title = <>{back(lgD?.nation)}<h1>{(lgD?.name || "").trim() || "New League"}</h1></>;
+        right = <span className="ux-pb-draft">Draft</span>;
+      }
     } else if (tab === "editor") {
       // The Editor: Teams, Players, Managers, Leagues, Trades and Requests.
       title = <h1>Editor</h1>;
@@ -18630,15 +19167,22 @@ export default function App() {
   const uxCanOpenSeason = (s) => !!s && !s.hist && (lgRail.some(c => c.name === s.comp)
     || Object.keys(LEAGUE_CUPS).some(l => LEAGUE_CUPS[l] === s.comp && lgRail.some(c => c.name === l)));
 
+  useEffect(() => { setPlEdit(false); setPlSlot(0); setPlOvr(null); }, [uxPlayerName]);
+  useEffect(() => { setUcNew(null); setUcQ(""); setUcForOff(false); }, [regTeamObj?.id]);
+  useEffect(() => { setLgEdit(false); }, [reg.comp]);
   const renderUxPlayer = (d) => {
     const { name, disp, p, hofRow, rid, rec, natT, clubT, rows, pos } = d;
+    // EDITING HIS PAGE (DESIGN.md, the Editor organised): his record, positions and traits where they read. The overseer
+    // changes all of it; an editor asks for positions and a portrait.
+    const ed = plEdit && !!rid && plMine(rid), R = ed ? recNow(rid) : null;
+    const putP = (x) => shPut(draftWith(draft, recBase, rid, x, "players"));
     // The banner: his club's colours, his country's when he has no club.
     const kit = clubT || natT, c1 = kit?.primaryColor || "var(--ux-panel-3)", c2 = kit?.secondaryColor || c1;
     const ink = kit?.primaryColor && (lumOf(kit.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
     // Behind everything, his surname huge in the kit's second colour (the ink where the kit has none).
     const word = splitSurname(disp, p?.name).last.toUpperCase();
     const wordClr = kit?.secondaryColor && String(kit.secondaryColor).toLowerCase() !== String(kit.primaryColor || "").toLowerCase() ? kit.secondaryColor : ink;
-    const ovr = seen(rid, p?.ovr ?? hofRow?.ovr ?? rec?.ovr ?? null), born = rec?.born || null, age = born ? ageOf(born) : null;
+    const ovr = ed ? R?.ovr ?? null : seen(rid, p?.ovr ?? hofRow?.ovr ?? rec?.ovr ?? null), born = (ed ? R : rec)?.born || null, age = born ? ageOf(born) : null;
     const value = rec && pstats && !veiled(rid) ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null, retired = !p && !!hofRow;
     // A man at a college (DESIGN.md, The ANCC) shows his year where another man's value stands.
     const course = hidMan(rid) ? yearOf(rec?.grad) : null;
@@ -18657,11 +19201,11 @@ export default function App() {
     }
     if (!spots.size) for (const [sp, t] of benched) put(sp, t);
     if (!spots.size) for (const ps of pos) if (UX_POS_XY[ps]) put(ps, null);
-    const ownPos = posList(rec?.pos), shown = ownPos.length ? ownPos : pos.length ? pos : [...spots.keys()];
+    const ownPos = posList((ed ? R : rec)?.pos), shown = ownPos.length ? ownPos : pos.length ? pos : [...spots.keys()];
     // His roles: what each side he starts for deals him, as a match deals them (rolesOf: the side's style, its shape and
     // his slot); a man on the bench has none until he comes on. His country first, as the banner's crests run.
     const roles = uxRoleRows(sheets), oops = uxOopSides(sheets, ownPos, ovr);
-    const traits = badgeOrder(seen(rid, rec?.badges) || []).filter(id => badgeOf(id));
+    const traits = badgeOrder((ed ? R?.badges : seen(rid, rec?.badges)) || []).filter(id => badgeOf(id));
     // The season picked, his newest by default.
     const years = [...new Set(rows.map(x => x.y))].sort((a, b) => b - a);
     const year = uxPlSel.who === name && years.includes(uxPlSel.y) ? uxPlSel.y : years[0] ?? null;
@@ -18714,7 +19258,7 @@ export default function App() {
     // than the three the page was laid out for: the list shows UX_TRAIT_ROWS of them and scrolls inside itself for more.
     // Four and a half rows when there are more, so the next one shows cut off and the list reads as one that scrolls.
     const UX_TRAIT_ROWS = traits.length > 4 ? 4.5 : 4;
-    const right = rows.length > 0, under = (traits.length ? 12 + 38 + 44 * Math.min(traits.length, UX_TRAIT_ROWS) : 0) + (roles.length ? 1 + 44 * roles.length : 0)
+    const right = rows.length > 0 || ed, under = (traits.length ? 12 + 38 + 44 * Math.min(traits.length, UX_TRAIT_ROWS) : 0) + (roles.length ? 1 + 44 * roles.length : 0)
       + (oops.length ? 1 + 44 * oops.length : 0);
     return (
       <div className="ux-body" style={{ gridTemplateColumns: `minmax(300px, calc((100vh - ${370 + under}px) * 0.75 + 26px)) minmax(0, 1fr)${right ? " 340px" : ""}`, gridTemplateRows: "auto minmax(0, 1fr)" }}>
@@ -18730,7 +19274,9 @@ export default function App() {
                     <TeamCrest team={t} size={96} /></button>))}
               </div>)}
             <dl className="ux-plb-facts">
-              <div><dt>OVR</dt><dd>{ovr != null ? <span className={"ux-plb-ovr" + (ringed(rid) ? " ux-hid" : "")} title={ringed(rid) ? HID_TIP : undefined}
+              <div className={ed && overseer ? "ux-np-ed" : undefined}><dt>OVR</dt><dd>{ed && overseer ? <input className="ux-np-ovr" style={{ ...mono, background: ovr ? ovrSheen(ovrMetal(ovr)) : undefined }} inputMode="numeric" aria-label="Rating"
+                value={plOvr ?? ovr ?? ""} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2), x = +v; setPlOvr(v); if (x >= 25 && x <= 99 && x !== ovr) putP({ ovr: x }); }}
+                onBlur={() => setPlOvr(null)} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /> : ovr != null ? <span className={"ux-plb-ovr" + (ringed(rid) ? " ux-hid" : "")} title={ringed(rid) ? HID_TIP : undefined}
                 style={{ background: ovrSheen(ovrMetal(ovr)) }}>{showOvr(ovr)}</span> : "–"}</dd></div>
               <div><dt>{shown.length > 1 ? "Positions" : "Position"}</dt>
                 <dd>{shown.length ? shown.map(x => <span key={x} style={{ color: POS_CLR[x] || "inherit" }}>{x}</span>) : "–"}</dd></div>
@@ -18741,7 +19287,7 @@ export default function App() {
           </div>
         </section>
         <div className="ux-col">
-          {uxPanel("Positions", null, (<>
+          {ed ? uxPosPitch(ownPos, (ps) => putP({ pos: ps }), plSlot, setPlSlot) : uxPanel("Positions", null, (<>
             <div className="ux-pitch-wrap"><div className="ux-pitch" role="img" aria-label={[...spots.keys()].join(", ")}>
               {UX_PITCH_LINES}
               {/* His own positions lit (src/data/positions.js), each with the sides that play him there; a place a side plays
@@ -18758,11 +19304,25 @@ export default function App() {
             {oops.length > 0 && uxOopList(oops, ownPos)}
             {roles.length > 0 && uxRolesList(roles)}
           </>), true)}
-          {traits.length > 0 && uxPanel("Traits", traits.length > 4 ? <span className="ux-dim" style={{ ...mono, fontSize: 11 }}>{traits.length}</span> : null, (
+          {ed && overseer ? uxPanel("Traits", null, <div className="ux-pbody ux-np-tr"><TraitPicker keys={R?.badges || []} onSet={(ids) => putP({ badges: ids })} ovr={ovr || 0} limit /></div>, false)
+            : traits.length > 0 && uxPanel("Traits", traits.length > 4 ? <span className="ux-dim" style={{ ...mono, fontSize: 11 }}>{traits.length}</span> : null, (
             <div className="ux-pbody ux-fit ux-traitlist" style={{ maxHeight: 44 * UX_TRAIT_ROWS }}>{traits.map(k => { const b = badgeOf(k); return (
               <div key={b.id} className="ux-trait" data-trait={k}><BadgeIcon id={k} size={28} /><b>{b.name}</b><span>{b.flaw ? "Flaw" : LEVEL_NAME[traitLv(k)]}</span></div>); })}</div>))}
         </div>
         <div className="ux-col">
+          {ed && uxPanel("Record", null, (
+            <div className="ux-np-rec">
+              <label className="ux-uce-f ux-np-wide"><span>Name</span><input className="ux-ed-in" disabled={!overseer} key={"pn" + rid + R.name} defaultValue={R.name}
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== R.name) putP({ name: v }); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>
+              <div className="ux-uce-f"><span>Nationality</span>{overseer ? <UxSidePick label="Nationality" value={R.nat} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => it.k && it.k !== R.nat && putP({ nat: it.k })} />
+                : <span className="ux-uce-ro">{natOptions.name.get(R.nat) || R.nat}{edLock}</span>}</div>
+              <div className="ux-uce-f"><span>Born</span>{overseer ? <input className="ux-ed-in" type="date" aria-label="Date Of Birth" value={R.born || ""} onChange={e => e.target.value && putP({ born: e.target.value })} />
+                : <span className="ux-uce-ro">{R.born ? uxDate(R.born) : "–"}{edLock}</span>}</div>
+              {hidMan(rid) && overseer && <label className="ux-uce-f"><span>Year</span>{uxPick("Year", String(yearOf(R.grad) || ""), [...(yearOf(R.grad) ? [] : [["", "None"]]), ...YEARS.map((y, i) => [String(i + 1), y])], v => v && putP({ grad: COLLEGE_SEASON + 4 - +v }))}</label>}
+              {!overseer && <div className="ux-uce-f"><span>Portrait</span>{portraitAsked(rid) ? <span className="ux-uce-ro"><span className="ux-uce-st ux-rev">Portrait Asked For</span></span>
+                : <button type="button" className="ux-btnreset ux-btn ux-np-pq" onClick={() => askPortrait(rid)}>{uxIcon("image", "ux-s")}Request New Portrait</button>}</div>}
+              {overseer && <div className="ux-uce-f"><span>Retire</span>{uxArmBtn("retire:" + rid, "Retire Player", "Confirm Retire", () => edRetire(rid))}</div>}
+            </div>), false)}
           {/* A LONG INJURY on file that the archive has not yet got past (longIdx): a warning row over his season, what it is
               and how long he is out (user, 24 November 2026: "cannot be on the header strip. Put it as a warning row in
               season stats"). */}
@@ -18788,7 +19348,8 @@ export default function App() {
             </table></div>)}</>, !perf)}
           {perf && uxPanel("Performance", null, uxRadar(perf, clr, disp, "Average " + (UX_BAND[perf.band] || "Player")), true)}
         </div>
-        {right && (
+        {right && ed && <div className="ux-col">{uxChangesPanel(cartList.filter(it => it.groups.some(g => g.kind === "players" && g.id === rid) || it.portrait?.player === rid))}</div>}
+        {right && !ed && (
           <div className="ux-col">
             {uxPanel("Career", drChipOf(rid), (<>
               <div className="ux-pbody"><table className="ux-tbl">
@@ -22242,7 +22803,7 @@ export default function App() {
           {uxScreen === "cyear" && renderUxYear(reg.year || uxArcYears[uxArcYears.length - 1])}
           {uxScreen === "h2h" && renderUxH2H()}
           {uxScreen === "cafa" && renderUxAfa(uxAfaYearOf(reg.afaYear))}
-          {uxScreen === "comp" && uxCompPage(renderUxComp)}
+          {uxScreen === "comp" && (lgEdit && lgOfComp(reg.comp) && lgCanEdit(lgOfComp(reg.comp)) ? renderLeagueEdit({ id: lgOfComp(reg.comp).id }) : uxCompPage(renderUxComp))}
           {uxScreen === "cseason" && uxCompPage(renderUxSeason)}
           {uxScreen === "crecords" && uxCompPage(renderUxRecords)}
           {uxScreen === "cdraft" && renderUxCompDraft(reg.comp)}

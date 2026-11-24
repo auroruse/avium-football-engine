@@ -43,12 +43,13 @@ export function cartItems(rec, draft) {
     items.get(r).groups.push(g);
   }
   return [...items.values(), ...(draft?.trades || []).map(tr => ({ key: "trade:" + tr.id, trade: tr, groups: [] })),
-    ...(draft?.new || []).map(n => ({ key: "new:" + n.id, rec: n, groups: [] }))];
+    ...(draft?.new || []).map(n => ({ key: "new:" + n.id, rec: n, groups: [] })),
+    ...(draft?.portraits || []).map(x => ({ key: "portrait:" + x.id, portrait: x, groups: [] }))];
 }
 
 // The draft without one item.
 export function withoutItem(rec, draft, item) {
-  if (item.trade || item.rec) { const k = item.trade ? "trades" : "new", id = (item.trade || item.rec).id, l = (draft[k] || []).filter(x => x.id !== id);
+  if (item.trade || item.rec || item.portrait) { const k = item.trade ? "trades" : item.portrait ? "portraits" : "new", id = (item.trade || item.rec || item.portrait).id, l = (draft[k] || []).filter(x => x.id !== id);
     const d = { ...draft, [k]: l }; if (!l.length) delete d[k]; return d; }
   let d = { ...draft };
   for (const g of item.groups) { const grp = { ...(d[g.kind] || {}) }; delete grp[g.id]; d[g.kind] = grp; }

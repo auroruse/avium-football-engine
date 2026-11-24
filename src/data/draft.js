@@ -53,7 +53,7 @@ export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r
 
 // How many people and teams a draft touches, with its trades, the new records it asks for and the records it adds.
 export const draftSize = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d?.[k] || {}).length + (d?.add?.[k]?.length || 0) + (d?.drop?.[k]?.length || 0), 0)
-  + (d?.trades?.length || 0) + (d?.new?.length || 0);
+  + (d?.trades?.length || 0) + (d?.new?.length || 0) + (d?.portraits?.length || 0);
 
 // A patch names a squad's men, and a manager, by ID. A man the sheet wrote its own way ({ id, tag } or { id, raw }) keeps
 // that cell while he stays at the side, wherever in the squad he moves; one who arrives is written from his record,

@@ -220,25 +220,37 @@ export const DOCS = [
   { id: "editing", title: "Editing", sections: [
     { id: "editors", title: "Editors And Kirin", body: [
       "Each editor keeps their own nation: its national side, its clubs and its leagues. An editor may also be given another nation's clubs and leagues without its national side. Kirin can change anything, and answers the requests editors send.",
-      "Sign in with the GitHub account Kirin has listed for you, and the top bar gains the Editor section, Requests and the Cart. Your own sides are edited on their own pages: Edit, at the top right of one of your clubs or your national side, turns its page into its editor. The Editor section holds Home, Sent (Kirin's Inbox), Trades and Activity, and the Sheet until the pages cover everything it does.",
+      "Sign in with the GitHub account Kirin has listed for you, and the top bar gains the Editor section, Requests and the Cart. Everything is edited on its own page: Edit, at the top right of one of your sides, a league or a player, turns that page into its editor. The Editor section holds Home, Sent (Kirin's Inbox), Trades and Activity, the pages for new players, clubs and leagues, and the Sheet until the pages cover everything it does.",
       { dl: [
         ["Yours To Change", "A side's name, kits, ground, capacity, city, time wasting and formation, and who plays where; players and managers moved between your own sides, free agents signed and players released; your national side's call-ups; a league's name, tier and cup; and a new player rated at or under his side's level for him, its best starter at his position."],
         ["By Request", "A club's code, one of your players' positions, a new player rated over his side's level or left blank, and every new manager, club and league. Kirin answers these."],
         ["On Trades", "Any move between clubs can also be made on Trades, which shows every player's value. A move to or from another nation's club is made only there, as an offer that nation accepts."],
-        ["Kirin's", "Every player's own record: his name, nationality, date of birth, rating and traits, shown locked; his positions too, which you may ask to change. A club plays its manager's style, so a new manager brings his with him."],
+        ["Kirin's", "Every player's own record: his name, nationality, date of birth, rating and traits, shown locked on his page; his positions too, which you may ask to change, and a new portrait, which you may ask for. A side plays its manager's style, so a new manager brings his with him."],
       ] },
     ] },
     { id: "side-page", title: "Editing A Side", body: [
-      "Edit on one of your sides' pages shows its editor: the side's profile, its squad, the player you pick, and its Checks and Changes. Editing stays on as you go from side to side, and Previous and Next Club step through your sides that still have open places.",
+      "Edit on one of your sides' pages shows its editor, the same for a club and a national side: the team and its tactics on the left, the squad, where players come from beside it, and Checks and Changes on the right. Editing stays on as you go from side to side, and Previous and Next Club step through your sides that still have open places.",
       { dl: [
-        ["Open Places", "Each open place in the squad takes a name: click Add Player, type him, and Enter puts him there and moves on to the next one. A name alone is enough; he takes the place's position and his side's level as his rating. Free Agents and My Clubs list players to sign or bring over instead, and a national side's place lists its Nationals."],
-        ["Fill Open Places", "Takes a list, one player a line, for every open place at once, and shows each in his place before he is added. A line is read as on the Sheet, and a number over 60 after a comma is his rating. Ages are drawn in the range given. Ratings: Club Level gives each player without one his side's level, Typed keeps only the ratings in the list, and Blank leaves every rating for Kirin."],
-        ["Player", "The player picked in the list: where he plays, his rating, positions and value. Swap and then another row changes the two over, and a row dragged onto another does the same. Move To Bench brings the best substitute for his place into the eleven. Call Up puts a club's player into your national side, Trade opens Trades, and Release asks twice."],
-        ["Checks", "The side in words: whether the eleven is complete, its goalkeepers, its open places, its manager, and anyone out of position."],
+        ["Team", "The name and code, the formation, time wasting and the style, which is the manager's; the manager, with the free managers to appoint and Sack; the kits; and the ground, capacity and city. A club with no badge says so, with How To Send."],
+        ["A Club's Open Places", "Pick an open place, or leave the first one picked, and beside the squad choose who fills it: Free Agents to sign, My Clubs to bring a player over from another of your clubs, or New Player to make one there, one at a time, with his rating against the club's level. For Its Place puts the players who fit that place first. Many, over the squad, makes several at once."],
+        ["A National Side's Nationals", "Every eligible national is listed beside the squad, best first, by line and by search. Pick a squad player and the list narrows to those who can play his place, each with Swap In; pick an open place and each has Call Up. Move To Bench and Drop are over the list."],
+        ["Player", "On a club, the player picked: where he plays, his positions and value. Swap and then another row changes the two over, and a row dragged onto another does the same. Move To Bench brings the best substitute for his place into the eleven. Call Up puts him into your national side, Trade opens Trades, and Release asks twice. His rating and the rest of his record are on his own page."],
+        ["Checks", "The side in words: whether the eleven is complete, its goalkeepers, its open places, its manager, anyone out of position, and a missing badge."],
         ["Changes", "This side's changes in the cart, each marked Live or For Review, each with Undo. Send saves the whole cart."],
-        ["Kits, Stadium, Manager", "Edit beside each opens it in place: the kits as colours, the ground, capacity and city, and the free managers to appoint, with Sack for the one there."],
       ] },
       "A new player waiting for review shows faintly in his place, and that place is not open until he is answered.",
+    ] },
+    { id: "player-page", title: "Editing A Player", body: [
+      "Edit Player on a player's page edits him there. Kirin sets his rating in the banner, his positions on the pitch (Primary, or Second for the one he also plays; clicking his second again drops it), his traits and their levels, his name, nationality and date of birth, and can retire him. An editor asks for one of their own players' positions the same way, and Request New Portrait asks for a new picture of him. Changes, on the right, lists what is done to him with Undo and Send.",
+    ] },
+    { id: "new-pages", title: "New Players, Clubs And Leagues", body: [
+      { dl: [
+        ["New Player", "From Home, or One at the top of the page: a blank player page, filled where it reads. His name, nationality, date of birth or age (the die draws another date), positions on the pitch, rating in the banner, traits, and the club and place he joins or none. On Save says whether he goes in at once or for review. Add Player puts him in the cart, and Add And Next starts the next open place at the same club. An editor's new player has his portrait asked for with him."],
+        ["Many", "A list pasted a player a line, into one club's open places or to free agency. Each line becomes a row to put right before anything is added: name, position, age and rating can be changed in the row, and a row with something wrong says what. Ages and ratings not given are drawn or left as chosen."],
+        ["New Club", "From Home, or New Club on a league's page: a blank club page marked Draft, filled where it reads, its squad from free agents, your other clubs or new players. Checks says what it still needs, and Send sends it for review."],
+        ["New League", "From Home: a blank league page marked Draft, with its name, tier and cup, and its clubs made with New Club, each opening its own draft page. The league and its clubs go for review together."],
+        ["A League's Page", "Edit on one of your leagues changes its name, tier and cup, lists its clubs with Edit on each, and starts a New Club in it. Kirin also moves clubs in and out."],
+      ] },
     ] },
     { id: "desk", title: "Home And Activity", body: [
       "Home is your nation at a glance: what there is to do, each with a button that starts it (Fill takes you to your first side with open places), and your sides as a ledger with their ratings, squads, open places, managers and shapes. Click a side to edit it. Beside it are what you sent, the offers made to you, and the latest activity.",
@@ -331,7 +343,8 @@ export const DOCS = [
       "Every final-year player nobody took goes to free agency, and any club can sign him through the usual save, first come first served. The draft is then filed under the Championship, and each player's page shows his pick.",
     ] },
     { id: "images", title: "Badges And Portraits", body: [
-      "Images are not uploaded in the app: send them as a zip to @auroruse on Discord. A badge, for a club or a league, is 500 by 500 pixels with 50 pixels of padding on every side and a 25 pixel white outline. A portrait is a chest-up headshot, the subject in a plain white shirt.",
+      "Nothing is uploaded in the app. A portrait is made on request: Request New Portrait on a player's page, or asked for with a new player.",
+      "A badge, for a club or a league, is a 500 by 500 PNG with a transparent background, 50 pixels of padding on every side and a 25 pixel white outline, named by its code (ABC.png). Zip your badges together and DM them to Kirin on Discord. How To Send, on any missing badge, shows the same and lists your sides still without one.",
     ] },
   ] },
   { id: "players", title: "Players", sections: [

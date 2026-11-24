@@ -3006,3 +3006,111 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 /* The documentation's traits (user, 24 November 2026: "The positive trait badges should be green in documentation"): the
    gold art turned to green, the flaws left in their red. */
 .ux-doc-chip.ux-doc-good img { filter: hue-rotate(62deg) saturate(.85) brightness(1.05); }
+/* THE EDITOR, ORGANISED (25 November 2026): one edit page for every side, the player page edited in place, the new pages,
+   and the badge guidelines. */
+.ux-body.ux-uce2 { grid-template-columns: minmax(240px, 280px) minmax(440px, 1.2fr) minmax(360px, 1fr) minmax(240px, 290px); }
+.ux-uce-team { overflow-y: auto; }
+.ux-uce-id { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 12px 12px; border-bottom: 1px solid var(--ux-line); }
+.ux-uce-nm { width: 100%; text-align: center; font: 700 17px/1.2 var(--ux-f-title, inherit); text-transform: uppercase; letter-spacing: .02em; background: transparent; border-color: transparent; }
+.ux-uce-nm:hover, .ux-uce-nm:focus { border-color: var(--ux-line-2); background: var(--ux-panel-2); }
+.ux-uce-code { display: inline-flex; align-items: center; gap: 6px; }
+.ux-uce-code .ux-ed-in { width: 70px; text-align: center; height: 26px; letter-spacing: .15em; }
+.ux-uce-nob { width: 72px; height: 80px; border: 1.5px dashed var(--ux-line-2); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: var(--ux-text-3); font-size: 10px; text-align: center; }
+.ux-uce-nob b { color: var(--ux-accent); font-size: 10px; font-weight: 600; }
+.ux-uce-nob:hover { border-color: var(--ux-accent); }
+.ux-uce-tac { display: flex; flex-direction: column; gap: 10px; padding: 2px 0 4px; }
+.ux-uce-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 12px; color: var(--ux-text); }
+.ux-uce-f > span:first-child { font-size: 11px; font-weight: 600; color: var(--ux-text-3); }
+.ux-uce-f .ux-pick { width: 100%; }
+.ux-uce-f .ux-seg { align-self: flex-start; margin: 0; }
+.ux-uce-f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ux-uce-sty { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--ux-line); border-radius: 6px; }
+.ux-uce-sty .ux-dim { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.ux-uce-ro { display: inline-flex; align-items: center; gap: 8px; height: 30px; }
+.ux-uce-kitf { grid-template-columns: 44px auto 1fr !important; }
+.ux-uce-danger { padding-top: 12px; }
+.ux-uce-lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ux-text-2); }
+.ux-uce-lg:hover { color: var(--ux-text); }
+.ux-uce-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--ux-line); }
+.ux-uce-tabs .ux-seg { margin: 0; }
+.ux-uce-q { flex: 1; min-width: 120px; height: 28px; }
+.ux-uce-for { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--ux-line-2); font-size: 12px; font-weight: 600; color: var(--ux-text-2); white-space: nowrap; max-width: 260px; }
+.ux-uce-for.ux-on { border-color: transparent; background: color-mix(in srgb, var(--ux-accent) 20%, var(--ux-panel-3)); color: var(--ux-text); }
+.ux-uce-forp { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.ux-uce-pacts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--ux-line); background: color-mix(in srgb, var(--ux-accent) 6%, transparent); }
+.ux-uce-sm { height: 24px; padding: 0 8px; font-size: 11px; gap: 4px; }
+.ux-uce-p2 { margin-left: 6px; font: 600 10px "JetBrains Mono", "Fira Code", monospace; opacity: .8; }
+.ux-uce-pool tbody tr .ux-btn { opacity: .55; }
+.ux-uce-pool tbody tr:hover .ux-btn { opacity: 1; border-color: var(--ux-accent); color: var(--ux-text); }
+.ux-uce-pool .ux-a { text-align: left; min-width: 0; }
+.ux-uce-plus { display: inline-flex; align-items: center; gap: 8px; color: var(--ux-text-3); font-size: 12px; }
+.ux-uce-plus i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px dashed var(--ux-line-2); }
+.ux-uce-sq tbody tr.ux-uce-open.ux-on td { background: color-mix(in srgb, var(--ux-accent) 14%, transparent); }
+.ux-uce-sq tbody tr.ux-uce-open.ux-on td:first-child { box-shadow: inset 3px 0 0 var(--ux-accent); }
+.ux-uce-sq tbody tr.ux-uce-open.ux-on .ux-uce-plus { color: var(--ux-text); }
+.ux-uce-nf { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.ux-uce-nf .ux-ed-in { height: 30px; }
+.ux-uce-age { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.ux-uce-age .ux-ed-in { width: 64px; }
+.ux-uce-psel { width: 100%; }
+.ux-uce-tr { align-self: flex-start; }
+.ux-uce-pq { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px dashed var(--ux-line-2); font-size: 12px; font-weight: 600; color: var(--ux-text-2); }
+.ux-uce-pq.ux-on { border-style: solid; border-color: transparent; background: color-mix(in srgb, var(--ux-win) 14%, var(--ux-panel-3)); color: var(--ux-win); }
+.ux-uce-nfa { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.ux-uce-st.ux-bad2 { color: var(--ux-loss); background: color-mix(in srgb, var(--ux-loss) 14%, var(--ux-panel-3)); }
+.ux-pb-draft { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 5px; font-size: 12px; font-weight: 700; color: var(--ux-text);
+  background: color-mix(in srgb, var(--ui-info) 24%, var(--ux-panel-3)); }
+/* the pitch that sets positions: the first in its colour, the second ringed in dashes */
+.ux-pitch-ed .ux-spot { cursor: pointer; }
+.ux-pitch-ed .ux-spot:not(.ux-on):hover { width: 18px; height: 18px; border-color: var(--pos); }
+.ux-spot.ux-spot2 { border-style: dashed; background: rgba(0, 0, 0, .45); }
+/* the player page edited: the rating box in the banner, the record */
+.ux-np-ovr { width: 64px; height: 44px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 8px; background: rgba(0, 0, 0, .35); color: #fff; font-size: 26px; font-weight: 700; text-align: center;
+  font-family: var(--ux-f-title, inherit); }
+.ux-np-ovr::placeholder { color: rgba(255, 255, 255, .45); font-size: 15px; }
+.ux-np-ed dd { display: flex; align-items: center; }
+.ux-np-rec { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.ux-np-rec .ux-ed-in { height: 30px; }
+.ux-np-wide { grid-column: 1 / -1; }
+.ux-np-age { width: 58px !important; }
+.ux-np-pq { align-self: flex-start; }
+.ux-np-tr { padding: 10px 12px; overflow-y: auto; }
+.ux-np-joins { font-size: 18px !important; max-width: 220px; }
+.ux-np-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.ux-body.ux-np .ux-col:last-child .ux-np-rec { grid-template-columns: 1fr; }
+/* many: the pasted list, the table to put right */
+.ux-many-l { grid-template-columns: 1fr; }
+.ux-many-ta { width: 100%; min-height: 260px; resize: vertical; font: 12px/1.7 "JetBrains Mono", "Fira Code", monospace; padding: 8px 10px; }
+.ux-many-in { width: 100%; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ux-text); font-size: 12px; font-weight: 600; }
+.ux-many-in:hover, .ux-many-in:focus { border-color: var(--ux-line-2); background: var(--ux-panel-2); }
+.ux-many-num { width: 46px; text-align: center; }
+.ux-many-in.ux-need { border-color: var(--ux-loss); }
+.ux-many-t tbody tr.ux-many-bad td { background: color-mix(in srgb, var(--ux-loss) 8%, transparent); }
+/* a league's page edited */
+.ux-body.ux-lge { grid-template-columns: minmax(0, 2fr) minmax(280px, 340px); }
+.ux-lge-f { display: grid; grid-template-columns: 2fr 1fr 1.4fr; gap: 12px; padding: 12px; }
+.ux-lge-f .ux-ed-in { height: 30px; }
+.ux-lge-acts { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.ux-lge-acts .ux-pick { min-width: 110px; }
+.ux-lge-new td { background: color-mix(in srgb, var(--ui-ok) 6%, transparent); }
+.ux-lge-nob { width: 18px; height: 20px; border-radius: 4px; border: 1px dashed var(--ux-line-2); flex: none; }
+.ux-lge-discard { align-self: flex-start; }
+/* the badge guidelines */
+.ux-bh { position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 32px)); background: var(--ux-panel); border: 1px solid var(--ux-line-2);
+  border-radius: 10px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); display: flex; flex-direction: column; }
+.ux-bh-b { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ux-bh-spec { display: flex; gap: 14px; align-items: center; }
+.ux-bh-img { width: 118px; height: 118px; flex: none; border-radius: 6px; background: repeating-conic-gradient(#2a3040 0 25%, #1f2431 0 50%) 0 0 / 14px 14px; display: grid; place-items: center; }
+.ux-bh-pad { width: 94px; height: 94px; border: 1px dashed rgba(255, 255, 255, .35); display: grid; place-items: center; }
+.ux-bh-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12px; margin: 0; flex: 1; }
+.ux-bh-dl dt { color: var(--ux-text-3); } .ux-bh-dl dd { margin: 0; color: var(--ux-text); }
+.ux-bh-send { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--ui-info) 14%, var(--ux-panel-2)); font-size: 12px; color: var(--ux-text); }
+.ux-bh-h { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ux-text-3); }
+.ux-bh-list { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12px; color: var(--ux-text-2); max-height: 180px; overflow-y: auto; }
+.ux-uce-age .ux-ed-in { flex: none; width: 64px; text-align: center; padding: 0 4px; }
+.ux-uce-age input[type="date"].ux-ed-in { width: 150px; text-align: left; padding: 0 8px; }
+.ux-uce-age > .ux-dim { white-space: nowrap; }
+.ux-np-tr { max-height: 300px; }
+.ux-uce-fort { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ux-body.ux-uce2 { grid-template-columns: minmax(230px, 260px) minmax(400px, 1fr) minmax(440px, 1.1fr) minmax(230px, 270px); }
