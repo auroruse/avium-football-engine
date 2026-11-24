@@ -4267,7 +4267,7 @@
 {"id":"p4310","name":"Yazeed AL-BRAIK","nat":"VAR","ovr":60,"born":"1907-12-26","pos":["ST"]},
 {"id":"p4311","name":"Reza MOZAFFARI","nat":"VAR","ovr":64,"born":"1912-01-28","pos":["CB"]},
 {"id":"p4312","name":"Sohrab KARIMZADEH","nat":"VAR","ovr":63,"born":"1909-07-03","pos":["RB"]},
-{"id":"p4313","name":"Sōta WAKATSUKI","nat":"NCH","ovr":81,"born":"1913-01-30","pos":["CM"],"badges":["pressresistant"]},
+{"id":"p4313","name":"Sōta WAKATSUKI","nat":"NCH","ovr":81,"born":"1913-01-30","pos":["CM"],"badges":["vision","passandmove","hothead"]},
 {"id":"p4314","name":"Maziar SEHAT","nat":"VAR","ovr":70,"born":"1911-05-28","pos":["CM"],"badges":["tikitaka"]},
 {"id":"p4315","name":"Behzad POURMEHRDAD","nat":"VAR","ovr":62,"born":"1901-02-10","pos":["CM"]},
 {"id":"p4316","name":"Hajime MORIMOTO","nat":"NCH","ovr":80,"born":"1906-12-29","pos":["ST"],"badges":["disciplined:1","poacher:2"]},

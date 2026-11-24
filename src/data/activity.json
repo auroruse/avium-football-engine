@@ -1,5 +1,27 @@
 [
  {
+  "id": "b7700f55",
+  "by": "auroruse",
+  "at": "2026-11-24T22:33:50.542Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "players",
+    "id": "p4313",
+    "name": "Sōta WAKATSUKI",
+    "field": "badges",
+    "from": [
+     "pressresistant"
+    ],
+    "to": [
+     "vision",
+     "passandmove",
+     "hothead"
+    ]
+   }
+  ]
+ },
+ {
   "id": "6f548511",
   "by": "auroruse",
   "at": "2026-11-24T22:31:01.293Z",
