@@ -57,7 +57,7 @@ export const ownersOf = (editors, t) => [...new Set([
 // What an editor may change on a team of their own outright, and what goes to the overseer as a request.
 // A side's ground is its editors' outright (Moukden and Kirin, 26 October 2026: "Let editors change their own grounds directly"),
 // and its city and capacity with it (21 November 2026, the editor rethought: "a ground, a city or a capacity, at once").
-const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting"]);
+export const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting"]);
 const BY_REQUEST = new Set(["code"]);
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 // EVERY SQUAD HAS TWENTY-TWO PLACES, a club's as a national side's (Moukden and Kirin, 12 October 2026: "clubs will also be

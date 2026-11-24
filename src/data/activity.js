@@ -3,7 +3,7 @@
 // from and to, and the records it added, so it can be undone without the draft that made it: each field goes back to what
 // it was, and each added record is dropped. It undoes only while nothing has touched those fields or records since.
 import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
-import { squadProblems } from "./rules.js";
+import { EDITOR_TEAM_FIELDS, squadProblems } from "./rules.js";
 
 export const ACTIVITY_FILE = "src/data/activity.json";
 // The log keeps its newest entries; older saves stay in the git history.
@@ -73,6 +73,21 @@ export function undoPlan(rec, entry, h) {
   const probs = squadProblems(rec, next, keys, h);
   return probs.length ? { errors: probs } : { errors: [], apply: d };
 }
+
+// WHAT EVERYONE ELSE SEES (the user, 25 November 2026: "only show public stuff, not overseer changing locked off stuff like
+// OVRs or traits or whatever on his own, though keep requests that were approved"). The overseer's own saves and undos
+// keep only what an editor could change outright, a side's or a league's; a man's record, a code, a new or dropped record
+// leave the entry, and an entry left with nothing goes. An accepted request stays whole. The overseer sees the lot.
+const lc = (s) => String(s || "").toLowerCase();
+const publicChange = (c) => c.kind === "leagues" || (c.kind === "teams" && EDITOR_TEAM_FIELDS.has(c.field));
+export function publicEntry(e, overseers) {
+  if (!e || e.what === "accept" || !(overseers || []).some(o => lc(o) === lc(e.by))) return e;
+  const changes = (e.changes || []).filter(publicChange);
+  if (!changes.length) return null;
+  const { added, dropped, ...rest } = e;
+  return { ...rest, changes };
+}
+export const publicLog = (log, overseers) => (log || []).map(e => publicEntry(e, overseers)).filter(Boolean);
 
 // The log with an entry put first, its oldest beyond the keep let go.
 export const logWith = (log, entry) => (entry ? [entry, ...(log || [])].slice(0, ACTIVITY_KEEP) : log || []);

@@ -32,7 +32,7 @@ import { DRAFT_FILE, currentDraft, dumpDrafts, pickDue, ratingBoard, runDraft, s
 import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, tradesFile, trendsFrom } from "../src/data/trades.js";
 import { WORLDS, sealDraft } from "../src/data/worlds.js";
-import { ACTIVITY_FILE, activityEntry, dumpActivity, logWith, markUndone, mergeEntries, undoPlan } from "../src/data/activity.js";
+import { ACTIVITY_FILE, activityEntry, dumpActivity, logWith, markUndone, mergeEntries, publicLog, undoPlan } from "../src/data/activity.js";
 import { icNow } from "../src/data/icclock.js";
 const NATIONAL_FILES = new Set(["AVIUM", "ARTERRA"]);
 import { sposFor } from "../src/engine/formations.ts";
@@ -261,7 +261,9 @@ async function handle(req, env) {
   }
   if (path === "/requests" && req.method === "GET") return json(await readOne(env, "src/data/requests.json", []));
   if (path === "/draft" && req.method === "GET") return json(await readOne(env, DRAFT_FILE, []));
-  if (path === "/activity" && req.method === "GET") return json(await readOne(env, ACTIVITY_FILE, []));
+  // The overseer reads the whole log; everyone else what publicLog leaves (src/data/activity.js).
+  if (path === "/activity" && req.method === "GET") { const [log, eds, l] = await Promise.all([readOne(env, ACTIVITY_FILE, []), readOne(env, "src/data/editors.json"), who(req, env)]);
+    return json(scopeOf(eds, l).role === "overseer" ? log : publicLog(log, eds?.overseers)); }
 
   const login = await who(req, env);
   if (!login) return json({ error: "Sign in first" }, 401);
@@ -358,7 +360,7 @@ async function handle(req, env) {
       const back = activityEntry(rec, p.apply, { id: crypto.randomUUID().slice(0, 8), by: login, at, what: "undo", undoes: e.id });
       const log = logWith(markUndone(activity, e.id, login, at), back);
       const files = { ...filesFor(rec, next), [ACTIVITY_FILE]: dumpActivity(log), ...(await tradeLog(env, head, rec, next, login)) };
-      return { files, message: `Registry: ${login} undoes ${e.by}'s ${e.what}`, result: { apply: p.apply, activity: log } };
+      return { files, message: `Registry: ${login} undoes ${e.by}'s ${e.what}`, result: { apply: p.apply, activity: scope.role === "overseer" ? log : publicLog(log, editors?.overseers) } };
     });
     return errors ? json({ errors }, 422) : json(result);
   }

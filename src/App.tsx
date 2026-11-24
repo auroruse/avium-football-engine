@@ -37,7 +37,7 @@ import editorsRec from "./data/editors.json";
 import atlasRec from "./data/atlas.json";
 import { fetchAtlas } from "./data/atlas.js";
 import { OVERSEER, clubLevel, clubNations, isNational, liveNewMan, mgrNations, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
-import { activitySize } from "./data/activity.js";
+import { activitySize, publicLog } from "./data/activity.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
@@ -10104,8 +10104,10 @@ export default function App() {
   const [activity, setActivity] = useState([]);
   const [actBusy, setActBusy] = useState(null);                 // the entry whose undo is on its way
   const [actMsg, setActMsg] = useState({});                     // why an undo was refused, by entry
-  const loadActivity = useCallback(() => fetch(`${REGISTRY}/activity`).then(r => (r.ok ? r.json() : null))
-    .then(a => { if (Array.isArray(a)) setActivity(a); }).catch(() => {}), []);
+  // Everyone but the overseer sees only public changes (src/data/activity.js publicLog).
+  const shownActivity = useMemo(() => (overseer ? activity : publicLog(activity, editorsRec.overseers)), [activity, overseer]);
+  const loadActivity = useCallback(() => fetch(`${REGISTRY}/activity`, session?.token ? { headers: { Authorization: `Bearer ${session.token}` } } : undefined).then(r => (r.ok ? r.json() : null))
+    .then(a => { if (Array.isArray(a)) setActivity(a); }).catch(() => {}), [session?.token]);
   useEffect(() => { if (isEditor) loadActivity(); }, [isEditor, requests, loadActivity]);
   // ── The record editor ──
   // The cart, the player or team in an edit dialog, and saving. The cart is laid over everything at load; a change made
@@ -17087,7 +17089,7 @@ export default function App() {
     const mineOpen = reqMine.filter(r => !r.declined), declined = reqMine.filter(r => r.declined), offers = reqFor.filter(r => r.kind === "deal" || r.kind === "trade");
     const inbox = overseer ? reqFor.filter(r => !reqMine.includes(r)) : [];
     const keys = new Set(sides.map(teamKey));
-    const acts = activity.filter(e => overseer || (e.changes || []).some(c => keys.has(c.id)) || String(e.by).toLowerCase() === String(scope.login).toLowerCase()).slice(0, 14);
+    const acts = shownActivity.filter(e => overseer || (e.changes || []).some(c => keys.has(c.id)) || String(e.by).toLowerCase() === String(scope.login).toLowerCase()).slice(0, 14);
     const todo = [
       openAll > 0 && ["Open Places", openAll, "Fill", () => ucRun[0] && ucGo(teamKey(ucRun[0]))],
       overseer && inbox.length > 0 && ["Waiting For You", inbox.length, "Open", () => setEdSec("inbox")],
@@ -17159,7 +17161,7 @@ export default function App() {
 
   // ── THE DESK: ACTIVITY ──
   const renderEdActivity = () => {
-    const mineOnly = edActMine, list = activity.filter(e => !mineOnly || String(e.by).toLowerCase() === String(scope.login).toLowerCase());
+    const mineOnly = edActMine, list = shownActivity.filter(e => !mineOnly || String(e.by).toLowerCase() === String(scope.login).toLowerCase());
     return (
       <div className="ux-body ux-edact">
         {uxPanel("Activity", (<>
