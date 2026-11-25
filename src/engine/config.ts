@@ -2889,6 +2889,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // over 200 league matches forwards scored 1.36 times what their chances were worth and midfielders
   // 0.85 (real football: about 1.05-1.1 and 1.0), so forwards took 68% of the goals against a real ~55%.
   shootAtkW: 8,
+  // THE LONG-SHOT SKILL (attributes.ts farRaw, meShootAt): on (1) or the finish at every range (0); the share of
+  // shootAtkW the attacking role adds to it; and where it takes over from the finish, wholly by farFrom + farOver.
+  farOn: 1, farAtkW: 0.4, farFrom: 14, farOver: 8,
+  // ...and how far each role's appetite for it (mind/roles.ts far) reaches, from farFromD metres out (0: not at all).
+  farRoleK: 1.5, farFromD: 16.5, farWhole: 1, farDefK: 1.8,
+  // ...and how long (ticks) the defenders up for a corner stay on the edge of the box afterwards, and how far out (m).
+  // 0: they go straight back, as before.
+  spUpT: 30, spUpD: 22,
   // The highest he aims: under the bar, which a finisher past the band would otherwise aim over.
   shotAimZMax: 2.25,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
