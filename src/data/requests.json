@@ -1,1 +1,65 @@
-[]
+[
+ {
+  "by": "auroruse",
+  "at": "2026-11-25T20:50:48.771Z",
+  "approved": [],
+  "id": "0166e67b",
+  "kind": "deal",
+  "team": "t0206",
+  "teamName": "Imperial Sports Society",
+  "sides": [
+   "t0206",
+   "t0285"
+  ],
+  "names": {
+   "t0206": "Imperial Sports Society",
+   "t0285": "Pas Nourabad"
+  },
+  "moves": [
+   {
+    "kind": "player",
+    "id": "p1048",
+    "to": "t0285"
+   },
+   {
+    "kind": "player",
+    "id": "p1117",
+    "to": "t0285"
+   },
+   {
+    "kind": "player",
+    "id": "p1359",
+    "to": "t0206"
+   },
+   {
+    "kind": "player",
+    "id": "p5261",
+    "to": "t0285"
+   },
+   {
+    "kind": "player",
+    "id": "p4312",
+    "to": null
+   },
+   {
+    "kind": "player",
+    "id": "p4315",
+    "to": null
+   }
+  ],
+  "rounds": 1,
+  "needs": {
+   "t0285": [
+    "GeneralVarah"
+   ]
+  },
+  "locks": [
+   "p:p1048",
+   "p:p1117",
+   "p:p1359",
+   "p:p5261",
+   "p:p4312",
+   "p:p4315"
+  ]
+ }
+]
