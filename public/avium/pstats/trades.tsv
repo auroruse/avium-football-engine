@@ -298,3 +298,7 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 94	1936	2026-11-25T21:35:45.677Z	player	p1453	Gersom PARENGKUAN	GK	72	27	1200000	t0225	Bankoku Genkai			auroruse
 94	1936	2026-11-25T21:35:45.677Z	player	p6496	Kíli ALGÂNHUND	GK	79	27	4900000			t0225	Bankoku Genkai	auroruse
 94	1936	2026-11-25T21:35:45.677Z	player	p1401	Kleanthis PALEOLOGOS	LB	72	27	1400000			t0225	Bankoku Genkai	auroruse
+95	1936	2026-11-25T21:41:50.334Z	player	p0763	Silvio CARUSO	RW/RM	82	29	18000000	t0045	Stade Lutècienne	t0206	Imperial Sports Society	auroruse
+95	1936	2026-11-25T21:41:50.334Z	player	p3257	Keiran STANDISH	AM/RW	77	29	6200000	t0206	Imperial Sports Society	t0045	Stade Lutècienne	auroruse
+95	1936	2026-11-25T21:41:50.334Z	player	p1129	Danilo DELLA ROCCA	LB/LWB	79	24	9300000	t0206	Imperial Sports Society	t0045	Stade Lutècienne	auroruse
+95	1936	2026-11-25T21:41:50.334Z	player	p3258	Detlef LORENZ	ST	75	27	5500000	t0206	Imperial Sports Society	t0045	Stade Lutècienne	auroruse
