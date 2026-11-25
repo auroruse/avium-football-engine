@@ -351,7 +351,7 @@ export const DOCS = [
     { id: "player-ratings", title: "Player Ratings", body: [
       "A player's rating, his OVR, is a whole number from 25 to 99, set by Kirin. It is everything the engine knows about him. The badge it sits in is coloured by band.",
       { live: "metals" },
-      "The engine works out his abilities from his rating and the line of the slot he stands in, when the slot is one of his own positions: pace, passing, shooting, tackling, positioning, strength, heading, reflexes and touch. The further forward the slot, the more of the rating goes into shooting and the less into tackling, so two 75-rated centre-backs are the same player until a trait sets one apart. Tired legs slow everyone as a match goes on.",
+      "The engine works out his abilities from his rating and the line of the slot he stands in, when the slot is one of his own positions: pace, passing, finishing, long shots, tackling, positioning, strength, heading, reflexes and touch. The further forward the slot, the more of the rating goes into finishing and the less into tackling, so two 75-rated centre-backs are the same player until a trait sets one apart. Long shots are their own skill and favour midfielders: a midfielder strikes it from distance better than a forward of the same rating, and a defender about as well as his rating. Tired legs slow everyone as a match goes on.",
     ] },
     { id: "positions", title: "Positions", body: [
       { live: "positions" },
@@ -512,7 +512,7 @@ export const DOCS = [
       "Pace sets a player's top speed, and tiredness takes speed and touch away.",
     ] },
     { id: "shots", title: "Shots And Goalkeepers", body: [
-      "A shot's expected goals are set as it is struck: the distance and the angle, the shooter's finishing, the pressure on him, the bodies in the way, his run-up and where the keeper really stands. A header is worth about three-fifths as much, and a penalty about three in four. Better finishers aim nearer the post, and every strike carries some error.",
+      "A shot's expected goals are set as it is struck: the distance and the angle, the shooter's finishing, the pressure on him, the bodies in the way, his run-up and where the keeper really stands. A header is worth about three-fifths as much, and a penalty about three in four. Better finishers aim nearer the post, and every strike carries some error. From outside the box it is the man's long shots that count, not his finishing: midfielders arriving with the play in front of them have a go most, strikers on the edge with their back to goal mostly lay it off and get into the box, and a centre-back still up after a corner will hit the one that comes back to him.",
       "A player does not shoot into a defender a stride in front of him, or at a keeper who covers the goal from where he stands; he looks for another way. With the goal packed in front of him, he has a go from the edge of the area, through a body or two if he can see the goal. A cross, a corner or a free kick swung into the box is attacked in the air and headed at goal.",
       "The keeper reacts to the shot as it comes. Better keepers react sooner, and bodies in front of him slow him down. Close in, he saves only what he already covers standing.",
       "A slow ball is always held; otherwise he catches more easily the nearer it is to him, the slower it is and the fewer players are in front of him. A ball he catches stays in his hands, however hard it was struck. Anything he does not hold is a parry still in play. He may not handle a deliberate back-pass.",
@@ -580,7 +580,7 @@ export const TRAIT_FAM_DOC = {
 // What each trait does to how a man plays (src/engine/config.ts ME_BADGES), for the Traits table. Its name and family are
 // read from src/data/badges.js.
 export const TRAIT_DOC = {
-  finisher: "Gets into the box and hits it first time, with sharper shooting. With Long Shot, his strikes from outside the box dip under the bar, more the higher both are.",
+  finisher: "Gets into the box and hits it first time, with sharper finishing in and around it. With Long Shot, his strikes from outside the box dip under the bar, more the higher both are.",
   interceptor: "Leaves his man to sit in the passing lane and gambles on cutting the ball out.",
   rapid: "Runs in behind, beyond the last line, and wins the race.",
   aerial: "Crosses and corners are aimed at him, and he wins them in the air.",
