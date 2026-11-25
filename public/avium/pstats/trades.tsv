@@ -368,3 +368,6 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 120	1936	2026-11-25T23:43:28.429Z	player	p4711	Vincas Bernotas	GK	66	33	180000	t0310	FK Tauras Kovno	t0294	Tarāzu Dashtvār	GeneralVarah
 121	1936	2026-11-25T23:44:30.047Z	player	p4461	Mehrdad HASHEMI	LB	55	36	7300	t0295	Sarsabz Dorudgar			GeneralVarah
 121	1936	2026-11-25T23:44:30.047Z	player	p4475	Orbalaye MOHAMMADI	ST	48	35	6300	t0295	Sarsabz Dorudgar			GeneralVarah
+122	1936	2026-11-25T23:45:55.395Z	player	p4631	Varshasb TARJOMĀNI	GK	48	26	20000	t0305	Ketāb-e Mehr	t0317	SV Hansa Wolmar	GeneralVarah
+122	1936	2026-11-25T23:45:55.395Z	player	p5960	Sadegh QESSEHGOU	CB	48	17	28000	t0305	Ketāb-e Mehr	t0317	SV Hansa Wolmar	GeneralVarah
+122	1936	2026-11-25T23:45:55.395Z	player	p4823	Jürgen Hollander	GK	55	20	62000	t0317	SV Hansa Wolmar	t0305	Ketāb-e Mehr	GeneralVarah
