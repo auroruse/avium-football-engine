@@ -207,3 +207,6 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 66	1936	2026-11-25T20:56:10.210Z	player	p1041	Eisuke SATO	GK	82	36	2800000	t0208	Kyōwa Naginomiya	t0284	Al-Nasr Golzar	GeneralVarah
 66	1936	2026-11-25T20:56:10.210Z	player	p4303	Loïc KERVADEC	DM	76	27	4500000	t0284	Al-Nasr Golzar	t0208	Kyōwa Naginomiya	GeneralVarah
 66	1936	2026-11-25T20:56:10.210Z	player	p5846	Meshari RUWAILI	AM/CM	74	22	3400000	t0284	Al-Nasr Golzar	t0208	Kyōwa Naginomiya	GeneralVarah
+67	1936	2026-11-25T20:58:48.184Z	player	p1170	Voptá HENDÁ	ST/RW	80	30	11000000	t0211	Locomotive Fūchumachi	t0286	Āzādī Rāhgozar	GeneralVarah
+67	1936	2026-11-25T20:58:48.184Z	player	p4326	Bijan SHAKIBAII	CM	71	23	1600000	t0286	Āzādī Rāhgozar	t0211	Locomotive Fūchumachi	GeneralVarah
+67	1936	2026-11-25T20:58:48.184Z	player	p4330	Farhad ADELSTEIN	ST	73	27	2700000	t0286	Āzādī Rāhgozar	t0211	Locomotive Fūchumachi	GeneralVarah
