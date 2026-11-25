@@ -328,6 +328,10 @@ function mindAttack(s, side) {
     const r = p._role2 || ROLES.cm;
     let y = laneY(s, side, p, r.lane[phi], st);
     let d = lineD(r.ln[phi], g) + (r.lnOff[phi] || 0);
+    // STILL UP FROM THE CORNER (setpiece.ts, _upT): while the ball is kept in the last third he holds the edge of the
+    // box for the second ball and the recycled one, in the middle, before he goes back.
+    const up = !!CFG.spUpT && p._upT != null && mp.tick - p._upT < CFG.spUpT && (ph === "final" || ph === "progress") && bD > 60;
+    if (up) { d = PITCH_L - CFG.spUpD; y = clamp(p.y, ME_HALF_W - 12, ME_HALF_W + 12); }
     // A COUNTER IS A SPRINT. Everybody whose job is going forward goes, now: the forwards and the men who run in
     // behind to their last line, each in his own lane so the break is spread across the pitch, and the rest of
     // the attacking men to just in front of their back line. It used to be "a step higher than usual" -- eight
@@ -346,7 +350,7 @@ function mindAttack(s, side) {
     d = clamp(d, 4, 101);
     y += p._dn[0] * MT.drillNoise * (1 - drill);
     d += p._dn[1] * MT.drillNoise * (1 - drill) * 0.7;
-    cells.push({ i, p, r, y: clamp(y, 1.5, PITCH_W - 1.5), d, run: (p._runT ?? 0) > 0,
+    cells.push({ i, p, r, y: clamp(y, 1.5, PITCH_W - 1.5), d, run: (p._runT ?? 0) > 0, up,
                  prio: r.rest * 3 + (wideLane ? 1 : 0) - Math.hypot(depthOf(side, p.x) - d, p.y - y) * 0.02 });
     if (r.rest >= 0.7 && d < deepest) deepest = d;
   }
@@ -385,7 +389,8 @@ function mindAttack(s, side) {
     let have = 0;
     for (const c of cells) if (!c.run && c.d < bD - 4) have++;
     if (have < need) {
-      const extra = cells.filter(c => !c.run && c.d >= bD - 4).sort((a, b) => b.r.rest - a.r.rest || a.d - b.d);
+      const extra = cells.filter(c => !c.run && !c.up && c.d >= bD - 4).sort(   // (a man still up from the corner is not the rest defence's to take)
+        (a, b) => b.r.rest - a.r.rest || a.d - b.d);
       for (const c of extra) {
         if (have >= need) break;
         c.d = Math.min(c.d, (g.base + bD) / 2);
@@ -443,7 +448,7 @@ function mindAttack(s, side) {
       if (cells.some(c => !c.run && Math.hypot(xAt(side, c.d) - vx, c.y - v.y) < 7)) continue;
       let f = null, fc = Infinity;
       for (const c of cells) {
-        if (c.run || c.fill || imp(c) >= iv) continue;
+        if (c.run || c.fill || c.up || imp(c) >= iv) continue;
         const dd = Math.hypot(c.p.x - vx, c.p.y - v.y);
         const cost = dd + imp(c) * 6;
         if (dd < 24 && cost < fc) { fc = cost; f = c; }
