@@ -15,6 +15,7 @@ import draftsRec from "./data/drafts.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { leagueMaps } from "./data/leagues.js";
 import { parseTrades } from "./data/trades.js";
+import { applyLive, liveText } from "./data/live.js";
 import { COLLEGE_SEASON, YEARS, collegeLeagues, collegeMen, gradFor, yearOf } from "./data/colleges.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { autoOrder, currentDraft, draftPool, makesWay, pickDue } from "./data/collegedraft.js";
@@ -103,24 +104,35 @@ const ATLAS_HERE = ARTERRA ? { ...atlasRec, nations: {}, cities: {} } : atlasRec
 // dropped field by field once a build carries it, or after twenty minutes, so a later change by someone else shows.
 const DRAFT_KEY = ukey("avium-records-draft"), PENDING_KEY = ukey("avium-records-published"), PENDING_FOR = 20 * 60e3;
 const readPatch = (k) => { try { const d = JSON.parse(localStorage.getItem(k)); return d && d.v === 1 && d.players ? d : null; } catch { return null; } };
+// THE RECORDS AS MAIN HAS THEM (src/data/live.js): the bundle's, with what main has changed since the commit it was
+// built from laid over, as the registry answered before the app loaded (src/main.tsx). Changes after that come in while
+// the page is open (the App's live poll), so a save shows for everyone without waiting for the site to redeploy.
+const RAW_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec, leagues: leaguesRec, editors: editorsRec };
+let LIVE = (globalThis as any).__aviumLive || null;
+let RAW = applyLive(RAW_BUILT, LIVE);
+let EDITORS = RAW.editors;
+const recordsOf = (raw) => scopeRecords({ players: raw.players, managers: raw.managers, teams: raw.teams, sheets: raw.sheets, leagues: raw.leagues }, WORLD);
 // This universe's records, out of them all (src/data/worlds.js): everything below is built from these.
-const RECORDS_BUILT = scopeRecords({ players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec, leagues: leaguesRec }, WORLD);
-const RECORDS_BASE = (() => {
+const RECORDS_BUILT = recordsOf(RAW);
+let BUILT_NOW = RECORDS_BUILT;                                // ...and as the latest live patch has them
+// What was saved here and is not in those records yet, laid over them, dropped field by field once they carry it.
+const baseOver = (built) => {
   const pend = readPatch(PENDING_KEY);
-  if (!pend) return RECORDS_BUILT;
+  if (!pend) return built;
   let left = null;
   if (Date.now() - (pend.at || 0) < PENDING_FOR)
-    for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
+    for (const c of draftChanges(built, pend)) left = draftWith(left, built, c.id, { [c.field]: c.to }, c.kind);
   try { if (left) localStorage.setItem(PENDING_KEY, JSON.stringify({ ...left, at: pend.at })); else localStorage.removeItem(PENDING_KEY); } catch {}
-  return left ? applyDraft(RECORDS_BUILT, left) : RECORDS_BUILT;
-})();
+  return left ? applyDraft(built, left) : built;
+};
+const RECORDS_BASE = baseOver(RECORDS_BUILT);
 const RECORDS = applyDraft(RECORDS_BASE, readPatch(DRAFT_KEY));
 // THE REGISTRY'S REQUESTS ARE BOTH UNIVERSES' (the server keeps one list), so each copy takes its own: one naming a side
 // or a nation of the other is not this copy's to show. Arterra's are the ones that name something of Arterra's; Avium's
 // every one that names nothing of Arterra's (a request from before the two were sealed is Avium's).
 const reqHere = (() => {
   const mine = new Set(RECORDS_BUILT.teams.map(teamKey)), myNats = new Set(RECORDS_BUILT.teams.filter(t => t.file === (ARTERRA ? "ARTERRA" : "AVIUM")).map(t => t.code));
-  const theirs = new Set(teamsRec.map(teamKey).filter(k => !mine.has(k))), theirNats = new Set(teamsRec.filter(t => t.file === (ARTERRA ? "AVIUM" : "ARTERRA")).map(t => t.code));
+  const theirs = new Set(RAW.teams.map(teamKey).filter(k => !mine.has(k))), theirNats = new Set(RAW.teams.filter(t => t.file === (ARTERRA ? "AVIUM" : "ARTERRA")).map(t => t.code));
   return (r) => { const keys = [r?.team, r?.other, ...(r?.sides || []), r?.rec?.side, ...Object.keys(r?.needs || {})].filter(Boolean), nats = [r?.rec?.nat, r?.rec?.nation].filter(Boolean);
     return ARTERRA ? keys.some(k => mine.has(k)) || nats.some(c => myNats.has(c)) : !keys.some(k => theirs.has(k)) && !nats.some(c => theirNats.has(c)); };
 })();
@@ -8768,6 +8780,7 @@ export default function App() {
       const mdFiles = new Set(PSTATS_HERE.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
       await Promise.all(PSTATS_HERE.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
+        if (/^trades\.tsv$/i.test(f) && liveText(LIVE, "trades/" + WORLD) != null) { trades.push(...parseTrades(liveText(LIVE, "trades/" + WORLD))); return; }
         const res = await fetch(PSTATS_DIR + f).catch(() => null);
         if (!res || !res.ok) return;
         const text = await res.text();
@@ -10097,7 +10110,7 @@ export default function App() {
   const [actBusy, setActBusy] = useState(null);                 // the entry whose undo is on its way
   const [actMsg, setActMsg] = useState({});                     // why an undo was refused, by entry
   // Everyone but the overseer sees only public changes (src/data/activity.js publicLog).
-  const shownActivity = useMemo(() => (overseer ? activity : publicLog(activity, editorsRec.overseers)), [activity, overseer]);
+  const shownActivity = useMemo(() => (overseer ? activity : publicLog(activity, EDITORS.overseers)), [activity, overseer]);
   const loadActivity = useCallback(() => fetch(`${REGISTRY}/activity`, session?.token ? { headers: { Authorization: `Bearer ${session.token}` } } : undefined).then(r => (r.ok ? r.json() : null))
     .then(a => { if (Array.isArray(a)) setActivity(a); }).catch(() => {}), [session?.token]);
   useEffect(() => { if (isEditor) loadActivity(); }, [isEditor, requests, loadActivity]);
@@ -10133,7 +10146,7 @@ export default function App() {
   const reqWaitAt = useMemo(() => new Map(requests.filter(r => r.kind === "new" && r.what === "players" && !r.declined && r.rec?.side && Number.isInteger(r.rec.at))
     .map(r => [r.rec.side + "|" + r.rec.at, r])), [requests]);
   // Who answers for a team: its nation's editors (and, for a club, anyone given its nation's clubs), as this build lists them.
-  const ownersOfKey = (k) => { const t = recTeam.get(k); return t ? ownersOf(editorsRec, t) : []; };
+  const ownersOfKey = (k) => { const t = recTeam.get(k); return t ? ownersOf(EDITORS, t) : []; };
   const natOptions = useMemo(() => {
     const nts = PRESET_CATALOG.filter(t => isIntlLeague(t.league)), named = new Set(nts.map(t => t.code));
     const byName = (a, b) => a[1].localeCompare(b[1]);
@@ -10196,8 +10209,8 @@ export default function App() {
   const draftSees = !!draftNow && !!session && (overseer || draftMine.length > 0);
   // Yours: a club of your own on the clock, or for the overseer one nobody else answers for (Nichirin's).
   const draftYours = !!draftNow && draftNow.status === "running" && (draftMine.includes(pickDue(draftNow)?.club) || (overseer && (() => {
-    const t = curRecs.teams.find(x => teamKey(x) === pickDue(draftNow)?.club), over = new Set((editorsRec.overseers || []).map(o => o.toLowerCase()));
-    return !!t && !ownersOf(editorsRec, t).some(u => !over.has(u.toLowerCase())); })()));
+    const t = curRecs.teams.find(x => teamKey(x) === pickDue(draftNow)?.club), over = new Set((EDITORS.overseers || []).map(o => o.toLowerCase()));
+    return !!t && !ownersOf(EDITORS, t).some(u => !over.has(u.toLowerCase())); })()));
   const whereIs = useMemo(() => {
     const m = new Map();
     for (const t of curRecs.teams) {
@@ -10225,9 +10238,9 @@ export default function App() {
   const preview = useMemo(() => {
     if (!draftSize(draft)) return null;
     const editors = { overseers: overseer ? [scope.login] : [],
-                      editors: { ...(editorsRec.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) },
-                      clubs: { ...(editorsRec.clubs || {}), ...(scope.role === "editor" ? { [scope.login]: scope.clubs || [] } : null) },
-                      managers: { ...(editorsRec.managers || {}), ...(scope.role === "editor" ? { [scope.login]: scope.managers || [] } : null) } };
+                      editors: { ...(EDITORS.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) },
+                      clubs: { ...(EDITORS.clubs || {}), ...(scope.role === "editor" ? { [scope.login]: scope.clubs || [] } : null) },
+                      managers: { ...(EDITORS.managers || {}), ...(scope.role === "editor" ? { [scope.login]: scope.managers || [] } : null) } };
     return planSave(recBase, editors, requests, scope.login, draft, judge, "", () => "");
   }, [draftList, recBase, draft, requests, scope, overseer, judge]);
   // What went live is main's now: the base moves, and it stays laid under the cart in this browser until a build carries
@@ -10236,12 +10249,39 @@ export default function App() {
     const base = recBaseRef.current;
     if (!apply) return base;
     let pend = readPatch(PENDING_KEY);
-    for (const c of draftChanges(base, apply)) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
+    for (const c of draftChanges(base, apply)) pend = draftWith(pend, BUILT_NOW, c.id, { [c.field]: c.to }, c.kind);
     try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify({ ...pend, at: Date.now() })); } catch {}
     const next = applyDraft(base, apply);
     recBaseRef.current = next; setRecBase(next);
     return next;
   };
+  // MAIN AS IT CHANGES (src/data/live.js): every minute while the page is in view, and as it comes back into view, the
+  // registry is asked what main has changed since this build; anything new is laid under the cart, as a save of one's own
+  // is, so a trade or an edit made elsewhere shows here without a reload.
+  const draftRef = useRef(draft); draftRef.current = draft;
+  useEffect(() => {
+    const sha = (globalThis as any).__aviumBuilt;
+    if (!sha) return;
+    let busy = false;
+    const ask = async () => {
+      if (busy || document.visibilityState !== "visible") return;
+      busy = true;
+      try {
+        const r = await fetch(`${REGISTRY}/live?built=${sha}`), d = r.ok ? await r.json() : null;
+        if (!d || d.v !== 1 || !d.files || d.head === LIVE?.head) return;
+        const trades = liveText(d, "trades/" + WORLD), tradesWas = liveText(LIVE, "trades/" + WORLD);
+        const raw = applyLive(RAW_BUILT, d);
+        LIVE = d; RAW = raw; EDITORS = raw.editors; BUILT_NOW = recordsOf(raw);
+        const base = baseOver(BUILT_NOW);
+        recBaseRef.current = base; setRecBase(base); showRecords(applyDraft(base, draftRef.current));
+        if (trades != null && trades !== tradesWas) setPstats(p => (p ? { ...p, trades: parseTrades(trades) } : p));
+      } catch {} finally { busy = false; }
+    };
+    const id = setInterval(ask, 60e3);
+    document.addEventListener("visibilitychange", ask);
+    if (!LIVE) ask();
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", ask); };
+  }, []);
   const authed = (path, body) => fetch(`${REGISTRY}${path}`, { method: "POST", body: JSON.stringify(body),
     headers: { Authorization: `Bearer ${session?.token}`, "Content-Type": "application/json" } });
   // SAVE: the whole cart to the server, which puts live what this person may change and turns the rest into requests.
@@ -13316,7 +13356,7 @@ export default function App() {
     : (tPhase === "groups" && tGroups.length > 0) || ((tPhase === "knockout" || tPhase === "complete") && tKO) ? ({ fixtures: "tfix", stats: "tstats", rules: "trules" }[tView] || "tover")
     : null;
   // The signed-in editor's nation: what the server says they edit, or failing that the editors file.
-  const uxMyCode = session && !asViewer ? ((scope.nations || [])[0] || (editorsRec.editors?.[session.login] || [])[0] || null) : null;
+  const uxMyCode = session && !asViewer ? ((scope.nations || [])[0] || (EDITORS.editors?.[session.login] || [])[0] || null) : null;
   const uxMy = uxMyCode ? regNationBy.get(uxMyCode) || null : null;
   // The titles still contested, each at its newest season. Who won comes from the report (winnerOfSeason), which reads a
   // double-elimination Nations League off its Grand Final.
@@ -13702,7 +13742,7 @@ export default function App() {
               : saveState?.busy ? <>Saving&hellip;</>
               : saveState?.ok ? (saveState.sha
                 ? <>Saved <a href={`https://github.com/auroruse/avium-football-engine/commit/${saveState.sha}`} target="_blank" rel="noreferrer" style={mono}>{saveState.sha.slice(0, 7)}</a>
-                    {saveState.applied > 0 && <>. Live on the site in a minute or two</>}
+                    {saveState.applied > 0 && <>. Live for everyone within a minute</>}
                     {saveState.asked > 0 && <>. {saveState.asked} {saveState.asked === 1 ? "request" : "requests"} sent</>}.</>
                 : <>Nothing to save: the registry already has it.</>)
               : saveState?.err ? <>Not saved: {saveState.err}</>
@@ -15266,7 +15306,7 @@ export default function App() {
       if (!data) return;
       const sent = (data.requests || []).find(x => x.kind === "deal");
       if (sent) { trView(sent); setTrMsg({ ok: true, text: "Offer Sent" }); }
-      else { setTrOpen(null); setTrDeal({ ...trFresh(dl.sides[0]) }); setTrMsg({ ok: true, text: "Done. Live on the site in a minute or two." }); }
+      else { setTrOpen(null); setTrDeal({ ...trFresh(dl.sides[0]) }); setTrMsg({ ok: true, text: "Done. Live for everyone within a minute." }); }
     } catch (e) { setTrMsg({ bad: true, text: String(e?.message || e) }); }
     finally { setTrBusy(false); }
   };
@@ -15283,7 +15323,7 @@ export default function App() {
       if (action === "counter") { trSet(d => ({ ...d, counter: null })); setTrMsg({ ok: true, text: "Counter Sent" }); }
       else if (action === "accept" && Object.keys(r.needs || {}).length > 1) setTrMsg({ ok: true, text: "Accepted" });
       else { setTrOpen(null); setTrDeal(trFresh(trMineIn(r)));
-        setTrMsg({ ok: true, text: action === "accept" ? "Accepted. Live on the site in a minute or two." : action === "decline" ? "Declined" : "Withdrawn" }); }
+        setTrMsg({ ok: true, text: action === "accept" ? "Accepted. Live for everyone within a minute." : action === "decline" ? "Declined" : "Withdrawn" }); }
     } finally { setTrBusy(false); }
   };
   const renderEdTrades = () => {

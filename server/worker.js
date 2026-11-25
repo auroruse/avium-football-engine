@@ -11,6 +11,8 @@
 //                                  -> { sha, done, apply, request, waiting }
 //   POST /requests                 { answers: [{ id, action: "accept" | "decline" | "withdraw", edits?, note? }] }, many
 //                                  answered in one save -> { sha, done: [ids], errors: { id: [why] }, applies, waiting }
+//   GET  /live?built=<sha>         what main's records are since that commit (src/data/live.js), for the app to lay over
+//                                  the records it was built with -> { v, built, head, files }
 //   GET  /activity                 the activity log, newest first (src/data/activity.js)
 //   POST /activity/<id>            { action: "undo" } the overseer, or whoever made it -> { sha, apply, activity } or 422 { errors }
 //   GET  /draft                    the drafts (src/data/drafts.json)
@@ -34,6 +36,7 @@ import { dumpTrades, latestWorldCup, parseTrades, tradeMoves, tradeRows, tradesF
 import { WORLDS, sealDraft } from "../src/data/worlds.js";
 import { ACTIVITY_FILE, activityEntry, dumpActivity, logWith, markUndone, mergeEntries, publicLog, undoPlan } from "../src/data/activity.js";
 import { icNow } from "../src/data/icclock.js";
+import { LIVE_FILES, liveFileDiff } from "../src/data/live.js";
 const NATIONAL_FILES = new Set(["AVIUM", "ARTERRA"]);
 import { sposFor } from "../src/engine/formations.ts";
 
@@ -140,7 +143,48 @@ async function commit(env, head, tree, files, message) {
     tree: Object.entries(files).map(([path, content]) => ({ path, mode: "100644", type: "blob", content })) }) });
   const c = await gh(env, `/repos/${env.REPO}/git/commits`, { method: "POST", body: JSON.stringify({ message, tree: t.sha, parents: [head] }) });
   await gh(env, `/repos/${env.REPO}/git/refs/heads/main`, { method: "PATCH", body: JSON.stringify({ sha: c.sha, force: false }) });
+  liveHeadAt = { sha: c.sha, at: Date.now() };
   return c.sha;
+}
+
+// ── main as it is now, for the app (src/data/live.js) ──────────────────────────────────────────────
+// Main's head, asked of GitHub at most every fifteen seconds, and known at once after this server's own commits. A
+// commit's directory listings and a blob's text never change, so both are kept by their sha while the worker stays up.
+let liveHeadAt = null;
+const LIVE_EVERY = 15e3, liveDirs = new Map(), liveBlobs = new Map(), liveDiffs = new Map();
+const remember = (m, k, v, cap) => { m.set(k, v); if (m.size > cap) m.delete(m.keys().next().value); return v; };
+async function liveHead(env) {
+  if (liveHeadAt && Date.now() - liveHeadAt.at < LIVE_EVERY) return liveHeadAt.sha;
+  const sha = await mainHead(env);
+  liveHeadAt = { sha, at: Date.now() };
+  return sha;
+}
+async function liveDir(env, sha, dir) {
+  const k = sha + ":" + dir;
+  if (liveDirs.has(k)) return liveDirs.get(k);
+  const l = await gh(env, `/repos/${env.REPO}/contents/${encodeURI(dir)}?ref=${sha}`).catch(e => { if (e.status === 404) return []; throw e; });
+  return remember(liveDirs, k, new Map((Array.isArray(l) ? l : []).map(f => [f.name, f.sha])), 64);
+}
+async function liveBlob(env, sha) {
+  if (liveBlobs.has(sha)) return liveBlobs.get(sha);
+  return remember(liveBlobs, sha, await gh(env, `/repos/${env.REPO}/git/blobs/${sha}`, { raw: true, headers: { Accept: "application/vnd.github.raw+json" } }), 24);
+}
+// What changed in the app's files between the commit a build was made from and main: only files whose blob differs are read.
+async function liveFor(env, built, head) {
+  const k = built + ".." + head;
+  if (liveDiffs.has(k)) return liveDiffs.get(k);
+  const files = {};
+  if (built !== head) {
+    const at = async (sha, path) => { const i = path.lastIndexOf("/"); return (await liveDir(env, sha, path.slice(0, i))).get(path.slice(i + 1)) ?? null; };
+    await Promise.all(Object.entries(LIVE_FILES).map(async ([name, path]) => {
+      const [a, b] = await Promise.all([at(built, path), at(head, path)]);
+      if (a === b) return;
+      const [x, y] = await Promise.all([a ? liveBlob(env, a) : null, b ? liveBlob(env, b) : null]);
+      const d = liveFileDiff(name, x, y);
+      if (d) files[name] = d;
+    }));
+  }
+  return remember(liveDiffs, k, { v: 1, built, head, files }, 16);
 }
 // The files a change to the records rewrites: each records file and each sheet that differs.
 function filesFor(rec, next) {
@@ -258,6 +302,13 @@ async function handle(req, env) {
     const user = await ghRaw(`${API}/user`, tok.access_token);
     const session = await sign(env.SESSION_SECRET, { login: user.login, exp: Math.floor(Date.now() / 1000) + 30 * 86400 });
     return redirect(`${st.r}#avium_session=${session}`);
+  }
+  if (path === "/live" && req.method === "GET") {
+    const built = String(url.searchParams.get("built") || "");
+    if (!/^[0-9a-f]{40}$/.test(built)) return json({ error: "built must be a commit" }, 400);
+    const res = json(await liveFor(env, built, await liveHead(env)));
+    res.headers.set("Cache-Control", "no-store");
+    return res;
   }
   if (path === "/requests" && req.method === "GET") return json(await readOne(env, "src/data/requests.json", []));
   if (path === "/draft" && req.method === "GET") return json(await readOne(env, DRAFT_FILE, []));

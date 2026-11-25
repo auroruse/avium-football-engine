@@ -8,6 +8,7 @@ import { sheetsFromRecords } from "../src/data/sheets.js";
 import { leagueMaps } from "../src/data/leagues.js";
 import { rollSquad } from "../src/data/roll.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "../src/data/draft.js";
+import { applyLive, liveText } from "../src/data/live.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "../src/data/badges.js";
 import { STYLE_LBL } from "../src/data/styles.js";
 // Read at module scope (AFA_YEAR_LIST), so a stripped import is a ReferenceError on load.
