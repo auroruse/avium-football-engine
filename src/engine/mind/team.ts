@@ -367,6 +367,18 @@ function mindAttack(s, side) {
     cand.slice(0, Math.min(boxN, spots.length)).forEach((c, k) => {
       c.d = spots[k][0]; c.y = ME_HALF_W + spots[k][1]; c.prio += 1.5; c.box = true;
     });
+    // THE MAN ON THE EDGE (25 November 2026, the user: long shots should "come from the IRL situations naturally").
+    // While the others attack the box, one stays on the D for the cut-back and the ball that comes out of it: the
+    // best striker of a ball from range among those left, by his long-shot skill and how readily his role has a go.
+    // Before, the edge was the fifth box spot and went to the fifth-best box runner, so a side's midfielders all ran
+    // into the area and the ball 18-30 m out found a midfielder half as often as a striker. farEdge 0: as before.
+    if (CFG.farEdge) {
+      const rest = cand.slice(Math.min(boxN, spots.length)).filter(c => c.p.pos !== "FWD");
+      let e = null, es = -Infinity;
+      for (const c of rest) { const sc = meAttrs(c.p).far + (c.r.far ?? 1) * CFG.farEdgeRole - Math.hypot(depthOf(side, c.p.x) - (PITCH_L - CFG.farEdgeD), c.p.y - ME_HALF_W) * 0.2;
+        if (sc > es) { es = sc; e = c; } }
+      if (e) { e.d = PITCH_L - CFG.farEdgeD; e.y = ME_HALF_W - nearS * 2; e.prio += 1.2; e.edge = true; }
+    }
   }
   // ---- REST DEFENCE ----
   // In the last two phases the side keeps restN outfielders behind the ball; if the roles leave too
