@@ -1,5 +1,29 @@
 [
  {
+  "id": "09adc56e",
+  "by": "auroruse",
+  "at": "2026-11-25T21:55:14.534Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0124",
+    "name": "Winscor FC",
+    "field": "style",
+    "from": "La Nuestra",
+    "to": "Balanced"
+   },
+   {
+    "kind": "teams",
+    "id": "t0124",
+    "name": "Winscor FC",
+    "field": "manager",
+    "from": "m0066",
+    "to": "m0109"
+   }
+  ]
+ },
+ {
   "id": "f34f0955",
   "by": "auroruse",
   "at": "2026-11-25T21:54:32.080Z",
