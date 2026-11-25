@@ -500,7 +500,7 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run, set01, curl) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run, set01, curl, dip) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
   // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
   // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
@@ -540,7 +540,9 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // keeper walked out and picked it up, which is why every shot from range converted at zero.
   // 1D quadratic drag integrates exactly: x(t) = ln(1 + k*v0*t)/k, so t(d) = (e^(k d) - 1)/(k v0).
   const T = (Math.exp(CFG.ballDrag * d) - 1) / (CFG.ballDrag * v);
-  const vz = (tz - mp.bz) / T + 4.905 * T;
+  // Top-spin pulls it down at dip times its pace; over the flight that is about half of dip times the distance in lift,
+  // given back at the strike so the ball still arrives where it was aimed (the free kick's first guess, meFkStrike).
+  const vz = (tz - mp.bz) / T + 4.905 * T + (dip ? 0.5 * dip * d : 0);
   // An OPEN-PLAY strike carries shotNoiseOpen more than a dead ball -- see the config. A set strike
   // passes elevMul, which is also how it keeps its own elevation calibration below.
   const open = elevMul === undefined;
@@ -553,7 +555,7 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // the line so the bend brings it back onto it, as meKickBall does for a cross.
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma - (curl || 0) * T / 2;
   mp.bvx = Math.cos(ang) * v; mp.bvy = Math.sin(ang) * v;
-  if (curl) { mp.bsp = curl; mp.bdip = 0; mp._spinNew = true; }
+  if (curl || dip) { mp.bsp = curl || 0; mp.bdip = dip || 0; mp._spinNew = true; }
   // ...and how badly he gets under it depends on WHO KICKED IT. This never consulted skill at all
   // while the lateral cone always did, so a 99-rated finisher ballooned a shot exactly as often as a
   // 20-rated one -- and a penalty, struck at full power over a short flight, went over the bar about
