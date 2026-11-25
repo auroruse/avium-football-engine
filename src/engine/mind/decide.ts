@@ -17,7 +17,7 @@
 //      and the one chosen is the one he takes. And the point a carry or a better shot is priced at no
 //      longer runs past the goal line, which handed a free chance to any man inside eight metres.
 import { meCoachSt, CFG, ME_DT, ME_HOME_ADV, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "../config";
-import { meAtkW, meAttrs, meBadgeFx, meGkSkill, meMind, mePassBadge, meTech, meSpeed } from "../attributes";
+import { meAtkW, meAttrs, meBadgeFx, meGkSkill, meMind, mePassBadge, meTech, meSpeed, meShootAt, meLsFade } from "../attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine,
          meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "../geometry";
 import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "../ball";
@@ -128,7 +128,8 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
            * (1 + meWindUp(Math.hypot(meGoalX(side) - p.x, ME_HALF_W - p.y), shotSit, shotD, !!ft) * CFG.shotSetK)
            // LONG SHOT (badge): from outside the box he curls it (match.ts lsCurl), and knows the curled one goes in more
            // often than the book says, curlP more of it: measured on the cloud, 6.4% against 3.3% with the curl taken off.
-           * (fxP.curlP && (Math.abs(meGoalX(side) - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW) ? 1 + fxP.curlP : 1);
+           * (fxP.curlP && (Math.abs(meGoalX(side) - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)
+              ? 1 + fxP.curlP * meLsFade(Math.hypot(meGoalX(side) - p.x, ME_HALF_W - p.y)) : 1);
   // Where a few strides more would take him: toward the goal mouth, and never past the line.
   const gdx = meGoalX(side) - p.x, gdy = ME_HALF_W - p.y, gdl = Math.hypot(gdx, gdy) || 1;
   const adv = Math.max(0, Math.min(CFG.carryAdv, gdl - 3));
@@ -146,11 +147,23 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const gsh = meShotGeom(side, p.x, p.y);
     const lane = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W);
     const clear = Math.max(0, 1 - lane / CFG.shotLaneClear);
-    const range = CFG.shotRange + a.shoot / 99 * CFG.shotRangeSkill + clear * CFG.shotClearRange + (meBadgeFx(p).range ?? 0);
+    const range = CFG.shotRange + Math.max(20, Math.min(99, meShootAt(a, gsh.d))) / 99 * CFG.shotRangeSkill + clear * CFG.shotClearRange + (meBadgeFx(p).range ?? 0) * (CFG.lsRangeK ?? 1);
     const sight = clear * clamp(1 - (gsh.d - range) / CFG.shotRangeFade, 0, 1);
     const nowBetter = sp > spAhead ? (sp - spAhead) / Math.max(sp, 1e-4) : 0;
     const sightHold = gsh.d < CFG.sightHoldD ? 1 : Math.pow(Math.min(1, sp / Math.max(sp, spAhead, 1e-4)), 2);
-    const appetite = 1 + meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold + nowBetter * CFG.shotNowW;
+    // WHO HAS A GO FROM RANGE (25 November 2026, the user: "Midfielders need to meaningfully take more long shots than
+    // strikers, like IRL, and even some defenders"). From outside the box his role's far decides how much the sight of
+    // goal and his attacking weight tempt him: the midfielder arriving with room hits it, the striker on the edge with
+    // his back to goal lays it off and gets into the box (mind/roles.ts). farRoleK 0 is every role alike, as before.
+    // farWhole 1: the whole of his appetite from there (the shot itself, his attacking weight, the sight of goal, and
+    // shooting now before he is closed down); 0, only the attacking weight and the sight, which measured too weak to
+    // turn a striker on the edge (he still shot on 40% of his spells there against a midfielder's 44%).
+    // His Long Shot trait (farM) multiplies his role's far: the specialist in a box-to-box role has a go more often
+    // than the man beside him in the same role (25 November 2026, the user: "Oe is still not a top 5 long shot taker??").
+    // ...and without the trait a midfielder or forward is farNoTrait of his role's appetite from there.
+    const farK = gsh.d > CFG.farFromD ? Math.pow((role.far ?? 1) * (fxP.farM ? Math.pow(fxP.farM, CFG.farTraitK) : p.pos === "DEF" ? 1 : CFG.farNoTrait ?? 1), CFG.farRoleK) * (p.pos === "DEF" ? CFG.farDefK : 1) : 1;
+    const appetite = CFG.farWhole ? (1 + meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold + nowBetter * CFG.shotNowW) * farK
+                                  : 1 + (meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold) * farK + nowBetter * CFG.shotNowW;
     const wantD = CFG.shotWant + st.chanceCreation * CFG.shotWantStep;
     const offWant = Math.max(0, gsh.d - wantD - CFG.shotBand) - Math.max(0, gsh.d - CFG.shotWant - CFG.shotBand);
     const waitCost = Math.max(0, spAhead - sp) * CFG.shotWaitW / (1 + press * CFG.shotWaitPress);
