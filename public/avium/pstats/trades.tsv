@@ -199,3 +199,8 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 64	1936	2026-11-25T20:55:03.517Z	player	p1359	Eskandar DEHGHAN	LB	84	22	31000000	t0285	Pas Nourabad	t0206	Imperial Sports Society	GeneralVarah
 64	1936	2026-11-25T20:55:03.517Z	player	p4312	Sohrab KARIMZADEH	RB	63	26	300000	t0285	Pas Nourabad			GeneralVarah
 64	1936	2026-11-25T20:55:03.517Z	player	p4315	Behzad POURMEHRDAD	CM	62	35	44000	t0285	Pas Nourabad			GeneralVarah
+65	1936	2026-11-25T20:55:11.236Z	player	p3297	Baldomero QUINTANA	LW/ST	77	31	4300000	t0211	Locomotive Fūchumachi	t0283	Sepāh Kuhestan	GeneralVarah
+65	1936	2026-11-25T20:55:11.236Z	player	p3301	Melvyn RAES	CM	77	23	7500000	t0211	Locomotive Fūchumachi	t0283	Sepāh Kuhestan	GeneralVarah
+65	1936	2026-11-25T20:55:11.236Z	player	p5838	Mojtaba NASRABADI	CM/AM	72	21	2000000	t0283	Sepāh Kuhestan	t0211	Locomotive Fūchumachi	GeneralVarah
+65	1936	2026-11-25T20:55:11.236Z	player	p5836	Babak GHAFOURI	CB/RB	73	21	2200000	t0283	Sepāh Kuhestan	t0211	Locomotive Fūchumachi	GeneralVarah
+65	1936	2026-11-25T20:55:11.236Z	player	p5840	Khodadad BAHRAMI	ST	72	22	2200000	t0283	Sepāh Kuhestan	t0211	Locomotive Fūchumachi	GeneralVarah
