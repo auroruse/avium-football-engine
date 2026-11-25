@@ -1,6 +1,6 @@
 // The tick loop, the ball, restarts, and match setup.
 import { CFG } from "./config";
-import { meAerial, meAttrs, meBadgeFx, meDefLow, meDuel, meFinish, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, mePassBadge, meSpeed, meTech } from "./attributes";
+import { meAerial, meAttrs, meBadgeFx, meDefLow, meDuel, meFinish, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, mePassBadge, meSpeed, meTech, meLsFade } from "./attributes";
 import { mePlanOf, meStrategyOf, ME_STYLE_DEF, ME_STYLE_NAME } from "./tactics";
 import { meChaseStyle, meMgrQ, meSetStyle, meShapeChase, meShapeFor, meTenMenStyle, meThreatPlan, meWeakPlan } from "./manager";
 import { meRefJudge, meRefStep } from "./referee";
@@ -2480,6 +2480,7 @@ export function meTick(s, rng, out) {
         }
         if (sh) out.onTarget[sh.side]++;
         if (sh && sh._r != null && globalThis.__shots) globalThis.__shots[sh._r].out = "goal";
+        if (sh && sh._fk != null && globalThis.__fk?.[sh._fk]) globalThis.__fk[sh._fk].goal = 1;   // a free kick struck in (test/lsplayers.mjs)
         if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.fk ? "freekick" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
         if (sh && globalThis.__svd) globalThis.__svd.push([sh.d, 0]);
         else if (mp.lastSide === scorer) { out.shots[scorer]++; out.onTarget[scorer]++; }
@@ -4381,7 +4382,9 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     // footballing reason at all. Better finishers pick the side he has left; poorer ones aim nearer
     // the middle, where he is.
     const gkp = meKeeper(s.players[meOther(side)]);
-    const sk = meFinish(a) + (Math.hypot(gx - p.x, ME_HALF_W - p.y) > 18 ? (meBadgeFx(p).farShot ?? 0) : 0);
+    const shD = Math.hypot(gx - p.x, ME_HALF_W - p.y), sk = meFinish(a, shD) + (shD > 18 ? (meBadgeFx(p).farShot ?? 0) * (CFG.farShotK ?? 1) : 0);
+    // Past lsFadeFrom metres the curl and the dip give less (CFG.lsFadeTo): the flight is long enough for him to read it.
+    const lsFade = meLsFade(shD);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     // LONG SHOT (badge): from outside the box he curls it into the corner away from the keeper.
     // WITH THE INSIDE OF HIS FOOT (25 November 2026, the user: "Most curved shots look like trivelas? Lock trivelas behind
@@ -4392,12 +4395,12 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     // outside the post and back in) was measured and rejected: keepers saved 66% of those on target against 78-86% of any
     // other curler, and curled long shots scored 6.9% against 4.5%. Why the keeper misses them is not yet found.
     let lsCurl = (meBadgeFx(p).curl ?? 0) && (Math.abs(gx - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)
-      ? meBadgeFx(p).curl * away * Math.sign(gx - p.x) : 0;
+      ? meBadgeFx(p).curl * away * Math.sign(gx - p.x) * lsFade : 0;
     if (lsCurl && CFG.lsTrivela && Math.sign(lsCurl) !== meFoot(p)
         && !(p.badges || []).some(b => String(b).split(":")[0] === CFG.lsTrivela)) lsCurl = 0;
     // ...and with Finisher as well, from the same places, he strikes it with top-spin (CFG.lsDip).
     const fxD = meBadgeFx(p), lsDip = fxD.dipL && fxD.dipF && (Math.abs(gx - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)
-      ? CFG.lsDip * fxD.dipL * fxD.dipF : 0;
+      ? CFG.lsDip * fxD.dipL * fxD.dipF * lsFade : 0;
     // A man with time to set himself picks his corner (meWindUp): he aims wider by shotAimSet of it.
     const wind = meWindUp(Math.hypot(gx - p.x, ME_HALF_W - p.y), meShotSit(s, side, p, gx, ME_HALF_W), exD, act.ft);
     const aimY = ME_HALF_W + away * GOAL_HALF_W * Math.min(CFG.shotAimMax, CFG.shotAimBase + sk * CFG.shotAimSkill + wind * CFG.shotAimSet);
