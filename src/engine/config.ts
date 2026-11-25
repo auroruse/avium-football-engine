@@ -2815,6 +2815,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // from a ball that happened to fly high, so a cleaner strike on its own scored LESS -- he has to pick
   // the corner too.
   shotSetSit: 0.6, shotSetExD: 0.5, shotSetD: 14, shotSetFade: 8,
+  // ...AND FADES BACK OUT WITH RANGE (25 November 2026: goals from 25-35 m going in as often as from 20-25). Set or not,
+  // a ball struck from thirty-five metres is a long way from the corner it was picked for. Full to shotSetFar, gone
+  // shotSetFarFade beyond it. 99 leaves it on at any range, as it was.
+  shotSetFar: 99, shotSetFarFade: 1,
+  // The long-shot trait's finishing from distance (farShot) the same way: full to lsFarEnd, gone lsFarFade beyond it.
+  lsFarEnd: 999, lsFarFade: 1,
   shotVSet: 4, shotSetK: 1.2, shotAimSet: 0.15, shotAimMax: 0.95, shotNoiseSet: 0.5, shotElevSet: 1.0, shotSetZ: 0.6,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very
