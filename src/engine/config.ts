@@ -2815,6 +2815,16 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // from a ball that happened to fly high, so a cleaner strike on its own scored LESS -- he has to pick
   // the corner too.
   shotSetSit: 0.6, shotSetExD: 0.5, shotSetD: 14, shotSetFade: 8,
+  // ...AND FADES BACK OUT WITH RANGE (25 November 2026, the user: long shots going in from "near the halfway line" when
+  // the keeper "should be saving these"). Full to shotSetFar, gone shotSetFarFade beyond it: a ball struck from
+  // thirty-five metres is a long way from the corner it was picked for, set or not. Measured on the cloud lab, 2,100
+  // national-side matches an arm: goals from 25 m and beyond 163 -> 96, 35-40 m shots 203 -> 18, the edge of the box as
+  // it was (16.5-20 m 6.9% -> 6.8%, 20-25 m 3.5% both), 2.29 goals a match both. On at any range, as it was, those
+  // 35-40 m strikes scored 13% (real football: under 1%). Trimming the long-shot trait's finishing and range, and the
+  // keeper reading a curler better the longer it flies, were tried with it and measured no better.
+  shotSetFar: 25, shotSetFarFade: 13,
+  // The trait that lets a Long Shot holder curl it with the outside of his foot, the trivela (match.ts). Null lets anyone.
+  lsTrivela: "trickster",
   shotVSet: 4, shotSetK: 1.2, shotAimSet: 0.15, shotAimMax: 0.95, shotNoiseSet: 0.5, shotElevSet: 1.0, shotSetZ: 0.6,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very

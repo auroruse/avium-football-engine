@@ -154,7 +154,8 @@ export function meKeeperFill(s, side, x, y) {
 export function meWindUp(d, sit, exD, ft) {
   if (ft) return 0;
   const room = Math.max(0, 1 - sit / CFG.shotSetSit), clean = Math.max(0, 1 - (exD || 0) / CFG.shotSetExD);
-  return room * clean * Math.max(0, Math.min(1, (d - CFG.shotSetD) / CFG.shotSetFade));
+  return room * clean * Math.max(0, Math.min(1, (d - CFG.shotSetD) / CFG.shotSetFade))
+    * Math.max(0, Math.min(1, 1 - (d - CFG.shotSetFar) / CFG.shotSetFarFade));
 }
 
 // HOW CLEANLY HE CAN STRIKE IT, from everything around the shot but the ball itself (the ball's own

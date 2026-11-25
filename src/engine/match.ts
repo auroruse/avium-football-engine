@@ -4383,9 +4383,16 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     const gkp = meKeeper(s.players[meOther(side)]);
     const sk = meFinish(a) + (Math.hypot(gx - p.x, ME_HALF_W - p.y) > 18 ? (meBadgeFx(p).farShot ?? 0) : 0);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
-    // LONG SHOT (badge): from outside the box he curls it, starting at the keeper and bending away into his corner.
-    const lsCurl = (meBadgeFx(p).curl ?? 0) && (Math.abs(gx - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)
+    // LONG SHOT (badge): from outside the box he curls it into the corner away from the keeper.
+    // WITH THE INSIDE OF HIS FOOT (25 November 2026, the user: "Most curved shots look like trivelas? Lock trivelas behind
+    // long shot + a trait about flair"). Side-spin turns one way for a right foot's instep whichever way he faces (the free
+    // kick's curl is meFoot), and the curl here was chosen by the corner alone, so half of every curler was hit with the
+    // outside of the foot. Now the bend is his foot's: the ball starts outside the post and comes back in. Only a man with
+    // Long Shot and lsTrivela's trait as well bends it the other way, with the outside, when the corner asks for it.
+    let lsCurl = (meBadgeFx(p).curl ?? 0) && (Math.abs(gx - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)
       ? meBadgeFx(p).curl * away * Math.sign(gx - p.x) : 0;
+    if (lsCurl && CFG.lsTrivela && Math.sign(lsCurl) !== meFoot(p)
+        && !(p.badges || []).some(b => String(b).split(":")[0] === CFG.lsTrivela)) lsCurl = -lsCurl;
     // A man with time to set himself picks his corner (meWindUp): he aims wider by shotAimSet of it.
     const wind = meWindUp(Math.hypot(gx - p.x, ME_HALF_W - p.y), meShotSit(s, side, p, gx, ME_HALF_W), exD, act.ft);
     const aimY = ME_HALF_W + away * GOAL_HALF_W * Math.min(CFG.shotAimMax, CFG.shotAimBase + sk * CFG.shotAimSkill + wind * CFG.shotAimSet);
@@ -4490,7 +4497,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
       R.i = shooter; R.nm = p.fullName || p.name; R.pos = p.pos; R.y = +(p.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0;
       R.ph = mp.mind?.ph?.[side]?.ph || "-"; R.role = p._mr; R.spK = mp._spLast && mp._spLast.side === side && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
-      R.sk = +sk.toFixed(3); R.wind = +wind.toFixed(2); R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.aim = +((aimY - ME_HALF_W) * away).toFixed(2); R.az = +aimZ.toFixed(2);
+      R.sk = +sk.toFixed(3); R.wind = +wind.toFixed(2); R.cu = lsCurl ? Math.sign(lsCurl) * meFoot(p) : 0; R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.aim = +((aimY - ME_HALF_W) * away).toFixed(2); R.az = +aimZ.toFixed(2);
       if (gkp) { R.gkx = +Math.abs(gkp.x - gx).toFixed(2); R.gky = +(gkp.y - ME_HALF_W).toFixed(2); R.sx = +Math.abs(p.x - gx).toFixed(2); R.vy0 = +mp.bvy.toFixed(1); R.vx0 = +Math.abs(mp.bvx).toFixed(1); } }
     // THE KEEPER WATCHES IT. He used to commit to a side as it left the foot, right as often as his
     // rating said, and a right guess put him on the spot the shooter aimed at; see keeper.ts for what
