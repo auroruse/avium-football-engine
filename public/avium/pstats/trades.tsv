@@ -213,3 +213,40 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 68	1936	2026-11-25T21:02:54.611Z	player	p1221	Timur OORZHAK	CB	82	26	18000000	t0205	Dynamo Mizuhara	t0206	Imperial Sports Society	auroruse
 68	1936	2026-11-25T21:02:54.611Z	player	p1047	Rui ŌE	CM	89	26	82000000	t0205	Dynamo Mizuhara	t0206	Imperial Sports Society	auroruse
 68	1936	2026-11-25T21:02:54.611Z	player	p1127	Raffaele LUCCHESE	RW/ST	89	25	120000000	t0206	Imperial Sports Society	t0205	Dynamo Mizuhara	auroruse
+69	1936	2026-11-25T21:18:38.773Z	player	p5812	Issa NARAHARA	LWB	75	22	3200000			t0203	Spartak Kanagawa	auroruse
+69	1936	2026-11-25T21:18:38.773Z	player	p5480	Manasseh LAVUKA	CB	74	22	2500000			t0203	Spartak Kanagawa	auroruse
+69	1936	2026-11-25T21:18:38.773Z	player	p1594	Timur ISKANDEROV	LW/AM	75	24	3700000			t0203	Spartak Kanagawa	auroruse
+70	1936	2026-11-25T21:18:38.773Z	player	p3199	Aurèle MONTFAUCON	LB	78	29	4500000			t0204	Viridia Shikisen	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p5195	Renpei SAMUKAWA	RB	74	22	2500000			t0205	Dynamo Mizuhara	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p5325	Chinbat NOZAWA	LB/LWB	74	22	2500000			t0205	Dynamo Mizuhara	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p5612	Shūji RAIJIN	CB	74	22	2500000			t0205	Dynamo Mizuhara	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p1312	Czesław DOMAGAŁA	CB	73	27	1800000			t0205	Dynamo Mizuhara	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p5199	Yūta HIGUCHI	AM	74	22	3200000			t0205	Dynamo Mizuhara	auroruse
+71	1936	2026-11-25T21:18:38.773Z	player	p5213	Ryōma TAKECHI	AM	74	22	3200000			t0205	Dynamo Mizuhara	auroruse
+72	1936	2026-11-25T21:18:38.773Z	player	p1633	Ezekiel BRIDGER	CB	73	28	1600000			t0206	Imperial Sports Society	auroruse
+72	1936	2026-11-25T21:18:38.773Z	player	p5241	Ryūnosuke SAKATANI	DM	74	22	2900000			t0206	Imperial Sports Society	auroruse
+72	1936	2026-11-25T21:18:38.773Z	player	p5175	Émile VILLEMAIN	LM	74	22	2900000			t0206	Imperial Sports Society	auroruse
+72	1936	2026-11-25T21:18:38.773Z	player	p5134	Takuya SAKAMAKI	LW	75	22	4100000			t0206	Imperial Sports Society	auroruse
+72	1936	2026-11-25T21:18:38.773Z	player	p5345	Benvenuto CARAVAGGIO	RW	76	22	5100000			t0206	Imperial Sports Society	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p5479	Michio WAKASUGI	LB	74	22	2500000			t0207	Tsukumo Shinkeisei	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p5481	Wael BUZAGLO	RB	74	21	2600000			t0207	Tsukumo Shinkeisei	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p1513	Sidhom IRINEFER	CB	73	25	1800000			t0207	Tsukumo Shinkeisei	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p1353	Elan UMALI	LM	74	31	1500000			t0207	Tsukumo Shinkeisei	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p5440	Manda TSUKAHARA	CM	74	22	2900000			t0207	Tsukumo Shinkeisei	auroruse
+73	1936	2026-11-25T21:18:38.773Z	player	p5430	Kagetsuna YUGAMI	ST	74	22	3500000			t0207	Tsukumo Shinkeisei	auroruse
+74	1936	2026-11-25T21:18:38.773Z	player	p5303	Shōgo SAWAMURA	GK	75	22	2500000			t0208	Kyōwa Naginomiya	auroruse
+74	1936	2026-11-25T21:18:38.773Z	player	p5511	Hidetaka HORIGOME	CB	73	22	1900000			t0208	Kyōwa Naginomiya	auroruse
+74	1936	2026-11-25T21:18:38.773Z	player	p5767	Isamu MIYAZAWA	CB	73	22	1900000			t0208	Kyōwa Naginomiya	auroruse
+74	1936	2026-11-25T21:18:38.773Z	player	p5508	Toshio SÜKH	ST/RW	74	22	3500000			t0208	Kyōwa Naginomiya	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p5677	Feoktist LESTENKOF	LB	74	21	2600000			t0210	Ayanami Sei-Hachiman	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p1334	Ælfstan HEGLEAH	CB	73	30	1200000			t0210	Ayanami Sei-Hachiman	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p1449	Bagus HARTONO	CM	73	24	2100000			t0210	Ayanami Sei-Hachiman	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p5133	Yoshitaka AKUTAGAWA	CM	73	22	2300000			t0210	Ayanami Sei-Hachiman	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p5286	Sōseki SOEJIMA	DM/CM	73	22	2300000			t0210	Ayanami Sei-Hachiman	auroruse
+75	1936	2026-11-25T21:18:38.773Z	player	p5340	Tatu HIETAKANGAS	CM	73	22	2300000			t0210	Ayanami Sei-Hachiman	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5151	Akiyoshi HORIGOME	CB	72	22	1500000			t0215	Orughan FC	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5284	Yoshiki TSUKUI	RB	73	22	1900000			t0215	Orughan FC	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5700	Renji FUKUHARA	CB/LB	72	22	1500000			t0215	Orughan FC	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5463	Motoharu KISHIMA	RWB	72	22	1500000			t0215	Orughan FC	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5550	Fumito ISHIZUMI	CM	73	22	2300000			t0215	Orughan FC	auroruse
+76	1936	2026-11-25T21:18:38.773Z	player	p5331	Haruki SUBARU	RW/ST	71	22	1500000			t0215	Orughan FC	auroruse
