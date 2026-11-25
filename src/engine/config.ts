@@ -3745,7 +3745,9 @@ export const ME_HOME_ADV = {
   //   pWin only, 0.072     +0.086 / +0.103 / 74-58      0.100            +0.093 / +0.111 / 76-55
   //   0.130                +0.113 / +0.109 / 79-52      0.160            +0.073 / +0.118 / 82-49
   // On pWin alone the dial buys next to nothing in xG and only widens the gap in tackle %, so it stays at 0.072.
-  tiltK: 0, nerves: 0, duel: 0.072, duelOld: 0.06, refRoll: 0.15,
+  // 25 Nov 2026: the user, "Remove the 1 on 1 thing. Just have the ref one." The duel edge is off; the host's advantage is
+  // the referee's doubtful calls alone (referee.ts ME_CALL.homePull, and the card lean above).
+  tiltK: 0, nerves: 0, duel: 0, duelOld: 0.06, refRoll: 0.15,
 };
 
 // SQUAD FIT, SPENT AS RATING. computeStyleFit says how well the squad can carry out the system it
