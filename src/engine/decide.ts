@@ -1,6 +1,6 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
-import { meAtkW, meAttrs, meGkLow, meGkSkill } from "./attributes";
+import { meAtkW, meAttrs, meGkLow, meGkSkill, meShootAt } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "./ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
@@ -51,7 +51,7 @@ export function meShotP(s, side, p, x, y, rec, gkRef) {
   // ESTIMATE, so a poor finisher rationally declines shots a real one takes. Measured, shots per
   // final-third entry fell 0.55 -> 0.38 from the 85 band to the 55 band while real shot counts are
   // nearly flat across divisions. Kept on attr/99, anchored at 75, sweepable.
-  q *= CFG.shotFinBase + a.shoot / 99 * CFG.shotFinSkill;
+  q *= CFG.shotFinBase + Math.max(20, Math.min(99, meShootAt(a, g.d))) / 99 * CFG.shotFinSkill;   // from range, his long-shot skill
   q *= 1 / (1 + mePressure(s, side, x, y) * 0.35);
   // Bodies between him and the goal, which is most of what separates a chance from a half-chance.
   // Tried and rejected: scoring this as the share of the GOAL MOUTH screened -- each defender's

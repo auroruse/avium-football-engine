@@ -4381,7 +4381,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     // footballing reason at all. Better finishers pick the side he has left; poorer ones aim nearer
     // the middle, where he is.
     const gkp = meKeeper(s.players[meOther(side)]);
-    const sk = meFinish(a) + (Math.hypot(gx - p.x, ME_HALF_W - p.y) > 18 ? (meBadgeFx(p).farShot ?? 0) : 0);
+    const shD = Math.hypot(gx - p.x, ME_HALF_W - p.y), sk = meFinish(a, shD) + (shD > 18 ? (meBadgeFx(p).farShot ?? 0) : 0);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     // LONG SHOT (badge): from outside the box he curls it into the corner away from the keeper.
     // WITH THE INSIDE OF HIS FOOT (25 November 2026, the user: "Most curved shots look like trivelas? Lock trivelas behind
