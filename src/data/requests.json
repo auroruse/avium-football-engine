@@ -1,1 +1,47 @@
-[]
+[
+ {
+  "by": "auroruse",
+  "at": "2026-11-25T20:57:33.004Z",
+  "approved": [],
+  "id": "349f5caf",
+  "kind": "deal",
+  "team": "t0211",
+  "teamName": "Locomotive Fūchumachi",
+  "sides": [
+   "t0211",
+   "t0286"
+  ],
+  "names": {
+   "t0211": "Locomotive Fūchumachi",
+   "t0286": "Āzādī Rāhgozar"
+  },
+  "moves": [
+   {
+    "kind": "player",
+    "id": "p1170",
+    "to": "t0286"
+   },
+   {
+    "kind": "player",
+    "id": "p4330",
+    "to": "t0211"
+   },
+   {
+    "kind": "player",
+    "id": "p4326",
+    "to": "t0211"
+   }
+  ],
+  "rounds": 1,
+  "needs": {
+   "t0286": [
+    "GeneralVarah"
+   ]
+  },
+  "locks": [
+   "p:p1170",
+   "p:p4330",
+   "p:p4326"
+  ]
+ }
+]
