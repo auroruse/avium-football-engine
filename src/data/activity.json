@@ -1,5 +1,31 @@
 [
  {
+  "id": "a1b1a7e1",
+  "by": "auroruse",
+  "at": "2026-11-25T18:45:44.781Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "players",
+    "id": "p1047",
+    "name": "Rui ŌE",
+    "field": "badges",
+    "from": [
+     "finisher:2",
+     "longshot:2",
+     "tikitaka:1",
+     "hothead:1"
+    ],
+    "to": [
+     "finisher:2",
+     "longshot:3",
+     "tikitaka:1",
+     "hothead"
+    ]
+   }
+  ]
+ },
+ {
   "id": "d70fba91",
   "by": "cornafiable",
   "at": "2026-11-25T11:03:24.116Z",
