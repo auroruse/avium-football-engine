@@ -2815,6 +2815,22 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // from a ball that happened to fly high, so a cleaner strike on its own scored LESS -- he has to pick
   // the corner too.
   shotSetSit: 0.6, shotSetExD: 0.5, shotSetD: 14, shotSetFade: 8,
+  // ...AND FADES BACK OUT WITH RANGE (25 November 2026, the user: long shots going in from "near the halfway line" when
+  // the keeper "should be saving these"). Full to shotSetFar, gone shotSetFarFade beyond it: a ball struck from
+  // thirty-five metres is a long way from the corner it was picked for, set or not. Measured on the cloud lab, 2,100
+  // national-side matches an arm: goals from 25 m and beyond 163 -> 96, 35-40 m shots 203 -> 18, the edge of the box as
+  // it was (16.5-20 m 6.9% -> 6.8%, 20-25 m 3.5% both), 2.29 goals a match both. On at any range, as it was, those
+  // 35-40 m strikes scored 13% (real football: under 1%). Trimming the long-shot trait's finishing and range, and the
+  // keeper reading a curler better the longer it flies, were tried with it and measured no better.
+  shotSetFar: 25, shotSetFarFade: 13,
+  // The trait that lets a Long Shot holder curl it with the outside of his foot, the trivela (match.ts). Null lets anyone.
+  lsTrivela: "trickster",
+  // THE DIPPING SHOT (25 November 2026, the user: "Make long shot and finisher combine for dipping shots scaling by
+  // level"). A man with both strikes it from outside the box through the laces with top-spin: it climbs over the
+  // keeper's eyeline and drops under the bar. Top-spin of lsDip times the product of the two traits' level shares (dipL,
+  // dipF: Long Shot 2 with Finisher 3 is the whole of it; Long Shot 2 with Finisher 2, two thirds; Long Shot 1 with
+  // Finisher 1, a sixth), the same pull per metre a second of pace a free kick's dip is (fkSpin0, fkSpinSkill).
+  lsDip: 0.25,
   shotVSet: 4, shotSetK: 1.2, shotAimSet: 0.15, shotAimMax: 0.95, shotNoiseSet: 0.5, shotElevSet: 1.0, shotSetZ: 0.6,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very
@@ -3830,14 +3846,14 @@ export const ME_BADGES = {
   // Ball took Szabo from 16 to 30, and the league had three to five men on thirty goals where it had none or one.
   // Sized for the best striker's Finisher to be worth about five goals a season, not eighteen. (shoot 14, box 0.5,
   // ftShot 0.6; range 10, farShot 0.35; poach 0.8, box 0.4, shoot 5, ftShot 0.3 before.)
-  finisher:    { shoot: 5, run: { box: 0.25 }, ftShot: 0.25 }, // gets into the box and hits it first time
+  finisher:    { shoot: 5, run: { box: 0.25 }, ftShot: 0.25, dipF: 1 }, // gets into the box and hits it first time
   // LONG SHOT CURLS IT (23 November 2026; the user: "make long shot give holders the ability to curve shots outside of
   // the box. Also make them more likely to attempt long shots"). From outside the box his strike carries curl rad/s of
   // spin (ball.ts bsp), started at the keeper and bending away into the corner he picked; the keeper reads part of the
   // swing as it is struck (gkCurlRead) and the rest is what beats him. More often from range because the curled shot is
   // worth more (curlP, mind/decide.ts), not by a flat urge: range 8 and farW 0.08 measured no better than nothing, the
   // goals the curl added given back on shots he should not have taken.
-  longshot:    { range: 6, farShot: 0.15, farW: 0.03, curl: 0.5, curlP: 0.6 }, // shoots from distance whenever he has room, and curls it
+  longshot:    { range: 6, farShot: 0.15, farW: 0.03, curl: 0.5, curlP: 0.6, dipL: 1 }, // shoots from distance whenever he has room, and curls it
   deadball:    { dead: 0.2, setTaker: 1 },             // takes the corners and the free kicks, and is one of the few who take penalties
   vision:      { aware: 0.5, early: 0.5, runnerW: 0.015, read: 0.6, readLook: 0, crispRun: 0.6, touch: 15, see: 0.4 }, // reads it better with time and options, receives it knowing the next ball; early to a runner
   composed:    { mind: 0.1, calm: 0.55, noPanic: 0.02 },  // pressure does not hurry him: he keeps playing forward, strikes it clean, never panics it away

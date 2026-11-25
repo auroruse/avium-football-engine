@@ -87,16 +87,22 @@ function planFor(s, dsd, t0) {
   if ((k.x - mp.bx) * sg < -0.5) return null;
   if (between && mp.bvx * sg > 0.5) {
     const tC = (k.x - mp.bx) / mp.bvx;
-    let yC = mp.by + mp.bvy * tC;
+    let yC = mp.by + mp.bvy * tC, yIn = null;
     // A BALL WITH SPIN ON IT DOES NOT FLY STRAIGHT (ball.ts). He sees the line it starts on and reads only part of the
     // swing as it is struck, more the better he is (CFG.gkCurlRead): the rest of the bend is what beats him.
+    // WHETHER IT IS GOING IN he reads from the ball as it is really going, and only his dive keeps the misread (25 November
+    // 2026). Bend that starts outside the post and comes back in left the misread share of it outside his frame, so he
+    // let a finesse go as wide and watched it curl in: Long Shot struck with the instep scored 9.7% from 30-35 m against
+    // 3.9%, keepers saving 69% of those on target against 84%. Open play only: a free kick keeps its own calibration.
     if (mp.bsp || mp.bdip) { const cr = meBallCrossX(mp, k.x);
+      if (cr && !mp.shot?.fk) yIn = cr[0];
       if (cr) yC += (cr[0] - yC) * (CFG.gkCurlRead[0] + (CFG.gkCurlRead[1] - CFG.gkCurlRead[0]) * gkk); }
     // ...and he does not go for one that is going wide. The frame, as it looks from the ball, cut
     // at his depth: a ball crossing his line outside that (by more than he could need) is missing.
     const r = (k.x - mp.bx) / (gx - mp.bx);
     const lo = mp.by + (ME_HALF_W - GOAL_HALF_W - mp.by) * r, hi = mp.by + (ME_HALF_W + GOAL_HALF_W - mp.by) * r;
-    if (yC > lo - CFG.gkWideM && yC < hi + CFG.gkWideM) ty = yC;
+    const yJ = yIn ?? yC;
+    if (yJ > lo - CFG.gkWideM && yJ < hi + CFG.gkWideM) ty = Math.max(lo - CFG.gkWideM, Math.min(hi + CFG.gkWideM, yC));
     // A BALL GOING OVER HIM IS MET ON THE WAY DOWN. Across his own line only, a keeper two metres out
     // watched a looping header or a chip pass a hand's breadth over his gloves and drop in behind him.
     // If it will be above his reach where it crosses his line, he goes back and across to where it has
