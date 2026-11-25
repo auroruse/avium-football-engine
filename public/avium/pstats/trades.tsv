@@ -210,3 +210,6 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 67	1936	2026-11-25T20:58:48.184Z	player	p1170	Voptá HENDÁ	ST/RW	80	30	11000000	t0211	Locomotive Fūchumachi	t0286	Āzādī Rāhgozar	GeneralVarah
 67	1936	2026-11-25T20:58:48.184Z	player	p4326	Bijan SHAKIBAII	CM	71	23	1600000	t0286	Āzādī Rāhgozar	t0211	Locomotive Fūchumachi	GeneralVarah
 67	1936	2026-11-25T20:58:48.184Z	player	p4330	Farhad ADELSTEIN	ST	73	27	2700000	t0286	Āzādī Rāhgozar	t0211	Locomotive Fūchumachi	GeneralVarah
+68	1936	2026-11-25T21:02:54.611Z	player	p1221	Timur OORZHAK	CB	82	26	18000000	t0205	Dynamo Mizuhara	t0206	Imperial Sports Society	auroruse
+68	1936	2026-11-25T21:02:54.611Z	player	p1047	Rui ŌE	CM	89	26	82000000	t0205	Dynamo Mizuhara	t0206	Imperial Sports Society	auroruse
+68	1936	2026-11-25T21:02:54.611Z	player	p1127	Raffaele LUCCHESE	RW/ST	89	25	120000000	t0206	Imperial Sports Society	t0205	Dynamo Mizuhara	auroruse
