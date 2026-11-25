@@ -56,10 +56,10 @@ export function mePassBadge(p, k, d, high) {
 // a few points behind the midfielder of the same rating, a defender a little further, and a keeper's
 // feet are a keeper's feet.
 export const ME_TILT = {
-  GK:  { pace:-16, pass:-8, shoot:-34, tackle:-22, position:  6, strength: 2, reflex: 18, touch:-10 },
-  DEF: { pace: -2, pass:-5, shoot:-10, tackle: 11, position:  6, strength: 7, reflex:-34, touch:  2 },
-  MID: { pace:  0, pass: 7, shoot: -1, tackle:  1, position:  2, strength: 0, reflex:-34, touch:  7 },
-  FWD: { pace:  5, pass:-3, shoot:  4, tackle:-11, position: -2, strength: 3, reflex:-34, touch:  4 },
+  GK:  { pace:-16, pass:-8, shoot:-34, far:-34, tackle:-22, position:  6, strength: 2, reflex: 18, touch:-10 },
+  DEF: { pace: -2, pass:-5, shoot:-10, far: -5, tackle: 11, position:  6, strength: 7, reflex:-34, touch:  2 },
+  MID: { pace:  0, pass: 7, shoot: -1, far:  4, tackle:  1, position:  2, strength: 0, reflex:-34, touch:  7 },
+  FWD: { pace:  5, pass:-3, shoot:  4, far: -2, tackle:-11, position: -2, strength: 3, reflex:-34, touch:  4 },
 };
 
 // atkW is NOT a 0..1 weight -- it runs 0 for a keeper to about 42 for a striker. Treating it as a
@@ -121,11 +121,18 @@ export function meOwnFor(p) {
 function attrsWith(p, t, aw) {
   const o = meOvr(p), fx = meBadgeFx(p);
   const c = (v) => Math.max(20, Math.min(99, v));
+  // LONG SHOTS (25 November 2026, the user: "Midfielders need to meaningfully take more long shots than strikers, like
+  // IRL"). Striking it from distance is its own skill, as EAFC keeps it: a midfielder's is a little over his rating
+  // and a striker's barely above it, the attacking role adds far less to it than to the finish, and Finisher and
+  // Poacher, which are about the box, add nothing to it (Long Shot adds farShot past 18 m, as before). CFG.farOn 0 is
+  // the finish at every range, as before.
+  const farRaw = o + (CFG.farOn ? t.far + aw * CFG.shootAtkW * CFG.farAtkW : t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0));
   // `air` is how high he gets and how well he heads it: his strength, unless a badge says he is better in the air
   // than his build (Aerial) -- or stronger on the ground than in the air (Strong adds to strength only). No trait
   // carries a `pass` effect; the term is there for the lab, which measures what each skill is worth.
   return { pace: c(o + t.pace + (fx.pace ?? 0)), pass: c(o + t.pass + (fx.pass ?? 0)), shoot: c(o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0)),
     shootRaw: o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0), reflexRaw: o + t.reflex + (fx.reflex ?? 0),
+    farRaw, far: c(farRaw),
     tackle: c(o + t.tackle - aw * 12 + (fx.tackle ?? 0)), position: c(o + t.position + (fx.position ?? 0)), strength: c(o + t.strength + (fx.strength ?? 0)),
     air: c(o + t.strength + (fx.air ?? 0)),
     reflex: c(o + t.reflex + (fx.reflex ?? 0)), touch: c(o + t.touch + (fx.touch ?? 0)) };
@@ -232,8 +239,13 @@ export const meDefLow = (p) => Math.min(CFG.defLowCap, Math.max(0, CFG.defLowAt 
 // carried on past it off the unclamped attribute, to CFG.finMax for the best finisher alive.
 // Past the band it climbs at finAbove a point, not the band's 1/40: the strike is steep in it (pace, aim,
 // both errors), and at the band's own slope a 90 scored 61% from twenty metres unpressured.
-export const meFinish = (a) => { const r = a.shootRaw ?? a.shoot;
+export const meFinish = (a, d) => { const r = meShootAt(a, d);
   return r <= 88 ? Math.max(0, (r - 48) / 40) : Math.min(CFG.finMax, 1 + (r - 88) * CFG.finAbove); };
+// His shooting from d metres: the finish inside farFrom, the long-shot skill from farFrom + farOver out, blended between.
+export const meShootAt = (a, d) => { const r = a.shootRaw ?? a.shoot;
+  if (d == null || a.farRaw == null) return r;
+  const w = Math.max(0, Math.min(1, (d - CFG.farFrom) / CFG.farOver));
+  return r + (a.farRaw - r) * w; };
 
 // A duel: skill difference in attribute points to a probability, bounded at both ends. The endpoints
 // are the whole design -- they say what the worst and best player in the world achieve at this, and
