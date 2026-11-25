@@ -159,8 +159,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     // turn a striker on the edge (he still shot on 40% of his spells there against a midfielder's 44%).
     // His Long Shot trait (farM) multiplies his role's far: the specialist in a box-to-box role has a go more often
     // than the man beside him in the same role (25 November 2026, the user: "Oe is still not a top 5 long shot taker??").
-    const roleFar = p.pos !== "DEF" && CFG.farMidMax ? Math.min(role.far ?? 1, CFG.farMidMax) : role.far ?? 1;
-    const farK = gsh.d > CFG.farFromD ? Math.pow(roleFar * Math.pow(fxP.farM ?? 1, CFG.farTraitK), CFG.farRoleK) * (p.pos === "DEF" ? CFG.farDefK : 1) : 1;
+    const farK = gsh.d > CFG.farFromD ? Math.pow((role.far ?? 1) * Math.pow(fxP.farM ?? 1, CFG.farTraitK), CFG.farRoleK) * (p.pos === "DEF" ? CFG.farDefK : 1) : 1;
     const appetite = CFG.farWhole ? (1 + meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold + nowBetter * CFG.shotNowW) * farK
                                   : 1 + (meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold) * farK + nowBetter * CFG.shotNowW;
     const wantD = CFG.shotWant + st.chanceCreation * CFG.shotWantStep;

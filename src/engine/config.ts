@@ -2894,10 +2894,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   farOn: 1, farAtkW: 0.4, farFrom: 14, farOver: 8,
   // ...and how far each role's appetite for it (mind/roles.ts far) reaches, from farFromD metres out (0: not at all).
   farRoleK: 1.5, farFromD: 16.5, farWhole: 1, farDefK: 1.8,
-  // ...the most of it a midfielder playing a full-back or wing-back role takes (those roles' far is sized for defenders,
-  // who seldom have the ball out there; an RM at wing-back took four long shots a 90 on it), 0 no cap; and how much
-  // of the Long Shot trait's own pull (ME_BADGES farM) applies, 0 none.
-  farMidMax: 1.5, farTraitK: 1,
+  // ...and how much of the Long Shot trait's own pull on it (ME_BADGES farM) applies, 0 none.
+  farTraitK: 1,
   // ...and how long (ticks) the defenders up for a corner stay on the edge of the box afterwards, and how far out (m).
   // 0: they go straight back, as before.
   spUpT: 30, spUpD: 22,
