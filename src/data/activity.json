@@ -1,5 +1,29 @@
 [
  {
+  "id": "9ce03018",
+  "by": "auroruse",
+  "at": "2026-11-25T21:45:40.709Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0137",
+    "name": "Armoury FC",
+    "field": "style",
+    "from": "Tiki-Taka",
+    "to": "Cholismo"
+   },
+   {
+    "kind": "teams",
+    "id": "t0137",
+    "name": "Armoury FC",
+    "field": "manager",
+    "from": "m0113",
+    "to": "m0245"
+   }
+  ]
+ },
+ {
   "id": "684a1929",
   "by": "auroruse",
   "at": "2026-11-25T21:43:34.659Z",
