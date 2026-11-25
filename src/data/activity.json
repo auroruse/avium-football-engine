@@ -1,5 +1,29 @@
 [
  {
+  "id": "f34f0955",
+  "by": "auroruse",
+  "at": "2026-11-25T21:54:32.080Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0131",
+    "name": "Gallican FC",
+    "field": "style",
+    "from": "Vertical Tiki-Taka",
+    "to": "Balanced"
+   },
+   {
+    "kind": "teams",
+    "id": "t0131",
+    "name": "Gallican FC",
+    "field": "manager",
+    "from": "m0109",
+    "to": "m0113"
+   }
+  ]
+ },
+ {
   "id": "d32b470d",
   "by": "auroruse",
   "at": "2026-11-25T21:52:41.543Z",
