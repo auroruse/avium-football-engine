@@ -357,7 +357,7 @@ export function meSPShape(s) {
       back.forEach((q, n) => put(q, [PITCH_L / 2 + dir * 7, ME_HALF_W + (n - (back.length - 1) / 2) * 12 + spJ(sp, 120 + n)]));
       up.forEach((q, n) => put(q, [PITCH_L / 2 + dir * 3, ME_HALF_W + (n - (up.length - 1) / 2) * 10 - 4 + spJ(sp, 130 + n)]));
       // The D: the best striker of a ball left, for the one that comes out.
-      if (atk.length > 2) { let bi = 0; atk.forEach((q, n) => { if (meAttrs(q).shoot > meAttrs(atk[bi]).shoot) bi = n; });
+      if (atk.length > 2) { const fk = CFG.farOn ? "far" : "shoot"; let bi = 0; atk.forEach((q, n) => { if (meAttrs(q)[fk] > meAttrs(atk[bi])[fk]) bi = n; });
         const [dq] = atk.splice(bi, 1); put(dq, [gx - dir * (11 + 10.4), ME_HALF_W + spJ(sp, 140)]); }
       // Pairs either side of the D, nearest the spot first, a second rank two metres back once a side's edge is full.
       const g = CFG.spPenGap, slotsFor = (n) => { const r = [];
@@ -451,19 +451,19 @@ export function meSPShape(s) {
       targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 5.0].concat('strength'));    // near post
       targets.push([gx - dir * 10.5, ME_HALF_W + nearSide * 1.0].concat('strength'));   // penalty spot
       targets.push([gx - dir * 6.0, ME_HALF_W - nearSide * 5.5].concat('strength'));    // far post
-      targets.push([gx - dir * 19.0, ME_HALF_W].concat('shoot'));   // edge, for the cut-back
+      targets.push([gx - dir * 19.0, ME_HALF_W].concat(CFG.farOn ? 'far' : 'shoot'));   // edge, for the cut-back: the best striker of a ball from there
       targets.push([sp.x - dir * 7.0, sp.y - nearSide * 5.0].concat('pass'));       // short
     } else if (sp.v === 1) {                                         // flooding the near post
       targets.push([gx - dir * 4.0, ME_HALF_W + nearSide * 6.5].concat('strength'));
       targets.push([gx - dir * 5.5, ME_HALF_W + nearSide * 2.5].concat('strength'));
       targets.push([gx - dir * 9.5, ME_HALF_W + nearSide * 4.5].concat('strength'));
-      targets.push([gx - dir * 16.0, ME_HALF_W + nearSide * 3.0].concat('shoot'));
+      targets.push([gx - dir * 16.0, ME_HALF_W + nearSide * 3.0].concat(CFG.farOn ? 'far' : 'shoot'));
       targets.push([sp.x - dir * 6.0, sp.y - nearSide * 4.0].concat('pass'));
     } else {                                                         // held at the back post
       targets.push([gx - dir * 6.5, ME_HALF_W - nearSide * 7.0].concat('strength'));
       targets.push([gx - dir * 11.0, ME_HALF_W - nearSide * 3.0].concat('strength'));
       targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 4.0].concat('strength'));
-      targets.push([gx - dir * 20.0, ME_HALF_W - nearSide * 2.0].concat('shoot'));
+      targets.push([gx - dir * 20.0, ME_HALF_W - nearSide * 2.0].concat(CFG.farOn ? 'far' : 'shoot'));
       targets.push([sp.x - dir * 9.5, sp.y - nearSide * 6.5].concat('pass'));
     }
   } else if (sp.kind === "goalkick") {
@@ -1085,6 +1085,11 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy, pick) {
   // pointed; the loft now lands where it is pointed.
   if (aerial && q && (gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted into the net
   if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
+  // THE SECOND PHASE (25 November 2026). The defenders up for a corner, or a free kick swung in, are marked as they are
+  // as it is struck; while their side keeps the ball in the last third they stay on the edge of the box a while
+  // (mind/team.ts, CFG.spUpT) instead of jogging straight back, which is where a centre-half's long shot comes from.
+  if (CFG.spUpT && (sp.kind === "corner" || (sp.kind === "freekick" && aerial)))
+    for (const q2 of s.players[side]) if (q2 && !q2.off && q2.pos === "DEF" && Math.abs(gx - q2.x) < 20 && Math.abs(q2.y - ME_HALF_W) < 22) q2._upT = mp.tick;
   if (globalThis.__prov) mp._spLast = { k: longThrow ? "longthrow" : sp.kind, t: mp.tick, side, d: Math.hypot(meGoalX(side) - sp.x, ME_HALF_W - sp.y) };
   // ...and a throw-in is THROWN. It was struck along the ground like a pass.
   const high = priced ? priced.high : sp.kind === "corner" || sp.kind === "throw" || !q
