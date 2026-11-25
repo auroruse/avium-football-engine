@@ -2889,6 +2889,29 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // over 200 league matches forwards scored 1.36 times what their chances were worth and midfielders
   // 0.85 (real football: about 1.05-1.1 and 1.0), so forwards took 68% of the goals against a real ~55%.
   shootAtkW: 8,
+  // THE LONG-SHOT SKILL (attributes.ts farRaw, meShootAt): on (1) or the finish at every range (0); the share of
+  // shootAtkW the attacking role adds to it; and where it takes over from the finish, wholly by farFrom + farOver.
+  farOn: 1, farAtkW: 0.4, farFrom: 14, farOver: 8,
+  // ...and how far each role's appetite for it (mind/roles.ts far) reaches, from farFromD metres out (0: not at all).
+  farRoleK: 1.5, farFromD: 16.5, farWhole: 1, farDefK: 1.8,
+  // ...and how much of the Long Shot trait's own pull on it (ME_BADGES farM) applies, 0 none.
+  farTraitK: 1,
+  // LONG SHOT DECIDES WHO RIPS IT (25 November 2026, the user: "People like those three, with long shot in meaningfully
+  // long shotty roles, should be ripping it the most and be on the top"). farNoTrait: a midfielder or forward without
+  // Long Shot is that much of his role's far (1: as keen as the role says). farBase: every man's long-shot skill moves
+  // by that many points (0: none), so the trait's farShot (times farShotK) is what lifts a man above the rest; lsRangeK
+  // the share of the trait's extra range he keeps (1: all six metres), so his extra shots come from 18 to 28 m.
+  farNoTrait: 0.85, farBase: -2, farShotK: 1.6, lsRangeK: 0.35,
+  // ...and the Long Shot man in a central midfield, attacking midfield or inside-forward role holds the edge of the box,
+  // lsEdge metres out and central, once the attack is in the last third, instead of running into it: the lay-off and
+  // the cut-back come to him there (0: he plays his role's positions).
+  lsEdge: 21,
+  // ...and the curl and the dip give less past lsFadeFrom metres, down to lsFadeMin of themselves at lsFadeTo, so a
+  // Long Shot man scores less from 33 m than from 26, as anyone does (0 lsFadeTo: the whole of them at any distance).
+  lsFadeFrom: 28, lsFadeTo: 36, lsFadeMin: 0.35,
+  // ...and how long (ticks) the defenders up for a corner stay on the edge of the box afterwards, and how far out (m).
+  // 0: they go straight back, as before.
+  spUpT: 30, spUpD: 22,
   // The highest he aims: under the bar, which a finisher past the band would otherwise aim over.
   shotAimZMax: 2.25,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
@@ -3853,7 +3876,7 @@ export const ME_BADGES = {
   // swing as it is struck (gkCurlRead) and the rest is what beats him. More often from range because the curled shot is
   // worth more (curlP, mind/decide.ts), not by a flat urge: range 8 and farW 0.08 measured no better than nothing, the
   // goals the curl added given back on shots he should not have taken.
-  longshot:    { range: 6, farShot: 0.15, farW: 0.03, curl: 0.5, curlP: 0.6, dipL: 1 }, // shoots from distance whenever he has room, and curls it
+  longshot:    { range: 6, farShot: 0.15, farW: 0.03, curl: 0.5, curlP: 0.6, dipL: 1, farM: 1.7, edge: 1 }, // shoots from distance whenever he has room, and curls it
   deadball:    { dead: 0.2, setTaker: 1 },             // takes the corners and the free kicks, and is one of the few who take penalties
   vision:      { aware: 0.5, early: 0.5, runnerW: 0.015, read: 0.6, readLook: 0, crispRun: 0.6, touch: 15, see: 0.4 }, // reads it better with time and options, receives it knowing the next ball; early to a runner
   composed:    { mind: 0.1, calm: 0.55, noPanic: 0.02 },  // pressure does not hurry him: he keeps playing forward, strikes it clean, never panics it away
