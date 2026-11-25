@@ -580,7 +580,7 @@ export const TRAIT_FAM_DOC = {
 // What each trait does to how a man plays (src/engine/config.ts ME_BADGES), for the Traits table. Its name and family are
 // read from src/data/badges.js.
 export const TRAIT_DOC = {
-  finisher: "Gets into the box and hits it first time, with sharper shooting.",
+  finisher: "Gets into the box and hits it first time, with sharper shooting. With Long Shot, his strikes from outside the box dip under the bar, more the higher both are.",
   interceptor: "Leaves his man to sit in the passing lane and gambles on cutting the ball out.",
   rapid: "Runs in behind, beyond the last line, and wins the race.",
   aerial: "Crosses and corners are aimed at him, and he wins them in the air.",
@@ -588,11 +588,11 @@ export const TRAIT_DOC = {
   blocker: "Gets into the line of the shot and throws himself at it.",
   strong: "Long balls go up to him, and he holds them up.",
   relentless: "Presses first, further from his post, and keeps going all match.",
-  trickster: "Takes men on: feints, cuts and the knock past a man. He rides the challenge and wins fouls.",
+  trickster: "Takes men on: feints, cuts and the knock past a man. He rides the challenge and wins fouls. With Long Shot, he can curl a shot with the outside of his foot.",
   vision: "Reads the game better with time and options, needs less time to settle on a pass that is hard to see, and finds a runner early.",
   incisive: "Plays the ball into a runner's path and over the top, away from his marker, and defenders read it a little late.",
   disciplined: "Stays on his feet and picks his moment: his tackles are clean and he gives away fewer fouls.",
-  longshot: "Shoots from distance whenever he has room, and curls it from outside the box.",
+  longshot: "Shoots from distance whenever he has room, and from outside the box curls it with the inside of his foot. With Trickster he can bend it with the outside as well; with Finisher he puts dip on it.",
   firsttouch: "Wants the ball under pressure: team-mates find him even when he is marked, his touch is cleaner, and the man on him hurries it less.",
   crosser: "Crosses early, and from deep, with far more swing on the ball than most: harder to win in the air against.",
   tikitaka: "Keeps it short and simple, into the receiver's stronger foot, and takes it already knowing the next one.",
