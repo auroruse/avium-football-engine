@@ -28,6 +28,8 @@ import { LONG_HEAD, LONG_SLOTS, LONG_YEAR, longBack, longMiss, longPlaceOfFile, 
 import { WORLD_NAME, scopeRecords } from "./data/worlds.js";
 import { rollSquad } from "./data/roll.js";
 import { readManLine } from "./data/menlines.js";
+import { normFirst, useNormFirst } from "./imgnorm.js";
+import { Sel } from "./Sel.jsx";
 // What a player is worth, worked out as it is shown (src/data/value.js, shared with test/values.mjs).
 import { ageFactor, moneyLabel, trendsOf, valueBase, valueContext, valueInputs, valueOf } from "./data/value.js";
 // Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
@@ -3640,11 +3642,11 @@ function UxPop({ at, children }) {
 // banner's foot, or with none on file a drawn head and shoulders in the banner's own ink, since the app's placeholder is a
 // disc on white made for the round tokens. Keyed on the name where it is drawn, so the next man starts at his own picture.
 function UxFace({ name }) {
-  const chain = shotChain(name).slice(0, -1);
-  const [step, setStep] = useState(0);
-  if (step >= chain.length) return (
+  const src = useNormFirst(shotChain(name).slice(0, -1), "portrait");
+  if (src === false) return (
     <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="19" /><path d="M8 100c3-27 20-40 42-40s39 13 42 40z" /></svg>);
-  return <img src={chain[step]} alt="" draggable={false} onError={() => setStep(n => n + 1)} />;
+  if (!src) return null;
+  return <img src={src} alt="" draggable={false} />;
 }
 // A PLAYER'S SURNAME ACROSS HIS BANNER: its capitals the banner's full height (ui.css sizes it at the height over the
 // capitals' 0.7, on the baseline at the foot), spaced out so its first letter's ink starts at the banner's left edge and
@@ -5994,24 +5996,13 @@ const TraitCard = () => {
       {TRAIT_DOC[b.id] && <p>{TRAIT_DOC[b.id]}</p>}
     </div>);
 };
-// Where each name's chain ended, for the session. A face mounted again starts on the picture the last one found instead
-// of asking for the missing ones first: the full-time picture is drawn from a second copy of the page, and on the live
-// site each missing picture costs a round trip (two for a name with an accent), so the copy was taken while its faces
-// were still on their way to the placeholder and they came out blank (user, 11 October 2026).
-const SHOT_AT = new Map();
+// A face shows the first of his spellings on file, evened out to the house portrait (src/imgnorm.js), or the placeholder.
+// The answer is kept for the session, so a face mounted again (the full-time picture is drawn from a second copy of the
+// page) has its picture at once instead of asking for the missing spellings again (user, 11 October 2026).
 const PlayerShot = ({ name, size, style }) => {
-  const chain = shotChain(name);
-  // The step is STATE, not a scribble on the DOM node. React owns src, so reassigning
-  // e.currentTarget.src is undone by the very next render -- which on a pitch that re-renders on
-  // every tick means the token sits on a 404 forever and shows the browser's broken-image glyph.
-  const [step, setStep] = useState(() => SHOT_AT.get(name) ?? 0);
-  useEffect(() => { setStep(SHOT_AT.get(name) ?? 0); }, [name]);
-  const i = Math.min(step, chain.length - 1);
-  return (
-    <img src={chain[i]} alt="" draggable={false}
-         onError={() => { const n = Math.min(i + 1, chain.length - 1); SHOT_AT.set(name, n); setStep(n); }}
-         style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover",
-                  display: "block", background: "var(--chrome-bg-dd)", ...style }} />
+  const src = useNormFirst(shotChain(name), "portrait");
+  const st = { width: size, height: size, borderRadius: "50%", objectFit: "cover", display: "block", background: "var(--chrome-bg-dd)", ...style };
+  return (src ? <img src={src} alt="" draggable={false} style={st} /> : <span aria-hidden="true" style={st} />
   );
 };
 
@@ -6709,7 +6700,8 @@ export async function meClipGif(clip, hc, ac) {
   const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
   const load = (urls) => new Promise((res) => { const u = (urls || []).filter(Boolean); if (!u.length) return res(null);
     let k = 0; const im = new Image(); im.onload = () => res(im); im.onerror = () => { k++; if (k < u.length) im.src = u[k]; else res(null); }; im.src = u[0]; });
-  const [hImg, aImg, face] = await Promise.all([load([clip.hb?.url]), load([clip.ab?.url]), load(clip.scorer ? shotChain(clip.scorer) : [])]);
+  const evenF = async (c) => [(await normFirst(c, "portrait")) || null];
+  const [hImg, aImg, face] = await Promise.all([load([clip.hb?.url]), load([clip.ab?.url]), evenF(clip.scorer ? shotChain(clip.scorer) : []).then(load)]);
   const bar = document.createElement("canvas"); bar.width = W; bar.height = CAP;
   const b = bar.getContext("2d", { willReadFrequently: true });
   { const mine = clip.side === "away" ? ac : hc, MID = 46;
@@ -10690,10 +10682,10 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <button onClick={() => setLgRound(Math.max(0, idx - 1))} disabled={idx === 0}
               style={{ ...smBtn, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8249;</button>
-            <select value={idx} onChange={e => setLgRound(+e.target.value)}
+            <Sel value={idx} onChange={e => setLgRound(+e.target.value)}
               style={{ ...smBtn, background: "transparent", color: "var(--ui-text)", cursor: "pointer", fontWeight: 600 }}>
               {ord.map((n2, i2) => <option key={n2} value={i2}>Round {n2}</option>)}
-            </select>
+            </Sel>
             <button onClick={() => setLgRound(Math.min(ord.length - 1, idx + 1))} disabled={idx === ord.length - 1}
               style={{ ...smBtn, cursor: idx === ord.length - 1 ? "default" : "pointer", opacity: idx === ord.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
           </div>
@@ -14215,8 +14207,8 @@ export default function App() {
         </section>
         <div className={"ux-ed-body ux-ed-tbody" + (nat ? "" : " ux-ed-club")}>
           {uxPanel("Squad", mine ? (
-            <label className="ux-pick" style={{ marginLeft: "auto" }}><select aria-label="Formation" value={fm} onChange={e => reform(e.target.value)}>
-              {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>)
+            <label className="ux-pick" style={{ marginLeft: "auto" }}><Sel aria-label="Formation" value={fm} onChange={e => reform(e.target.value)}>
+              {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>)
             : <span className="ux-chip" style={mono}>{fm}</span>, (
               <div className="ux-pitch-wrap"><div className="ux-pitch">
                 {UX_PITCH_LINES}
@@ -14273,8 +14265,8 @@ export default function App() {
     // asks for a change for one of their own men, which goes to the overseer as a request.
     const own = posList(p.pos), myMan = overseer || (scope.nations || []).includes(p.nat) || (club && edMine(teamKey(club))) || (nt && edMine(teamKey(nt)));
     const posPick = (label, val, onPick, none) => (
-      <label className="ux-pick ux-ed-sel"><select aria-label={label} value={val || ""} onChange={e => onPick(e.target.value)}>
-        {none && <option value="">None</option>}{POSITIONS.map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+      <label className="ux-pick ux-ed-sel"><Sel aria-label={label} value={val || ""} onChange={e => onPick(e.target.value)}>
+        {none && <option value="">None</option>}{POSITIONS.map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
     const two = (a, b) => [a, b].filter(Boolean).filter((x, i, l) => l.indexOf(x) === i);
     const ask = edPosAsk?.id === id ? edPosAsk : null;
     const posFact = (
@@ -14363,8 +14355,8 @@ export default function App() {
               {fact("Rating", uxBadge(m.ovr), <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} defaultValue={m.ovr} aria-label="Rating" style={mono}
                 onBlur={e => { const v = Math.round(+e.target.value); if (v >= 25 && v <= 99 && v !== m.ovr) setM({ ovr: v }); }} />)}
               {fact("Style", uxStyleName(sk), sides.length ? <>{uxStyleName(sk)}<span className="ux-ed-open">Set On His Side</span></>
-                : <label className="ux-pick ux-ed-sel"><select aria-label="Style" value={sk} onChange={e => setM({ style: STYLE_LBL[e.target.value] })}>
-                    {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>)}
+                : <label className="ux-pick ux-ed-sel"><Sel aria-label="Style" value={sk} onChange={e => setM({ style: STYLE_LBL[e.target.value] })}>
+                    {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>)}
             </dl>))}
           {uxPanel("Sides", null, (
             <div className="ux-ed-sides">
@@ -14508,8 +14500,8 @@ export default function App() {
     const upd = (patch) => setEdNew(n => ({ ...n, ...patch }));
     const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
     const sel = (label, value, opts, onChange) => (
-      <label className="ux-pick ux-ed-sel"><select aria-label={label} value={value || ""} onChange={e => onChange(e.target.value)}>
-        <option value="">Choose</option>{opts.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+      <label className="ux-pick ux-ed-sel"><Sel aria-label={label} value={value || ""} onChange={e => onChange(e.target.value)}>
+        <option value="">Choose</option>{opts.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
     // A new club's squad: twenty-two places, filled from free agents and this person's own men, each to the place he fits.
     const nation = f.nation || "", leagues = [...new Set(curRecs.teams.filter(t => !isNational(t) && t.nation === nation).map(t => t.group).filter(Boolean))];
     const squad = padSq(f.squad), slabs = slotLabels(f.formation || "4-3-3", SQUAD_PLACES, true);
@@ -14540,8 +14532,8 @@ export default function App() {
               {k !== "teams" && field("Date Of Birth", edBornAge(f.born, f.age, upd, k === "managers" ? 90 : 60))}
               {k === "players" && field("Position", sel("Position", f.pos, Object.keys(POS_NAME).map(c => [c, `${c} ${POS_NAME[c]}`]), v => upd({ pos: v })))}
               {k === "players" && field("Second Position", (
-                <label className="ux-pick ux-ed-sel"><select aria-label="Second Position" value={f.pos2 || ""} onChange={e => upd({ pos2: e.target.value })}>
-                  <option value="">None</option>{Object.keys(POS_NAME).filter(c => c !== f.pos).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>))}
+                <label className="ux-pick ux-ed-sel"><Sel aria-label="Second Position" value={f.pos2 || ""} onChange={e => upd({ pos2: e.target.value })}>
+                  <option value="">None</option>{Object.keys(POS_NAME).filter(c => c !== f.pos).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>))}
               {k === "players" && field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k })} />)}
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
               {k !== "teams" && field("Rating", <input className={"ux-ed-in ux-ed-num" + (cap != null && !edUnderCap(f.nat, f.ovr) ? " ux-need" : "")} type="number" min={25} max={cap != null ? cap - 1 : 99}
@@ -14707,8 +14699,8 @@ export default function App() {
             </div>
             <div className="ux-ed-kits ux-ed-lgctl">
               <label className="ux-ed-kit"><span>Tier</span>
-                <span className="ux-pick"><select aria-label="Tier" value={L.tier} disabled={!mine} onChange={e => set({ tier: +e.target.value })}>
-                  {[1, 2, 3, 4, 5, 0].map(t => <option key={t} value={t}>{t ? "Tier " + t : "No Tier"}</option>)}</select>{uxIcon("caret", "ux-xs")}</span></label>
+                <span className="ux-pick"><Sel aria-label="Tier" value={L.tier} disabled={!mine} onChange={e => set({ tier: +e.target.value })}>
+                  {[1, 2, 3, 4, 5, 0].map(t => <option key={t} value={t}>{t ? "Tier " + t : "No Tier"}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span></label>
               <div className="ux-ed-kit"><span>Cup</span>
                 {edCupNew === key ? <input className="ux-ed-in" autoFocus placeholder="Cup Name" onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
                     onBlur={e => { const v = e.target.value.trim(); setEdCupNew(null); if (v && v !== L.cup) set({ cup: v }); }} />
@@ -14803,8 +14795,8 @@ export default function App() {
         <dl className="ux-ed-dl ux-ed-dl-n">
           {field("Name", <input className="ux-ed-in" placeholder="League Name" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
           {multi && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer, clubNations(scope))} placeholder="Search Nations" onPick={it => upd({ nation: it.k, cup: "" })} />)}
-          {field("Tier", <span className="ux-pick ux-ed-sel"><select aria-label="Tier" value={f.tier || 1} onChange={e => upd({ tier: +e.target.value })}>
-            {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>Tier {t}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+          {field("Tier", <span className="ux-pick ux-ed-sel"><Sel aria-label="Tier" value={f.tier || 1} onChange={e => upd({ tier: +e.target.value })}>
+            {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>Tier {t}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span>)}
           {field("Cup", f.cup === "__new" ? <input className="ux-ed-in" autoFocus placeholder="Cup Name" value={f.cupName || ""} onChange={e => upd({ cupName: e.target.value })} />
             : edLgCupPick(nation, f.cup, (k) => upd({ cup: k })))}
         </dl>
@@ -14852,14 +14844,14 @@ export default function App() {
           {field("Ground", <input className="ux-ed-in" placeholder="Ground" value={c.ground} onChange={e => updC({ ground: e.target.value })} />)}
           {field("Capacity", <input className="ux-ed-in ux-ed-num" placeholder="0" value={c.cap} onChange={e => updC({ cap: e.target.value })} style={mono} />)}
           {field("City", <UxSidePick label="City" value={c.city} groups={edCities} placeholder="Search Cities" onPick={it => updC({ city: it.k })} />)}
-          {field("Formation", <span className="ux-pick ux-ed-sel"><select aria-label="Formation" value={c.formation} onChange={e => updC({ formation: e.target.value })}>
-            {FORMATIONS.map(x => <option key={x} value={x}>{x}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+          {field("Formation", <span className="ux-pick ux-ed-sel"><Sel aria-label="Formation" value={c.formation} onChange={e => updC({ formation: e.target.value })}>
+            {FORMATIONS.map(x => <option key={x} value={x}>{x}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span>)}
           {field("Manager", <UxSidePick label="Manager" value={mg ? "__new" : c.manager || ""} groups={mgrChoices} placeholder="Search Managers"
             onPick={it => updC({ manager: it.k === "__new" ? { name: "", style: "balanced", nat: nation, born: "", ovr: "" } : it.k || null })} />)}
           {mg && <>
             {field("Manager's Name", <input className="ux-ed-in" placeholder="Given Name SURNAME" value={mg.name} onChange={e => setMg({ name: e.target.value })} />)}
-            {field("Style", <span className="ux-pick ux-ed-sel"><select aria-label="Style" value={mg.style} onChange={e => setMg({ style: e.target.value })}>
-              {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+            {field("Style", <span className="ux-pick ux-ed-sel"><Sel aria-label="Style" value={mg.style} onChange={e => setMg({ style: e.target.value })}>
+              {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span>)}
             {field("Date Of Birth", edBornAge(mg.born, mg.age, setMg, 90))}
             {field("Rating", review ? rateIn(mg, v => setMg({ ovr: v }), "Manager's Rating")
               : <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder="Blank" value={mg.ovr} onChange={e => setMg({ ovr: e.target.value })} style={mono} />)}
@@ -14940,10 +14932,10 @@ export default function App() {
             <div className="ux-ed-lh">{np.at != null ? "Edit New Player" : "New Player"}</div>
             <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
               {field("Name", <input className="ux-ed-in" placeholder="Given Name SURNAME" value={np.name || ""} onChange={e => setNp({ name: e.target.value })} />)}
-              {field("Position", <span className="ux-pick ux-ed-sel"><select aria-label="Position" value={np.pos || ""} onChange={e => setNp({ pos: e.target.value })}>
-                <option value="">Choose</option>{Object.keys(POS_NAME).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
-              {field("Second", <span className="ux-pick ux-ed-sel"><select aria-label="Second Position" value={np.pos2 || ""} onChange={e => setNp({ pos2: e.target.value })}>
-                <option value="">None</option>{Object.keys(POS_NAME).filter(x => x !== np.pos).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+              {field("Position", <span className="ux-pick ux-ed-sel"><Sel aria-label="Position" value={np.pos || ""} onChange={e => setNp({ pos: e.target.value })}>
+                <option value="">Choose</option>{Object.keys(POS_NAME).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span>)}
+              {field("Second", <span className="ux-pick ux-ed-sel"><Sel aria-label="Second Position" value={np.pos2 || ""} onChange={e => setNp({ pos2: e.target.value })}>
+                <option value="">None</option>{Object.keys(POS_NAME).filter(x => x !== np.pos).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</span>)}
               {field("Nationality", <UxSidePick label="Nationality" value={np.nat || nation} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => setNp({ nat: it.k })} />)}
               {field("Born", edBornAge(np.born, np.age, setNp, 60))}
               {field("Rating", <input className={"ux-ed-in ux-ed-num" + (+np.ovr > 0 && !edUnderCap(np.nat || nation, np.ovr) ? " ux-need" : "")} type="number" min={25}
@@ -15561,9 +15553,9 @@ export default function App() {
                 <div><b>{drName(confirm.man)}</b><span>{posList(cman.pos).join(" / ")}{collegeOf(confirm.man) ? ", " + collegeOf(confirm.man).name : ""}</span></div></div>
               {full && (
                 <label className="ux-dr-out"><span>Who Makes Way</span>
-                  <select value={confirm.out || ""} onChange={e => setDrConfirm(c => ({ ...c, out: e.target.value }))} aria-label="Who Makes Way">
+                  <Sel value={confirm.out || ""} onChange={e => setDrConfirm(c => ({ ...c, out: e.target.value }))} aria-label="Who Makes Way">
                     {outOpts.map(({ id, i }) => { const r = recById.get(id); return <option key={id} value={id}>{showOvr(r?.ovr)} {fullDisplayName(r?.name || id)}, {posList(r?.pos).join("/")}{i < 11 ? " (Starter)" : ""}</option>; })}
-                  </select>
+                  </Sel>
                   <small>He leaves for free agency. {own?.name.trim()} has no open place.</small></label>)}
               {drMsg && <div className="ux-dr-msg ux-bad" role="alert">{drMsg}</div>}
             </div>
@@ -16194,9 +16186,9 @@ export default function App() {
                       else if (e.key === "Tab") { e.preventDefault(); done(e.currentTarget.value, [0, e.shiftKey ? -1 : 1]); }
                       else if (e.key === "Escape") { e.preventDefault(); setShEdit(null); setTimeout(shRefocus, 0); } };
                     if (c === "formation" || c === "tw") return (
-                      <td key={c} {...tdp}><select className="ux-sh-in" autoFocus ref={shOpenNow} value={shEdit.v} onKeyDown={keys}
+                      <td key={c} {...tdp}><Sel className="ux-sh-in" autoFocus ref={shOpenNow} value={shEdit.v} onKeyDown={keys}
                         onChange={(e) => done(e.target.value, null)} onBlur={() => setShEdit(null)}>
-                        {(c === "tw" ? SH_TW : FORMATIONS).map(x => <option key={x} value={x}>{x}</option>)}</select></td>);
+                        {(c === "tw" ? SH_TW : FORMATIONS).map(x => <option key={x} value={x}>{x}</option>)}</Sel></td>);
                     if (c === "city") return (
                       <td key={c} {...tdp}><UxSidePick label="City" value={shCity(t)} groups={edCities} placeholder="Search Cities" cls="ux-sh-cellpick" startOpen onClose={() => setTimeout(() => setShEdit(null), 0)} onPick={it => done(it.k, null)} /></td>);
                     if (c === "home" || c === "away") return (
@@ -16323,8 +16315,8 @@ export default function App() {
       <div className="ux-sh-line" key={"line" + k}>
         <div className="ux-sh-lh">{cat && <TeamCrest team={cat} size={26} />}
           <div><b><SlideName text={T.name.trim()} /></b><span>{edDots(nums.ovr != null ? "OVR " + nums.ovr.toFixed(1) : null, nums.xi != null ? "XI " + nums.xi.toFixed(1) : null)}</span></div>
-          {mine ? <label className="ux-pick ux-sh-lfm"><select aria-label="Formation" value={fm} onChange={(e) => shCommit(k, "formation", e.target.value)}>
-            {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</select>{uxIcon("caret", "ux-xs")}</label> : <span className="ux-chip" style={mono}>{fm}</span>}</div>
+          {mine ? <label className="ux-pick ux-sh-lfm"><Sel aria-label="Formation" value={fm} onChange={(e) => shCommit(k, "formation", e.target.value)}>
+            {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label> : <span className="ux-chip" style={mono}>{fm}</span>}</div>
         <div className="ux-sh-lpitch"><UxLineup slots={slots} men={men} scale={30 / 44} /></div>
         <section className="ux-sh-sec">
           <div className="ux-sh-sech"><span>Bench</span></div>
@@ -16381,8 +16373,8 @@ export default function App() {
       onBlur={(e) => { commit(e.currentTarget.value); setShRecEd(null); }} />);
   const shPosEdit = (own, set) => (
     <span className="ux-sh-posed">{[0, 1].map(pi => (
-      <select key={pi} className="ux-sh-fi ux-sh-fsel" style={mono} autoFocus={pi === 0} value={own[pi] || ""} onChange={(e) => { const next = [...own]; next[pi] = e.target.value; set(posList(next.filter(Boolean))); }}>
-        {pi === 1 && <option value="">None</option>}{POSITIONS.map(x => <option key={x} value={x} disabled={own[1 - pi] === x}>{x}</option>)}</select>))}
+      <Sel key={pi} className="ux-sh-fi ux-sh-fsel" style={mono} autoFocus={pi === 0} value={own[pi] || ""} onChange={(e) => { const next = [...own]; next[pi] = e.target.value; set(posList(next.filter(Boolean))); }}>
+        {pi === 1 && <option value="">None</option>}{POSITIONS.map(x => <option key={x} value={x} disabled={own[1 - pi] === x}>{x}</option>)}</Sel>))}
       <button type="button" className="ux-btnreset ux-sh-done" onClick={() => setShRecEd(null)}>Done</button></span>);
   const shPosChips = (own) => (own.length ? own.map(p => <span key={p} className="ux-sh-posc" style={{ color: POS_CLR[p], ...mono }}>{p}</span>) : <span className="ux-dim">None</span>);
   // His traits as chips; the overseer's Edit Traits opens every trait by level (TraitPicker), within what his rating affords.
@@ -16404,8 +16396,8 @@ export default function App() {
     const cap = isMg ? null : edCapOf(f.nat), blank = f.ovr === "" || f.ovr == null, overCap = !isMg && !blank && !edUnderCap(f.nat, f.ovr);
     const row = (label, el) => <div className="ux-sh-fr"><dt>{label}</dt><dd>{el}</dd></div>;
     const posSel = (label, v, onChange, none, skip) => (
-      <select className="ux-sh-fi ux-sh-flat" aria-label={label} value={v || ""} onChange={e => onChange(e.target.value)}>
-        <option value="">{none}</option>{Object.keys(POS_NAME).filter(c => c !== skip).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>);
+      <Sel className="ux-sh-fi ux-sh-flat" aria-label={label} value={v || ""} onChange={e => onChange(e.target.value)}>
+        <option value="">{none}</option>{Object.keys(POS_NAME).filter(c => c !== skip).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</Sel>);
     return (
       <div className="ux-sh-rec" key={mode + kind + (mode === "edit" ? JSON.stringify(shFormEdit?.src) : "")}>
         <div className="ux-sh-rh"><span className="ux-sh-rface ux-sh-rnew">{uxIcon("plus", "ux-s")}</span>
@@ -16430,13 +16422,13 @@ export default function App() {
                 onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
               <button type="button" className="ux-btnreset ux-sh-dice" aria-label="Another Date For This Age" title="Another Date For This Age" disabled={!f.born}
                 onClick={() => upd({ born: edBornFor(ageOf(f.born)), bornSet: true })}>{uxIcon("dice", "ux-s")}</button></span>)}
-            {isMg ? row("Style", <select className="ux-sh-fi ux-sh-flat" aria-label="Style" value={f.style || "balanced"} onChange={e => upd({ style: e.target.value })}>
-                {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>)
+            {isMg ? row("Style", <Sel className="ux-sh-fi ux-sh-flat" aria-label="Style" value={f.style || "balanced"} onChange={e => upd({ style: e.target.value })}>
+                {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</Sel>)
               : <>{row("Position", posSel("Position", f.pos, (v) => upd({ pos: v, ...(f.pos2 === v ? { pos2: "" } : null) }), "Choose"))}
                   {row("Second Position", posSel("Second Position", f.pos2, (v) => upd({ pos2: v }), "None", f.pos))}</>}
             {/* At a college, the year he is in (DESIGN.md, The ANCC): his age's until one is picked. */}
-            {!isMg && shCollege(f.side) && row("Year", <select className="ux-sh-fi ux-sh-flat" aria-label="Year" value={yearOf(f.grad ?? gradFor(age)) || 1}
-              onChange={e => upd({ grad: COLLEGE_SEASON + 4 - +e.target.value })}>{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</select>)}
+            {!isMg && shCollege(f.side) && row("Year", <Sel className="ux-sh-fi ux-sh-flat" aria-label="Year" value={yearOf(f.grad ?? gradFor(age)) || 1}
+              onChange={e => upd({ grad: COLLEGE_SEASON + 4 - +e.target.value })}>{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</Sel>)}
             {!isMg && mode === "new" && f.at == null && row("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" cls="ux-sh-spk"
               onPick={it => upd({ side: it.k || null, at: null })} />)}
             {row("Rating", <input className={"ux-sh-fi ux-sh-flat ux-sh-fnum" + (overCap ? " ux-need" : "")} style={mono} inputMode="numeric" aria-label="Rating"
@@ -16522,8 +16514,8 @@ export default function App() {
             {!isM && shFact("value", "Value", <span style={mono}>{value != null ? moneyLabel(value) : "–"}</span>, null)}
             {/* A college man's year (DESIGN.md, The ANCC), stored as the year his course ends. */}
             {!isM && hidMan(r.id) && shFact("grad", "Year", yearOf(r.grad) ? YEARS[yearOf(r.grad) - 1] : "–",
-              O && <select className="ux-sh-fi ux-sh-fsel" autoFocus value={yearOf(r.grad) || ""} onChange={(e) => { put({ grad: COLLEGE_SEASON + 4 - +e.target.value }); setShRecEd(null); }}
-                onBlur={() => setShRecEd(null)} aria-label="Year">{!yearOf(r.grad) && <option value="">None</option>}{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</select>)}
+              O && <Sel className="ux-sh-fi ux-sh-fsel" autoFocus value={yearOf(r.grad) || ""} onChange={(e) => { put({ grad: COLLEGE_SEASON + 4 - +e.target.value }); setShRecEd(null); }}
+                onBlur={() => setShRecEd(null)} aria-label="Year">{!yearOf(r.grad) && <option value="">None</option>}{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</Sel>)}
           </dl>
         </section>
         <section className="ux-sh-sec">
@@ -16868,8 +16860,8 @@ export default function App() {
     const cap = edCapOf(f.nat), okRating = man.ovr == null ? !overseer || k.startsWith("new:") : man.ovr >= 25 && man.ovr <= 99 && edUnderCap(f.nat, man.ovr);
     const ready = man.name && man.pos.length && f.nat && okRating && (overseer || !traitsProblem(man.badges, man.ovr));
     const posSel = (label, v, set, none, skip) => (
-      <label className="ux-pick ux-uce-psel"><select aria-label={label} value={v || ""} onChange={e => set(e.target.value)}>
-        {none && <option value="">{none}</option>}{POSITIONS.filter(c => c !== skip).map(c => <option key={c} value={c}>{c}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+      <label className="ux-pick ux-uce-psel"><Sel aria-label={label} value={v || ""} onChange={e => set(e.target.value)}>
+        {none && <option value="">{none}</option>}{POSITIONS.filter(c => c !== skip).map(c => <option key={c} value={c}>{c}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
     return (
       <div className="ux-uce-nf">
         <label className="ux-uce-f"><span>Name</span><input className="ux-ed-in" autoFocus placeholder="Given SURNAME" value={f.name} onChange={e => upd({ name: e.target.value })}
@@ -17164,8 +17156,8 @@ export default function App() {
             <div><dt>Positions</dt><dd>{ask ? (
                 <span className="ux-uce-posask">
                   {[["a", true], ["b", false]].map(([f, need]) => (
-                    <select key={f} className="ux-ed-in" aria-label={need ? "Position" : "Second Position"} value={ask[f]} onChange={e => setUcPos({ ...ask, [f]: e.target.value })}>
-                      {!need && <option value="">None</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select>))}
+                    <Sel key={f} className="ux-ed-in" aria-label={need ? "Position" : "Second Position"} value={ask[f]} onChange={e => setUcPos({ ...ask, [f]: e.target.value })}>
+                      {!need && <option value="">None</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</Sel>))}
                   <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => { shPut(draftWith(draft, recBase, pickId, { pos: posList([ask.a, ask.b].filter(Boolean)) }, "players")); setUcPos(null); }}>{overseer ? "Set" : "Request"}</button>
                   <button type="button" className="ux-btnreset ux-cb-x" aria-label="Cancel" onClick={() => setUcPos(null)}>{uxIcon("close", "ux-s")}</button></span>)
               : <><span className="ux-uce-ptags">{ownOfId(pickId).map(p => <b key={p} style={{ ...mono, color: POS_CLR[p] }}>{p}</b>)}</span>
@@ -17487,8 +17479,8 @@ export default function App() {
                 <tr key={m.id} className={w ? "ux-many-bad" : undefined}>
                   <td className="ux-dim" style={mono}>{i + 1}</td>
                   <td><input className="ux-many-in" value={m.name} aria-label="Name" onChange={e => setE(m.id, { name: e.target.value })} /></td>
-                  <td><select className="ux-many-in" style={{ ...mono, color: POS_CLR[posList(m.pos)[0]] }} aria-label="Position" value={posList(m.pos)[0] || ""} onChange={e => setE(m.id, { pos: posList([e.target.value, ...posList(m.pos).slice(1)]) })}>
-                    {!posList(m.pos).length && <option value="">–</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></td>
+                  <td><Sel className="ux-many-in" style={{ ...mono, color: POS_CLR[posList(m.pos)[0]] }} aria-label="Position" value={posList(m.pos)[0] || ""} onChange={e => setE(m.id, { pos: posList([e.target.value, ...posList(m.pos).slice(1)]) })}>
+                    {!posList(m.pos).length && <option value="">–</option>}{POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</Sel></td>
                   <td className="ux-n"><input className="ux-many-in ux-many-num" style={mono} aria-label="Age" defaultValue={m.born ? ageOf(m.born) : ""} key={"a" + m.id + m.born}
                     onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= 60 && y !== ageOf(m.born)) setE(m.id, { born: edBornFor(y) }); }} /></td>
                   <td><span className="ux-tc">{natTeamByCode.get(m.nat) && <TeamCrest team={natTeamByCode.get(m.nat)} size={14} />}<SlideName text={natOptions.name.get(m.nat) || m.nat} /></span></td>
@@ -17868,9 +17860,9 @@ export default function App() {
             <div className="ux-menu" role="menu" aria-label="Settings" onKeyDown={e => { if (e.key === "Escape") setUxMenu(null); }}>
               {THEMES_ENABLED && !ARTERRA && (
                 <label className="ux-menu-item">Theme
-                  <select value={uiTheme} onChange={e => setUiTheme(e.target.value)}>
+                  <Sel value={uiTheme} onChange={e => setUiTheme(e.target.value)}>
                     {UI_THEMES.map((th, i) => th ? <option key={th[0]} value={th[0]}>{th[1]}</option> : <option key={"r" + i} disabled>{"─".repeat(14)}</option>)}
-                  </select></label>)}
+                  </Sel></label>)}
               <div className="ux-menu-item" role="group" aria-label="Universe">Universe
                 <span className="ux-seg">{WORLDS.map(([w, l]) => (
                   <button key={w} type="button" className={"ux-btnreset" + (WORLD === w ? " ux-on" : "")} aria-pressed={WORLD === w}
@@ -18318,8 +18310,8 @@ export default function App() {
       {body}
     </section>);
   const uxPick = (label, value, options, onChange) => (
-    <label className="ux-pick"><select aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
-      {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+    <label className="ux-pick"><Sel aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
+      {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
   const uxSeasonLabel = (y) => `${y - 1}/${String(y).slice(2)}`;
   const uxSeasonName = (s) => (!COMP_SCOPE[s.comp] && /^\d{4}$/.test(s.season) ? uxSeasonLabel(+s.season) : s.season);
   // A history as bars, a season each: the higher the place, the taller the bar, first place in gold. A bar with a season
@@ -19288,15 +19280,14 @@ export default function App() {
           {ed ? uxPosPitch(ownPos, (ps) => putP({ pos: ps }), plSlot, setPlSlot) : uxPanel("Positions", null, (<>
             <div className="ux-pitch-wrap"><div className="ux-pitch" role="img" aria-label={[...spots.keys()].join(", ")}>
               {UX_PITCH_LINES}
-              {/* His own positions lit (src/data/positions.js), each with the sides that play him there; a place a side plays
-                  him out of position (uxOop) in the loss colour, opening the out-of-position card. */}
+              {/* His own positions lit (src/data/positions.js), and the places his sides play him; a place a side plays him
+                  out of position (uxOop) in the loss colour, opening the out-of-position card. */}
               {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const on = spots.get(ps), mine = ownPos.includes(ps), oop = !!on && uxOop(ownPos, ps);
                 const sides = oop ? on.filter(Boolean).map(t => uxOopRow(ovr, ownPos, ps, t.name)) : [];
                 return (
                   <div key={ps} className={"ux-spot" + (on || mine ? " ux-on" : "") + (oop ? " ux-oop" : "")} style={{ left: x + "%", top: y + "%", ["--pos"]: oop ? "var(--ux-loss)" : POS_CLR[ps] }}
                     data-oop={sides.length ? uxOopTag(ownPos, sides) : undefined}>
                     {(on || mine) && <span style={mono}>{ps}</span>}
-                    {on && on.length > 0 && <div className="ux-spot-cr">{on.map(t => <TeamCrest key={t.id} team={t} size="var(--cr)" />)}</div>}
                   </div>); })}
             </div></div>
             {oops.length > 0 && uxOopList(oops, ownPos)}
@@ -19381,10 +19372,10 @@ export default function App() {
   // and the selected man's card down the right ════
   // A select with groups (an untitled group is the options before the first heading).
   const uxPickG = (label, value, groups, onChange) => (
-    <label className="ux-pick"><select aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
+    <label className="ux-pick"><Sel aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
       {groups.map(([g, opts], i) => g
         ? <optgroup key={g} label={g}>{opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</optgroup>
-        : <Fragment key={"g" + i}>{opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Fragment>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+        : <Fragment key={"g" + i}>{opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Fragment>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
   // A column head that sorts: figures high to low first, names A to Z.
   const uxSortTh = (sort, setSort, k, label, cls, text, title) => {
     const on = sort.k === k;
@@ -23066,10 +23057,10 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)" }}>
                         <button onClick={() => setLgRound(Math.max(0, idx - 1))} disabled={idx === 0}
                           style={{ ...smBtn, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8249;</button>
-                        <select value={idx} onChange={e => setLgRound(+e.target.value)}
+                        <Sel value={idx} onChange={e => setLgRound(+e.target.value)}
                           style={{ ...smBtn, background: "transparent", color: "var(--ui-text)", cursor: "pointer", fontWeight: 600 }}>
                           {RR.rounds.map((r, i2) => <option key={r.n} value={i2}>Round {r.n}</option>)}
-                        </select>
+                        </Sel>
                         <button onClick={() => setLgRound(Math.min(RR.rounds.length - 1, idx + 1))} disabled={idx === RR.rounds.length - 1}
                           style={{ ...smBtn, cursor: idx === RR.rounds.length - 1 ? "default" : "pointer", opacity: idx === RR.rounds.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
                       </div>
@@ -23645,10 +23636,10 @@ export default function App() {
         {tab === "utilities" && (<div style={{ height: ROSTER_PANEL_H, overflowY: "auto", scrollbarGutter: "stable", paddingRight: 4 }}>
           {THEMES_ENABLED && !ARTERRA && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-            <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
+            <Sel value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
               {UI_THEMES.map((t, i) => t ? <option key={t[0]} value={t[0]}>{t[1]}</option>
                                           : <option key={`r${i}`} disabled>{"\u2500".repeat(18)}</option>)}
-            </select>
+            </Sel>
           </div></>)}
           {/* The Abstract Match Engine panel was here -- the last way into that simulation from
               the interface. Both the panel and the engine behind it are gone; everything the app
