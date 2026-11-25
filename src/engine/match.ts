@@ -1389,7 +1389,10 @@ function meDuelHooks(s, rng, out) {
         mp.idx = -1; mp.flight = false; mp.passPending = null;
       } else { meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by); }
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
-      if (slide && out.fx?.length) out.fx[out.fx.length - 1].f = 1;
+      // WHO WENT IN, named on the viewer's record (out.fx): the pitch guessed him from where the men stood after the slice,
+      // and by then the tackler had usually moved on, so most slides were drawn on nobody and now and then on the man he
+      // tackled (user, 25 November 2026: "Van Can just fucking squished Tahmasb").
+      if (out.fx?.length) { const r = out.fx[out.fx.length - 1]; r.tq = (def === "away" ? 11 : 0) + i; if (slide) r.f = 1; }
     },
     beaten: (p, c, slide) => {
       const atk = mp.side;
@@ -1397,7 +1400,8 @@ function meDuelHooks(s, rng, out) {
       meRate(c, CFG.rateDribble); c.dribbles = (c.dribbles || 0) + 1;
       meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1;
       meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, null);
-      if (slide && out.fx?.length) out.fx[out.fx.length - 1].f = 1;
+      if (out.fx?.length) { const r = out.fx[out.fx.length - 1], def = meOther(atk), j = s.players[def].indexOf(p);
+        if (j >= 0) r.tq = (def === "away" ? 11 : 0) + j; if (slide) r.f = 1; }
     },
     // A FOUL HAPPENED; WAS IT GIVEN (referee.ts meRefJudge)? True if he blew. If he did not see it, nothing is
     // recorded against the man but the appeal, and the challenge goes on as the duel settles it.

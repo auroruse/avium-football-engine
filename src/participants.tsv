@@ -5,7 +5,7 @@ PRESET	TEAM	GROUP	FORMAT
 1934 World Cup	Neuhollmar	A	oldWC
 1934 World Cup	Rudania	B	oldWC
 1934 World Cup	Seignid	B	oldWC
-1934 World Cup	Barbary	B	oldWC
+1934 World Cup	Numidia	B	oldWC
 1934 World Cup	South Pelagonia	B	oldWC
 1934 World Cup	Karjania	C	oldWC
 1934 World Cup	Vicily	C	oldWC
@@ -94,7 +94,7 @@ PRESET	TEAM	GROUP	FORMAT
 1935 World Cup	Vicily	H	wc1935
 1935 World Cup	Furan	H	wc1935
 1935 World Cup	Shivon	H	wc1935
-1935 World Cup	Barbary	H	wc1935
+1935 World Cup	Numidia	H	wc1935
 1935 Club World Cup	CSKA Radagorsk	A	cwc1935
 1935 Club World Cup	IK Malmhug	A	cwc1935
 1935 Club World Cup	Sepāh Kuhestan	A	cwc1935
@@ -194,7 +194,7 @@ PRESET	TEAM	GROUP	FORMAT
 1935 Nations League	Gonenite Islands		nl1935
 1935 Nations League	Livonia		nl1935
 1935 Nations League	Karjania		nl1935
-1935 Nations League	Barbary		nl1935
+1935 Nations League	Numidia		nl1935
 1935 Nations League	Arunya		nl1935
 1935 Nations League	Ponurvia		nl1935
 1935 Nations League	Tierra Arcadia		nl1935
@@ -262,7 +262,7 @@ PRESET	TEAM	GROUP	FORMAT
 1936 Western Qualifiers	Salishia		wcq1936w
 1936 Western Qualifiers	Iriria		wcq1936w
 1936 Western Qualifiers	South Pelagonia		wcq1936w
-1936 Western Qualifiers	Barbary		wcq1936w
+1936 Western Qualifiers	Numidia		wcq1936w
 1936 Western Qualifiers	El Magreb		wcq1936w
 1936 Western Qualifiers	Noradia		wcq1936w
 1936 Western Qualifiers	West Bangala		wcq1936w
@@ -309,4 +309,4 @@ PRESET	TEAM	GROUP	FORMAT
 1936 World Cup	Karjania	H	wc1935
 1936 World Cup	Salishia	H	wc1935
 1936 World Cup	Selmira	H	wc1935
-1936 World Cup	Barbary	H	wc1935
+1936 World Cup	Numidia	H	wc1935

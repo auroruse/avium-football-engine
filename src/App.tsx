@@ -5014,7 +5014,8 @@ export const meFxMake = (s, raw, memo) => {
     // drawn as slides, each leaving a dark streak in the grass for four seconds after the men had gone (user, 24 November
     // 2026: "tackle lines on the field seemingly appearing randomly and not during actual tackles").
     else if (e.k === "tackle") { const d = Math.hypot(e.x1 - e.x0, e.y1 - e.y0) || 1, dx = (e.x1 - e.x0) / d, dy = (e.y1 - e.y0) / d, slide = !!e.f;
-      const q = Math.max(near("home", e.x0, e.y0, 0.5), near("away", e.x0, e.y0, 0.5));
+      // The man who went in, as the engine names him (match.ts, the duel's record); an older record has only where.
+      const q = e.tq != null && e.tq % 11 >= 0 ? e.tq : Math.max(near("home", e.x0, e.y0, 0.5), near("away", e.x0, e.y0, 0.5));
       out.push({ k: "tackle", x: e.x0, y: e.y0, x1: e.x1, y1: e.y1, dx, dy, q, f: slide ? 1 : 0 });
       if (slide) out.push({ k: "scuff", x: e.x0 - dx * 0.5, y: e.y0 - dy * 0.5, x1: e.x1 + dx * 0.4, y1: e.y1 + dy * 0.4 }); }
     else if (e.k === "foul") out.push({ k: "foul", x: e.x0, y: e.y0 });
@@ -6578,12 +6579,10 @@ export const meSnap = (s, tln) => {
   // tk: the last man to play the ball on purpose (side, index, slice), so a first-time pass or finish names its man
   // even though he never held it at the end of a slice.
   const tl = mp.tlog && mp.tlog.length ? mp.tlog[mp.tlog.length - 1] : null;
-  // gkd: a keeper at full stretch, [man 0..21, how far, which way x, y] (match.ts _pext), for the replay's stretched dot.
-  // Only with a shot on its way: the engine lengthens him whenever he moves quickly, and a keeper running is not diving.
-  const gkd = [];
-  for (const [o, sd] of [[0, "home"], [11, "away"]]) s.players[sd].forEach((p, i) => { if (p && !p.off && i < 11 && p.pos === "GK" && (p._dext ?? 0) > 0.05 && (mp.shot || mp.gkPlan)) gkd.push([o + i, p._dext, p._dux || 0, p._duy || 0]); });
+  // (gkd, the keeper drawn out along his dive, is gone: the user, 25 November 2026, "remove that weird keeper animation
+  // when he dives. It's awkward." A tape saved with it still carries it, and nothing draws it.)
   return { xy, fc, bx: mp.bx, by: mp.by, bz: mp.bz, sd: mp.side, ix: mp.idx, sub: mp._sub && mp._sub.length >= 9 ? mp._sub.slice(0, 9) : null,
-           tk: tl && !tl.d ? [tl.s, tl.i, tl.t] : null, ...(gkd.length ? { gkd } : null),
+           tk: tl && !tl.d ? [tl.s, tl.i, tl.t] : null,
            of: meTlPack(s, tln) };       // the referee, his assistants and the coaches (engine/touchline.ts)
 };
 // WHERE THE MOVE STARTED: walk back from the goal to the last slice the other side held the ball.
@@ -6842,7 +6841,7 @@ export async function meClipGif(clip, hc, ac) {
       g.restore(); g.strokeStyle = C.officialEdge; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 3.95, 0, Math.PI * 2); g.stroke(); }
     // the twenty-two: the keeper in his own colour, a nose for the way each man faces
     g.lineJoin = "round";
-    const at = [], gkdNow = (a < 0.5 ? A : B).gkd || [];
+    const at = [];
     for (let sd = 0; sd < 2; sd++) for (let k = 0; k < 11; k++) { const q = sd * 11 + k, xy = meManAt(F, i, a, q * 2);
       if (!xy) continue;
       // (what the effects do to him, meFxMan: up for a header, drawn out along a slide, a step back off a block; and the
@@ -6851,8 +6850,7 @@ export async function meClipGif(clip, hc, ac) {
       const x = U(xy[1]) + (md ? sg * md[4] * S : 0), y = Y(dOf(xy[0])) + (md ? -sg * md[3] * S : 0), col = clip.gk && clip.gk[q] ? C.keep : sd ? ac : hc, th = meFaceAt(A, B, a, q);
       at[q] = [x, y];
       g.fillStyle = `rgba(0,0,0,${(0.28 - 0.1 * lift).toFixed(2)})`; g.beginPath(); g.ellipse(x + 1.5 * (1 + 3 * lift), y + 2.2 * (1 + 3 * lift), R * 1.02, R * 0.9, 0, 0, Math.PI * 2); g.fill();
-      const gd = gkdNow.find(v => v[0] === q), cap = (ax, ay, bx2, by2) => { g.strokeStyle = col; g.lineWidth = R * 1.8; g.lineCap = "round"; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); g.lineCap = "butt"; };
-      if (gd) { const cx = sg * gd[3] * gd[1] * S, cy = -sg * gd[2] * gd[1] * S; cap(x - cx, y - cy, x + cx, y + cy); }
+      const cap = (ax, ay, bx2, by2) => { g.strokeStyle = col; g.lineWidth = R * 1.8; g.lineCap = "round"; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); g.lineCap = "butt"; };
       if (md && (md[1] || md[2])) cap(x, y, x + sg * md[2] * S, y - sg * md[1] * S);
       g.fillStyle = col; g.strokeStyle = "rgba(0,0,0,.7)"; g.lineWidth = 1;
       if (th !== undefined) { const c = sg * Math.sin(th), s = -sg * Math.cos(th), tip = R + 3.2, bk = R * 0.5, w = R * 0.66;
@@ -23727,17 +23725,12 @@ export default function App() {
               const c = Math.cos(fa), sn = Math.sin(fa), tip = R_MAN + 0.42, bk = R_MAN * 0.55, w = R_MAN * 0.62;
               return `${x + c * tip},${y + sn * tip} ${x + c * bk - sn * w},${y + sn * bk + c * w} ${x + c * bk + sn * w},${y + sn * bk - c * w}`;
             })();
-            // THE KEEPER AT FULL STRETCH, and a man sliding in: the dot drawn out along the line he is going (the engine's
-            // own dive, match.ts _pext; the tackle's own line).
-            // (the dive itself, match.ts _dext: his running pace stretched him too, and a keeper sprinting off his line was
-            // drawn smeared along his run like a row of copies of himself; user, 24 November 2026)
-            const dv = p._dive ? [p._pext ?? 0, p._pux ?? 0, p._puy ?? 0] : [p._dext ?? 0, p._dux ?? 0, p._duy ?? 0];
-            const ext = gk(p) && dv[0] > 0.05 && (p._dive || (!rep && (st?.mePos?.shot || st?.mePos?.gkPlan))) ? dv[0] : 0, dux = hs * dv[1], duy = dv[2];
+            // A MAN SLIDING IN: the dot drawn out along the tackle's own line. (The keeper drawn out along his dive is gone:
+            // the user, 25 November 2026, "remove that weird keeper animation when he dives. It's awkward.")
             const slx = md ? md[1] * hs : 0, sly = md ? md[2] : 0;
             return (
               <g key={key}>
-                <ellipse cx={x + SH_X * (1 + 3 * lift)} cy={y + SH_Y * (1 + 3 * lift)} rx={R_MAN * 1.02 + ext * 0.5} ry={R_MAN * 0.9} fill="#000" fillOpacity={0.26 - 0.1 * lift} />
-                {ext > 0 && <line x1={x - dux * ext} y1={y - duy * ext} x2={x + dux * ext} y2={y + duy * ext} stroke={face} strokeWidth={R_MAN * 1.7} strokeLinecap="round" />}
+                <ellipse cx={x + SH_X * (1 + 3 * lift)} cy={y + SH_Y * (1 + 3 * lift)} rx={R_MAN * 1.02} ry={R_MAN * 0.9} fill="#000" fillOpacity={0.26 - 0.1 * lift} />
                 {(slx || sly) ? <line x1={x} y1={y} x2={x + slx} y2={y + sly} stroke={face} strokeWidth={R_MAN * 1.8} strokeLinecap="round" /> : null}
                 {/* HIS TOUCH REACH, and only his. Drawn round all twenty-two it was twenty-two fuzzy
                     haloes and pure noise; drawn round the man on the ball it is the one thing on the
@@ -23825,10 +23818,8 @@ export default function App() {
               const xy = meManAt(F, i, a, sd * 22 + k * 2);
               if (!xy) return null;
               const q = sd * 11 + k, p = st.players[sd ? "away" : "home"][k];
-              const gd = ((a < 0.5 ? A : B).gkd || []).find(g => g[0] === q);
               return { x: xy[0], y: xy[1], _px: xy[0], _py: xy[1], name: c.clip.names?.[q] || p?.name || "",
-                       pos: c.clip.gk ? (c.clip.gk[q] ? "GK" : "") : p?.pos, _face: meFaceAt(A, B, a, q),
-                       ...(gd ? { _pext: gd[1], _pux: gd[2], _puy: gd[3], _dive: 1 } : null) };
+                       pos: c.clip.gk ? (c.clip.gk[q] ? "GK" : "") : p?.pos, _face: meFaceAt(A, B, a, q) };
             }));
             const on = a < 0.5 ? A : B;
             return { c, men, ball: meBallAt(A, B, a), cs: on.sd, ci: on.ix, prog: Math.max(0, Math.min(1, (i + a) / n)) };

@@ -680,17 +680,17 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Isak Nanlong	AAD	MID	41	42
 1934	International Football	Pau Atong	AAD	DEF	40	39
 1934	International Football	Thura Maung	AAD	MID	37	38
-1934	International Football	Amaury Cousteau	ABB	FWD	68	66
-1934	International Football	Armand Picard	ABB	FWD	64	62
-1934	International Football	Boualem Hamraoui	ABB	MID	68	66
-1934	International Football	Chérif Guerroudj	ABB	FWD	73	71
-1934	International Football	Hamza Benali	ABB	GK	66	64
-1934	International Football	Lakhdar Meziane	ABB	FWD	66	68
-1934	International Football	Gaston Fabre	ABB	MID	65	64
-1934	International Football	Koceïla Idir	ABB	MID	66	65
-1934	International Football	Ouahid Rahmani	ABB	MID	65	64
-1934	International Football	Tahar Djaballah	ABB	DEF	70	69
-1934	International Football	Yacine Belkacem	ABB	FWD	66	65
+1934	International Football	Amaury Cousteau	CNM	FWD	68	66
+1934	International Football	Armand Picard	CNM	FWD	64	62
+1934	International Football	Boualem Hamraoui	CNM	MID	68	66
+1934	International Football	Chérif Guerroudj	CNM	FWD	73	71
+1934	International Football	Hamza Benali	CNM	GK	66	64
+1934	International Football	Lakhdar Meziane	CNM	FWD	66	68
+1934	International Football	Gaston Fabre	CNM	MID	65	64
+1934	International Football	Koceïla Idir	CNM	MID	66	65
+1934	International Football	Ouahid Rahmani	CNM	MID	65	64
+1934	International Football	Tahar Djaballah	CNM	DEF	70	69
+1934	International Football	Yacine Belkacem	CNM	FWD	66	65
 1934	International Football	Kabiru Mainasara	ACS	FWD	60	57
 1934	International Football	Garba Magaji	ACS	FWD	57	55
 1934	International Football	Lawan Zanna	ACS	FWD	53	55
@@ -1170,8 +1170,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1934	International Football	Siavash Mehrian	VAR	MID	74	75
 1934	International Football	Sándor Bodor	VKS	MID	74	72
 1934	International Football	Chu Hwang	VKS	DEF	70	69
-1934	International Football	Alceste Derocles	ABB	DEF	76	77
-1934	International Football	Sofiane Mansouri	ABB	MID	79	81
+1934	International Football	Alceste Derocles	CNM	DEF	76	77
+1934	International Football	Sofiane Mansouri	CNM	MID	79	81
 1934	International Football	Lakhdar Hamidi	ADV	MID	79	81
 1934	International Football	Neçirvan Barzani	ADV	FWD	84	85
 1934	International Football	Tamer Khalil	ADV	MID	77	75
@@ -1662,7 +1662,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	1935 WC Qualifiers	Nicanor Arandia	AUR	FWD	80	79
 1935	1935 WC Qualifiers	Ánselmo Fernandez	AUR	MID	79	78
 1935	1935 WC Qualifiers	Galsan Badmaev	AXE	MID	57	58
-1935	1935 WC Qualifiers	Sofiane Mansouri	ABB	FWD	81	82
+1935	1935 WC Qualifiers	Sofiane Mansouri	CNM	FWD	81	82
 1935	1935 WC Qualifiers	Kannan Kurup	CAH	FWD	76	77
 1935	1935 WC Qualifiers	Made Djelantik	CAH	FWD	81	82
 1935	1935 WC Qualifiers	Cyprian Kulleh	CAH	FWD	72	71
@@ -2010,9 +2010,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	World Cup	Sixten Karlsson	SKJ	MID	81	80
 1935	World Cup	Gustav Gyllenhaal	SKJ	DEF	80	79
 1935	World Cup	Kent Forsberg	SKJ	MID	80	79
-1935	World Cup	Sofiane Mansouri	ABB	FWD	82	83
-1935	World Cup	Chérif Guerroudj	ABB	FWD	71	70
-1935	World Cup	Lakhdar Meziane	ABB	FWD	68	69
+1935	World Cup	Sofiane Mansouri	CNM	FWD	82	83
+1935	World Cup	Chérif Guerroudj	CNM	FWD	71	70
+1935	World Cup	Lakhdar Meziane	CNM	FWD	68	69
 1935	World Cup	Yassine Benali	AEM	GK	82	83
 1935	World Cup	Zakaria Bouhaddou	AEM	MID	77	78
 1935	World Cup	Montasir El Andaloussi	AEM	DEF	63	64
@@ -4320,7 +4320,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Fedor Frolov	PER	FWD	72	73
 1935	Nations League	Dmitry Belov	GIA	DEF	71	72
 1935	Nations League	Haoyu Shi	GUA	MID	71	72
-1935	Nations League	Tahar Djaballah	ABB	DEF	69	70
+1935	Nations League	Tahar Djaballah	CNM	DEF	69	70
 1935	Nations League	Aandeg Debaasige	ATA	GK	62	63
 1935	Nations League	Gerben Verhoeven	AKG	DEF	56	57
 1935	Nations League	Narra Catacutan	SGD	DEF	89	88
@@ -4364,7 +4364,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1935	Nations League	Gleb Vorontsov	GIA	MID	73	72
 1935	Nations League	Yanbo Ma	GUA	DEF	71	70
 1935	Nations League	Ruben Sihombing	CAH	MID	71	70
-1935	Nations League	Hamza Benali	ABB	GK	64	63
+1935	Nations League	Hamza Benali	CNM	GK	64	63
 1935	Great Ai	Đại Đông Nguyễn	GAI	FWD	80	73
 1935	Great Ai	Vĩnh Phúc Đoàn	GAI	DEF	76	78
 1935	Great Ai	Prasert Bùi	GAI	GK	76	71
@@ -4472,7 +4472,7 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW	BATCH
 1936	World Cup	Dezeb Nilakhîn	DEM	MID	73	72
 1936	World Cup	Feng Ji	GUA	DEF	71	70
 1936	World Cup	Maoz Shaked	SHI	MID	71	70
-1936	World Cup	Chérif Guerroudj	ABB	FWD	70	69
+1936	World Cup	Chérif Guerroudj	CNM	FWD	70	69
 1936	World Cup	Tsirú Diköl	NIR	DEF	70	69
 1936	World Cup	Tariq Mutairi	ADV	DEF	69	68
 1936	World Cup	Duchí Siwöl	NIR	MID	68	67
