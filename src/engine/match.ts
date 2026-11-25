@@ -4381,7 +4381,8 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     // footballing reason at all. Better finishers pick the side he has left; poorer ones aim nearer
     // the middle, where he is.
     const gkp = meKeeper(s.players[meOther(side)]);
-    const sk = meFinish(a) + (Math.hypot(gx - p.x, ME_HALF_W - p.y) > 18 ? (meBadgeFx(p).farShot ?? 0) : 0);
+    const dSk = Math.hypot(gx - p.x, ME_HALF_W - p.y);
+    const sk = meFinish(a) + (dSk > 18 ? (meBadgeFx(p).farShot ?? 0) * Math.max(0, Math.min(1, 1 - (dSk - CFG.lsFarEnd) / CFG.lsFarFade)) : 0);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     // LONG SHOT (badge): from outside the box he curls it, starting at the keeper and bending away into his corner.
     const lsCurl = (meBadgeFx(p).curl ?? 0) && (Math.abs(gx - p.x) > CFG.gkBoxR || Math.abs(p.y - ME_HALF_W) > CFG.boxHalfW)

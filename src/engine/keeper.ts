@@ -91,7 +91,12 @@ function planFor(s, dsd, t0) {
     // A BALL WITH SPIN ON IT DOES NOT FLY STRAIGHT (ball.ts). He sees the line it starts on and reads only part of the
     // swing as it is struck, more the better he is (CFG.gkCurlRead): the rest of the bend is what beats him.
     if (mp.bsp || mp.bdip) { const cr = meBallCrossX(mp, k.x);
-      if (cr) yC += (cr[0] - yC) * (CFG.gkCurlRead[0] + (CFG.gkCurlRead[1] - CFG.gkCurlRead[0]) * gkk); }
+      // ...and the longer it is in the air the more of the bend he sees (25 November 2026: long curlers beating keepers
+      // more the further out they were struck; the bend grows with the flight, a read fixed at the strike did not). Open
+      // play only: a free kick keeps its own calibration.
+      let rd = CFG.gkCurlRead[0] + (CFG.gkCurlRead[1] - CFG.gkCurlRead[0]) * gkk;
+      if (!mp.shot?.fk) rd += (1 - rd) * Math.max(0, Math.min(1, (tC - CFG.gkCurlT0) / CFG.gkCurlTFade));
+      if (cr) yC += (cr[0] - yC) * rd; }
     // ...and he does not go for one that is going wide. The frame, as it looks from the ball, cut
     // at his depth: a ball crossing his line outside that (by more than he could need) is missing.
     const r = (k.x - mp.bx) / (gx - mp.bx);
