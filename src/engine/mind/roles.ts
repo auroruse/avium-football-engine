@@ -65,6 +65,23 @@ export const ROLES = {
   st_poach:    R(["slot", "slot", "slot"], ["attack", "attack", "attack"], { run: { behind: 0.9, box: 0.6 }, press: 0.6 }),
   st_press:    R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.6, drop: 0.25, box: 0.51 }, press: 1.0 }),
 };
+// HOW READILY HE HAS A GO FROM OUTSIDE THE BOX (25 November 2026; mind/decide.ts farK). Measured before it: a striker had
+// the ball 18-30 m out twice as often as a midfielder and shot on 55% of those spells against 37%, so forwards took 61% of
+// the long shots and midfielders 37% (real: midfielders about half). The men who arrive on the edge with the play in
+// front of them shoot; the striker there has his back to goal and the box to get into; a defender up there has a go.
+const FAR = {
+  cb: 2.4, cb_ball: 2.6, cb_stop: 2.4, cb_cover: 2.1, cb_lib: 2.6, cbw: 2.4,
+  fb: 1.9, fb_over: 1.9, fb_inv: 2.1, fb_hold: 1.7, wb: 1.9, wb_def: 1.7,
+  dm_anchor: 1.2, dm_dlp: 1.3, dm_win: 1.2, dm_box: 1.4,
+  cm: 1.45, cm_mez: 1.4, cm_play: 1.45, cm_b2b: 1.5, cm_hold: 1.3,
+  am: 1.4, am_play: 1.45, am_shadow: 1.0,
+  w: 0.9, w_wide: 0.85, w_inside: 1.05, wm: 1.0, w_def: 1.0,
+  st: 0.5, st_false9: 0.75, st_complete: 0.55, st_target: 0.4, st_poach: 0.4, st_press: 0.5,
+};
+for (const [k, r] of Object.entries(ROLES)) r.far = FAR[k] ?? 1;
+// THE LONG-SHOT ROLES: a man with Long Shot in one of these holds the edge of the box in the last third (CFG.lsEdge,
+// mind/team.ts), where the specialist's shots come from. The holding men, the wide men and the strikers do not.
+for (const k of ["cm", "cm_mez", "cm_play", "cm_b2b", "am", "am_play", "am_shadow", "w_inside", "dm_box"]) ROLES[k].edge = 1;
 
 // WHAT THE TEAM SHEET CALLS EACH ROLE, and the letters it shows beside the man.
 export const ROLE_NAME = {

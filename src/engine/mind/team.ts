@@ -328,12 +328,22 @@ function mindAttack(s, side) {
     const r = p._role2 || ROLES.cm;
     let y = laneY(s, side, p, r.lane[phi], st);
     let d = lineD(r.ln[phi], g) + (r.lnOff[phi] || 0);
+    // STILL UP FROM THE CORNER (setpiece.ts, _upT): while the ball is kept in the last third he holds the edge of the
+    // box for the second ball and the recycled one, in the middle, before he goes back.
+    const up = !!CFG.spUpT && p._upT != null && mp.tick - p._upT < CFG.spUpT && (ph === "final" || ph === "progress") && bD > 60;
+    if (up) { d = PITCH_L - CFG.spUpD; y = clamp(p.y, ME_HALF_W - 12, ME_HALF_W + 12); }
+    // THE LONG SHOT MAN ON THE EDGE (CFG.lsEdge, mind/roles.ts edge): in the last third he holds the edge of the box,
+    // central and a little to the ball's side, for the lay-off and the cut-back, instead of running into it. On the break
+    // (lsEdgeCounter) he is the man who trails it, arriving at the edge as the others go for the box.
+    const edge = !!CFG.lsEdge && !up && !!r.edge && !!meBadgeFx(p).edge && (p._runT ?? 0) <= 0
+      && (ph === "final" || (ph === "progress" && bD > 64) || (CFG.lsEdgeCounter && ph === "counter" && bD > CFG.lsEdgeCounter));
+    if (edge) { d = PITCH_L - CFG.lsEdge; y = clamp(ME_HALF_W + (mp.by - ME_HALF_W) * 0.25, ME_HALF_W - 9, ME_HALF_W + 9); }
     // A COUNTER IS A SPRINT. Everybody whose job is going forward goes, now: the forwards and the men who run in
     // behind to their last line, each in his own lane so the break is spread across the pitch, and the rest of
     // the attacking men to just in front of their back line. It used to be "a step higher than usual" -- eight
     // metres -- which for a side that won it on its own eighteen-yard line was nobody anywhere near the ball:
     // breaks from a deep block reached the final third one time in seven and ended in a shot one in thirty.
-    if (ph === "counter" && r.ln[1] !== "base" && r.ln[1] !== "deep" && r.rest < 0.7) {
+    if (ph === "counter" && !edge && r.ln[1] !== "base" && r.ln[1] !== "deep" && r.rest < 0.7) {
       const runner = r.ln[2] === "attack" || (r.run.behind || 0) >= 0.4;
       d = Math.max(d, runner ? g.off - 1 : Math.min(g.off - MT.cntSupport, d + 8 + MT.cntSurge * (1 - r.rest)));
     }
@@ -346,7 +356,7 @@ function mindAttack(s, side) {
     d = clamp(d, 4, 101);
     y += p._dn[0] * MT.drillNoise * (1 - drill);
     d += p._dn[1] * MT.drillNoise * (1 - drill) * 0.7;
-    cells.push({ i, p, r, y: clamp(y, 1.5, PITCH_W - 1.5), d, run: (p._runT ?? 0) > 0,
+    cells.push({ i, p, r, y: clamp(y, 1.5, PITCH_W - 1.5), d, run: (p._runT ?? 0) > 0, up, edge,
                  prio: r.rest * 3 + (wideLane ? 1 : 0) - Math.hypot(depthOf(side, p.x) - d, p.y - y) * 0.02 });
     if (r.rest >= 0.7 && d < deepest) deepest = d;
   }
@@ -361,7 +371,7 @@ function mindAttack(s, side) {
     // against three defenders, so a cross had nobody to find in front of goal and was not played.
     const boxN = 2 + MT.boxMore + ((st.width || 0) > 0 ? 1 : 0) + ((st.width || 0) > 1 ? 1 : 0) + (ph === "final" ? 1 : 0);
     const spots = [[99.5, nearS * 2.5], [98.5, -nearS * 4.5], [94, 0], [96, -nearS * 8], [87.5, -nearS * 3]];
-    const cand = cells.filter(c => !c.run && c.r.rest < 0.7 && Math.abs(c.p.y - mp.by) + Math.abs(depthOf(side, c.p.x) - bD) > 6)
+    const cand = cells.filter(c => !c.run && !c.edge && c.r.rest < 0.7 && Math.abs(c.p.y - mp.by) + Math.abs(depthOf(side, c.p.x) - bD) > 6)
                       .sort((a, b) => ((b.r.run.box || 0) - (a.r.run.box || 0))
                                       || (Math.hypot(depthOf(side, a.p.x) - 95, a.p.y - ME_HALF_W) - Math.hypot(depthOf(side, b.p.x) - 95, b.p.y - ME_HALF_W)));
     cand.slice(0, Math.min(boxN, spots.length)).forEach((c, k) => {
@@ -385,7 +395,8 @@ function mindAttack(s, side) {
     let have = 0;
     for (const c of cells) if (!c.run && c.d < bD - 4) have++;
     if (have < need) {
-      const extra = cells.filter(c => !c.run && c.d >= bD - 4).sort((a, b) => b.r.rest - a.r.rest || a.d - b.d);
+      const extra = cells.filter(c => !c.run && !c.up && !c.edge && c.d >= bD - 4).sort(   // (a man still up from the corner is not the rest defence's to take)
+        (a, b) => b.r.rest - a.r.rest || a.d - b.d);
       for (const c of extra) {
         if (have >= need) break;
         c.d = Math.min(c.d, (g.base + bD) / 2);
@@ -443,7 +454,7 @@ function mindAttack(s, side) {
       if (cells.some(c => !c.run && Math.hypot(xAt(side, c.d) - vx, c.y - v.y) < 7)) continue;
       let f = null, fc = Infinity;
       for (const c of cells) {
-        if (c.run || c.fill || imp(c) >= iv) continue;
+        if (c.run || c.fill || c.up || c.edge || imp(c) >= iv) continue;
         const dd = Math.hypot(c.p.x - vx, c.p.y - v.y);
         const cost = dd + imp(c) * 6;
         if (dd < 24 && cost < fc) { fc = cost; f = c; }
@@ -468,6 +479,7 @@ function mindAttack(s, side) {
     if ((mp.tick + c.i) % MT.refineEvery === 0) {
       let best = 0, bdx = p._rdx || 0, bdy = p._rdy || 0, first = true;
       for (const [ox, oy] of REF) {
+        if (c.edge && ox < 0) continue;   // the Long Shot man finds his lane across or a step up, never deeper off the edge
         const cy = clamp(c.y + oy * MT.refineR, 1.5, PITCH_W - 1.5);
         const cd = Math.min(c.d + ox * MT.refineR, g.off - (c.r.ln[phi] === "attack" ? MT.attackOff : 1.5));
         const cx = xAt(side, cd);
@@ -486,7 +498,7 @@ function mindAttack(s, side) {
     // be marked out of it: he takes his man away a couple of strides, then comes back short, quick, and
     // the gap he made is where the ball goes. A good reader does it more, a drilled side does it on cue.
     if (p._chk) { p._chk.t--; if (p._chk.t <= 0 || !carrier) p._chk = null; }
-    if (!p._chk && carrier && c.r.rest < 0.9 && (mp.tick + c.i) % 2 === 0) {
+    if (!p._chk && carrier && c.r.rest < 0.9 && !c.edge && (mp.tick + c.i) % 2 === 0) {
       const dc = Math.hypot(p.x - carrier.x, p.y - carrier.y);
       if (dc > 7 && dc < 26 && roomAt(s, side, p.x, p.y) < 2.6
           && mindRand(M) < 0.16 * (0.5 + mindAware(p)) * (0.6 + 0.6 * drill)) p._chk = { t: 4 };
@@ -662,7 +674,7 @@ function supportTriangle(s, side, c, cells, g) {
     let best = null, bd = Infinity;
     for (const cl of cells) {
       const q = cl.p;
-      if (cl.run || used.has(q) || q === c || (q._runT ?? 0) > 0) continue;
+      if (cl.run || cl.edge || used.has(q) || q === c || (q._runT ?? 0) > 0) continue;   // (the Long Shot man stays on the edge)
       if (cl.r.rest >= 0.9 && depthOf(side, c.x) > 40) continue;
       const d = Math.hypot(q.x - sx0, q.y - sy0);
       if (d < bd) { bd = d; best = cl; }
@@ -732,7 +744,7 @@ function mindShow(s, side, anc, cells, g, ph) {
       p._shw = null;
     }
     if (rate(p.x, p.y) >= 0) { have++; spots.push({ x: p.x, y: p.y }); continue; }
-    if (c.r.rest >= 0.7 || c.box) continue;
+    if (c.r.rest >= 0.7 || c.box || c.edge) continue;
     cand.push(c);
   }
   // Re-send the men already sent, whatever else happens below.
@@ -856,7 +868,7 @@ function mindRuns(s, side, ph, g, carrier) {
       if (mk < 3.5) consider("drop", r.run.drop * 0.8, cD + 11, clamp(p.y, 22, PITCH_W - 22));
     }
     // THE BOX: with the ball wide in the last third, the box men go for the near post, the spot, the far post.
-    if ((r.run.box || 0) > 0 && wide && cD > 76 - Math.max(0, st.width || 0) * 4 && pd > 58) {
+    if ((r.run.box || 0) > 0 && wide && cD > 76 - Math.max(0, st.width || 0) * 4 && pd > 58 && !(CFG.lsEdge && r.edge && meBadgeFx(p).edge)) {
       const near = carrier.y < ME_HALF_W ? -1 : 1;
       const slot = (M.boxN = ((M.boxN || 0) + 1) % 3);
       const spots = [[5.5, near * 2.5], [11, 0], [6.5, -near * 4.5]];
