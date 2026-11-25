@@ -1,1 +1,47 @@
-[]
+[
+ {
+  "by": "auroruse",
+  "at": "2026-11-25T20:55:28.731Z",
+  "approved": [],
+  "id": "ce35f9e8",
+  "kind": "deal",
+  "team": "t0208",
+  "teamName": "Kyōwa Naginomiya",
+  "sides": [
+   "t0208",
+   "t0284"
+  ],
+  "names": {
+   "t0208": "Kyōwa Naginomiya",
+   "t0284": "Al-Nasr Golzar"
+  },
+  "moves": [
+   {
+    "kind": "player",
+    "id": "p1041",
+    "to": "t0284"
+   },
+   {
+    "kind": "player",
+    "id": "p5846",
+    "to": "t0208"
+   },
+   {
+    "kind": "player",
+    "id": "p4303",
+    "to": "t0208"
+   }
+  ],
+  "rounds": 1,
+  "needs": {
+   "t0284": [
+    "GeneralVarah"
+   ]
+  },
+  "locks": [
+   "p:p1041",
+   "p:p5846",
+   "p:p4303"
+  ]
+ }
+]
