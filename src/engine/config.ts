@@ -2901,7 +2901,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Long Shot is that much of his role's far (1: as keen as the role says). farBase: every man's long-shot skill moves
   // by that many points (0: none), so the trait's farShot (times farShotK) is what lifts a man above the rest; lsRangeK
   // the share of the trait's extra range he keeps (1: all six metres), so his extra shots come from 18 to 28 m.
-  farNoTrait: 0.85, farBase: -2, farShotK: 1.6, lsRangeK: 0.35,
+  farNoTrait: 0.6, farBase: -2, farShotK: 1.6, lsRangeK: 0.35,
   // ...and the Long Shot man in a central midfield, attacking midfield or inside-forward role holds the edge of the box,
   // lsEdge metres out and central, once the attack is in the last third, instead of running into it: the lay-off and
   // the cut-back come to him there (0: he plays his role's positions).
