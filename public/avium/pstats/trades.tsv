@@ -424,3 +424,9 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 151	1936	2026-11-26T08:06:00.175Z	player	p3555	Shigeo YABUKI	CM	70	28	1100000	t0233	Manshu Tetsudō Harushige	t0199	Beining Zhonghang	auroruse
 152	1936	2026-11-26T08:06:00.175Z	player	p3212	Lev ZHDANOV	CB	71	28	1200000	t0200	CSKA Radagorsk	t0229	Zenit Heitanmachi	auroruse
 152	1936	2026-11-26T08:06:00.175Z	player	p3500	Tsutomu ARISAKA	ST	68	27	1100000	t0229	Zenit Heitanmachi	t0200	CSKA Radagorsk	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p2290	Reuben ASHTON	LW	77	29	6200000	t0204	Viridia Shikisen	t0211	Locomotive Fūchumachi	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p3426	Ryōsuke TSUGAWA	ST	75	24	5500000	t0204	Viridia Shikisen	t0211	Locomotive Fūchumachi	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p5433	Ahab COFFIN	ST	75	22	6000000	t0204	Viridia Shikisen	t0211	Locomotive Fūchumachi	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p3293	Yūdai TŌJŌ	LB	75	28	3500000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p5525	Gen JINGŪJI	CB	74	22	3300000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
+153	1936	2026-11-26T08:31:28.116Z	player	p5838	Mojtaba NASRABADI	CM/AM	72	21	2500000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
