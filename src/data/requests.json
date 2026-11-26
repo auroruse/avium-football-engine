@@ -14,39 +14,5 @@
    ]
   },
   "locks": []
- },
- {
-  "by": "cornafiable",
-  "at": "2026-11-26T11:45:43.309Z",
-  "approved": [],
-  "id": "0e4caba0",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Tupaq Qakari",
-  "rec": {
-   "name": "Tupaq Qakari",
-   "nat": "ANT",
-   "born": "1918-10-17",
-   "pos": [
-    "CM",
-    "AM"
-   ],
-   "ovr": 81,
-   "badges": [
-    "trickster:1",
-    "tikitaka:2"
-   ],
-   "bornSet": true,
-   "portrait": true,
-   "what": "players",
-   "side": "t0406",
-   "at": 17
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
  }
 ]
