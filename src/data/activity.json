@@ -1,5 +1,32 @@
 [
  {
+  "id": "b91d200b",
+  "by": "auroruse",
+  "at": "2026-11-26T19:40:49.331Z",
+  "what": "accept",
+  "for": [
+   "cornafiable"
+  ],
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0406",
+    "name": "FK Urkurunakuna",
+    "field": "code",
+    "from": "FKY",
+    "to": "UKK"
+   },
+   {
+    "kind": "teams",
+    "id": "t0405",
+    "name": "FK Qahuita",
+    "field": "code",
+    "from": "FKC",
+    "to": "FKQ"
+   }
+  ]
+ },
+ {
   "id": "5fe1706a",
   "by": "auroruse",
   "at": "2026-11-26T19:40:40.596Z",
