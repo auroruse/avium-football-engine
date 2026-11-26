@@ -135,6 +135,7 @@ function valueProblems(rec, next, changes) {
       // A season's format (src/data/leagues.js).
       if (c.field === "legs" && c.to != null && !(Number.isInteger(c.to) && c.to >= 1 && c.to <= 4)) bad("a league is played over one to four legs");
       if ((c.field === "up" || c.field === "down") && c.to != null && !(Number.isInteger(c.to) && c.to >= 0 && c.to <= 10)) bad(`${c.field === "up" ? "promotion" : "relegation"} is nought to ten places`);
+      if (["playoff", "cwc", "cws"].includes(c.field) && c.to != null && !(Number.isInteger(c.to) && c.to >= 0 && c.to <= 10)) bad("a league's places are nought to ten");
       if (c.field === "cupLegs" && c.to != null && c.to !== 1 && c.to !== 2) bad("a cup tie is one leg or two");
       if (c.field === "cupFixed" && c.to != null && typeof c.to !== "boolean") bad("not a usable cup bracket");
       if (c.field === "conferences") { const l = next.leagues.find(x => x.id === c.id);

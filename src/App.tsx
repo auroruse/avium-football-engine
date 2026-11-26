@@ -170,7 +170,7 @@ const readSession = () => { try {
 const FIELD_LBL = { tier: "Tier", cup: "Cup", ovr: "Rating", nat: "Nationality", born: "Date Of Birth", badges: "Badges", retired: "Status", name: "Name", code: "Code", home: "Home Kit",
                     away: "Away Kit", stadium: "Stadium", location: "City", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad",
                     pos: "Positions", timeWasting: "Time Wasting", group: "League", file: "Sheet", removed: "Status",
-                    legs: "Legs", up: "Promoted", down: "Relegated", cupLegs: "Cup Legs", cupFixed: "Cup Bracket" };
+                    legs: "Legs", up: "Promoted", down: "Relegated", playoff: "Playoff Places", cwc: "CWC Places", cws: "CWS Places", cupLegs: "Cup Legs", cupFixed: "Cup Bracket" };
 // How long ago an ISO time was, the way a list of requests says it.
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000;
   return !(s >= 0) ? "" : s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
@@ -1634,7 +1634,7 @@ function computeGroupUrg(standings, teamName, qualCount, remainingAfter) {
 // place fixed: nothing to save anybody for). Inside the places that go through, first against second is seeding: worth
 // playing a proper side for, never a must-win. A place among the "best placed" is never settled inside its own group.
 // o: { pre: sides already qualified (they take no place and have nothing on any match), koFollows, useZones, advPerGroup }.
-function groupStakeLines(N, zones, advK) {
+function groupStakeLines(N, zones, advK, title) {
   const lines = new Map();
   for (let k = 1; k < N; k++) {
     const a = zoneFor(k - 1, N, zones), b = zoneFor(k, N, zones);
@@ -1642,6 +1642,7 @@ function groupStakeLines(N, zones, advK) {
     else if ((a && a.type === "advance") || k < advK) lines.set(k, "seed");
   }
   if (advK > 0 && advK < N) lines.set(advK, "zone");
+  if (title && N > 1) lines.set(1, "zone");
   if (![...lines.values()].includes("zone")) lines.set(Math.min(N - 1, Math.max(1, advK || 1)), "zone");
   return lines;
 }
@@ -1653,7 +1654,7 @@ function computeGroupStakes(standings, teamName, zones, remainingAfter, o = {}) 
   if (idx < 0 || N < 2) return { urgency: 0, safe: false, eliminated: false };
   const advK = o.koFollows && !o.useZones ? Math.min(N - 1, +o.advPerGroup || 0) : 0;
   let best = null, seed = null;
-  for (const [k, kind] of groupStakeLines(N, zones, advK)) {
+  for (const [k, kind] of groupStakeLines(N, zones, advK, !!o.title)) {
     const r = computeGroupUrg(rows, teamName, k, remainingAfter);
     if (r.safe || r.eliminated) continue;
     if (kind === "zone") { if (!best || r.urgency > best.urgency) best = r; }
@@ -1947,8 +1948,9 @@ function seasonCupDraw(ko, rng) {
   }
   return drew;
 }
-const T_SEASON_STAKES = { pre: [], koFollows: false, useZones: false, advPerGroup: 0 };
-const T_SEASON_ZONE_COLORS = ["#ebcb8b", "#5e9c6b", "#bf616a"];     // the title, promotion, relegation
+// A season keeps the title as a line of its own, with no zone of its own to draw it (groupStakeLines).
+const T_SEASON_STAKES = { pre: [], koFollows: false, useZones: false, advPerGroup: 0, title: true };
+const T_SEASON_ZONE_COLORS = { cwc: "#5e9c6b", cws: "#4a7ab5", up: "#5e9c6b", playoff: "#4a7ab5", down: "#bf616a" };
 function bracketSeeds(n) {
   let s = [1]; while (s.length < n) { const m = s.length * 2 + 1; const e = []; for (const v of s) { e.push(v); e.push(m - v); } s = e; } return s;
 }
@@ -11139,7 +11141,7 @@ export default function App() {
   // A SEASON IS MADE FROM A NATION, ITS FORMAT OFF ITS LEAGUES' RECORDS (the user, 26 November 2026), set on each league's
   // page (src/data/leagues.js): a division's legs and how many go up and down, and the cup's from the highest division
   // that enters it.
-  const tDivCfg = (d) => ({ legs: Math.max(1, Math.min(4, +d.rec?.legs || 2)), up: +d.rec?.up || 0, down: +d.rec?.down || 0 });
+  const tDivCfg = (d) => ({ legs: Math.max(1, Math.min(4, +d.rec?.legs || 2)), up: +d.rec?.up || 0, down: +d.rec?.down || 0, playoff: +d.rec?.playoff || 0, cwc: +d.rec?.cwc || 0, cws: +d.rec?.cws || 0 });
   const seasonFmtOf = (divs) => { const head = (divs || []).find(d => d.rec?.cup), cup = head?.rec?.cup || "";
     return { cupOn: !!cup, cupName: cup || undefined, koLegs: head?.rec?.cupLegs === 2 ? 2 : 1, cupDraw: !head?.rec?.cupFixed, thirdPlace: false, koFinalOneLeg: false, koAwayGoals: true }; };
   const tCupName = tSeason ? (tConfig.cupName ?? seasonCupName(tSeasonDivs)) || "Cup" : "";
@@ -11188,7 +11190,7 @@ export default function App() {
       const divs = seasonDivisions(genTeams, railLeague, curRecs.leagues), sf = seasonFmtOf(divs);
       setTConfig(c => ({ ...c, ...sf }));
       const grps = divs.map((d, i) => { const c = tDivCfg(d);
-        const g = { label: GL[i] || String(i + 1), name: d.name, teams: d.teams, schedule: [], standings: [], legs: c.legs, zones: seasonZones(c.up, c.down, i === 0, T_SEASON_ZONE_COLORS) };
+        const g = { label: GL[i] || String(i + 1), name: d.name, teams: d.teams, schedule: [], standings: [], legs: c.legs, zones: seasonZones(i === 0 ? { ...c, up: 0, playoff: 0 } : c, T_SEASON_ZONE_COLORS) };
         initGroup(g, "roundRobin", c.legs); return g; });
       // Best first for the cup: the higher division, then the rating. The best sit the first round out.
       const order = divs.flatMap(d => [...d.teams].sort((a, b) => (b.skill || 0) - (a.skill || 0)));
@@ -16753,7 +16755,10 @@ export default function App() {
               <div className="ux-lge-f">
                 {num("Legs", cur.legs || 2, 1, 4, v => set({ legs: v === 2 ? null : v }))}
                 {num("Promoted", cur.up || 0, 0, Math.max(0, Math.min(10, n - 1)), v => set({ up: v || null }))}
+                {cur.tier > 1 && num("Playoff Places", cur.playoff || 0, 0, Math.max(0, Math.min(10, n - 1)), v => set({ playoff: v || null }))}
                 {num("Relegated", cur.down || 0, 0, Math.max(0, Math.min(10, n - 1)), v => set({ down: v || null }))}
+                {cur.tier === 1 && num("CWC Places", cur.cwc || 0, 0, Math.max(0, Math.min(10, n - 1)), v => set({ cwc: v || null }))}
+                {cur.tier === 1 && num("CWS Places", cur.cws || 0, 0, Math.max(0, Math.min(10, n - 1)), v => set({ cws: v || null }))}
                 {cupHere && <label className="ux-uce-f"><span>Cup Ties</span>{uxPick("Cup Ties", String(cur.cupLegs || 1), [["1", "One Leg"], ["2", "Two Legs"]], v => set({ cupLegs: v === "2" ? 2 : null }))}</label>}
                 {cupHere && <label className="ux-uce-f"><span>Cup Rounds</span>{uxPick("Cup Rounds", cur.cupFixed ? "fixed" : "draw", [["draw", "Every Round Drawn"], ["fixed", "Fixed Bracket"]], v => set({ cupFixed: v === "fixed" ? true : null }))}</label>}
                 {head && !cupHere && <div className="ux-uce-f"><span>Cup</span><button type="button" className="ux-btnreset ux-a" onClick={() => openComp(head.name)}>Set On {head.name}</button></div>}
@@ -20849,8 +20854,10 @@ export default function App() {
 
   // ── New Tournament: Format, Rules and Sides, and what they will build ──
   const setZones = (fn) => setTConfig(c => ({ ...c, qualZones: fn(c.qualZones || []) }));
-  const uxTZone = (z, zi, n) => {
-    const set = (patch) => setZones(zs => zs.map((x, i) => i === zi ? { ...x, ...patch } : x));
+  // `setZs` is the list the zone is in (the setup's zones by default, or a season division's on the Rules page, where a
+  // zone only colours the table).
+  const uxTZone = (z, zi, n, setZs = setZones, colourOnly = false) => {
+    const set = (patch) => setZs(zs => zs.map((x, i) => i === zi ? { ...x, ...patch } : x));
     return (
       <div key={zi} className="ux-zone">
         <div className="ux-zone-l">
@@ -20859,17 +20866,17 @@ export default function App() {
           {uxPick("Colour", z.color, T_ZONE_COLORS, v => set({ color: v }))}
           <span className="ux-tacts">
             <button type="button" className="ux-btnreset ux-mini ux-ico" aria-label="Move Up" title="Move Up" disabled={zi === 0}
-              onClick={() => setZones(zs => { const a = [...zs]; [a[zi - 1], a[zi]] = [a[zi], a[zi - 1]]; return a; })}>{uxIcon("up", "ux-s")}</button>
+              onClick={() => setZs(zs => { const a = [...zs]; [a[zi - 1], a[zi]] = [a[zi], a[zi - 1]]; return a; })}>{uxIcon("up", "ux-s")}</button>
             <button type="button" className="ux-btnreset ux-mini ux-ico" aria-label="Move Down" title="Move Down" disabled={zi === n - 1}
-              onClick={() => setZones(zs => { const a = [...zs]; [a[zi], a[zi + 1]] = [a[zi + 1], a[zi]]; return a; })}>{uxIcon("down", "ux-s")}</button>
+              onClick={() => setZs(zs => { const a = [...zs]; [a[zi], a[zi + 1]] = [a[zi + 1], a[zi]]; return a; })}>{uxIcon("down", "ux-s")}</button>
             <button type="button" className="ux-btnreset ux-mini ux-ico ux-danger" aria-label="Remove Zone" title="Remove Zone"
-              onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))}>{uxIcon("close", "ux-s")}</button></span>
+              onClick={() => setZs(zs => zs.filter((_, i) => i !== zi))}>{uxIcon("close", "ux-s")}</button></span>
         </div>
         <div className="ux-zone-l">
           {uxSegIn("Counted From", z.anchor, [["top", "Top"], ["bottom", "Bottom"]], v => set({ anchor: v }))}
           <span className="ux-zone-r">{uxNumIn("From", z.from, v => set({ from: v === "" ? "" : Math.max(1, v) }))}<span className="ux-dim">To</span>
             {uxNumIn("To", z.to, v => set({ to: v === "" ? "" : Math.max(1, v) }))}</span>
-          {uxPick("Kind", z.type || "cosmetic", [["cosmetic", "Colour Only"], ...(tHasKO ? [["advance", "Go Through"], ["best", "Best Placed"]] : [])], v => set({ type: v }))}
+          {!colourOnly && uxPick("Kind", z.type || "cosmetic", [["cosmetic", "Colour Only"], ...(tHasKO ? [["advance", "Go Through"], ["best", "Best Placed"]] : [])], v => set({ type: v }))}
           {z.type === "best" && <span className="ux-zone-r"><span className="ux-dim">Best</span>
             {uxNumIn("How Many", z.bestCount || "", v => set({ bestCount: v === "" ? "" : Math.min(tConfig.numGroups, Math.max(1, v)) }), false, tConfig.numGroups)}</span>}
         </div>
@@ -21667,8 +21674,7 @@ export default function App() {
             {fact("Structure", uxTFormat(c))}
             {fact("Sides", tournamentTeamIds.length)}
             {tPresetName && fact("Field", tPresetName)}
-            {tCal && <>{tGroups.map((g, gi) => fact(g.name, [`${g.teams.length} Sides`, `${g.legs || 1} ${+(g.legs || 1) === 1 ? "Leg" : "Legs"}`, `${g.schedule.length} Rounds`,
-                ...(g.zones || []).filter(z => z.label !== "Champions").map(z => `${z.to - z.from + 1} ${z.anchor === "bottom" ? "Down" : "Up"}`)].join(", ")))}
+            {tCal && <>{tGroups.map((g, gi) => fact(g.name, [`${g.teams.length} Sides`, `${g.legs || 1} ${+(g.legs || 1) === 1 ? "Leg" : "Legs"}`, `${g.schedule.length} Rounds`].join(", ")))}
               {fact("Matchdays", tCal.length)}{tHasKO && fact("Cup", tCupName)}</>}
             {!tCal && tHasGroups && tGroups.length > 0 && <>
               {fact(tGroups.length === 1 ? "League" : "Groups", tGroups.length === 1 ? tGroups[0].teams.length + " Sides" : tGroups.length + " Groups")}
@@ -21688,6 +21694,16 @@ export default function App() {
         {uxPanel("From The Next Match", null, (
           <div className="ux-pbody ux-fbody">
             {tHasGroups && <><div className="ux-fsec">Tiebreakers</div>{uxTTiebreakers()}</>}
+            {/* A SEASON'S ZONES (the user, 26 November 2026: "make them editable in the rules tab"): each division's, made
+                off its league's record (seasonZones) and changed here for this season only. */}
+            {tCal && tGroups.map((g, gi) => { const zs = g.zones || [];
+              const setZs = (fn) => setTGroups(gs => gs.map((x, i) => (i === gi ? { ...x, zones: fn(x.zones || []) } : x)));
+              return <Fragment key={"z" + gi}>
+                <div className="ux-fsec">{g.name}
+                  <button type="button" className="ux-btnreset ux-mini ux-fsec-btn" onClick={() => setZs(z => { const end = Math.max(0, ...z.filter(x => x.anchor !== "bottom").map(x => +x.to || 0));
+                    return [...z, { anchor: "top", from: end + 1, to: end + 1, label: "Zone", color: T_ZONE_COLORS[z.length % T_ZONE_COLORS.length][0], type: "cosmetic" }]; })}>Add Zone</button></div>
+                {zs.map((z, zi) => uxTZone(z, zi, zs.length, setZs, true))}
+                {!zs.length && <div className="ux-dim ux-fline">None</div>}</Fragment>; })}
             <div className="ux-fsec">Home Advantage</div>
             {uxTHomeAdv()}
             {(tPlayedMatches > 0 || !!tKO) && <>

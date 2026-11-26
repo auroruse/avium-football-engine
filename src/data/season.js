@@ -33,13 +33,16 @@ export function seasonCupName(divs) {
   return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
 }
 
-// A division's places worth marking: the champions of the top one, who goes up from the others, who goes down.
-// `colors` is [title, promotion, relegation].
-export function seasonZones(up, down, top, colors) {
-  const z = [], u = Math.max(0, +up || 0), d = Math.max(0, +down || 0);
-  if (top) z.push({ anchor: "top", from: 1, to: 1, label: "Champions", color: colors[0], type: "cosmetic" });
-  else if (u > 0) z.push({ anchor: "top", from: 1, to: u, label: "Promotion", color: colors[1], type: "cosmetic" });
-  if (d > 0) z.push({ anchor: "bottom", from: 1, to: d, label: "Relegation", color: colors[2], type: "cosmetic" });
+// A division's places worth marking, off its league's record (src/data/leagues.js), from the top: the Club World Cup's
+// places and the Club World Shield's after them, or who goes up and the promotion playoff's places after them; then who
+// goes down. No zone for the champions (the user, 26 November 2026: "It's self-explanatory"). `f` is { cwc, cws, up,
+// playoff, down } and `colors` the colour of each by the same names. Editable afterwards on the season's Rules page.
+export function seasonZones(f, colors) {
+  const n = (v) => Math.max(0, Math.round(+v || 0)), z = [];
+  const run = (k, label) => { const c = n(f?.[k]); if (!c) return; const from = (z.at(-1)?.to || 0) + 1;
+    z.push({ anchor: "top", from, to: from + c - 1, label, color: colors[k], type: "cosmetic" }); };
+  run("cwc", "Club World Cup"); run("cws", "Club World Shield"); run("up", "Promotion"); run("playoff", "Promotion Playoff");
+  if (n(f?.down)) z.push({ anchor: "bottom", from: 1, to: n(f.down), label: "Relegation", color: colors.down, type: "cosmetic" });
   return z;
 }
 
