@@ -12316,6 +12316,7 @@ export default function App() {
   const [edMsg, setEdMsg] = useState("");             // why the last move could not be made
   // THE EDITOR, REDESIGNED (DESIGN.md "The Editor, redesigned"): one's own side's page in Editing, and the desk.
   const [ucEdit, setUcEdit] = useState(false);       // one's own side's page open for editing (it stays on from side to side)
+  const [ucOnlyOpen, setUcOnlyOpen] = useState(false); // Previous and Next Club step only through sides with open places
   const [ucPick, setUcPick] = useState(null);        // the place picked on it, its man's card beside the list
   const [ucSwap, setUcSwap] = useState(null);        // Swap: the place waiting for the one it changes with
   const [ucType, setUcType] = useState(null);        // a name being typed into an open place: { i, v }
@@ -17261,16 +17262,27 @@ export default function App() {
           <TeamCrest team={t} size={22} /><h1>{t.name}</h1></>);
         list.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === list[0][0] ? null : id })))));
         // EDITING, ON ONE'S OWN SIDE'S PAGE (DESIGN.md "The Editor, redesigned"): Edit turns the page into its editor, and a run
-        // of one's sides with open places steps on with Previous and Next Club.
-        if (canEditTeam(t)) { const ix = ucRun.findIndex(x => teamKey(x) === t.rkey), on = ucEdit && cur === "overview";
-          const step = (d) => { const n = ucRun.length; if (!n) return; const j = ix < 0 ? (d > 0 ? 0 : n - 1) : (ix + d + n) % n; ucGo(teamKey(ucRun[j])); };
+        // of one's sides steps on with Previous and Next Club (Open Places Only narrows it to the sides with room).
+        // Browsing, a club steps through its nation's clubs in the nation page's order.
+        const natClubs = !isNT && n ? n.groups.flatMap(g => g.clubs) : [], bx = natClubs.findIndex(c => c.id === t.id);
+        const browse = (d) => { const m = natClubs.length; if (m < 2) return; openTeam(natClubs[((bx < 0 ? 0 : bx) + d + m) % m]); };
+        const nav = natClubs.length > 1 && (<>
+          <span className="ux-uce-run">{bx >= 0 && <><b style={mono}>{bx + 1}</b> / </>}<b style={mono}>{natClubs.length}</b> Clubs</span>
+          <button type="button" className="ux-btnreset ux-btn" onClick={() => browse(-1)}>{uxIcon("back", "ux-s")}Previous</button>
+          <button type="button" className="ux-btnreset ux-btn" onClick={() => browse(1)}>Next{uxIcon("fwd", "ux-s")}</button></>);
+        right = nav || null;
+        if (canEditTeam(t)) { const run = ucOnlyOpen ? ucRun : edHomeSides, ix = run.findIndex(x => teamKey(x) === t.rkey), on = ucEdit && cur === "overview";
+          const step = (d) => { const n = run.length; if (!n) return; const j = ix < 0 ? (d > 0 ? 0 : n - 1) : (ix + d + n) % n; ucGo(teamKey(run[j])); };
           right = (<>
           {locks.has(t.rkey) && <button type="button" className="ux-btnreset ux-btn ux-warn" onClick={openInbox}>Waiting On A Request</button>}
           <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (on ? " ux-on" : "")} aria-pressed={on} onClick={() => { setUcEdit(!on); if (!on && cur !== "overview") setReg(r => ({ ...r, tab: null })); setUcPick(null); setUcSwap(null); }}>{uxIcon("edit", "ux-s")}{on ? "Editing" : "Edit"}</button>
-          {on && ucRun.length > 0 && <>
-            <span className="ux-uce-run">Open Places {ix >= 0 && <><b style={mono}>{ix + 1}</b> / </>}<b style={mono}>{ucRun.length}</b></span>
+          {on && <>
+            <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (ucOnlyOpen ? " ux-on" : "")} aria-pressed={ucOnlyOpen} onClick={() => setUcOnlyOpen(!ucOnlyOpen)}>Open Places Only</button>
+            {run.length > 0 && <>
+            <span className="ux-uce-run">{ix >= 0 && <><b style={mono}>{ix + 1}</b> / </>}<b style={mono}>{run.length}</b>{ucOnlyOpen ? " With Open Places" : " Sides"}</span>
             <button type="button" className="ux-btnreset ux-btn" onClick={() => step(-1)}>{uxIcon("back", "ux-s")}Previous</button>
-            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => step(1)}>Next Club{uxIcon("fwd", "ux-s")}</button></>}</>); }
+            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => step(1)}>Next Club{uxIcon("fwd", "ux-s")}</button></>}</>}
+          {!on && nav}</>); }
       } else if (n) title = <><TeamCrest team={n.nt} size={22} /><h1>{n.nt.name}</h1></>;
     } else if (tab === "leagues") {
       title = <h1>{{ competitions: "Competitions", players: "Players", managers: "Managers" }[reg.sec] || "Registry"}</h1>;
