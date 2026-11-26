@@ -74,14 +74,16 @@ export function seasonCalendar(divRounds, cup) {
   return out;
 }
 
-const played = (m) => !!m && (!!m.bye || !m.home || !m.away || (!!m.result && !m.result.partial));
+// A cup tie is played once it has its result; one whose sides are not known yet (the round before still to play, or the
+// draw still to make) is still to come, never played. Only a bye stands without one.
+const tiePlayed = (m, leg1) => !m || !!m.bye || (!!m.home && !!m.away && !!m.result && (leg1 || !m.result.partial));
 // Is a matchday played out? A cup date's first leg is played once its ties have a first leg.
 export function matchdayDone(md, groups, ko) {
   if (!md) return true;
   if (md.k === "l") return md.r.every((ri, gi) => ri < 0 || (groups[gi]?.schedule[ri] || []).every(m => !m || m.bye || !m.home || !m.away || !!m.result));
   const ms = ko?.rounds?.[md.ri]?.matches || [];
-  const ties = md.leg === 1 ? ms.every(m => !m || m.bye || !m.home || !m.away || !!m.result) : ms.every(played);
-  return ties && (!md.tp || !ko?.thirdPlace || played(ko.thirdPlace));
+  const ties = ms.every(m => tiePlayed(m, md.leg === 1));
+  return ties && (!md.tp || !ko?.thirdPlace || tiePlayed(ko.thirdPlace, false));
 }
 // The matchday being played: the first not played out, or the calendar's length when the season is over.
 export function matchdayNow(cal, groups, ko) {
