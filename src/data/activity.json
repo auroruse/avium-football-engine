@@ -1,5 +1,21 @@
 [
  {
+  "id": "fc20c582",
+  "by": "mrrv533-creator",
+  "at": "2026-11-26T20:42:53.160Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "leagues",
+    "id": "l0024",
+    "name": "1. Alemannische Amateursliga",
+    "field": "up",
+    "from": null,
+    "to": 3
+   }
+  ]
+ },
+ {
   "id": "83a7d4f2",
   "by": "mrrv533-creator",
   "at": "2026-11-26T20:42:28.130Z",
