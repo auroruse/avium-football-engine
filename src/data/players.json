@@ -6845,5 +6845,18 @@
 {"id":"p6910","name":"Albert MEMMI","nat":"CRS","ovr":76,"born":"1904-02-09","pos":["RM"],"badges":["deadball:2"]},
 {"id":"p6911","name":"Yanis KAHLAOUI","nat":"CRS","ovr":76,"born":"1905-10-25","pos":["ST"],"badges":["composed:2"]},
 {"id":"p6912","name":"Anton ARTAUD","nat":"CRS","ovr":75,"born":"1913-06-20","pos":["ST"],"badges":["ontherun:1","drawsfoul:1"]},
-{"id":"p6913","name":"Frantz FANON","nat":"CRS","ovr":75,"born":"1911-06-08","pos":["CB"],"badges":["drives:1","lastditch:1"]}
+{"id":"p6913","name":"Frantz FANON","nat":"CRS","ovr":75,"born":"1911-06-08","pos":["CB"],"badges":["drives:1","lastditch:1"]},
+{"id":"p6914","name":"Mamad GOLCHIN","nat":"VAR","ovr":65,"born":"1918-09-08","pos":["LM","CM"]},
+{"id":"p6915","name":"Salman AZADEH","nat":"VAR","ovr":64,"born":"1917-09-21","pos":["CM","AM"]},
+{"id":"p6916","name":"Esmaeel BAYAT","nat":"VAR","ovr":61,"born":"1915-03-28","pos":["CB","LB"]},
+{"id":"p6917","name":"Mohsen NASIRIAN","nat":"VAR","ovr":62,"born":"1917-01-25","pos":["LWB"]},
+{"id":"p6918","name":"Iraj AMINI","nat":"VAR","ovr":62,"born":"1919-01-22","pos":["ST","AM"]},
+{"id":"p6919","name":"Klaus ERHARDT","nat":"LVO","ovr":73,"born":"1918-08-08","pos":["LB","LWB"],"badges":["tempo:1","closesdown:1","outoflegs:1"]},
+{"id":"p6920","name":"Bronius ZUTELIS","nat":"LVO","ovr":71,"born":"1910-05-15","pos":["CB","LB"],"badges":["trickster:1","disguise:1","flaps:1"]},
+{"id":"p6921","name":"Reiner MULLER","nat":"LVO","ovr":72,"born":"1909-08-06","pos":["CM"],"badges":["strong:2","dwells:1"]},
+{"id":"p6922","name":"Gytis ORESKA","nat":"LVO","ovr":70,"born":"1913-11-26","pos":["CM"],"badges":["firsttouch:1"]},
+{"id":"p6923","name":"Wolfgang Krauser Von STROHEIM","nat":"LVO","ovr":69,"born":"1907-06-28","pos":["CM","DM"]},
+{"id":"p6924","name":"Wilhelm EHRENBERG","nat":"LVO","ovr":73,"born":"1912-03-31","pos":["AM","ST"],"badges":["vision:1"]},
+{"id":"p6925","name":"Otto KIPPENBERGER","nat":"LVO","ovr":67,"born":"1912-03-05","pos":["CM","AM"]},
+{"id":"p6926","name":"Gintauts JUKUMS","nat":"LVO","ovr":66,"born":"1910-09-18","pos":["ST","LW"]}
 ]
