@@ -21474,9 +21474,12 @@ export default function App() {
           {uxTRoundRows(pick, false, gcol)}</tbody>
       </table></div>), true);
   };
-  // The leaders, a row a board; each opens Player Stats sorted by its figure.
-  const uxTLeaderRows = () => {
-    const all = Object.values(tPlayerStats), gate = tGate(all), avg = (p) => p.totalRating / Math.max(1, tApps(p));
+  // The leaders, a row a board; each opens Player Stats sorted by its figure. In a season they are those of the competition
+  // whose table or bracket is showing (the user, 26 November 2026: "per-game depending on which table/division ur on, not
+  // combined"): `comp` is a division's index as a string, or "cup".
+  const tCompStats = (comp) => (tCal && comp ? compPlayerStats(tPlayerStats, comp === "cup" ? koMatches(tKO) : groupMatches(tGroups[+comp]), false) : tPlayerStats);
+  const uxTLeaderRows = (comp) => {
+    const all = Object.values(tCompStats(comp)), gate = tGate(all), avg = (p) => p.totalRating / Math.max(1, tApps(p));
     const top = (f, ok) => all.filter(p => ok ? ok(p) : (f(p) || 0) > 0).sort((a, b) => f(b) - f(a) || tTime(a) - tTime(b))[0] || null;
     return [["goals", "Top Scorer", top(p => p.goals || 0), p => p.goals],
       ["assists", "Top Playmaker", top(p => p.assists || 0), p => p.assists],
@@ -21485,11 +21488,11 @@ export default function App() {
       ["defActs", "Most Defensive Actions", top(p => p.defActs || 0), p => p.defActs],
       ["saves", "Most Saves", top(p => p.saves || 0), p => p.saves]].filter(x => x[2]);
   };
-  const tToStats = (k) => { setTView("stats"); setTPsSort({ k, asc: false }); };
-  const uxTLeadersPanel = () => {
+  const tToStats = (k, comp) => { setTView("stats"); setTPsSort({ k, asc: false }); if (tCal) setTPsComp(comp || ""); };
+  const uxTLeadersPanel = (comp) => {
     // (and the doubtful after them: a man who played on hurt in his last match, until he has played since)
     const isDbt = (p) => p.hurtAt != null && (p.mins || 0) === p.hurtAt && !((p.injOut || 0) > 0) && !((p.suspended || 0) > 0);
-    const rows = uxTLeaderRows(), out = Object.values(tPlayerStats).filter(p => (p.suspended || 0) > 0 || (p.injOut || 0) > 0 || isDbt(p));
+    const rows = uxTLeaderRows(comp), out = Object.values(tPlayerStats).filter(p => (p.suspended || 0) > 0 || (p.injOut || 0) > 0 || isDbt(p));
     const control = out.length + tLongOut.size > 0 ? (
       <button type="button" className={"ux-btnreset ux-chip ux-chip-btn" + (tUnavailOpen ? " ux-on" : "")} aria-pressed={tUnavailOpen} onClick={() => setTUnavailOpen(o => !o)}>
         <span style={mono}>{out.filter(p => !isDbt(p)).length + tLongOut.size}</span>&nbsp;Unavailable</button>) : null;
@@ -21509,7 +21512,7 @@ export default function App() {
         </div>); })}</div>)
       : rows.length ? (
       <div className="ux-pbody ux-fit">{rows.map(([k, label, p, f, clr]) => { const t = uxTSideOf(p.team); return (
-        <div key={k} className="ux-ldr ux-sm" role="link" tabIndex={0} onClick={() => tToStats(k)} onKeyDown={e => { if (e.key === "Enter") tToStats(k); }}>
+        <div key={k} className="ux-ldr ux-sm" role="link" tabIndex={0} onClick={() => tToStats(k, comp)} onKeyDown={e => { if (e.key === "Enter") tToStats(k, comp); }}>
           <span className="ux-ldr-cat">{label}</span>
           <span className="ux-ldr-who"><PlayerShot name={p.fullName || p.name} size={20} />{t && <TeamCrest team={t} size={14} />}<span className="ux-ldr-nm">{p.fullName || p.name}</span></span>
           <span className="ux-ldr-v" style={{ ...mono, ...(clr ? { color: clr(p) } : null) }}>{f(p)}</span>
@@ -21573,7 +21576,7 @@ export default function App() {
         </section>
         <div className="ux-col">
           {tMdNow >= tCal.length ? uxTSeasonSummary() : uxTFixturesPanel()}
-          {uxTLeadersPanel()}
+          {uxTLeadersPanel(pick)}
         </div>
       </div>);
   };
