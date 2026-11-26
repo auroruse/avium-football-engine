@@ -1,6 +1,6 @@
 [
 {"id":"l0001","name":"Alemannische Oberliga","nation":"ALE","tier":1,"cup":null,"down":3},
-{"id":"l0002","name":"2. Alemannische Oberliga","nation":"ALE","tier":2,"cup":null,"up":3},
+{"id":"l0002","name":"2. Alemannische Oberliga","nation":"ALE","tier":2,"cup":null,"up":3,"down":3},
 {"id":"l0003","name":"Championnat Arvernois","nation":"ARV","tier":1,"cup":null},
 {"id":"l0004","name":"Primera División","nation":"ASK","tier":1,"cup":null},
 {"id":"l0005","name":"Elvesterian Premier League","nation":"ELV","tier":1,"cup":null},
