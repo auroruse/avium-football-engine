@@ -1,5 +1,53 @@
 [
  {
+  "id": "d4c1eb84",
+  "by": "auroruse",
+  "at": "2026-11-26T09:03:28.778Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0203",
+    "name": "Spartak Kanagawa",
+    "field": "manager",
+    "from": "m0080",
+    "to": "m0059"
+   },
+   {
+    "kind": "teams",
+    "id": "t0334",
+    "name": "Ōtase Threshers",
+    "field": "manager",
+    "from": "m0288",
+    "to": "m0061"
+   },
+   {
+    "kind": "teams",
+    "id": "t0346",
+    "name": "Western Black Grizzlies",
+    "field": "manager",
+    "from": "m0300",
+    "to": "m0069"
+   },
+   {
+    "kind": "teams",
+    "id": "t0214",
+    "name": "Kamabuchi Carnifex",
+    "field": "manager",
+    "from": "m0175",
+    "to": "m0066"
+   },
+   {
+    "kind": "teams",
+    "id": "t0227",
+    "name": "Dai-Ichi Sen'ninhara",
+    "field": "manager",
+    "from": "m0081",
+    "to": "m0082"
+   }
+  ]
+ },
+ {
   "id": "682d3e49",
   "by": "auroruse",
   "at": "2026-11-26T09:00:14.024Z",

@@ -432,3 +432,13 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 153	1936	2026-11-26T08:31:28.116Z	player	p5838	Mojtaba NASRABADI	CM/AM	72	21	2500000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
 154	1936	2026-11-26T09:00:12.563Z	manager	m0188	Cahit ERGÜDER		72	51		t0205	Dynamo Mizuhara			auroruse
 154	1936	2026-11-26T09:00:12.563Z	manager	m0244	Josué ALFERINHO		85	35				t0205	Dynamo Mizuhara	auroruse
+155	1936	2026-11-26T09:03:28.130Z	manager	m0080	Aitor ETXEBARRIA ZUBELDIA		75	60		t0203	Spartak Kanagawa			auroruse
+155	1936	2026-11-26T09:03:28.130Z	manager	m0059	Rikizō KANNO		80	49				t0203	Spartak Kanagawa	auroruse
+156	1936	2026-11-26T09:03:28.130Z	manager	m0175	Aureliano BASTIDA		76	48		t0214	Kamabuchi Carnifex			auroruse
+156	1936	2026-11-26T09:03:28.130Z	manager	m0066	Matías ARDILES		78	51				t0214	Kamabuchi Carnifex	auroruse
+157	1936	2026-11-26T09:03:28.130Z	manager	m0081	Kanehiro HIRAOKA		73	53		t0227	Dai-Ichi Sen'ninhara			auroruse
+157	1936	2026-11-26T09:03:28.130Z	manager	m0082	Yoshiharu KANAMORI		77	46				t0227	Dai-Ichi Sen'ninhara	auroruse
+158	1936	2026-11-26T09:03:28.130Z	manager	m0288	Benkei KUMAGAI		70	41		t0334	Ōtase Threshers			auroruse
+158	1936	2026-11-26T09:03:28.130Z	manager	m0061	Kiyoshi TATARA		81	48				t0334	Ōtase Threshers	auroruse
+159	1936	2026-11-26T09:03:28.130Z	manager	m0300	Jedediah BOWIE		71	49		t0346	Western Black Grizzlies			auroruse
+159	1936	2026-11-26T09:03:28.130Z	manager	m0069	Konstantinos ARGYROS		79	49				t0346	Western Black Grizzlies	auroruse
