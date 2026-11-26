@@ -7,12 +7,17 @@
 
 // HOW MANY GO UP AND DOWN (Moukden and Kirin, 11 October 2026): `up` and `down` are the places a season sends to the
 // division above and below outright; a playoff its report records settles any place besides (seasonMoves in App.tsx).
+// A SEASON'S FORMAT (the user, 26 November 2026: seasons are made from a nation only, "format on its leagues"): `legs`
+// is how many times a division's clubs meet (2 when it is not said), and up and down as above. The cup the league
+// enters takes its format from the highest division entering it: `cupLegs` (1 when not said, or 2) and `cupFixed`
+// (the bracket the first round makes is kept, where every later round is otherwise drawn). All set on the league's page.
 // A league's CONFERENCES (the ANCC, Moukden and Kirin, 12 October 2026): its clubs split into named groups, in the order its
 // playoff crosses them, each { name, clubs: [team IDs] }. A college league (`college`, src/data/colleges.js) is the
 // overseer's to mark. One league record in the file's own key order; up, down, listed, formerly, college and conferences
-// only when they say something.
+// only when they say something; legs, cupLegs and cupFixed only when they differ from what is assumed.
 export const leagueRecord = (l) => ({ id: l.id, name: l.name, nation: l.nation, tier: l.tier, cup: l.cup || null,
   ...(l.up ? { up: l.up } : null), ...(l.down ? { down: l.down } : null),
+  ...(l.legs && l.legs !== 2 ? { legs: l.legs } : null), ...(l.cupLegs === 2 ? { cupLegs: 2 } : null), ...(l.cupFixed ? { cupFixed: true } : null),
   ...(l.listed ? { listed: true } : null), ...(l.formerly?.length ? { formerly: l.formerly } : null),
   ...(l.college ? { college: true } : null),
   ...(l.conferences?.length ? { conferences: l.conferences.map(c => ({ name: c.name, clubs: [...(c.clubs || [])] })) } : null) });

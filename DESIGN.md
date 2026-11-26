@@ -307,7 +307,8 @@ saves. Only its screens are new, and everything the old screen could set up or d
 matches played and when it was last saved, newest first) with New Tournament, Rename, Copy, Export, Import and Delete,
 which asks twice. Opening one gives it its own page and address (#/tournament/<its name>, then its page).
 
-**New Tournament** is one page. A preset picker in its title row (the eight formats, and the three ready-made fields:
+**New Tournament** is one page (its Format panel reorganised into a tab a stage on 26 November 2026, and a season of
+leagues and cup added: "Seasons", below). A preset picker in its title row (the eight formats, and the three ready-made fields:
 1934 World Cup, 1934 Club World Shield, 1935 World Cup) fills three panels: **Format** (a league, groups then a
 knockout, or a knockout alone; groups played round robin or Swiss; a knockout single or double elimination, with two
 legs, a third-place match or a double elimination's reset match, and where no zone sends anybody through, how many go
@@ -1825,3 +1826,120 @@ The user's brief: "a rework to injuries, which are rudimentary right now at best
 - **The year** runs World Cup, then League And Cup (everything else), then Club World Cup and Shield, then Nations League, then World Cup Qualifiers (the user: "these should have different weights"), counted as 2, 6, 2, 1 and 1 of its 12 units (`LONG_SLOTS`). A filed season is placed by its folder and year; the qualifiers close the year before the World Cup they are named for, and a league written across two years belongs to the year it starts in. A competition being played is placed by the year and the words in its name ("1936 World Cup", "League One 35-36"), or this year if it has none.
 - **How long** (config.ts `ME_INJURY` `long`, `out`): cartilage 2 to 4 units, ankle ligaments 1 to 3, a broken ankle 3 to 5, a broken foot 2 to 3, a collarbone 2 to 3, from the moment it happened, the man's own place in the range settled by his name. A cruciate, an Achilles or a broken leg: the rest of the year, and from its second half the next World Cup as well.
 - **Who is left out** (App.tsx `longIdx`, `tLongOut`, into `tUnavail`): with Long Injuries on in setup (it is by default, beside Injuries, Suspensions and Tiredness), every man in a competition's squads with a long injury on file misses the share of it his lay-off still covers: counted in his side's matches where the format says how many there are, the whole of it otherwise when more than a quarter is covered. The Unavailable list names him Long Injury with what it is; his page shows a warning row over Season Stats with the injury and the competition he is back for, for as long as the archive has not got past it.
+
+## Seasons: the leagues and the cup together (26 November 2026)
+
+The user: "Let's brainstorm simming the league and cup simultaneously, since they take place simultaneously. This means
+cup fixtures during a league season ... some cups have more than one division's clubs in them ... injuries and whatever
+will carry over between league & cup games". Their answers: numbered matchdays, not dates ("since each nation could have
+different scheduling"); a ban is served in the club's next match of any kind, with yellow cards counted by competition;
+injuries are counted in the club's matches of any kind; it starts with 1936, Karjania left out (its 1936 is already
+filed); a shorter division's idle matchdays spread evenly; the cup's dates spread evenly with the final after the last
+league round. Then: "this won't just be for Nichirin, it should be compatible with every nation's stuff. And also, the
+existing tournament setup needs some cleanup anyway: the rules get super squished for long formats, and some format
+stuff only exist for certain tournaments ... Restructure and rework as you need".
+
+**A season is one tournament** (`tConfig.mode === "season"`, phase "season", src/data/season.js). Each division is a
+group with its own table, legs and zones (`g.name`, `g.legs`, `g.zones`), the cup is its knockout, and the one record of
+every man (tPlayerStats) serves them all, so a ban, a lay-off or tired legs carry from the league into the cup and back
+with nothing to copy across. Everything a tournament already had (a typed score, a match played live, edit and delete,
+the saves, export and import) works on a season as it stands.
+
+- **Any nation.** The divisions are the leagues the sides picked play in, off the league records (tier, cup, up, down).
+  The Preset menu's Seasons lists one a nation, its clubs picked and its cup named; where a nation's leagues enter
+  different cups (Hanan and Uray Tantanakuy) each is a season of its own. A nation with no cup plays its leagues alone.
+- **The calendar** is worked out from the divisions' rounds and the cup's rounds, never kept (`seasonCalendar`). League
+  days number the longest division's rounds; a shorter division's rounds are spread over them evenly, first and last on
+  the first and last; the cup's dates before the final follow league days spread evenly, and the final (with the
+  third-place match) is the last matchday. Nichirin: 52 matchdays, the cup after league days 8, 15, 23, 31 and 38, and
+  League One idle on eight league days.
+- **The cup** takes every side picked. The best of the field, the higher division first and then the rating, sit the
+  first round out where it is short of a power of two (Nichirin: League One's twenty, as in 1935). Each later round is
+  drawn as the last tie of the round before comes in, however it came in, the first out of the bowl at home; Fixed
+  Bracket turns that off. Two legs give a round two dates.
+- **Playing it.** Sim Matchday and Sim Season in the page bar; only the matchday reached can be simmed, scored or played
+  live. Overview shows a division's table or the cup's bracket, picked at the top of the panel, beside the matchday's
+  fixtures; Fixtures lists every matchday; Player Stats takes a competition; Rules says what it was set up with.
+- **Its files** are a competition each, as the archive keeps them: a season file and a stats sheet for every division
+  and for the cup, each sheet the figures of that competition's own matches, added up from what every result gave
+  every man (`compPlayerStats`). Long injuries go on the league sheets.
+- **The manager** looks ahead over all of a club's matches (`seasonHorizon`), and a cup tie short of the final is no
+  longer a must-win by right: a side more than ten points clear of the one it drew changes a few, any other tie is
+  played properly (managerSelect, `seasonCup`).
+- **Yellow cards** are counted apart in the cup (`ycCup`); each count bans a man at its own every fifth.
+
+**New Tournament, reorganised.** The Format and Rules panels shared a column, so a long format squeezed the rules into
+what was left. Format is now one panel: Structure at the top (Groups; Groups, Then Knockout; Knockout; Season), then a
+tab a stage with the panel's height to itself. Groups (League with one group) holds its format, who goes through, its
+zones with Already Qualified, its tiebreakers and its home advantage; Knockout its format, ties, byes, allocation and
+home advantage; Match Rules the four switches and, where a stage plays at host grounds, the hosts and venues. A season's
+tabs are Leagues, Cup and Match Rules. What It Builds counts a season's divisions, cup, matchdays and matches.
+
+**The sims, rebuilt under it.** Found while wiring the shared record, each true of every tournament:
+- A sim read the record off a snapshot taken when it started, so a Sim All never saw the tiredness, the form or the
+  table of the rounds it had just played. A sim now plays against an open ledger of the record (`psLedger`, written by
+  the pure `statsAccum`, `statsServe`, `statsReverse`) and brings each table up to date after every matchday; a sim
+  that fails changes nothing.
+- A sim counted a match off every ban before asking who was out, so a one-match ban was served by nobody and every
+  lay-off ran a match short; typed and live matches served them in full. Who is out is now read first (`tOutNow`).
+- A sim and a live match never left out the long injuries on file; only a typed score did.
+- A fifth yellow's ban was added after the list of bans was returned.
+- A saved result carried every man's sheet of the match, which is read once, and its figures as named fields under his
+  side's name: thirteen thousand characters a match. A save now leaves the sheet out and writes the figures as a row a
+  man (`slimResult`, `DIFF_ROW`): under two thousand, so a Nichirin season of 975 matches is about 2.6 million
+  characters where it would have been twelve. Old saves load as they are.
+
+**Checked.** src/data/season.js's calendar for six shapes of nation in node. One headless pass at the app: Nichirin's
+season made from its preset, the setup's three tabs opened, ten matchdays simmed (seven or eight league rounds a
+division and the cup's Round of 64, the Round of 32 then drawn), no error; from its save, every side's starts were
+eleven a match, 82 bans and lay-offs were issued and nobody played while out, 24 of the matches missed were in the
+other competition, every yellow-card ban fell on a fifth yellow of its own count, and the three competitions' figures
+added up to the season's. The save's packing round-trips on those 190 results. test/tourn.mjs passes. A whole season
+played to its end, its summary and its exports have not been run.
+
+## New Tournament, redesigned (26 November 2026)
+
+The user: "Redesign the entire tournament/season setup UI. It's cluttered. Also, I'm considering locking seasons only to
+nation presets, with set formats." Asked with AskUserQuestion; every answer the recommended one:
+
+- **Seasons: nation only, format on its leagues.** A season is made by picking a nation; its format is not chosen at
+  setup. It lives on the league records (src/data/leagues.js): `legs` (2 when not said), `up`, `down`, and on the
+  highest division entering the cup `cupLegs` (1 or 2) and `cupFixed`. Each league's page has a Season Format panel for
+  them, so its editors set it (rules.js checks them; draft.js carries them). **The server needs the user's wrangler
+  deploy before an editor's change to them can be saved.**
+- **Pick what you're making first.** New Tournament opens on three ledgers side by side: Season (a nation a row: its
+  divisions, clubs and cup), Competition (the ready-made fields: sides and format), Custom Tournament (the formats).
+  The old Preset menu is gone. The page tab names what is being made; Back in the page bar returns to the choice.
+- **Custom Tournament: one page, two columns.** Format on the left (the structure as a switch in its title row, then a
+  tab a stage), Sides on the right (Picked, by league with a cross each, and By League, the old accordion). What It
+  Builds and Before It Can Start are gone: the page bar says what it builds ("32 Sides, 8 Groups Of 4, Round Of 16, 64
+  Matches") or the first thing stopping it, the rest on hover.
+- **Competition: as it is, with Customise.** Its format as facts on the left, its groups as drawn (or its sides by
+  league) on the right; Customise turns it into a Custom Tournament with everything kept.
+
+**A season's page**: Leagues (a row a division: tier, clubs, legs, rounds, up, down, Edit Format for its editors), Cup
+(its name, who enters and who sits the first round out, its rounds, ties, pairings and matchdays), Match Rules (the
+four switches, the one thing still set here), and Clubs by division. The page bar: matchdays and matches, Back, Create
+Season. A season takes its nation's clubs and its format as the records hold them when it is created. A save is renamed
+for what it was made for while it still carries a new save's name: "Nichirin 1936" (the year places its long injuries),
+or the competition's name.
+
+Saves from before name no kind: a season, a field loaded, or sides picked by hand open as a Season, a Competition or a
+Custom Tournament.
+
+**Same day, after a look (the user):** "split the fixtures tab by tournament, with a single combined one, and for cup
+rounds, those shouldn't count as numbered matchdays (tho function as ones)". League days are numbered among themselves
+(Nichirin: Matchday 1 to 46) and a cup date goes by its round ("Sei'i Tai Shogun Cup, Round Of 64"), in the page bar
+(Sim Cup Round on one), on Saved and on Fixtures; the calendar still plays them in turn. Fixtures takes All or one
+competition: a division's rounds as Round N with their matchday beside, or the cup's rounds. "Why aren't the cup icons
+being used when possible?": a cup shows its own badge where public/avium/leagues has one under its name (CupMark), else
+a gold trophy, on the choice, the season's page, the page bar and the cup's fixtures. And a blank box opened before
+every hover name in the app: the CSS tooltip that came before UxTips (`[data-tip]:hover::after` in APP_CSS) was still
+drawing; removed.
+
+**Then (the user): "I just need an option for sim matchday and sim season that sims per division, and organize this
+dropdown better."** A menu before the sims picks All Competitions (the calendar, as before), a division (its next round,
+or the rest of its season, whatever the others have reached) or the cup (Sim Cup Round, Sim Cup). Each competition keeps
+its own place: a division's next round and the cup's next date are what can be simmed, scored or played live, so a
+division can be played through on its own and the cup after it. Export is in sections, a competition each under its
+name and badge: Season File and Player Stats, and the Bracket under the cup.

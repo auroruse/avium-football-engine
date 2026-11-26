@@ -91,6 +91,12 @@
 .ux-menu-head b { display: block; font-size: 12px; color: var(--ux-text); margin-bottom: 3px; }
 .ux-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border-radius: 6px; font-size: 12px; text-align: left; color: var(--ux-text); }
 .ux-menu-item:hover { background: var(--ux-panel-3); }
+/* A menu in sections (a season's Export): each headed by its competition, its items under it. */
+.ux-menu-sec { display: flex; align-items: center; gap: 8px; padding: 10px 8px 4px; font: 700 12px/1 var(--ux-f-title); letter-spacing: .05em;
+  text-transform: uppercase; color: var(--ux-text-2); min-width: 0; }
+.ux-menu-sec + .ux-menu-item, .ux-menu-sec ~ .ux-menu-item { white-space: nowrap; }
+.ux-menu > .ux-menu-sec:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--ux-line); padding-top: 12px; }
+.ux-tsimsc > .ux-pick { margin-left: 0; height: 30px; }
 .ux-menu-item select { margin-left: auto; font: inherit; font-size: 12px; color: var(--ux-text); background: var(--ux-panel-3); border: 1px solid var(--ux-line); border-radius: 4px; padding: 2px 4px; }
 .ux-menu-item .ux-tog { height: auto; margin-left: auto; }
 .ux-scrim { position: fixed; inset: 0; z-index: 70; }
@@ -796,7 +802,25 @@
   color: var(--ux-text-2); background: var(--ux-panel); border-top: 1px solid var(--ux-line); }
 .ux-tbl tbody:first-of-type tr.ux-trow-h td { border-top: 0; }
 /* New Tournament: Format and Rules, Sides, and what they build. A label and its control a row; sections headed in the title face. */
-.ux-body.ux-tsetup { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) clamp(240px, 20vw, 320px); }
+.ux-body.ux-tnew { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.8fr); align-items: start; }
+.ux-tnew > .ux-panel { max-height: 100%; }
+.ux-tnew-t tbody tr:not(.ux-trow-h) td { height: 46px; }
+.ux-tnew-t .ux-tnew-nm { gap: 10px; }
+.ux-tnew-two { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ux-tnew-sub { font-size: 11px; color: var(--ux-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ux-tnew-lgs { display: inline-flex; align-items: center; gap: 6px; }
+.ux-app svg.ux-i.ux-cupmark { color: var(--ux-gold); stroke-width: 1.8; }
+.ux-trow-sub { margin-left: 10px; font: 500 11px/1 var(--ux-f-body, inherit); letter-spacing: 0; text-transform: none; }
+.ux-tnew-go { display: inline-flex; color: var(--ux-text-3); opacity: 0; transition: opacity .12s; }
+.ux-tnew-t tr.ux-link:hover .ux-tnew-go, .ux-tnew-t tr.ux-link:focus-visible .ux-tnew-go { opacity: 1; }
+.ux-fmtg { display: block; fill: none; stroke: var(--ux-text-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ux-fmtg .ux-fmtg-a { stroke: var(--ux-accent); }
+.ux-tnew-t tr.ux-link:hover .ux-fmtg { stroke: var(--ux-text-2); }
+@media (prefers-reduced-motion: reduce) { .ux-tnew-go { transition: none; } }
+.ux-body.ux-tseason { grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); }
+.ux-body.ux-tcustom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.ux-tsides tbody tr:not(.ux-trow-h) td { height: 30px; }
+.ux-tsides .ux-trow-h .ux-tc { gap: 7px; }
 .ux-fbody { padding: 0 12px 12px; }
 .ux-fsec { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font: 700 12px/1 var(--ux-f-title); letter-spacing: .06em;
   text-transform: uppercase; color: var(--ux-text-2); }
@@ -807,6 +831,15 @@
 .ux-fval { font-size: 12px; color: var(--ux-text); }
 .ux-fnote { font-size: 11px; color: var(--ux-text-2); }
 .ux-fline { font-size: 12px; padding: 4px 0; }
+/* New Tournament: the Format panel's stages as tabs, each with the panel's height to itself (26 November 2026). */
+.ux-tset-top { flex: none; padding-bottom: 6px; }
+.ux-tstabs { display: flex; gap: 2px; flex: none; padding: 0 12px; border-bottom: 1px solid var(--ux-line); }
+.ux-tstabs button { height: 30px; padding: 0 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 12px; font-weight: 600; color: var(--ux-text-3); cursor: pointer; }
+.ux-tstabs button:hover { color: var(--ux-text); }
+.ux-tstabs button.ux-on { color: var(--ux-text); border-bottom-color: var(--ux-accent); cursor: default; }
+.ux-fsec-btn { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.ux-fsec-n { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.ux-in.ux-in-wide { width: 100%; max-width: 280px; }
 .ux-warn-t { color: var(--ux-draw); }
 .ux-seg.ux-seg-in { margin-left: 0; flex-wrap: wrap; }
 .ux-seg.ux-seg-in button { height: 24px; font-size: 12px; font-weight: 500; }

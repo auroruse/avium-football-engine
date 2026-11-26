@@ -25,7 +25,9 @@ const KINDS = {
   // takes a club out of the records (both the overseer's; its men and manager go free, its seasons stay in the archive).
   teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting", "group", "file", "removed"], key: teamKey,
            label: (t) => t.name.trim() },
-  leagues: { fields: ["name", "tier", "cup", "conferences"], key: (l) => l.id, label: (l) => l.name },
+  // legs, up, down, cupLegs and cupFixed are the league's season format (src/data/leagues.js): what a season of its
+  // nation is played under, set on the league's page.
+  leagues: { fields: ["name", "tier", "cup", "conferences", "legs", "up", "down", "cupLegs", "cupFixed"], key: (l) => l.id, label: (l) => l.name },
 };
 export const PLAYER_FIELDS = KINDS.players.fields;
 // A cell kept as the sheet wrote it ({ id, tag } or { id, raw }) is still that man.

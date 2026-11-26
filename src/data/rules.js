@@ -132,6 +132,11 @@ function valueProblems(rec, next, changes) {
       if (c.field === "name") { if (!text(c.to, 50)) bad("not a usable name"); else if (!leagueNameFree(next.leagues, c.to, c.id)) bad(`a league is already called ${c.to}`); }
       if (c.field === "tier" && !tierOk(c.to)) bad("a tier is 1 to 5, or none");
       if (c.field === "cup" && c.to != null && !cupOk(c.to, next.leagues)) bad("not a usable cup");
+      // A season's format (src/data/leagues.js).
+      if (c.field === "legs" && c.to != null && !(Number.isInteger(c.to) && c.to >= 1 && c.to <= 4)) bad("a league is played over one to four legs");
+      if ((c.field === "up" || c.field === "down") && c.to != null && !(Number.isInteger(c.to) && c.to >= 0 && c.to <= 10)) bad(`${c.field === "up" ? "promotion" : "relegation"} is nought to ten places`);
+      if (c.field === "cupLegs" && c.to != null && c.to !== 1 && c.to !== 2) bad("a cup tie is one leg or two");
+      if (c.field === "cupFixed" && c.to != null && typeof c.to !== "boolean") bad("not a usable cup bracket");
       if (c.field === "conferences") { const l = next.leagues.find(x => x.id === c.id);
         const why = conferencesProblem(c.to, new Set(next.teams.filter(t => !isNational(t) && t.group === l?.name).map(teamKey))); if (why) bad(why); }
       continue;
