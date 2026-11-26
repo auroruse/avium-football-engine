@@ -430,3 +430,5 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 153	1936	2026-11-26T08:31:28.116Z	player	p3293	Yūdai TŌJŌ	LB	75	28	3500000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
 153	1936	2026-11-26T08:31:28.116Z	player	p5525	Gen JINGŪJI	CB	74	22	3300000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
 153	1936	2026-11-26T08:31:28.116Z	player	p5838	Mojtaba NASRABADI	CM/AM	72	21	2500000	t0211	Locomotive Fūchumachi	t0204	Viridia Shikisen	auroruse
+154	1936	2026-11-26T09:00:12.563Z	manager	m0188	Cahit ERGÜDER		72	51		t0205	Dynamo Mizuhara			auroruse
+154	1936	2026-11-26T09:00:12.563Z	manager	m0244	Josué ALFERINHO		85	35				t0205	Dynamo Mizuhara	auroruse

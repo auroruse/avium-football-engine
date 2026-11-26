@@ -1,5 +1,53 @@
 [
  {
+  "id": "682d3e49",
+  "by": "auroruse",
+  "at": "2026-11-26T09:00:14.024Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "managers",
+    "id": "m0358",
+    "name": "Hidemasa ODAGIRI",
+    "field": "name",
+    "from": "Hidemasa ODAGIRI",
+    "to": "Amadeus SCHWESINGER"
+   },
+   {
+    "kind": "managers",
+    "id": "m0358",
+    "name": "Hidemasa ODAGIRI",
+    "field": "nat",
+    "from": "NCH",
+    "to": "ALE"
+   },
+   {
+    "kind": "managers",
+    "id": "m0358",
+    "name": "Hidemasa ODAGIRI",
+    "field": "ovr",
+    "from": 78,
+    "to": 80
+   },
+   {
+    "kind": "managers",
+    "id": "m0059",
+    "name": "Rikizō KANNO",
+    "field": "style",
+    "from": "Gegenpressing",
+    "to": "Juego de Posición"
+   },
+   {
+    "kind": "teams",
+    "id": "t0205",
+    "name": "Dynamo Mizuhara",
+    "field": "manager",
+    "from": "m0188",
+    "to": "m0244"
+   }
+  ]
+ },
+ {
   "id": "e835d480",
   "by": "auroruse",
   "at": "2026-11-26T08:34:31.223Z",
