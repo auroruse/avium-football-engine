@@ -372,23 +372,55 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 122	1936	2026-11-25T23:45:55.395Z	player	p5960	Sadegh QESSEHGOU	CB	48	17	28000	t0305	Ketāb-e Mehr	t0317	SV Hansa Wolmar	GeneralVarah
 122	1936	2026-11-25T23:45:55.395Z	player	p4823	Jürgen Hollander	GK	55	20	62000	t0317	SV Hansa Wolmar	t0305	Ketāb-e Mehr	GeneralVarah
 123	1936	2026-11-25T23:58:56.538Z	player	p1539	Ruoyu SHAO	CM	70	25	1000000			t0287	Daryā Shushabad	GeneralVarah
-124	1935	2026-11-26T07:53:13.040Z	manager	m0080	Aitor ETXEBARRIA ZUBELDIA		75	59				t0203	Spartak Kanagawa	auroruse
-125	1935	2026-11-26T07:53:13.040Z	manager	m0358	Hidemasa ODAGIRI		78	58				t0204	Viridia Shikisen	auroruse
-126	1935	2026-11-26T07:53:13.040Z	manager	m0188	Cahit ERGÜDER		72	51		t0233	Manshu Tetsudō Harushige	t0205	Dynamo Mizuhara	auroruse
-127	1935	2026-11-26T07:53:13.040Z	manager	m0359	Kazutoshi MINEGISHI		80	49				t0207	Tsukumo Shinkeisei	auroruse
-128	1935	2026-11-26T07:53:13.040Z	manager	m0360	Tokuji HASEBE		81	47				t0213	Takarazuka Kaigun	auroruse
-129	1935	2026-11-26T07:53:13.040Z	manager	m0361	Ryōhei SAKURADA		75	49				t0215	Orughan FC	auroruse
-130	1935	2026-11-26T07:53:13.040Z	manager	m0169	Torazō MUROYA		78	56		t0204	Viridia Shikisen	t0218	Nikaidō Izumiya	auroruse
-131	1935	2026-11-26T07:53:13.040Z	manager	m0362	Masatane ICHINOSE		76	46				t0219	Ashihara FC	auroruse
-132	1935	2026-11-26T07:53:13.040Z	manager	m0246	Fumio TAKAHATA		73	47				t0220	Kōshū Sentinels	auroruse
-133	1935	2026-11-26T07:53:13.040Z	manager	m0168	Ansgar VOGELSANG		79	42		t0203	Spartak Kanagawa	t0221	Kannushi	auroruse
-134	1935	2026-11-26T07:53:13.040Z	manager	m0363	Genzō UTSUNOMIYA		76	50				t0223	AC Shirasagi	auroruse
-135	1935	2026-11-26T07:53:13.040Z	manager	m0364	Shōzō AMAKASU		71	60				t0225	Bankoku Genkai	auroruse
-136	1935	2026-11-26T07:53:13.040Z	manager	m0365	Kiyomaro FUKAMACHI		71	45				t0231	Union Takarazuka	auroruse
-137	1935	2026-11-26T07:53:13.040Z	manager	m0366	Sōichi NAKAGAWARA		72	50				t0233	Manshu Tetsudō Harushige	auroruse
-138	1935	2026-11-26T07:53:13.040Z	manager	m0367	Teruhiko IZUMIDA		79	49				t0234	Shiome Matsuumi	auroruse
-139	1935	2026-11-26T07:53:13.040Z	manager	m0368	Junpei KAJIWARA		74	45				t0235	Metallurg Motohora	auroruse
-140	1935	2026-11-26T07:53:13.040Z	manager	m0369	Masuo SHIGENO		77	46				t0236	Kochōrin Hyakuyonjū	auroruse
-141	1935	2026-11-26T07:53:13.040Z	manager	m0370	Kōsaku HIRUTA		72	39				t0239	IFK Korihama	auroruse
-142	1935	2026-11-26T07:53:13.040Z	manager	m0371	Torao YUKAWA		72	46				t0240	Tōhara Colliers	auroruse
-143	1935	2026-11-26T07:53:13.040Z	manager	m0372	Fusajirō OGINO		70	44				t0244	Daikei Petrolero	auroruse
+124	1936	2026-11-26T08:06:00.175Z	manager	m0168	Ansgar VOGELSANG		79	43		t0203	Spartak Kanagawa	t0221	Kannushi	auroruse
+124	1936	2026-11-26T08:06:00.175Z	manager	m0178	Kon GENJIRO		74	59		t0221	Kannushi			auroruse
+124	1936	2026-11-26T08:06:00.175Z	manager	m0080	Aitor ETXEBARRIA ZUBELDIA		75	60				t0203	Spartak Kanagawa	auroruse
+125	1936	2026-11-26T08:06:00.175Z	manager	m0169	Torazō MUROYA		78	57		t0204	Viridia Shikisen	t0218	Nikaidō Izumiya	auroruse
+125	1936	2026-11-26T08:06:00.175Z	manager	m0078	Torbjörn HALLSTRÖM		75	41		t0218	Nikaidō Izumiya			auroruse
+126	1936	2026-11-26T08:06:00.175Z	manager	m0170	Yukiyasu ONOGI		76	47		t0205	Dynamo Mizuhara			auroruse
+126	1936	2026-11-26T08:06:00.175Z	manager	m0188	Cahit ERGÜDER		72	51		t0233	Manshu Tetsudō Harushige	t0205	Dynamo Mizuhara	auroruse
+127	1936	2026-11-26T08:06:00.175Z	manager	m0059	Rikizō KANNO		80	49		t0207	Tsukumo Shinkeisei			auroruse
+128	1936	2026-11-26T08:06:00.175Z	manager	m0061	Kiyoshi TATARA		81	48		t0213	Takarazuka Kaigun			auroruse
+129	1936	2026-11-26T08:06:00.175Z	manager	m0176	Naranbaatar MUNKHBAT		75	50		t0215	Orughan FC			auroruse
+130	1936	2026-11-26T08:06:00.175Z	manager	m0177	Yasuharu NUNOKAWA		76	48		t0219	Ashihara FC			auroruse
+131	1936	2026-11-26T08:06:00.175Z	manager	m0079	Shunsuke TODOROKI		76	48		t0220	Kōshū Sentinels			auroruse
+131	1936	2026-11-26T08:06:00.175Z	manager	m0246	Fumio TAKAHATA		73	48				t0220	Kōshū Sentinels	auroruse
+132	1936	2026-11-26T08:06:00.175Z	manager	m0068	Christoph VON SCHÖNING		76	50		t0223	AC Shirasagi			auroruse
+133	1936	2026-11-26T08:06:00.175Z	manager	m0181	Sakae SŌGABE		71	61		t0225	Bankoku Genkai			auroruse
+134	1936	2026-11-26T08:06:00.175Z	manager	m0186	Shin'ichi KURAMOCHI		71	46		t0231	Union Takarazuka			auroruse
+135	1936	2026-11-26T08:06:00.175Z	manager	m0069	Konstantinos ARGYROS		79	49		t0234	Shiome Matsuumi			auroruse
+136	1936	2026-11-26T08:06:00.175Z	manager	m0093	Motoharu HORIE		74	45		t0235	Metallurg Motohora			auroruse
+137	1936	2026-11-26T08:06:00.175Z	manager	m0082	Yoshiharu KANAMORI		77	46		t0236	Kochōrin Hyakuyonjū			auroruse
+138	1936	2026-11-26T08:06:00.175Z	manager	m0101	Nobuteru KAMIJŌ		72	40		t0239	IFK Korihama			auroruse
+139	1936	2026-11-26T08:06:00.175Z	manager	m0191	Sadamu KOSHIMIZU		72	45		t0240	Tōhara Colliers			auroruse
+140	1936	2026-11-26T08:06:00.175Z	manager	m0195	Katsuo NAMBARA		70	44		t0244	Daikei Petrolero			auroruse
+141	1936	2026-11-26T08:06:00.175Z	player	p0909	Marc-Olivier SAVELLI	RB	70	29	900000	t0054	Club des Marins	t0243	Concordia Hakata	auroruse
+141	1936	2026-11-26T08:06:00.175Z	player	p1418	Spyridon LYKOUDIS	CM/CB	72	25	2000000	t0195	Astragalatiákos FC	t0243	Concordia Hakata	auroruse
+141	1936	2026-11-26T08:06:00.175Z	player	p3703	Bahadır ÖZDEMİR	RW	72	28	1900000	t0243	Concordia Hakata	t0195	Astragalatiákos FC	auroruse
+141	1936	2026-11-26T08:06:00.175Z	player	p3696	Kazuma SHIOMI	CM	68	27	880000	t0243	Concordia Hakata	t0054	Club des Marins	auroruse
+142	1936	2026-11-26T08:06:00.175Z	player	p0920	Joan XIRAU	CM/RWB	79	25	11000000	t0055	Club Aviación	t0204	Viridia Shikisen	auroruse
+142	1936	2026-11-26T08:06:00.175Z	player	p1176	Iilmari TORJALASTEN	CM/DM	79	22	12000000	t0204	Viridia Shikisen	t0055	Club Aviación	auroruse
+143	1936	2026-11-26T08:06:00.175Z	player	p0992	Baptista SUECA	ST	72	29	2100000	t0059	Deportivo Velazquita	t0237	Cercle Izuminone	auroruse
+143	1936	2026-11-26T08:06:00.175Z	player	p3615	Ippolito SERRAVALLE	RW	72	23	2200000	t0237	Cercle Izuminone	t0059	Deportivo Velazquita	auroruse
+144	1936	2026-11-26T08:06:00.175Z	player	p1005	Tomé RESENDE	CB	72	30	1200000	t0060	CA Sarakusta	t0246	Chūkyō Kōbusho	auroruse
+144	1936	2026-11-26T08:06:00.175Z	player	p3746	Nobuo TAKESHIMA	ST	70	29	1200000	t0246	Chūkyō Kōbusho	t0060	CA Sarakusta	auroruse
+145	1936	2026-11-26T08:06:00.175Z	player	p1131	Giacomo RUSSO	CB	77	27	5400000	t0125	Toteham Lilywhite	t0212	AFC Makinohara	auroruse
+145	1936	2026-11-26T08:06:00.175Z	player	p2294	Emilio BIANCHI	CM	75	30	3100000	t0125	Toteham Lilywhite	t0236	Kochōrin Hyakuyonjū	auroruse
+145	1936	2026-11-26T08:06:00.175Z	player	p5198	Matt WEST	AM	75	22	5500000	t0212	AFC Makinohara	t0125	Toteham Lilywhite	auroruse
+145	1936	2026-11-26T08:06:00.175Z	player	p3589	Michinori KUSAKABE	RWB	73	19	3100000	t0236	Kochōrin Hyakuyonjū	t0125	Toteham Lilywhite	auroruse
+146	1936	2026-11-26T08:06:00.175Z	player	p2306	Reinhard STOLLENWERK	CM	78	29	7000000	t0126	Manceshire City	t0225	Bankoku Genkai	auroruse
+146	1936	2026-11-26T08:06:00.175Z	player	p5279	Michizane TOKUDAIJI	AM	77	22	7600000	t0225	Bankoku Genkai	t0126	Manceshire City	auroruse
+147	1936	2026-11-26T08:06:00.175Z	player	p2367	Cael PRICE	ST	76	28	6100000	t0131	Gallican FC	t0220	Kōshū Sentinels	auroruse
+147	1936	2026-11-26T08:06:00.175Z	player	p3396	Yoshitaka NABESHIMA	LW	76	26	6300000	t0220	Kōshū Sentinels	t0131	Gallican FC	auroruse
+148	1936	2026-11-26T08:06:00.175Z	player	p2422	Sam KELLY	CB/LB	76	23	5000000	t0136	Westend FC	t0211	Locomotive Fūchumachi	auroruse
+148	1936	2026-11-26T08:06:00.175Z	player	p1285	Selçuk DEMIRCI	CM/DM	77	29	5100000	t0211	Locomotive Fūchumachi	t0136	Westend FC	auroruse
+149	1936	2026-11-26T08:06:00.175Z	player	p2484	Merritt FOXLEY	RB	73	29	1900000	t0142	Winscor Chaplains	t0231	Union Takarazuka	auroruse
+149	1936	2026-11-26T08:06:00.175Z	player	p3525	Yūsei ŌTOMO	RW	71	22	1800000	t0231	Union Takarazuka	t0142	Winscor Chaplains	auroruse
+150	1936	2026-11-26T08:06:00.175Z	player	p1291	Rizgar BOZKURT	CB	73	30	1600000	t0196	Yeniçeri Azmaşir	t0244	Daikei Petrolero	auroruse
+150	1936	2026-11-26T08:06:00.175Z	player	p1292	Onur TEKELİ	RM/RB	73	28	2400000	t0196	Yeniçeri Azmaşir	t0238	Fortuna Hakkōran	auroruse
+150	1936	2026-11-26T08:06:00.175Z	player	p5310	Gorō UMEHARA	ST	72	22	2500000	t0238	Fortuna Hakkōran	t0196	Yeniçeri Azmaşir	auroruse
+150	1936	2026-11-26T08:06:00.175Z	player	p3719	Motonobu ISHIGAMI	ST	70	23	1500000	t0244	Daikei Petrolero	t0196	Yeniçeri Azmaşir	auroruse
+151	1936	2026-11-26T08:06:00.175Z	player	p1623	Junjie XU	CM/LWB	69	23	1000000	t0199	Beining Zhonghang	t0233	Manshu Tetsudō Harushige	auroruse
+151	1936	2026-11-26T08:06:00.175Z	player	p3555	Shigeo YABUKI	CM	70	28	1100000	t0233	Manshu Tetsudō Harushige	t0199	Beining Zhonghang	auroruse
+152	1936	2026-11-26T08:06:00.175Z	player	p3212	Lev ZHDANOV	CB	71	28	1200000	t0200	CSKA Radagorsk	t0229	Zenit Heitanmachi	auroruse
+152	1936	2026-11-26T08:06:00.175Z	player	p3500	Tsutomu ARISAKA	ST	68	27	1100000	t0229	Zenit Heitanmachi	t0200	CSKA Radagorsk	auroruse
