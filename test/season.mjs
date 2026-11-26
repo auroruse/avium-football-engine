@@ -25,7 +25,7 @@ for (let h = 0; h < clubs.length; h++) for (let a = 0; a < clubs.length; a++) fo
   // (SEASON_HOME: only the fixtures with the first list's club at home.)
   if (ONLY.length === 2 && !((ONLY[0].includes(clubs[h].code) && ONLY[1].includes(clubs[a].code)) || (!process.env.SEASON_HOME && ONLY[1].includes(clubs[h].code) && ONLY[0].includes(clubs[a].code)))) continue;
   const idx = k++; if (idx % R !== part) continue;
-  const seed = (7e6 + (process.env.SEASON_SAME ? 0 : season) * 100003 + idx * 7919) >>> 0;   // SEASON_SAME: every season on the same dice
+  const seed = (7e6 + (process.env.SEASON_SAME ? 0 : season + +(process.env.SEASON_BASE || 0)) * 100003 + idx * 7919) >>> 0;   // SEASON_SAME: every season on the same dice
   // "app": the match as the app's own season plays it (src/sim/core.ts simPositionalMatch): the home side's advantage,
   // injuries on, the managers reading the opponent before kick-off. (No lay-offs or bans between matches: every man is
   // back for the next one.)
@@ -46,7 +46,7 @@ for (let h = 0; h < clubs.length; h++) for (let a = 0; a < clubs.length; a++) fo
     const P = [];
     for (const [sd, t] of [["home", H], ["away", A]]) for (const p of sr.playerData[sd])
       P.push([t.code, p.fullName || p.name, p.pos, p.mins ?? 0, p.goals || 0, p.assists || 0, +(p.rating ?? 0).toFixed(2), p.saves || 0, p.ovr0 ?? p.ovr]);
-    console.log(JSON.stringify({ s: season, v: variant, r: rep, m: idx,
+    console.log(JSON.stringify({ s: season + +(process.env.SEASON_BASE || 0), v: variant, r: rep, m: idx,
       // the dugout log, both sides: [side 0/1, minute, kind, text]
       L: ["home", "away"].flatMap((sd, n) => (LG?.[sd] || []).map(e => [n, e.min, e.k, e.t])), h: H.code, a: A.code, gh: sr.ftHome, ga: sr.ftAway, yh: sr.cards.home.yellows, ya: sr.cards.away.yellows,
       rh: sr.cards.home.reds, ra: sr.cards.away.reds, inj: sr.cards.home.injuries + sr.cards.away.injuries, P,
