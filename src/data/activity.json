@@ -1,5 +1,119 @@
 [
  {
+  "id": "e835d480",
+  "by": "auroruse",
+  "at": "2026-11-26T08:34:31.223Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "players",
+    "id": "p3261",
+    "name": "Shin SEGAWA",
+    "field": "pos",
+    "from": [
+     "RWB"
+    ],
+    "to": [
+     "RWB",
+     "CM"
+    ]
+   },
+   {
+    "kind": "players",
+    "id": "p3359",
+    "name": "Siim KALLASMAA",
+    "field": "pos",
+    "from": [
+     "RW"
+    ],
+    "to": [
+     "RW",
+     "ST"
+    ]
+   },
+   {
+    "kind": "players",
+    "id": "p1201",
+    "name": "Halvard SYVERTSEN",
+    "field": "pos",
+    "from": [
+     "CM",
+     "RM"
+    ],
+    "to": [
+     "RM",
+     "RWB"
+    ]
+   },
+   {
+    "kind": "players",
+    "id": "p3585",
+    "name": "Tomio SAKUMA",
+    "field": "pos",
+    "from": [
+     "LWB"
+    ],
+    "to": [
+     "CM"
+    ]
+   },
+   {
+    "kind": "teams",
+    "id": "t0211",
+    "name": "Locomotive Fūchumachi",
+    "field": "squad",
+    "from": [
+     "p1051",
+     "p2422",
+     "p3294",
+     "p3295",
+     "p3296",
+     "p3302",
+     "p1506",
+     "p3303",
+     "p4330",
+     "p3298",
+     "p1452",
+     "p3299",
+     null,
+     null,
+     "p5836",
+     "p3300",
+     null,
+     "p4326",
+     "p2290",
+     "p5433",
+     "p3426",
+     "p5840"
+    ],
+    "to": [
+     "p1051",
+     "p2422",
+     "p3294",
+     "p3295",
+     "p3296",
+     "p3302",
+     "p1506",
+     "p2290",
+     "p5433",
+     "p3298",
+     "p1452",
+     "p3299",
+     null,
+     null,
+     "p5836",
+     "p3300",
+     null,
+     "p4326",
+     "p3303",
+     "p4330",
+     "p3426",
+     "p5840"
+    ]
+   }
+  ]
+ },
+ {
   "id": "eae437bd",
   "by": "auroruse",
   "at": "2026-11-26T08:31:28.828Z",
