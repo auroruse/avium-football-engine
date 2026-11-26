@@ -6929,5 +6929,9 @@
 {"id":"p6994","name":"Eduars ZARIŅŠ","nat":"LVO","ovr":58,"born":"1916-04-08","pos":["LWB","LM"]},
 {"id":"p6995","name":"Jūtvaldis CĀLĪTIS","nat":"LVO","ovr":58,"born":"1917-02-28","pos":["RWB","RB"]},
 {"id":"p6996","name":"Sven FICHTE","nat":"LVO","ovr":63,"born":"1904-08-08","pos":["CM"]},
-{"id":"p6997","name":"Gunnar SCHULZ","nat":"LVO","ovr":60,"born":"1914-09-02","pos":["ST"]}
+{"id":"p6997","name":"Gunnar SCHULZ","nat":"LVO","ovr":60,"born":"1914-09-02","pos":["ST"]},
+{"id":"p6998","name":"Kiqa YUWAQI","nat":"ANT","ovr":76,"born":"1912-05-23","pos":["CB"],"badges":["tightmarker:2"]},
+{"id":"p6999","name":"Ken PUMAWILLKA","nat":"ANT","ovr":76,"born":"1911-04-04","pos":["CB"],"badges":["closesdown:2"]},
+{"id":"p7000","name":"Kiqa YUWAQI","nat":"ANT","ovr":76,"born":"1914-05-01","pos":["LB"],"badges":["rapid:2"]},
+{"id":"p7001","name":"Puqi QAWA","nat":"ANT","ovr":76,"born":"1916-03-19","pos":["RB"],"badges":["quickstep:1","relentless:1"]}
 ]
