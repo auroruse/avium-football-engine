@@ -2895,7 +2895,9 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 .ux-uce-pl { display: flex; flex-direction: column; max-height: 220px; overflow: auto; }
 .ux-uce-pr { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 120px) auto; align-items: center; gap: 8px; min-height: 26px; padding: 2px 4px;
   border-radius: 4px; font-size: 12px; text-align: left; }
-.ux-uce-mgrs .ux-uce-pr { grid-template-columns: minmax(0, 1fr) auto auto; }
+.ux-uce-mgrs .ux-uce-pr { grid-template-columns: minmax(0, 1fr) auto; min-height: 38px; }
+.ux-uce-mgrnm { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.ux-uce-mgrnm small { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ux-uce-pr:hover { background: var(--ux-panel-3); }
 .ux-uce-pr b { font-size: 11px; }
 .ux-uce-pn { min-width: 0; overflow: hidden; color: var(--ux-text); font-weight: 600; }
@@ -3142,7 +3144,7 @@ button.ux-dr-cell:hover { background: var(--ux-panel-3); border-color: var(--ux-
 .ux-uce-age > .ux-dim { white-space: nowrap; }
 .ux-np-tr { max-height: 300px; }
 .ux-uce-fort { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ux-body.ux-uce2 { grid-template-columns: minmax(230px, 260px) minmax(400px, 1fr) minmax(440px, 1.1fr) minmax(230px, 270px); }
+.ux-body.ux-uce2 { grid-template-columns: minmax(220px, 250px) minmax(440px, 1fr) minmax(400px, 1fr) minmax(220px, 260px); }
 
 /* The app's own list for a short choice (src/Sel.jsx), drawn at the app's root under its field. The fallbacks are for the
    older screens outside the app's frame, where the frame's colours are not set. */

@@ -16345,7 +16345,7 @@ export default function App() {
         : ucAdd === "new" ? <div className="ux-pbody">{uxNewManForm(T, k, i, place, onNew)}</div>
         : (
         <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-pool">
-          <colgroup><col style={{ width: 64 }} /><col /><col style={{ width: ucAdd === "mine" ? 150 : 34 }} /><col style={{ width: 38 }} /><col style={{ width: 48 }} /><col style={{ width: 82 }} /></colgroup>
+          <colgroup><col style={{ width: 54 }} /><col /><col style={{ width: 70 }} /><col style={{ width: 32 }} /><col style={{ width: 46 }} /><col style={{ width: 76 }} /></colgroup>
           <thead><tr><th>Pos</th><th>Player</th><th>{ucAdd === "mine" ? "Club" : "Nat"}</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th /></tr></thead>
           <tbody>{ids.map(id => { const r = recNow(id), own = ownOfId(id), at = whereIs.get(id)?.club, natT = natTeamByCode.get(r?.nat);
             return (
@@ -16353,8 +16353,8 @@ export default function App() {
                 <td><b style={{ ...mono, color: POS_CLR[own[0] || posOfId(id)] }}>{own[0] || posOfId(id)}</b>{own[1] && <span className="ux-uce-p2" style={{ color: POS_CLR[own[1]] }}>{own[1]}</span>}</td>
                 <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={r?.name || ""} size="100%" /></span>
                   <button type="button" className="ux-btnreset ux-strong ux-sqnm ux-a" onClick={() => openMan(r?.name)}><SlideName text={fullDisplayName(r?.name || id)} /></button></div></td>
-                <td>{ucAdd === "mine" ? <div className="ux-tc">{at && teamOfKey(at.key) && <TeamCrest team={teamOfKey(at.key)} size={16} />}<span className="ux-uce-fort">{edTeamRec(at?.key)?.name.trim() || ""}</span></div>
-                  : natT ? <span title={natT.name}><TeamCrest team={natT} size={16} /></span> : null}</td>
+                <td>{ucAdd === "mine" ? <div className="ux-tc" title={edTeamRec(at?.key)?.name.trim() || ""}>{at && teamOfKey(at.key) && <TeamCrest team={teamOfKey(at.key)} size={16} />}<span className="ux-uce-fort" style={mono}>{edTeamRec(at?.key)?.code || ""}</span></div>
+                  : natT || r?.nat ? <div className="ux-tc" title={natT?.name || ""}>{natT && <TeamCrest team={natT} size={16} />}<span className="ux-uce-fort" style={mono}>{natT?.code || r.nat}</span></div> : null}</td>
                 <td className="ux-n" style={mono}>{r?.born ? ageOf(r.born) : "–"}</td>
                 <td className="ux-c">{manBadge(id, r?.ovr)}</td>
                 <td className="ux-c"><button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => onTake(id)}>{uxIcon("plus", "ux-xs")}{ucAdd === "mine" ? "Move" : "Sign"}</button></td>
@@ -16388,7 +16388,7 @@ export default function App() {
       </div>
       {acts}
       <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-pool">
-        <colgroup><col style={{ width: 58 }} /><col style={{ width: "38%" }} /><col /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 92 }} /></colgroup>
+        <colgroup><col style={{ width: 54 }} /><col /><col style={{ width: 70 }} /><col style={{ width: 32 }} /><col style={{ width: 46 }} /><col style={{ width: act ? 88 : 6 }} /></colgroup>
         <thead><tr><th>Pos</th><th>Player</th><th>Club</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th /></tr></thead>
         <tbody>{ids.map(id => { const r = recNow(id), own = ownOfId(id), at2 = whereIs.get(id)?.club, cT = at2 ? teamOfKey(at2.key) : null;
           return (
@@ -16396,7 +16396,7 @@ export default function App() {
               <td><b style={{ ...mono, color: POS_CLR[own[0] || posOfId(id)] }}>{own[0] || posOfId(id)}</b>{own[1] && <span className="ux-uce-p2" style={{ color: POS_CLR[own[1]] }}>{own[1]}</span>}</td>
               <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={r?.name || ""} size="100%" /></span>
                 <button type="button" className="ux-btnreset ux-strong ux-sqnm ux-a" onClick={() => openMan(r?.name)}><SlideName text={fullDisplayName(r?.name || id)} /></button></div></td>
-              <td><div className="ux-tc">{cT && <TeamCrest team={cT} size={16} />}<span className="ux-uce-fort">{at2 ? edTeamRec(at2.key)?.name.trim() || "" : "Free Agent"}</span></div></td>
+              <td><div className="ux-tc" title={at2 ? edTeamRec(at2.key)?.name.trim() || "" : "Free Agent"}>{cT && <TeamCrest team={cT} size={16} />}<span className="ux-uce-fort" style={mono}>{at2 ? edTeamRec(at2.key)?.code || "" : "FA"}</span></div></td>
               <td className="ux-n" style={mono}>{r?.born ? ageOf(r.born) : "–"}</td>
               <td className="ux-c">{manBadge(id, r?.ovr)}</td>
               <td className="ux-c">{act && <button type="button" className="ux-btnreset ux-btn ux-uce-sm" onClick={() => onTake(id, at)}>{uxIcon(act === "Swap In" ? "swap" : "up", "ux-xs")}{act}</button>}</td>
@@ -16444,7 +16444,7 @@ export default function App() {
               <input className="ux-ed-in" autoFocus placeholder="Search Free Managers" aria-label="Search Free Managers" value={det.q} onChange={e => setUcDet({ ...det, q: e.target.value })} />
               <div className="ux-uce-pl ux-uce-mgrs">{freeMgrs.map(m => (
                 <button key={m.id} type="button" className="ux-btnreset ux-uce-pr" onClick={() => { shMoveMgr({ id: m.id, from: {} }, k); setUcDet(null); }}>
-                  <span className="ux-uce-pn"><SlideName text={fullDisplayName(m.name)} /></span><span className="ux-dim">{uxStyleName(edStyleOfMgr(m.id))}</span>{uxBadge(m.ovr)}</button>))}
+                  <span className="ux-uce-pn ux-uce-mgrnm"><SlideName text={fullDisplayName(m.name)} /><small>{uxStyleName(edStyleOfMgr(m.id))}</small></span>{uxBadge(m.ovr)}</button>))}
                 {!freeMgrs.length && <div className="ux-empty-sm">None</div>}</div>
               {(overseer || mgrNations(scope).length > 0) && <button type="button" className="ux-btnreset ux-btn" onClick={() => { setUcDet(null); edGoNewManager(k); }}>{uxIcon("plus", "ux-s")}New Manager</button>}
               {mgr && !isNew && uxArmBtn("sack:" + k, "Sack " + fullDisplayName(mgr.name), "Confirm Sack", () => { shSack({ from: { k } }); setUcDet(null); })}
@@ -16493,7 +16493,9 @@ export default function App() {
           <td><div className="ux-sqn"><span className="ux-sqf" aria-hidden="true"><PlayerShot name={nm} size="100%" /></span><span className="ux-strong ux-sqnm"><SlideName text={fullDisplayName(nm)} /></span>
             {edLockedMen.has("p:" + id) && <span className="ux-uce-wait" title="Waiting On A Request">{uxIcon("lock", "ux-xs")}</span>}</div></td>
           <td><div className="ux-sqtr">{traitsTop(seen(id, r?.badges) || []).map(b => <BadgeIcon key={b} id={b} size={14} />)}</div></td>
-          <td title={nat ? nat.name : undefined}><div className="ux-tc">{nat && <TeamCrest team={nat} size={16} />}</div></td>
+          {nt ? (() => { const c = whereIs.get(id)?.club, cT = c ? teamOfKey(c.key) : null, cR = c ? edTeamRec(c.key) : null;
+            return <td title={cR ? cR.name.trim() : "Free Agent"}><div className="ux-tc">{cT && <TeamCrest team={cT} size={16} />}</div></td>; })()
+            : <td title={nat ? nat.name : undefined}><div className="ux-tc">{nat && <TeamCrest team={nat} size={16} />}</div></td>}
           <td className="ux-n" style={mono}>{ag ?? "–"}</td>
           <td className="ux-c">{manBadge(id, r?.ovr)}</td>
           <td className={"ux-n" + (v != null ? "" : " ux-dim")} style={mono}>{v != null ? moneyLabel(v) : "–"}</td>
@@ -16528,8 +16530,8 @@ export default function App() {
       {(shMsg || ucCall) && <span className="ux-uce-msg">{shMsg}</span>}
       <span className="ux-ph-gap" />{extra}</>),
       <div className="ux-pbody"><table className="ux-tbl ux-sq ux-uce-sq">
-        <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 78 }} /></colgroup>
-        <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>Nat</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th></tr></thead>
+        <colgroup><col style={{ width: 46 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 32 }} /><col style={{ width: 36 }} /><col style={{ width: 46 }} /><col style={{ width: 64 }} /></colgroup>
+        <thead><tr><th>Pos</th><th>Player</th><th>Traits</th><th>{nt ? "Club" : "Nat"}</th><th className="ux-n">Age</th><th className="ux-c">Rtg</th><th className="ux-n">Value</th></tr></thead>
         <tbody>{Array.from({ length: Math.min(11, sq.length) }, (_, i) => row(i))}<tr className="ux-sep"><td colSpan={7} /></tr>
           {Array.from({ length: Math.max(0, sq.length - 11) }, (_, x) => row(11 + x))}</tbody>
       </table></div>, true);
