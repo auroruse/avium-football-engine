@@ -372,3 +372,23 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 122	1936	2026-11-25T23:45:55.395Z	player	p5960	Sadegh QESSEHGOU	CB	48	17	28000	t0305	Ketāb-e Mehr	t0317	SV Hansa Wolmar	GeneralVarah
 122	1936	2026-11-25T23:45:55.395Z	player	p4823	Jürgen Hollander	GK	55	20	62000	t0317	SV Hansa Wolmar	t0305	Ketāb-e Mehr	GeneralVarah
 123	1936	2026-11-25T23:58:56.538Z	player	p1539	Ruoyu SHAO	CM	70	25	1000000			t0287	Daryā Shushabad	GeneralVarah
+124	1935	2026-11-26T07:53:13.040Z	manager	m0080	Aitor ETXEBARRIA ZUBELDIA		75	59				t0203	Spartak Kanagawa	auroruse
+125	1935	2026-11-26T07:53:13.040Z	manager	m0358	Hidemasa ODAGIRI		78	58				t0204	Viridia Shikisen	auroruse
+126	1935	2026-11-26T07:53:13.040Z	manager	m0188	Cahit ERGÜDER		72	51		t0233	Manshu Tetsudō Harushige	t0205	Dynamo Mizuhara	auroruse
+127	1935	2026-11-26T07:53:13.040Z	manager	m0359	Kazutoshi MINEGISHI		80	49				t0207	Tsukumo Shinkeisei	auroruse
+128	1935	2026-11-26T07:53:13.040Z	manager	m0360	Tokuji HASEBE		81	47				t0213	Takarazuka Kaigun	auroruse
+129	1935	2026-11-26T07:53:13.040Z	manager	m0361	Ryōhei SAKURADA		75	49				t0215	Orughan FC	auroruse
+130	1935	2026-11-26T07:53:13.040Z	manager	m0169	Torazō MUROYA		78	56		t0204	Viridia Shikisen	t0218	Nikaidō Izumiya	auroruse
+131	1935	2026-11-26T07:53:13.040Z	manager	m0362	Masatane ICHINOSE		76	46				t0219	Ashihara FC	auroruse
+132	1935	2026-11-26T07:53:13.040Z	manager	m0246	Fumio TAKAHATA		73	47				t0220	Kōshū Sentinels	auroruse
+133	1935	2026-11-26T07:53:13.040Z	manager	m0168	Ansgar VOGELSANG		79	42		t0203	Spartak Kanagawa	t0221	Kannushi	auroruse
+134	1935	2026-11-26T07:53:13.040Z	manager	m0363	Genzō UTSUNOMIYA		76	50				t0223	AC Shirasagi	auroruse
+135	1935	2026-11-26T07:53:13.040Z	manager	m0364	Shōzō AMAKASU		71	60				t0225	Bankoku Genkai	auroruse
+136	1935	2026-11-26T07:53:13.040Z	manager	m0365	Kiyomaro FUKAMACHI		71	45				t0231	Union Takarazuka	auroruse
+137	1935	2026-11-26T07:53:13.040Z	manager	m0366	Sōichi NAKAGAWARA		72	50				t0233	Manshu Tetsudō Harushige	auroruse
+138	1935	2026-11-26T07:53:13.040Z	manager	m0367	Teruhiko IZUMIDA		79	49				t0234	Shiome Matsuumi	auroruse
+139	1935	2026-11-26T07:53:13.040Z	manager	m0368	Junpei KAJIWARA		74	45				t0235	Metallurg Motohora	auroruse
+140	1935	2026-11-26T07:53:13.040Z	manager	m0369	Masuo SHIGENO		77	46				t0236	Kochōrin Hyakuyonjū	auroruse
+141	1935	2026-11-26T07:53:13.040Z	manager	m0370	Kōsaku HIRUTA		72	39				t0239	IFK Korihama	auroruse
+142	1935	2026-11-26T07:53:13.040Z	manager	m0371	Torao YUKAWA		72	46				t0240	Tōhara Colliers	auroruse
+143	1935	2026-11-26T07:53:13.040Z	manager	m0372	Fusajirō OGINO		70	44				t0244	Daikei Petrolero	auroruse
