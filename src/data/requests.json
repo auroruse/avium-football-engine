@@ -1,1 +1,123 @@
-[]
+[
+ {
+  "by": "cornafiable",
+  "at": "2026-11-26T17:16:47.219Z",
+  "approved": [],
+  "id": "88ea930e",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Kiqa YUWAQI",
+  "rec": {
+   "what": "players",
+   "side": "t0403",
+   "at": 12,
+   "name": "Kiqa YUWAQI",
+   "nat": "ANT",
+   "born": "1912-05-23",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 76,
+   "badges": [
+    "tightmarker:2"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-26T17:16:47.219Z",
+  "approved": [],
+  "id": "09004fe4",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Ken PUMAWILLKA",
+  "rec": {
+   "what": "players",
+   "side": "t0403",
+   "at": 13,
+   "name": "Ken PUMAWILLKA",
+   "nat": "ANT",
+   "born": "1911-04-04",
+   "pos": [
+    "CB"
+   ],
+   "ovr": 76,
+   "badges": [
+    "closesdown:2"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-26T17:16:47.219Z",
+  "approved": [],
+  "id": "f659310c",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Kiqa YUWAQI",
+  "rec": {
+   "what": "players",
+   "side": "t0403",
+   "at": 14,
+   "name": "Kiqa YUWAQI",
+   "nat": "ANT",
+   "born": "1914-05-01",
+   "pos": [
+    "LB"
+   ],
+   "ovr": 76,
+   "badges": [
+    "rapid:2"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-26T17:16:47.219Z",
+  "approved": [],
+  "id": "444067e1",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Puqi QAWA",
+  "rec": {
+   "what": "players",
+   "side": "t0403",
+   "at": 15,
+   "name": "Puqi QAWA",
+   "nat": "ANT",
+   "born": "1916-03-19",
+   "pos": [
+    "RB"
+   ],
+   "ovr": 76,
+   "badges": [
+    "relentless:1",
+    "quickstep:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ }
+]
