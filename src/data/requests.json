@@ -13,7 +13,12 @@
     "auroruse"
    ]
   },
-  "locks": []
+  "locks": [],
+  "declined": {
+   "by": "auroruse",
+   "at": "2026-11-26T16:40:35.758Z",
+   "note": ""
+  }
  },
  {
   "by": "cornafiable",
