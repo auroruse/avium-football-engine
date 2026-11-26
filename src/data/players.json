@@ -6870,5 +6870,6 @@
 {"id":"p6935","name":"Florian SCHAUMANN","nat":"LVO","ovr":72,"born":"1916-10-23","pos":["LWB","LM"],"badges":["vision:1"]},
 {"id":"p6936","name":"Leonardo VĪTIŅŠ","nat":"LVO","ovr":71,"born":"1908-07-17","pos":["RWB","RB"],"badges":["manon:2","heavytouch:1"]},
 {"id":"p6937","name":"Alexander PRAGER","nat":"LVO","ovr":72,"born":"1909-07-05","pos":["CM","CB"],"badges":["squares:2","outoflegs:1"]},
-{"id":"p6938","name":"Tupaq Qakari","nat":"ANT","ovr":75,"born":"1918-10-17","pos":["CM","AM"],"badges":["trickster:1","tikitaka:2"]}
+{"id":"p6938","name":"Tupaq Qakari","nat":"ANT","ovr":75,"born":"1918-10-17","pos":["CM","AM"],"badges":["trickster:1","tikitaka:2"]},
+{"id":"p6939","name":"Tupaq Qaykuri","nat":"ANT","ovr":75,"born":"1918-11-30","pos":["CM","AM"],"badges":["passandmove:2"]}
 ]

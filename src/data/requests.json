@@ -22,39 +22,6 @@
  },
  {
   "by": "cornafiable",
-  "at": "2026-11-26T16:29:13.389Z",
-  "approved": [],
-  "id": "dbc70314",
-  "kind": "new",
-  "what": "players",
-  "teamName": "Tupaq Qaykuri",
-  "rec": {
-   "name": "Tupaq Qaykuri",
-   "nat": "ANT",
-   "born": "1918-11-30",
-   "pos": [
-    "CM",
-    "AM"
-   ],
-   "ovr": 76,
-   "badges": [
-    "passandmove:2"
-   ],
-   "bornSet": true,
-   "portrait": true,
-   "what": "players",
-   "side": "t0405",
-   "at": 17
-  },
-  "needs": {
-   "@overseer": [
-    "auroruse"
-   ]
-  },
-  "locks": []
- },
- {
-  "by": "cornafiable",
   "at": "2026-11-26T16:42:37.326Z",
   "approved": [],
   "id": "b01308f4",
