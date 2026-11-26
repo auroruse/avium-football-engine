@@ -6933,5 +6933,12 @@
 {"id":"p6998","name":"Kiqa YUWAQI","nat":"ANT","ovr":76,"born":"1912-05-23","pos":["CB"],"badges":["tightmarker:2"]},
 {"id":"p6999","name":"Ken PUMAWILLKA","nat":"ANT","ovr":76,"born":"1911-04-04","pos":["CB"],"badges":["closesdown:2"]},
 {"id":"p7000","name":"Kiqa YUWAQI","nat":"ANT","ovr":76,"born":"1914-05-01","pos":["LB"],"badges":["rapid:2"]},
-{"id":"p7001","name":"Puqi QAWA","nat":"ANT","ovr":76,"born":"1916-03-19","pos":["RB"],"badges":["quickstep:1","relentless:1"]}
+{"id":"p7001","name":"Puqi QAWA","nat":"ANT","ovr":76,"born":"1916-03-19","pos":["RB"],"badges":["quickstep:1","relentless:1"]},
+{"id":"p7002","name":"Mike Ketterer","nat":"LVO","ovr":72,"born":"1918-01-29","pos":["LW"],"badges":["longshot","greedy:1"]},
+{"id":"p7003","name":"Naglis Duda","nat":"LVO","ovr":70,"born":"1914-01-05","pos":["GK"],"badges":["penstopper:1"]},
+{"id":"p7004","name":"Ignas Bindokas","nat":"LVO","ovr":73,"born":"1910-01-10","pos":["CB"],"badges":["relentless:1"]},
+{"id":"p7005","name":"Zigmantas Kasparavičius","nat":"LVO","ovr":72,"born":"1917-01-15","pos":["RB"],"badges":["closesdown","ballwatcher"]},
+{"id":"p7006","name":"Leopold Sundermann","nat":"LVO","ovr":73,"born":"1909-03-26","pos":["LB"],"badges":["drawsfoul:1"]},
+{"id":"p7007","name":"Justus Hauer","nat":"LVO","ovr":72,"born":"1913-07-14","pos":["CB"],"badges":["passandmove:1"]},
+{"id":"p7008","name":"Johann Hagemann","nat":"LVO","ovr":73,"born":"1909-04-20","pos":["CB","RB"],"badges":["tightmarker:2","hothead:1"]}
 ]
