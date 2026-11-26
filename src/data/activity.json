@@ -1,5 +1,27 @@
 [
  {
+  "id": "e1970680",
+  "by": "auroruse",
+  "at": "2026-11-26T16:44:55.610Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "players",
+    "id": "p1059",
+    "name": "Ikki DAZAI",
+    "field": "pos",
+    "from": [
+     "LM",
+     "AM"
+    ],
+    "to": [
+     "LM",
+     "LW"
+    ]
+   }
+  ]
+ },
+ {
   "id": "fb60928b",
   "by": "auroruse",
   "at": "2026-11-26T16:44:40.934Z",

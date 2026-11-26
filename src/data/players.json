@@ -1035,7 +1035,7 @@
 {"id":"p1056","name":"Hiro OSHIRO","nat":"NCH","ovr":82,"born":"1913-07-21","pos":["DM","LM"],"badges":["crosser","poacher:1","squares:1"]},
 {"id":"p1057","name":"Itsuki TOGUCHI","nat":"NCH","ovr":80,"born":"1912-08-04","pos":["AM","CM"],"badges":["longball:3"]},
 {"id":"p1058","name":"Takeru MIKADO","nat":"NCH","ovr":82,"born":"1897-02-04","pos":["CM"],"badges":["composed:3","manon:2","outoflegs"]},
-{"id":"p1059","name":"Ikki DAZAI","nat":"NCH","ovr":82,"born":"1906-05-16","pos":["LM","AM"],"badges":["interceptor:1","shouldercheck:2","tempo:1","dwells:1"]},
+{"id":"p1059","name":"Ikki DAZAI","nat":"NCH","ovr":82,"born":"1906-05-16","pos":["LM","LW"],"badges":["interceptor:1","shouldercheck:2","tempo:1","dwells:1"]},
 {"id":"p1060","name":"Hiromu FURUHASHI","nat":"NCH","ovr":81,"born":"1907-04-02","pos":["ST"],"badges":["finisher:2","aerial:1"]},
 {"id":"p1061","name":"Joris VAN ANTWERP","nat":"ALE","ovr":89,"born":"1912-02-23","pos":["CB"],"badges":["tikitaka:3","pressresistant:1"]},
 {"id":"p1062","name":"Vojtěch NOVOTNÝ","nat":"ALE","ovr":80,"born":"1899-09-07","pos":["CB"],"badges":["tempo:2","manon","outoflegs"]},
