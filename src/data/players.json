@@ -6871,5 +6871,9 @@
 {"id":"p6936","name":"Leonardo VĪTIŅŠ","nat":"LVO","ovr":71,"born":"1908-07-17","pos":["RWB","RB"],"badges":["manon:2","heavytouch:1"]},
 {"id":"p6937","name":"Alexander PRAGER","nat":"LVO","ovr":72,"born":"1909-07-05","pos":["CM","CB"],"badges":["squares:2","outoflegs:1"]},
 {"id":"p6938","name":"Tupaq Qakari","nat":"ANT","ovr":75,"born":"1918-10-17","pos":["CM","AM"],"badges":["trickster:1","tikitaka:2"]},
-{"id":"p6939","name":"Tupaq Qaykuri","nat":"ANT","ovr":75,"born":"1918-11-30","pos":["CM","AM"],"badges":["passandmove:2"]}
+{"id":"p6939","name":"Tupaq Qaykuri","nat":"ANT","ovr":75,"born":"1918-11-30","pos":["CM","AM"],"badges":["passandmove:2"]},
+{"id":"p6940","name":"Awan CHAYASKA","nat":"ANT","ovr":75,"born":"1915-03-04","pos":["LB"]},
+{"id":"p6941","name":"Yuka WAYAQ","nat":"ANT","ovr":76,"born":"1913-06-08","pos":["CB"]},
+{"id":"p6942","name":"Waquya CHANKURI","nat":"ANT","ovr":74,"born":"1912-08-05","pos":["CB"]},
+{"id":"p6943","name":"Chawu YANKAYA","nat":"ANT","ovr":75,"born":"1911-04-23","pos":["RB"]}
 ]
