@@ -9220,16 +9220,19 @@ export default function App() {
   // play, and the winner in bold. Blocks run in order, left to right and down, in the theme's colours and face, saved as a
   // PNG the same way the bracket is. Crests are fetched and written into the picture, since an SVG drawn as an image cannot
   // reach them; a side with no crest gets the shield in its colours that TeamCrest draws.
-  const exportFixtures = async () => {
+  // A season's division (the user, 26 November 2026: fixture exports "individually for leagues in seasons"): `which` is its
+  // index, and the picture is its rounds alone under its name. Anything else (a click) is the whole tournament.
+  const exportFixtures = async (which) => {
+    const div = typeof which === "number" ? tGroups[which] : null, fxGroups = div ? [div] : tGroups, fxTitle = div ? div.name : tSlotName();
     const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : uiTheme === "1936cor" ? "Grenze,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
-    const blocks = [], many = tGroups.length > 1, seen = (m) => m && !m.bye && (m.home || m.away);
-    const nGR = Math.max(0, ...tGroups.map(g => g.schedule.length));
+    const blocks = [], many = fxGroups.length > 1, seen = (m) => m && !m.bye && (m.home || m.away);
+    const nGR = Math.max(0, ...fxGroups.map(g => g.schedule.length));
     for (let ri = 0; ri < nGR; ri++) {
       const rows = [];
-      tGroups.forEach((g, gi) => (g.schedule[ri] || []).forEach(m => { if (seen(m) && m.home && m.away) rows.push({ m, tag: many ? groupTag(g, gi) : null }); }));
+      fxGroups.forEach((g, gi) => (g.schedule[ri] || []).forEach(m => { if (seen(m) && m.home && m.away) rows.push({ m, tag: many ? groupTag(g, gi) : null }); }));
       if (rows.length) blocks.push({ title: "Round " + (ri + 1), rows });
     }
-    if (tKO) {
+    if (tKO && !div) {
       const add = (title, ms) => { const rows = ms.filter(seen).map(m => ({ m })); if (rows.length) blocks.push({ title, rows }); };
       tKO.rounds.forEach(rd => add(rd.name, rd.matches));
       (tKO.losers || []).forEach(rd => add(rd.name, rd.matches));
@@ -9263,7 +9266,7 @@ export default function App() {
       + '.sc{font-family:JetBrains Mono,monospace;font-size:11px;fill:var(--ui-text);text-anchor:middle}.t{fill:var(--ui-text);font-size:20px;font-weight:700}'
       + '.h{fill:var(--chrome-brand);font-size:10px;font-weight:700;letter-spacing:1.2px}.g{font-size:9px;font-weight:700;fill:var(--chrome-muted)}'
       + '.x{font-size:8px;font-weight:700;fill:var(--ui-attack)}</style>';
-    s += '<text x="' + pd + '" y="' + (pd + 22) + '" class="t">' + esc(tSlotName()) + '</text>';
+    s += '<text x="' + pd + '" y="' + (pd + 22) + '" class="t">' + esc(fxTitle) + '</text>';
     s += '<text x="' + (svgW - pd) + '" y="' + (pd + 22) + '" text-anchor="end" class="h">FIXTURES</text>';
     const badge = (t, x, y) => {
       const d = crest.get(t.name);
@@ -9303,7 +9306,7 @@ export default function App() {
     });
     s += '</svg>';
     s = inlineVars(s);
-    downloadSvgPng(s, `${tSlotName()} Fixtures.png`, [...fontStack.split(","), "JetBrains Mono"]);
+    downloadSvgPng(s, `${fxTitle} Fixtures.png`, [...fontStack.split(","), "JetBrains Mono"]);
   };
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
@@ -20732,7 +20735,7 @@ export default function App() {
     // A season's files a competition a section, each headed by its name and badge (the archive keeps them apart).
     const items = !tCal ? items0 : [
       ...tGroups.flatMap((g, gi) => [{ head: g.name, mark: <LeagueCrest league={g.name} size={16} /> },
-        ["Season File (.md)", () => tExportComp(gi, "md"), g.name], ["Player Stats (.tsv)", () => tExportComp(gi, "tsv"), g.name]]),
+        ["Season File (.md)", () => tExportComp(gi, "md"), g.name], ["Player Stats (.tsv)", () => tExportComp(gi, "tsv"), g.name], ["Fixtures (.png)", () => exportFixtures(gi), g.name]]),
       ...(tKO ? [{ head: tCupName, mark: <CupMark cup={tCupName} size={16} /> }, ["Season File (.md)", () => tExportComp("cup", "md"), "cup"],
         ["Player Stats (.tsv)", () => tExportComp("cup", "tsv"), "cup"], ["Bracket (.png)", exportBracket, "cup"]] : [])];
     return (<>
