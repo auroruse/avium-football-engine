@@ -6945,5 +6945,6 @@
 {"id":"p7010","name":"Tuya WAQA","nat":"ANT","ovr":75,"born":"1912-03-21","pos":["CB","DM"],"badges":["blocker:1","closesdown:1"]},
 {"id":"p7011","name":"Allapa WUKIRI","nat":"ANT","ovr":76,"born":"1912-09-21","pos":["CB"],"badges":["closesdown:2"]},
 {"id":"p7012","name":"Tuka WUPA","nat":"ANT","ovr":75,"born":"1917-01-08","pos":["LM","LW"],"badges":["rapid:1","quickstep:1"]},
-{"id":"p7013","name":"Chasa CHIKI","nat":"ANT","ovr":75,"born":"1907-11-07","pos":["LW"],"badges":["rapid","greedy:1"]}
+{"id":"p7013","name":"Chasa CHIKI","nat":"ANT","ovr":75,"born":"1907-11-07","pos":["LW"],"badges":["rapid","greedy:1"]},
+{"id":"p7014","name":"Juhani HETEMAJ","nat":"KAR","ovr":72,"born":"1919-01-26","pos":["LW","RW"],"badges":["longshot:1"]}
 ]
