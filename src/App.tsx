@@ -12309,7 +12309,7 @@ export default function App() {
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   // The sheet replaced the Teams, Players, Managers and Leagues pages; their forms are kept to review a request for a new
   // record, and the list form for Many. With neither open the editor is the sheet again.
-  useEffect(() => { if (!edNew && !["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers", "club", "league"].includes(edSec)) setEdSec("home"); }, [edNew, edSec]);
+  useEffect(() => { if (!edNew && !["home", "inbox", "activity", "trades", "requests", "draft", "newplayer", "newplayers", "newmanager", "club", "league"].includes(edSec)) setEdSec("home"); }, [edNew, edSec]);
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
@@ -12327,6 +12327,9 @@ export default function App() {
   const [plEdit, setPlEdit] = useState(false);       // a player's own page open for editing
   const [plSlot, setPlSlot] = useState(0);
   const [plOvr, setPlOvr] = useState(null);         // the rating being typed on a player's page           // what a click on the pitch sets: 0 his position, 1 his second
+  const [mgEdit, setMgEdit] = useState(false);       // a manager's own page open for editing (the overseer's)
+  const [mgOvr, setMgOvr] = useState(null);         // the rating being typed on a manager's page
+  const [edRoll, setEdRoll] = useState({});         // the Roll panel's figures, by side: { target, lo, hi }
   const [ucAdd, setUcAdd] = useState("fa");          // where men come from beside a club's squad: "fa", "mine", "new"
   const [ucQ, setUcQ] = useState("");                // the search over that list
   const [ucLine2, setUcLine2] = useState("ALL");     // a national side's nationals by line
@@ -12463,7 +12466,7 @@ export default function App() {
       if (t === "docs") { const p1 = (segs[1] || "").toLowerCase(), s2 = (segs[2] || "").toLowerCase(), has = (p) => p.sections.some(x => x.id === s2);
         const named = DOCS.find(p => p.id === (DOC_MOVED[p1] || p1)), pg = s2 && !(named && has(named)) ? DOCS.find(has) || named : named, id = pg && s2 && has(pg) ? s2 : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers"].includes(s) ? (s === "requests" ? "inbox" : s) : "home"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["home", "inbox", "activity", "trades", "requests", "draft", "newplayer", "newplayers", "newmanager"].includes(s) ? (s === "requests" ? "inbox" : s) : "home"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -15630,34 +15633,19 @@ export default function App() {
   const SH_TW = ["Never", "Sometimes", "Constantly"];
   const [shTab, setShTab] = useState(null);
   const [shSel, setShSel] = useState(null);            // the picked cell: { k: a side's key, c: its column }
-  const [shEdit, setShEdit] = useState(null);          // the cell being typed into: { k, c, v }
   const [shDock, setShDock] = useState("free");        // the dock's panel: "rec", "free" or "nat"
-  const [shRec, setShRec] = useState(null);            // the record open on the dock: { kind: "p" | "m", id, k } or a league { kind: "lg", id }
-  const [shDrag, setShDrag] = useState(null);          // what is being dragged: { kind: "p" | "m" | "row", id, from: { k, i } | { pool } }
-  const [shOver, setShOver] = useState(null);          // where it would land, lit: "k|c", "band|name" or "dock"
   const [shHist, setShHist] = useState({ past: [], future: [] });
-  const [shSort, setShSort] = useState(null);          // { c, dir }: each band's rows by a column
-  const [shFilt, setShFilt] = useState({});            // { [c]: the values kept }
-  const [shFiltOpen, setShFiltOpen] = useState(null);
-  const [shFind, setShFind] = useState(""), [shFindOpen, setShFindOpen] = useState(false), [shFindIdx, setShFindIdx] = useState(0);
-  const [shFreeQ, setShFreeQ] = useState("");
-  const [shAll, setShAll] = useState(false);
   const [shMsg, setShMsg] = useState("");
   const [shFormOpen, setShFormOpen] = useState(null);    // the New form on the dock, kept in edForms: "players" | "managers"
   const [shFormEdit, setShFormEdit] = useState(null);    // a new man already made, changed on the dock: { kind, src, f }
-  const [shFreeKind, setShFreeKind] = useState("p");     // the Free Agents panel's tab: players or managers
-  const [shRowMenu, setShRowMenu] = useState(null);      // a club row's menu: { k, x, y, arm?, roll?, target? }
   // A New Player (one) or New Manager form belongs on the dock; a list of new players, a club and a league open full width.
-  useEffect(() => { if (edRev || !edNew || ["home", "inbox", "activity", "sheet", "trades", "requests", "draft", "newplayer", "newplayers", "club", "league"].includes(edSec)) return;
-    if ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers") { setShFormOpen(edNew.kind); setShFormEdit(null); setShDock("rec"); setEdSec("sheet"); } },
+  useEffect(() => { if (edRev || !edNew || ["home", "inbox", "activity", "trades", "requests", "draft", "newplayer", "newplayers", "newmanager", "club", "league"].includes(edSec)) return;
+    if ((edNew.kind === "players" && edNew.mode !== "many") || edNew.kind === "managers") { setShFormOpen(edNew.kind); setShFormEdit(null); setEdSec(edNew.kind === "managers" ? "newmanager" : "newplayer"); } },
     [edRev, edNew, edSec]);
-  const shOrder = useRef(new Map()), shGrid = useRef(null), shFlat = useRef([]), shRowNo = useRef(new Map());
   const shSay = (m) => { setShMsg(m); };
   const shCan = (k) => !!k && (k.startsWith("new:") ? true : edMine(k));
   // Into the cart, with the step kept for undo.
   const shPut = (d) => { setShHist(h => ({ past: [...h.past.slice(-80), draft], future: [] })); edPut(d); setShMsg(""); };
-  const shUndo = () => setShHist(h => { if (!h.past.length) return h; const prev = h.past[h.past.length - 1]; commitDraft(prev); return { past: h.past.slice(0, -1), future: [draft, ...h.future] }; });
-  const shRedo = () => setShHist(h => { if (!h.future.length) return h; const next = h.future[0]; commitDraft(next); return { past: [...h.past, draft], future: h.future.slice(1) }; });
   // The tabs: the editor's own nations first, then every nation with clubs, A to Z; the rest are under All Nations.
   const shNats = useMemo(() => {
     const clubs = new Map();
@@ -15669,7 +15657,6 @@ export default function App() {
   }, [curRecs, scope]);
   const shTabNow = shTab === "ARTERRA" ? (arterraOn ? "ARTERRA" : null) : shTab && shNats.by.has(shTab) ? shTab : null;
   const shTabIs = shTabNow || shNats.bar[0]?.code || (ARTERRA ? "ARTERRA" : null);
-  const shOpenTab = (code) => { shOrder.current.delete(code); setShTab(code); setShSel(null); setShEdit(null); setShFilt({}); setShFiltOpen(null); setShAll(false); setShMsg(""); };
   // A side's figures, as men move: its squad's mean, its eleven's, its bench's, and its men's transfer values together.
   const shMean = (ids) => { const v = ids.map(id => (id && typeof id === "object" ? id.ovr : recNow(id)?.ovr)).filter(x => Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const shNums = (t) => { const sq = t._raw ? t._raw.map(v => v ?? null) : edSq(t);
@@ -15688,53 +15675,7 @@ export default function App() {
     if (T) { const sq = edSq(T).map((v, i) => (v || m.has(i) ? "x" : null)), lab = edLab(T);
       for (const n of rest) { const i = placeFor(sq, lab, posFitCost, posList(n.pos)); if (i >= 0) { sq[i] = "x"; m.set(i, n); } } }
     return m; };
-  // What a tab holds: its national sides (one, or Arterra's every one) and its clubs, a band a league, best first by OVR
-  // as the tab opened.
-  const shSections = (code) => {
-    const order = (keys, score) => { const o = shOrder.current.get(code) || new Map(); let fresh = false;
-      for (const k of keys) if (!o.has(k)) { o.set(k, -score(k) * 1000 + o.size); fresh = true; }
-      if (fresh) shOrder.current.set(code, o); return o; };
-    const rank = (ts) => { const o = order(ts.map(teamKey), (k) => shNums(edTeamRec(k)).ovr || 0); return [...ts].sort((a, b) => o.get(teamKey(a)) - o.get(teamKey(b))); };
-    if (code === "ARTERRA") {
-      const ts = curRecs.teams.filter(t => t.file === "ARTERRA"), gs = [...new Set(ts.map(t => t.group || ""))].sort();
-      return { groups: gs.map(g => ({ name: g || "Arterra", lg: null, nt: true, sides: rank(ts.filter(t => (t.group || "") === g)) })) };
-    }
-    const n = shNats.by.get(code); if (!n) return { groups: [] };
-    const lgs = (curRecs.leagues || []).filter(l => l.nation === code).sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9) || a.name.localeCompare(b.name));
-    const byG = new Map(); for (const t of n.clubs) byG.set(t.group || "", [...(byG.get(t.group || "") || []), t]);
-    const bands = [...lgs.map(l => ({ name: l.name, lg: l, sides: rank(byG.get(l.name) || []) })),
-      ...[...byG.keys()].filter(g => !lgs.some(l => l.name === g)).sort().map(g => ({ name: g || "Other Clubs", lg: null, sides: rank(byG.get(g)) }))];
-    // (a new league's band follows, with its founding clubs as new rows)
-    for (const nl of shNew.filter(x => x.what === "leagues" && x.nation === code)) bands.push({ name: nl.name || "New League", lg: null, newLg: nl, sides: [] });
-    return { groups: [{ name: "National Side", lg: null, nt: true, sides: [n.nt] }, ...bands] };
-  };
-  // The columns, a table's places long (sixteen for clubs, twenty-two for national sides).
-  const shCols = (places) => [
-    { c: "crest", w: 36, l: "" }, { c: "code", w: 56, l: "#" }, { c: "name", w: 190, l: "Team" },
-    { c: "ovr", w: 54, l: "OVR", n: true }, { c: "xi", w: 50, l: "XI", n: true }, { c: "bench", w: 58, l: "Bench", n: true }, { c: "value", w: 84, l: "Value", n: true },
-    { c: "formation", w: 112, l: "Formation" }, { c: "tw", w: 132, l: "Time Wasting" }, { c: "mgr", w: 268, l: "Manager" },
-    { c: "home", w: 90, l: "Home" }, { c: "away", w: 90, l: "Away" }, { c: "city", w: 150, l: "City" }, { c: "ground", w: 210, l: "Ground" }, { c: "cap", w: 90, l: "Capacity", n: true },
-    ...Array.from({ length: places }, (_, i) => ({ c: "p" + i, w: 252, l: "#" + (i + 1), place: i }))];
-  const SH_FROZEN = { rn: 0, crest: 44, code: 80, name: 136 };
-  const shLetter = (i) => { let s = ""; i += 1; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
   const shCity = (t) => stripVenue(t.location || "");
-  // A cell's value as the bar shows it, and as sorting and filtering read it.
-  const shText = (t, c) => {
-    if (!t) return "";
-    const nums = ["ovr", "xi", "bench", "value"].includes(c) ? shNums(t) : null;
-    if (c === "name") return t.name.trim(); if (c === "code") return t.code || "";
-    if (nums) return c === "value" ? (nums.value != null ? moneyLabel(nums.value) : "") : nums[c] != null ? nums[c].toFixed(1) : "";
-    if (c === "formation") return String(t.formation || "").trim(); if (c === "tw") return t.timeWasting || "Never";
-    if (c === "mgr") { const m = typeof t.manager === "string" ? mgrNow(t.manager) : null; return m ? `(${showOvr(m.ovr)}) ${m.name} · ${STYLE_LBL[edStyleOfMgr(m.id)] || ""}` : ""; }
-    if (c === "home" || c === "away") return String(t[c] || "").toUpperCase(); if (c === "city") return shCity(t);
-    if (c === "ground") return stripVenue(t.stadium || ""); if (c === "cap") return venueCap(t.stadium) || "";
-    if (c.startsWith("p")) { const i = +c.slice(1), id = edSq(t)[i], r = id ? recNow(id) : null, lab = edLab(t)[i];
-      return r ? `${lab} · (${showOvr(seen(id, r.ovr))}) ${r.name}${r.nat !== (isNational(t) ? t.code : t.nation) ? " [" + r.nat + "]" : ""}` : `${lab} · Open`; }
-    return "";
-  };
-  const shSortVal = (t, c) => { const nums = ["ovr", "xi", "bench", "value"].includes(c) ? shNums(t) : null;
-    if (nums) return nums[c] ?? -1; if (c === "cap") return +String(venueCap(t.stadium) || "0").replace(/,/g, "");
-    if (c === "mgr") return mgrNow(idOf(t.manager))?.ovr ?? -1; if (c.startsWith("p")) { const id = edSq(t)[+c.slice(1)]; return seen(id, recNow(id)?.ovr) ?? -1; } return shText(t, c).toLowerCase(); };
   // MOVES. Inside one's own sheet a man is dragged onto a place: onto a taken one the two change places, onto an empty one
   // he moves there. A club's man onto his national side is called up and stays at his club; a national side's men move
   // only within it. From the Free Agents panel he is signed, the man in the place going to free agency; onto the panel he
@@ -15793,51 +15734,6 @@ export default function App() {
   // KARTACA [SEL]", his nation tagged when it is not the side's). He is a new record in the cart at that place, a request
   // for an editor, the tab's national, his surname set in capitals; with no position the place's, with no age one drawn.
   const shParseMan = (s) => { const r = readManLine(s); return r ? { ...r.man, bad: r.bad } : null; };
-  // Lines into men: a line a man, or a row of cells copied from a sheet, a man a cell, going to places one after another
-  // (user, 12 October 2026: "I need to be able to bulk import names like this ... and they should go to separate slots").
-  // A cell holding only a position gives it to the man before; an empty cell keeps its place, so a registry row lines up
-  // with the places it came from. A line or cell that cannot be read whole makes nobody (a cell still keeps its place),
-  // and is said.
-  const shReadMen = (lines) => { const out = [], bad = [];
-    const take = (p, keep) => { if (!p) return; if (!p.bad.length) out.push(p); else { bad.push(p); if (keep) out.push(null); } };
-    for (const line of lines) {
-      if (!line.includes("\t")) { take(shParseMan(line), false); continue; }
-      for (const raw of line.split("\t")) { const c = raw.trim().replace(/^"(.*)"$/, "$1").trim(), prev = out[out.length - 1];
-        if (!c) { out.push(null); continue; }
-        if (POSITIONS.includes(c.toUpperCase())) { if (prev && prev.pos.length < 2 && !prev.pos.includes(c.toUpperCase())) prev.pos.push(c.toUpperCase()); continue; }
-        take(shParseMan(c), true); } }
-    while (out.length && !out[out.length - 1]) out.pop();
-    return { men: out, bad }; };
-  const shNewMen = (k, i, lines) => {
-    const { men, bad } = shReadMen(lines), read = men.filter(Boolean).length, unknown = new Set();
-    // His nation: the tag he came with, else the side's; a tag naming no nation is said so, and the side's taken.
-    const natOf = (p, own) => { if (!p.nat || p.nat === own) return own; if (natTeamByCode.get(p.nat)) return p.nat; unknown.add(p.nat); return own; };
-    const why = bad.length ? `${bad[0].name}: ${uxTitle(bad[0].bad[0])}${bad.length > 1 ? ` (And ${bad.length - 1} More)` : ""}` : "";
-    const note = (n) => shSay([n < read ? `Room For ${n} Of ${read}` : "", unknown.size ? `${[...unknown].join(", ")}: No Such Nation` : "", why].filter(Boolean).join(" · "));
-    // His age the line's, else drawn: a college's men 18 to 21 (DESIGN.md, The ANCC), anyone else's 18 to 32. A college
-    // man's year follows from it (withGrads).
-    const span = shCollege(k) ? 4 : 15;
-    const man = (p, own, lab) => { const def = { DEF: "CB", MID: "CM", FWD: "ST" }[lab] || lab;
-      return { id: edUid(), name: p.name, nat: natOf(p, own), born: edBornFor(p.age ?? (18 + Math.floor(Math.random() * span))), pos: p.pos.length ? p.pos : [def].filter(x => POSITIONS.includes(x)), ovr: p.ovr,
-        ...(p.badges.length ? { badges: p.badges } : null) }; };
-    if (k.startsWith("new:")) { const x = shClubOf(k); if (!x) return; const sq = padSq(x.c.squad), nat = shSideNat(k), lab = slotLabels(String(x.c.formation || "4-3-3"), sq.length, true);
-      let at = i, n = 0, last = -1;
-      for (const p of men) { if (!p) { at++; continue; } while (at < sq.length && sq[at]) at++; if (at >= sq.length) break;
-        sq[at] = man(p, nat, lab[at]); last = at; at++; n++; }
-      if (!n) return shSay(read ? "No Open Place From Here" : why || "Type A Name: (84) Name SURNAME, ST, 24, Finisher");
-      shSetClub(k, { squad: sq }); note(n);
-      if (n === 1 && read === 1) shOpenEdit("players", { club: k, i: last }, sq[last]); return; }
-    const T = edTeamRec(k); if (!T || !shCan(k)) return;
-    const sq = edSq(T), taken = shNewAt(k), nat = isNational(T) ? T.code : T.nation, lab = edLab(T), add = [];
-    let at = i;
-    for (const p of men) { if (!p) { at++; continue; }
-      while (at < sq.length && (sq[at] || taken.has(at))) at++;
-      if (at >= sq.length) break;
-      add.push({ ...man(p, nat, lab[at]), what: "players", side: k, at }); at++; }
-    if (!add.length) return shSay(read ? "No Open Place From Here" : why || "Type A Name: (84) Name SURNAME, ST, 24, Finisher");
-    shPut({ ...draft, new: [...shNew, ...add] }); note(add.length);
-    if (add.length === 1 && read === 1) shOpenEdit("players", { cart: add[0].id }, add[0]);
-  };
   const shNewItem = (id) => shNew.find(n => n.id === id) || null;
   // A NEW MANAGER, made in a side's empty manager cell (typed, or its +): of the editor's own nation, a request for an
   // editor, and he takes the side over when he is let in.
@@ -15847,7 +15743,6 @@ export default function App() {
     const item = { id: edUid(), what: "managers", name: p.name || "", nat, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T.style) || "balanced",
       ovr: p.ovr ?? null, side: k };
     shPut({ ...draft, new: [...shNew, item] }); setShSel({ k, c: "mgr" }); shOpenEdit("managers", { cart: item.id }, item); };
-  const shPlusMan = (k, i) => { if (shCan(k)) shOpenNew("players", k, i); };
   // THE NEW-RECORD FORM on the dock (user, 12 October 2026: "the full form"). A New Player or New Manager being made is
   // kept in this browser as every New form is (edForms), until Add To Cart or Cancel; a new man already made (in the cart,
   // or typed into a new club) opens in the same form, and Done writes him back.
@@ -15909,22 +15804,6 @@ export default function App() {
     else shPut({ ...draft, new: [...shNew, { ...o, what: "managers" }] });
     setEdForms(m => { const out = { ...m }; delete out[kind]; return out; }); setShFormOpen(null); };
   const shCancelNew = (kind) => { setEdForms(m => { const out = { ...m }; delete out[kind]; return out; }); setShFormOpen(null); };
-  const shFormDone = () => { const e = shFormEdit; if (!e) return; const o = shFormObj(e.kind, e.f);
-    if (e.src.cart) shSetNew(e.src.cart, o);
-    else if (e.src.clubMgr) { const x = shClubOf(e.src.clubMgr); if (x) shSetClub(e.src.clubMgr, { manager: { ...x.c.manager, ...o } }); }
-    else { const x = shClubOf(e.src.club); if (x) { const sq = [...(x.c.squad || [])], v = sq[e.src.i];
-      sq[e.src.i] = { ...v, ...o, auto: !!v?.auto && o.ovr === shNum(v.ovr) }; shSetClub(e.src.club, { squad: sq }); } }
-    setShFormEdit(null); };
-  const shFormRemove = () => { const e = shFormEdit; if (!e) return;
-    if (e.src.cart) shDropNew(e.src.cart);
-    else if (e.src.clubMgr) shSetClub(e.src.clubMgr, { manager: null });
-    else { const x = shClubOf(e.src.club); if (x) { const sq = [...(x.c.squad || [])]; sq[e.src.i] = null; shSetClub(e.src.club, { squad: sq }); } }
-    setShFormEdit(null); };
-  // Many: the list form, full width (src/App.tsx renderEdBatch), carrying this form's nationality and side.
-  const shToMany = () => { const f = edForms.players || {};
-    setEdForms(m => ({ ...m, players: { kind: "players", mode: "many", nat: f.nat || (scope.nations || [])[0] || "", amin: 18, amax: shCollege(f.side) ? 21 : 32, text: "", list: [],
-      side: f.side && !f.side.startsWith("new:") ? f.side : null } }));
-    setShFormOpen(null); setEdFormOff(o => ({ ...o, players: false })); setEdSec("players"); };
   // A new club in the cart, on its own or one of a new league's founding clubs; its row's key is "new:" and its ID. The row
   // reads it as a side: existing men by ID, new men as their own records in their places.
   const shNewClubs = useMemo(() => { const out = new Map();
@@ -15940,11 +15819,6 @@ export default function App() {
       : n.what === "leagues" && (n.clubs || []).some(c => c.id === id) ? { ...n, clubs: n.clubs.map(c => (c.id === id ? { ...c, ...patch } : c)) } : n)) }); };
   const shClubSeed = (code, group) => ({ id: edUid(), name: "", code: "", home: "#888888", away: "#ffffff", stadium: "", location: "", group, formation: "4-3-3",
     timeWasting: "Never", manager: null, squad: Array(SQUAD_PLACES).fill(null) });
-  const shAddClub = (code, band) => {
-    if (band.newLg) { const c = shClubSeed(code, band.newLg.name); shPut({ ...draft, new: shNew.map(n => (n.id === band.newLg.id ? { ...n, clubs: [...(n.clubs || []), c] } : n)) }); setShSel({ k: "new:" + c.id, c: "name" }); return; }
-    const c = { ...shClubSeed(code, band.name), what: "teams", nation: code }; shPut({ ...draft, new: [...shNew, c] }); setShSel({ k: "new:" + c.id, c: "name" }); };
-  const shAddLeague = (code) => { const tiers = (curRecs.leagues || []).filter(l => l.nation === code).map(l => l.tier ?? 1);
-    shPut({ ...draft, new: [...shNew, { id: edUid(), what: "leagues", nation: code, name: "", tier: tiers.length ? Math.max(...tiers) + 1 : 1, cup: null, clubs: [] }] }); };
   const shSetNew = (id, patch) => shPut({ ...draft, new: shNew.map(n => (n.id === id ? { ...n, ...patch } : n)) });
   const shDropNew = (id) => shPut({ ...draft, new: shNew.filter(n => n.id !== id) });
   // An edit to a side's cell. A code is the overseer's to agree (a ground, capacity and city go live): an editor's change goes as a
@@ -15967,635 +15841,6 @@ export default function App() {
     if (c === "ground" || c === "cap") { const g = c === "ground" ? val.trim() : stripVenue(T.stadium || ""), cap = (c === "cap" ? val.trim() : venueCap(T.stadium) || "").replace(/[^\d,]/g, "");
       const n = cap ? Number(cap.replace(/,/g, "")).toLocaleString("en-US") : ""; if (g) patch({ stadium: g + (n ? ` (${n})` : "") }); return; }
   };
-  const shEditable = (k, c) => shCan(k) && ["name", "code", "formation", "tw", "home", "away", "city", "ground", "cap"].includes(c);
-  // The men in a new club's places: an existing man by ID, or a new one made there.
-  const shClubMan = (k, i) => { const x = shClubOf(k); const v = x?.c.squad?.[i]; return v && typeof v === "object" ? v : null; };
-  const SH_ASKED = new Set(["code"]);            // (a ground, capacity and city go live: 21 November 2026)
-  // What changed in the cart for a side's column, and whether it waits on the overseer.
-  const shChanged = (k, c) => { const p = draft.teams?.[k]; if (!p) return false;
-    const f = { name: "name", code: "code", formation: "formation", tw: "timeWasting", mgr: "manager", home: "home", away: "away", city: "location", ground: "stadium", cap: "stadium" }[c];
-    if (f) return f in p; if (c.startsWith("p") && p.squad) { const base = recBase.teams.find(t => teamKey(t) === k); const i = +c.slice(1); return idOf(base?.squad?.[i]) !== idOf(p.squad[i]); } return false; };
-  const shAskedVal = (k, c) => { if (overseer || !SH_ASKED.has(c) || !shChanged(k, c)) return null; const base = recBase.teams.find(t => teamKey(t) === k);
-    return base ? shText(base, c) : null; };
-  // The keyboard: arrows and Tab move, Enter or a letter edits, Escape lets go, Delete releases a man or sacks a manager,
-  // and Ctrl+Z / Ctrl+Y undo and redo.
-  const shMove = (dr, dc) => {
-    const flat = shFlat.current; if (!flat.length) return;
-    const r0 = shSel ? flat.findIndex(r => r.k === shSel.k) : -1, row = flat[Math.max(0, r0)];
-    const ci0 = shSel ? row.cols.findIndex(c => c.c === shSel.c) : 0;
-    const r1 = Math.max(0, Math.min(flat.length - 1, (r0 < 0 ? 0 : r0) + dr)), nrow = flat[r1];
-    let c1 = row.cols[Math.max(0, ci0)]?.c || "name";
-    if (dc) { const ci = Math.max(0, Math.min(row.cols.length - 1, ci0 + dc)); c1 = row.cols[ci].c; }
-    if (!nrow.cols.some(c => c.c === c1)) { const places = nrow.cols.filter(c => c.place != null); c1 = places[places.length - 1]?.c || "name"; }
-    setShSel({ k: nrow.k, c: c1 });
-  };
-  // A drop-down's list, or a colour picker, shown as its box appears (the click that opened the cell still counts).
-  const shRefocus = () => { const a2 = document.activeElement;
-    if (!a2 || a2 === document.body || (shGrid.current?.contains(a2) && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(a2.tagName))) shGrid.current?.focus(); };
-  const shOpenNow = (el) => { if (el && !el.dataset.shown) { el.dataset.shown = "1"; try { el.showPicker?.(); } catch {} } };
-  const shStartEdit = (k, c, v) => {
-    if (c.startsWith("p")) { const T = shRowOf(k), i = +c.slice(1); if (!T || !shCan(k) || edSq(T)[i] || shNewAt(k).has(i) || shClubMan(k, i)) return false; setShEdit({ k, c, v: v ?? "" }); return true; }
-    if (c === "mgr") { const T = edTeamRec(k); if (!T || !shCan(k) || idOf(T.manager) || shNewMgr(k)) return false; setShEdit({ k, c, v: v ?? "" }); return true; }
-    if (!shEditable(k, c)) return false; const T = shRowOf(k);
-    setShEdit({ k, c, v: v ?? (c === "home" || c === "away" ? String(T[c] || "") : shText(T, c)) }); return true; };
-  const shKey = (e) => {
-    if (shEdit || e.target !== e.currentTarget) return;
-    const mod = e.metaKey || e.ctrlKey;
-    if (mod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) shRedo(); else shUndo(); return; }
-    if (mod && (e.key === "y" || e.key === "Y")) { e.preventDefault(); shRedo(); return; }
-    if (!shSel) { if (e.key.startsWith("Arrow")) { e.preventDefault(); shMove(0, 0); } return; }
-    const { k, c } = shSel;
-    if (e.key === "ArrowDown") { e.preventDefault(); shMove(1, 0); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); shMove(-1, 0); }
-    else if (e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey)) { e.preventDefault(); shMove(0, 1); }
-    else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) { e.preventDefault(); shMove(0, -1); }
-    else if (e.key === "Escape") { setShSel(null); }
-    else if (e.key === "Enter") { e.preventDefault(); const T = shRowOf(k);
-      if (c === "mgr") { const m = idOf(T?.manager), nm = shNewMgr(k);
-        if (T?.manager && typeof T.manager === "object") shOpenEdit("managers", { clubMgr: k });
-        else if (m) { setShRec({ kind: "m", id: m, k }); setShDock("rec"); }
-        else if (nm) shOpenEdit("managers", { cart: nm.id }, nm); else shStartEdit(k, c, ""); }
-      else if (c.startsWith("p")) { const id = T && edSq(T)[+c.slice(1)], nm = shNewAt(k).get(+c.slice(1)); if (id) { setShRec({ kind: "p", id, k }); setShDock("rec"); } else if (nm) { if (!nm.batch) shOpenEdit("players", { cart: nm.id }, nm); }
-        else if (shClubMan(k, +c.slice(1))) shOpenEdit("players", { club: k, i: +c.slice(1) }); else shStartEdit(k, c, ""); }
-      else shStartEdit(k, c); }
-    else if (e.key === "Delete" || e.key === "Backspace") { const T = shRowOf(k); if (!T) return; e.preventDefault();
-      if (k.startsWith("new:")) { if (c === "mgr") shSetClub(k, { manager: null }); else if (c.startsWith("p")) { const sq = [...(shClubOf(k).c.squad || [])]; sq[+c.slice(1)] = null; shSetClub(k, { squad: sq }); } return; }
-      if (c === "mgr") { const nm = shNewMgr(k); if (nm) shDropNew(nm.id); else shSack({ from: { k } }); }
-      else if (c.startsWith("p")) { const i = +c.slice(1), id = edSq(T)[i], nm = shNewAt(k).get(i); if (id) shRelease({ id, from: { k, i } });
-        else if (nm) { if (nm.batch) shSay("One Of A List: Remove The List From The Cart"); else shDropNew(nm.id); } } }
-    else if (e.key.length === 1 && !mod) { if (shStartEdit(k, c, e.key)) e.preventDefault(); }
-  };
-  useEffect(() => { if (!shSel) return; const el = shGrid.current?.querySelector(`[data-cell="${CSS.escape(shSel.k + "|" + shSel.c)}"]`);
-    el?.scrollIntoView({ block: "nearest", inline: "nearest" }); }, [shSel]);
-  // The tab a side is on: its nation's, or Arterra's.
-  const shTabOfSide = (t) => (t.file === "ARTERRA" ? "ARTERRA" : isNational(t) ? t.code : t.nation);
-  // FIND, across every tab: a man (where he plays), a manager (where he manages) or a side.
-  const shFindHits = useMemo(() => {
-    const q = edFold(shFind); if (q.length < 2) return [];
-    const hit = (s) => (" " + edFold(s)).includes(" " + q), out = [];
-    const tabOf = shTabOfSide;
-    for (const t of curRecs.teams) { if (!arterraOn && t.file === "ARTERRA") continue;
-      if (hit(t.name) || edFold(t.code) === q) out.push({ key: "t" + teamKey(t), label: t.name.trim(), sub: t.code, go: { tab: tabOf(t), k: teamKey(t), c: "name" } });
-      const m = mgrNow(idOf(t.manager)); if (m && hit(m.name)) out.push({ key: "m" + m.id + teamKey(t), label: m.name, sub: t.name.trim(), go: { tab: tabOf(t), k: teamKey(t), c: "mgr" } });
-      edSq(t).forEach((id, i) => { const r = id && recNow(id); if (r && hit(r.name)) out.push({ key: "p" + id + teamKey(t), label: r.name, sub: t.name.trim(), go: { tab: tabOf(t), k: teamKey(t), c: "p" + i } }); });
-    }
-    return out.slice(0, 40);
-  }, [shFind, curRecs, arterraOn, draft]);
-  // From the Registry's Edit Club and Edit Player: the sheet at that side's row, or at that man's chip.
-  const shOpenSide = (k) => { const t = edTeamRec(k); setTab("editor"); setEdSec("sheet"); if (!t) return;
-    const tb = shTabOfSide(t); if (tb !== shTabIs) shOpenTab(tb); setShSel({ k, c: "name" }); setShDock("line"); };
-  const shOpenMan = (id) => { const w = whereIs.get(id), k = w?.club?.key || w?.nt?.key; setTab("editor"); setEdSec("sheet"); setShRec({ kind: "p", id, k }); setShDock("rec");
-    const t = k && edTeamRec(k); if (!t) return; const tb = shTabOfSide(t); if (tb !== shTabIs) shOpenTab(tb); setShSel({ k, c: "p" + edSq(t).indexOf(id) }); };
-  const shGo = (g) => { if (g.tab !== shTabIs) shOpenTab(g.tab); setShSel({ k: g.k, c: g.c }); setShFind(""); setShFindOpen(false); shGrid.current?.focus(); };
-  // The free men, best first: every player in no squad (retired ones aside) and every manager out of work.
-  // (A man who plays only for his national side is one; user, 12 October 2026: "national team-only free agents aren't shown".)
-  const shFree = useMemo(() => {
-    const q = shFreeQ;
-    // Of the tab's world: Arterra's men for the Arterra tab, Avium's for every other (user, 12 October 2026: "why are arterra
-    // managers showing in avium new team????").
-    const art = shTabIs === "ARTERRA";
-    const men = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && artNats.has(p.nat) === art && edHit(q, p.name)).sort((a, b) => b.ovr - a.ovr);
-    const busy = new Set(curRecs.teams.filter(t => !isNational(t)).map(t => idOf(t.manager)).filter(Boolean));
-    const mgrs = curRecs.managers.filter(m => !busy.has(m.id) && artNats.has(m.nat) === art && edHit(q, m.name)).sort((a, b) => b.ovr - a.ovr);
-    return { men, mgrs };
-  }, [curRecs, whereIs, shFreeQ, artNats, shTabIs]);
-  // A drag's data rides in the event too, so a drop always knows what it carries.
-  const shDragStart = (e, src) => { setShDrag(src); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", JSON.stringify(src)); } catch {} };
-  const shDragEnd = () => { setShDrag(null); setShOver(null); };
-  const shCanDrop = (k, c) => { const s = shDrag; if (!s || !shCan(k)) return false;
-    if (s.kind === "p") return c.startsWith("p"); if (s.kind === "m") return c === "mgr"; return false; };
-  const shDrop = (k, c) => { const s = shDrag; setShDrag(null); setShOver(null); if (!s) return;
-    if (s.kind === "p" && c.startsWith("p")) shMovePlayer(s, k, +c.slice(1));
-    else if (s.kind === "m" && c === "mgr") shMoveMgr(s, k); };
-  // A man's chip: his rating in its metal, given name and SURNAME, his nation's code when he is not the tab's national,
-  // and in a place he plays out of position, a bench place of another group too, the rating he plays it at, ringed, with
-  // what it costs him.
-  const shChip = (id, k, i, place, natCode, mine) => {
-    const r = recNow(id); if (!r) return <span className="ux-sh-chip ux-sh-gone">{id}</span>;
-    const ovr = seen(id, r.ovr), own = ownOfId(id), oop = place && uxOop(own, place), at = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
-    const lock = edLockedMen.has("p:" + id), drag = mine && !lock, yr = hidMan(id) ? yearOf(r.grad) : null;
-    return (
-      <span className={"ux-sh-chip" + (lock ? " ux-sh-locked" : "")} draggable={drag} title={`${r.name} (${posText(own) || place})${yr ? ", " + YEARS[yr - 1] : ""}`}
-        onDragStart={drag ? (e) => shDragStart(e, { kind: "p", id, from: { k, i } }) : undefined} onDragEnd={shDragEnd}
-        onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "p" + i }); setShRec({ kind: "p", id, k }); setShDock("rec"); }}>
-        {uxHasOvr(at) ? <span className={"ux-sh-rtg" + (oop ? " ux-oop" : "") + (ringed(id) ? " ux-hid" : "")} title={ringed(id) ? HID_TIP : undefined}
-          style={{ background: ovrSheen(ovrMetal(at)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono }}>{showOvr(at)}</span>
-          : <span className={"ux-sh-rtg ux-sh-blank" + (oop ? " ux-oop" : "")} style={mono}>–</span>}
-        <span className="ux-sh-cn"><SlideName text={r.name} /></span>
-        {r.nat !== natCode && <span className="ux-sh-nat" style={mono}>{r.nat}</span>}
-        {yr && <span className="ux-sh-nat ux-sh-yr" style={mono}>{"Y" + yr}</span>}
-        {oop && <span className="ux-sh-cost" style={mono}><UxArrow />{uxHasOvr(ovr) ? Math.round(+ovr) - Math.round(at) : posDrop(own, place)}</span>}
-        {lock && <span className="ux-sh-lk">{uxIcon("lock", "ux-xs")}</span>}
-      </span>);
-  };
-  const shMgrChip = (id, k, mine) => {
-    const m = mgrNow(id); if (!m) return null; const st = edStyleOfMgr(id), lock = edLockedMen.has("m:" + id), drag = mine && !lock;
-    return (
-      <span className={"ux-sh-chip ux-sh-mchip" + (lock ? " ux-sh-locked" : "")} draggable={drag} title={`${m.name} (${STYLE_LBL[st]})`}
-        onDragStart={drag ? (e) => shDragStart(e, { kind: "m", id, from: { k } }) : undefined} onDragEnd={shDragEnd}
-        onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "mgr" }); setShRec({ kind: "m", id, k }); setShDock("rec"); }}>
-        <span className="ux-sh-rtg" style={{ background: ovrSheen(ovrMetal(m.ovr)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono }}>{showOvr(m.ovr)}</span>
-        <span className="ux-sh-cn"><SlideName text={m.name} /></span>
-        <span className="ux-sh-st" style={{ color: STYLE_CLR[st] }}>{STYLE_LBL[st]}</span>
-        {lock && <span className="ux-sh-lk">{uxIcon("lock", "ux-xs")}</span>}
-      </span>);
-  };
-  // A new man in the cart, faint in his place until the overseer lets him in.
-  const shNewChip = (n, k, i) => (
-    <span className="ux-sh-chip ux-sh-new" title={n.batch ? "One Of A List Of New Players, In The Cart" : "A New Player, In The Cart"}
-      onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "p" + i }); if (!n.batch) shOpenEdit("players", n.what ? { cart: n.id } : { club: k, i }, n); }}>
-      <span className="ux-sh-rtg ux-sh-blank" style={mono}>{+n.ovr > 0 ? showOvr(+n.ovr) : "–"}</span>
-      <span className="ux-sh-cn"><SlideName text={n.name || "New Player"} /></span>
-      {shCollege(k) && <span className="ux-sh-nat ux-sh-yr" style={mono}>{"Y" + (yearOf(n.grad ?? gradFor(n.born ? ageOf(n.born) : null)) || 1)}</span>}
-      <span className="ux-sh-tag">New</span>
-    </span>);
-  // A NEW MAN WAITING ON THE OVERSEER, in the place he was asked for (21 November 2026: after a save the places read
-  // Open again, and their editor could not see what he had sent). Nothing in the cart, so nothing to edit: it only shows.
-  const shWaitChip = (k, i) => { const r = reqWaitAt.get(k + "|" + i); if (!r) return null;
-    return (
-    <span className="ux-sh-chip ux-sh-new ux-sh-wait" title="Waiting For Review">
-      <span className="ux-sh-rtg ux-sh-blank" style={mono}>{+r.rec.ovr > 0 ? showOvr(+r.rec.ovr) : "\u2013"}</span>
-      <span className="ux-sh-cn"><SlideName text={r.rec.name || "New Player"} /></span>
-      <span className="ux-sh-tag">Waiting</span>
-    </span>); };
-  const shNewMgrChip = (n, k, inClub = false) => (
-    <span className="ux-sh-chip ux-sh-mchip ux-sh-new" title="A New Manager, In The Cart"
-      onClick={(e) => { e.stopPropagation(); setShSel({ k, c: "mgr" }); shOpenEdit("managers", inClub ? { clubMgr: k } : { cart: n.id }, n); }}>
-      <span className="ux-sh-rtg ux-sh-blank" style={mono}>{+n.ovr > 0 ? showOvr(+n.ovr) : "–"}</span>
-      <span className="ux-sh-cn"><SlideName text={n.name || "New Manager"} /></span>
-      <span className="ux-sh-st" style={{ color: STYLE_CLR[n.style] }}>{STYLE_LBL[n.style]}</span>
-      <span className="ux-sh-tag">New</span>
-    </span>);
-  // One table: its letters, its header in the nation's colour, then its bands and sides.
-  const shTable = (groups, places, natCode, colour, rowN, tblKey) => {
-    const cols = shCols(places), width = 44 + cols.reduce((a, c) => a + c.w, 0);
-    const filt = (t) => Object.entries(shFilt).every(([c, keep]) => !keep || keep.includes(shText(t, c) || "–"));
-    const sortRows = (ts) => shSort && cols.some(c => c.c === shSort.c)
-      ? [...ts].sort((a, b) => { const x = shSortVal(a, shSort.c), y = shSortVal(b, shSort.c); return (x < y ? -1 : x > y ? 1 : 0) * shSort.dir; }) : ts;
-    const fz = (c, head) => (c in SH_FROZEN ? { position: "sticky", left: SH_FROZEN[c], zIndex: head ? 6 : 2 } : null);
-    const rows = [];
-    for (const g of groups) {
-      if (g.name != null) rows.push({ band: g });
-      for (const t of sortRows(g.sides.filter(filt))) rows.push({ t, k: teamKey(t) });
-      if (!g.nt) for (const [cid, x] of shNewClubs) if ((g.newLg ? x.lg === g.newLg.id : !x.lg && x.c.nation === natCode && x.c.group === g.name)) rows.push({ t: shPseudo(x.c), k: "new:" + cid, fresh: true });
-      if (!g.nt && g.name != null && (overseer || clubNations(scope).includes(natCode))) rows.push({ addClub: g });
-    }
-    const valuesOf = (c) => [...new Set(groups.flatMap(g => g.sides).map(t => shText(t, c) || "–"))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    return (
-      <table className="ux-sh-tbl" style={{ width }} key={tblKey}>
-        <colgroup><col style={{ width: 44 }} />{cols.map(c => <col key={c.c} style={{ width: c.w }} />)}</colgroup>
-        <thead>
-          <tr className="ux-sh-let"><th className="ux-sh-rn" style={fz("rn", true)} />{cols.map((c, ci) => <th key={c.c} style={fz(c.c, true)}>{shLetter(ci)}</th>)}</tr>
-          <tr className="ux-sh-hd" style={{ ["--hc"]: colour }}><th className="ux-sh-rn" style={fz("rn", true)} />
-            {cols.map(c => { const s = shSort?.c === c.c ? shSort.dir : 0, f = shFilt[c.c];
-              return (
-                <th key={c.c} style={fz(c.c, true)} className={c.n ? "ux-n" : undefined}>
-                  {c.c !== "crest" && <span className="ux-sh-hl">
-                    <button type="button" className="ux-btnreset ux-sh-sortb" onClick={() => setShSort(s === 1 ? { c: c.c, dir: -1 } : s === -1 ? null : { c: c.c, dir: 1 })}>
-                      {c.l}{s !== 0 && uxIcon(s === 1 ? "up" : "down", "ux-xs")}</button>
-                    {c.place == null && !["ovr", "xi", "bench", "value"].includes(c.c) && (
-                      <button type="button" className={"ux-btnreset ux-sh-fb" + (f ? " ux-on" : "")} aria-label={"Filter " + c.l}
-                        onClick={(e) => { e.stopPropagation(); setShFiltOpen(o => (o === tblKey + c.c ? null : tblKey + c.c)); }}>{uxIcon("filter", "ux-xs")}</button>)}
-                  </span>}
-                  {shFiltOpen === tblKey + c.c && (
-                    <div className="ux-sh-fmenu" onClick={(e) => e.stopPropagation()}>
-                      {valuesOf(c.c).map(v => { const on = !f || f.includes(v);
-                        return <label key={v} className="ux-sh-fopt"><input type="checkbox" checked={on} onChange={() => {
-                          const all = valuesOf(c.c), cur = f || all, next = on ? cur.filter(x => x !== v) : [...cur, v];
-                          setShFilt(F => { const o = { ...F }; if (next.length === all.length) delete o[c.c]; else o[c.c] = next; return o; }); }} /><span><SlideName text={v} /></span></label>; })}
-                      <button type="button" className="ux-btnreset ux-btn ux-sh-fclear" onClick={() => { setShFilt(F => { const o = { ...F }; delete o[c.c]; return o; }); setShFiltOpen(null); }}>Show All</button>
-                    </div>)}
-                </th>); })}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => {
-            if (row.band) { const g = row.band, lg = g.lg;
-              return (
-                <tr key={"b" + ri} className={"ux-sh-band" + (g.nt ? " ux-sh-ntband" : "") + (shOver === "band|" + g.name ? " ux-sh-over" : "")} style={{ ["--bc"]: colour }}
-                  onDragOver={(e) => { if (shDrag?.kind === "row" && overseer && !g.nt) { e.preventDefault(); setShOver("band|" + g.name); } }}
-                  onDrop={(e) => { e.preventDefault(); const s = shDrag; shDragEnd(); if (s?.kind === "row" && overseer) { const T = edTeamRec(s.id), file = g.sides[0]?.file || natCode;
-                    if (T && T.group !== g.name) shPut(draftWith(draft, recBase, s.id, { group: g.name, file }, "teams")); } }}>
-                  <td className="ux-sh-rn" style={fz("rn")} />
-                  <td colSpan={cols.length} className="ux-sh-bandtd"><div className="ux-sh-bandin">
-                    <span className="ux-sh-bcrest">{lg ? <LeagueCrest league={lg.name} size={18} /> : null}</span>
-                    <span className="ux-sh-btext">
-                    {!g.newLg && (lg ? <button type="button" className="ux-btnreset ux-sh-bname" onClick={() => { setShRec({ kind: "lg", id: lg.id }); setShDock("rec"); }}>{g.name}</button> : <b>{g.name}</b>)}
-                    {g.newLg && <>
-                      <input className="ux-sh-bin" placeholder="League Name" value={g.newLg.name || ""} onChange={(e) => shPut({ ...draft, new: shNew.map(m => (m.id === g.newLg.id ? { ...m, name: e.target.value, clubs: (m.clubs || []).map(c2 => ({ ...c2, group: e.target.value })) } : m)) })} />
-                      <span className="ux-sh-bf">Tier <input className="ux-sh-bin ux-sh-bnum" style={mono} value={g.newLg.tier ?? ""} onChange={(e) => shPut({ ...draft, new: shNew.map(m => (m.id === g.newLg.id ? { ...m, tier: Math.max(0, Math.min(5, Math.round(+e.target.value) || 0)) } : m)) })} /></span>
-                      <span className="ux-sh-bf">Cup <input className="ux-sh-bin" placeholder="None" value={g.newLg.cup || ""} onChange={(e) => shPut({ ...draft, new: shNew.map(m => (m.id === g.newLg.id ? { ...m, cup: e.target.value || null } : m)) })} /></span>
-                      <span className="ux-sh-tag">New League</span>
-                      <button type="button" className="ux-btnreset ux-sh-add" onClick={() => shPut({ ...draft, new: shNew.filter(m => m.id !== g.newLg.id) })}>{uxIcon("close", "ux-xs")}Remove</button></>}
-                    </span>
-                  </div></td>
-                </tr>); }
-            if (row.addClub) return (
-              <tr key={"a" + ri} className="ux-sh-addrow"><td className="ux-sh-rn" style={fz("rn")} />
-                <td colSpan={cols.length} className="ux-sh-bandtd"><div className="ux-sh-bandin"><span className="ux-sh-bcrest" /><span className="ux-sh-btext"><button type="button" className="ux-btnreset ux-sh-add" onClick={() => shAddClub(natCode, row.addClub)}>
-                  {uxIcon("plus", "ux-xs")}New Club</button></span></div></td></tr>);
-            const t = row.t, k = row.k, mine = shCan(k), n = ++rowN.n, sq = edSq(t), lab = edLab(t), newAt = shNewAt(k), cat = row.fresh ? null : teamOfKey(k);
-            const nat = !row.fresh && isNational(t), placesN = sq.length, menuOn = row.fresh || (overseer && !nat) || (mine && newAt.size > 0);
-            shFlat.current.push({ k, cols: cols.filter(c2 => c2.place == null || c2.place < placesN) }); shRowNo.current.set(k, n);
-            return (
-              <tr key={k} className={(mine ? "" : "ux-sh-ro") + (shSel?.k === k ? " ux-sh-rowsel" : "") + (row.fresh ? " ux-sh-fresh" : "")}>
-                <td className={"ux-sh-rn" + (overseer && !nat && !row.fresh ? " ux-sh-grab" : "") + (menuOn ? " ux-sh-rnm" : "") + (shRowMenu?.k === k ? " ux-on" : "")} style={fz("rn")}
-                  draggable={overseer && !nat && !row.fresh} onDragStart={overseer && !nat && !row.fresh ? (e) => shDragStart(e, { kind: "row", id: k }) : undefined} onDragEnd={shDragEnd}
-                  title={overseer && !nat && !row.fresh ? "Its Menu, Or Drag Into Another League" : row.fresh ? "Its Menu" : undefined}
-                  onClick={menuOn ? (e) => shRowMenuAt(e, k) : undefined} onContextMenu={menuOn ? (e) => { e.preventDefault(); shRowMenuAt(e, k); } : undefined}>
-                  {row.fresh ? <span className="ux-sh-rnc" aria-label="Its Menu">{uxIcon("caret", "ux-xs")}</span> : n}</td>
-                {cols.map(col => {
-                  if (col.place != null && col.place >= placesN) return <td key={col.c} className="ux-sh-td ux-sh-void" />;
-                  const c = col.c, cell = k + "|" + c, sel = shSel?.k === k && shSel?.c === c, ed = shEdit && shEdit.k === k && shEdit.c === c;
-                  const asked = shAskedVal(k, c), chg = shChanged(k, c), over = shOver === cell;
-                  const cls = ["ux-sh-td", col.n && "ux-n", sel && "ux-sh-sel", chg && "ux-sh-chg", over && "ux-sh-over", !mine && "ux-sh-lockd", ed && "ux-sh-editing"].filter(Boolean).join(" ");
-                  const tdp = { className: cls, "data-cell": cell, style: fz(c),
-                    onMouseDown: (e) => { if (e.button === 0 && !ed) { setShSel({ k, c });
-                      if (shEdit) { if ((shEdit.c === "home" || shEdit.c === "away") && shEdit.v !== String(shRowOf(shEdit.k)?.[shEdit.c] || "")) shCommit(shEdit.k, shEdit.c, shEdit.v); setShEdit(null); }
-                      setShFiltOpen(null); } },
-                    onClick: () => { if (ed) return; if (c === "crest" && !row.fresh) { setShDock("line"); return; } if (shEditable(k, c) || (c.startsWith("p") && mine && !sq[+c.slice(1)] && !newAt.has(+c.slice(1)) && !shClubMan(k, +c.slice(1)))
-                      || (c === "mgr" && mine && !row.fresh && !idOf(t.manager) && !shNewMgr(k))) shStartEdit(k, c); },
-                    onDoubleClick: () => { if (c === "mgr" || (c.startsWith("p") && sq[+c.slice(1)])) return; shStartEdit(k, c); },
-                    onDragOver: (e) => { if (shCanDrop(k, c)) { e.preventDefault(); if (shOver !== cell) setShOver(cell); } },
-                    onDragLeave: () => { if (shOver === cell) setShOver(null); },
-                    onDrop: (e) => { e.preventDefault(); if (shCanDrop(k, c)) shDrop(k, c); } };
-                  if (ed) {
-                    const done = (v, move) => { setShEdit(null); if (c.startsWith("p")) { const lines = String(v || "").split(/\r?\n/).filter(x => x.trim()); if (lines.length) shNewMen(k, +c.slice(1), lines); }
-                      else if (v !== shText(t, c)) shCommit(k, c, v); if (move) shMove(move[0], move[1]); setTimeout(shRefocus, 0); };
-                    const keys = (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); done(e.currentTarget.value, [1, 0]); }
-                      else if (e.key === "Tab") { e.preventDefault(); done(e.currentTarget.value, [0, e.shiftKey ? -1 : 1]); }
-                      else if (e.key === "Escape") { e.preventDefault(); setShEdit(null); setTimeout(shRefocus, 0); } };
-                    if (c === "formation" || c === "tw") return (
-                      <td key={c} {...tdp}><Sel className="ux-sh-in" autoFocus ref={shOpenNow} value={shEdit.v} onKeyDown={keys}
-                        onChange={(e) => done(e.target.value, null)} onBlur={() => setShEdit(null)}>
-                        {(c === "tw" ? SH_TW : FORMATIONS).map(x => <option key={x} value={x}>{x}</option>)}</Sel></td>);
-                    if (c === "city") return (
-                      <td key={c} {...tdp}><UxSidePick label="City" value={shCity(t)} groups={edCities} placeholder="Search Cities" cls="ux-sh-cellpick" startOpen onClose={() => setTimeout(() => setShEdit(null), 0)} onPick={it => done(it.k, null)} /></td>);
-                    if (c === "home" || c === "away") return (
-                      <td key={c} {...tdp}><span className="ux-sh-kited"><input type="color" ref={shOpenNow} value={/^#[0-9a-f]{6}$/i.test(shEdit.v) ? shEdit.v : "#888888"} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} />
-                        <input className="ux-sh-in" style={mono} value={shEdit.v} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} onKeyDown={keys} />
-                        <button type="button" className="ux-btnreset ux-sh-kitok" onMouseDown={(e) => e.preventDefault()} onClick={() => done(shEdit.v, null)}>Done</button></span></td>);
-                    return (
-                      <td key={c} {...tdp}><input className="ux-sh-in" autoFocus onFocus={(e) => { const n2 = e.currentTarget.value.length; e.currentTarget.setSelectionRange(n2, n2); }} value={shEdit.v} placeholder={c.startsWith("p") ? "Name, ST" : c === "mgr" ? "Name" : undefined}
-                        style={c === "code" || c === "cap" ? mono : undefined} onChange={(e) => setShEdit(s => ({ ...s, v: e.target.value }))} onKeyDown={keys}
-                        onPaste={c.startsWith("p") ? (e) => { const txt = e.clipboardData.getData("text"); if (/[\n\t]/.test(txt.trim())) { e.preventDefault(); done(txt, null); } } : undefined}
-                        onBlur={(e) => { if (shEdit) done(e.target.value, null); }} /></td>);
-                  }
-                  let body = null;
-                  if (c === "crest") body = <span className="ux-sh-crw">{cat ? <TeamCrest team={cat} size={22} /> : row.fresh ? <span className="ux-sh-tag">New</span> : null}</span>;
-                  else if (c === "code") body = <span style={mono}>{t.code}</span>;
-                  else if (c === "name") body = <span className="ux-sh-strong"><SlideName text={t.name.trim()} /></span>;
-                  else if (["ovr", "xi", "bench", "value"].includes(c)) body = <span style={mono}>{shText(t, c) || "–"}</span>;
-                  else if (c === "formation" || c === "tw") body = <span className="ux-sh-dd" style={c === "formation" ? mono : undefined}>{shText(t, c)}{mine && uxIcon("caret", "ux-xs")}</span>;
-                  else if (c === "mgr") { const nm = !row.fresh && shNewMgr(k);
-                    body = idOf(t.manager) && typeof t.manager !== "object" ? shMgrChip(idOf(t.manager), k, mine) : nm ? shNewMgrChip(nm, k)
-                      : t.manager && typeof t.manager === "object" ? shNewMgrChip(t.manager, k, true) : (
-                      <span className="ux-sh-pc"><span className="ux-sh-empty">{row.fresh ? "Drag A Free Manager Here" : "No Manager"}</span>
-                        {mine && <button type="button" className="ux-btnreset ux-sh-plus" aria-label="New Manager Here" title="New Manager Here"
-                          onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); shOpenNew("managers", k); }}>{uxIcon("plus", "ux-xs")}</button>}</span>); }
-                  else if (c === "home" || c === "away") { const hex = String(t[c] || ""); body = <span className="ux-sh-kit" style={{ background: hex, color: (lumOf(hex) ?? 0) > 0.55 ? "#101418" : "#ffffff", ...mono }}>{hex.toUpperCase()}</span>; }
-                  else if (col.place != null) { const i = col.place, id = sq[i], nm = newAt.get(i), place = lab[i];
-                    body = (<span className="ux-sh-pc"><span className="ux-sh-pl" style={{ color: POS_CLR[place] || "var(--ux-text-3)", ...mono }}>{place}</span>
-                      {id ? shChip(id, k, i, place, nat ? t.code : t.nation, mine) : nm ? shNewChip(nm, k, i) : shClubMan(k, i) ? shNewChip(shClubMan(k, i), k, i)
-                        : (shWaitChip(k, i) || <span className="ux-sh-open">{mine ? "Open" : "–"}</span>)}
-                      {mine && !id && !nm && !shClubMan(k, i) && !reqWaitAt.has(k + "|" + i) && <button type="button" className="ux-btnreset ux-sh-plus" aria-label="New Player Here" title="New Player Here"
-                        onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); shPlusMan(k, i); }}>{uxIcon("plus", "ux-xs")}</button>}</span>); }
-                  else body = <SlideName text={shText(t, c) || "–"} />;
-                  return (
-                    <td key={c} {...tdp}>{body}{asked != null && <span className="ux-sh-asked" title={"Asked For; Now " + asked}>Requested</span>}</td>);
-                })}
-              </tr>); })}
-        </tbody>
-      </table>);
-  };
-  // THE DOCK: a record, the free agents, or a national side's men abroad.
-  const shDockPanel = () => {
-    const sel = shSel && edTeamRec(shSel.k), natSide = sel && isNational(sel) && sel.file === "AVIUM" ? sel : null;
-    const seg = (
-      <div className="ux-seg ux-sh-dseg" role="group" aria-label="Dock">{[["rec", "Record"], ["line", "Lineup"], ["free", "Free Agents"], ["nat", "Nationals"]].map(([k2, l]) => (
-        <button key={k2} type="button" className={"ux-btnreset" + (shDock === k2 ? " ux-on" : "")} aria-pressed={shDock === k2} onClick={() => setShDock(k2)}>{l}</button>))}</div>);
-    const dropZone = (shDrag && shDrag.from?.k && shDock === "free") ? {
-      onDragOver: (e) => { e.preventDefault(); if (shOver !== "dock") setShOver("dock"); },
-      onDrop: (e) => { e.preventDefault(); const s = shDrag; shDragEnd(); if (s.kind === "p") shRelease(s); else if (s.kind === "m") shSack(s); } } : {};
-    let body = null;
-    if (shDock === "rec") body = shRecPanel();
-    else if (shDock === "line") body = shLinePanel();
-    else if (shDock === "free") { const mg = shFreeKind === "m";
-      const pend = mg ? shNew.filter(n => n.what === "managers" && !n.side)
-        : [...shNew.filter(n => n.what === "players" && !n.side), ...shNew.filter(n => n.what === "batch" && !n.side).flatMap(b => (b.men || []).map((x, j) => ({ ...x, id: b.id + ":" + j, batch: b.id })))];
-      body = (
-      <div className="ux-sh-free">
-        <div className="ux-sh-fhead">
-          <div className="ux-seg ux-sh-fseg" role="group" aria-label="Free Agents">{[["p", "Players", shFree.men.length], ["m", "Managers", shFree.mgrs.length]].map(([k2, l, n]) => (
-            <button key={k2} type="button" className={"ux-btnreset" + (shFreeKind === k2 ? " ux-on" : "")} aria-pressed={shFreeKind === k2} onClick={() => setShFreeKind(k2)}>
-              {l}<b className="ux-sh-fcount" style={mono}>{n}</b></button>))}</div>
-          <button type="button" className="ux-btnreset ux-btn ux-sh-fnew" onClick={() => shOpenNew(mg ? "managers" : "players")}>{uxIcon("plus", "ux-s")}{mg ? "New Manager" : "New Player"}</button>
-        </div>
-        <span className="ux-search ux-sh-fq">{uxIcon("search", "ux-s")}<input type="search" placeholder={mg ? "Search Free Managers" : "Search Free Players"}
-          aria-label={mg ? "Search Free Managers" : "Search Free Players"} value={shFreeQ} onChange={e => setShFreeQ(e.target.value)} /></span>
-        <div className="ux-sh-flist">
-          {pend.map(n => (
-            <div key={n.id} className={"ux-sh-frow ux-sh-fpend" + (n.batch ? " ux-sh-fbatch" : "")} title={n.batch ? "One Of A List Of New Players, In The Cart" : mg ? "A New Manager, In The Cart" : "A New Player, In The Cart"}
-              onClick={n.batch ? undefined : () => shOpenEdit(mg ? "managers" : "players", { cart: n.id }, n)}>
-              <span className="ux-sh-fface">{uxIcon("plus", "ux-xs")}</span><span className="ux-sh-fn"><SlideName text={n.name || (mg ? "New Manager" : "New Player")} /></span>
-              {mg ? <span className="ux-sh-fst" style={{ color: STYLE_CLR[n.style] }}>{STYLE_LBL[n.style]}</span> : <b style={{ ...mono, color: POS_CLR[posList(n.pos)[0]] }}>{posText(posList(n.pos))}</b>}
-              <span style={mono} className="ux-dim">{n.nat}</span><span className="ux-sh-tag">New</span></div>))}
-          {!mg && shFree.men.slice(0, 200).map(p => (
-            <div key={p.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "p", id: p.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
-              onClick={() => { setShRec({ kind: "p", id: p.id }); setShDock("rec"); }}>
-              <PlayerShot name={p.name} size={24} /><span className="ux-sh-fn"><SlideName text={p.name} /></span>
-              <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b><span style={mono} className="ux-dim">{p.nat}</span>{manBadge(p.id, p.ovr)}</div>))}
-          {mg && shFree.mgrs.slice(0, 200).map(m => (
-            <div key={m.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "m", id: m.id, from: { pool: "free" } })} onDragEnd={shDragEnd}
-              onClick={() => { setShRec({ kind: "m", id: m.id }); setShDock("rec"); }}>
-              <PlayerShot name={m.name} size={24} /><span className="ux-sh-fn"><SlideName text={m.name} /></span>
-              <span className="ux-sh-fst" style={{ color: STYLE_CLR[edStyleOfMgr(m.id)] }}>{STYLE_LBL[edStyleOfMgr(m.id)]}</span><span style={mono} className="ux-dim">{m.nat}</span>{uxBadge(m.ovr)}</div>))}
-        </div>
-      </div>); }
-    else body = !natSide ? <div className="ux-empty">Pick A National Side</div> : (() => {
-      const inSq = new Set(edSq(natSide).filter(Boolean));
-      const men = curRecs.players.filter(p => p.nat === natSide.code && !p.retired && !inSq.has(p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 200);
-      return (
-        <div className="ux-sh-flist">
-          <div className="ux-ed-lh">{natSide.name.trim()}'s Men Not Called Up<b style={mono}>{men.length}</b></div>
-          {men.map(p => { const ck = whereIs.get(p.id)?.club?.key, club = ck ? edTeamRec(ck) : null, cat = ck ? teamOfKey(ck) : null;
-            return (
-              <div key={p.id} className="ux-sh-frow" draggable onDragStart={(e) => shDragStart(e, { kind: "p", id: p.id, from: { pool: "nat" } })} onDragEnd={shDragEnd}
-                onClick={() => { setShRec({ kind: "p", id: p.id }); setShDock("rec"); }}>
-                <PlayerShot name={p.name} size={24} /><span className="ux-sh-fn"><SlideName text={p.name} /></span>
-                {cat ? <TeamCrest team={cat} size={16} /> : <span className="ux-dim" style={{ fontSize: 11 }}>Free</span>}
-                <b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b>{manBadge(p.id, p.ovr)}</div>); })}
-        </div>); })();
-    return (
-      <aside className={"ux-panel ux-sh-dock" + (shOver === "dock" ? " ux-sh-over" : "")} {...dropZone}>
-        <div className="ux-ph">{seg}</div>
-        {shDrag?.from?.k && shDock === "free" && <div className="ux-sh-dropnote">{shDrag.kind === "m" ? "Drop Here To Sack Him" : edTeamRec(shDrag.from.k) && isNational(edTeamRec(shDrag.from.k)) ? "Drop Here To Drop Him" : "Drop Here To Release Him"}</div>}
-        {body}
-      </aside>);
-  };
-  // THE LINEUP (Moukden and Kirin, 12 October 2026, asked whether a table or a pitch is better for players: the table for
-  // the registry, the pitch for one side's shape): the picked side's eleven on the club page's pitch, without traits, its
-  // bench under it. A man is dragged onto another place there, or to or from the grid and the Free Agents panel, exactly as
-  // in the sheet, and the row changes with it; a click opens his record.
-  const shLinePanel = () => {
-    const k = shSel?.k, T = k && !k.startsWith("new:") ? edTeamRec(k) : null;
-    if (!T) return <div className="ux-empty">Pick A Side</div>;
-    const sq = edSq(T), lab = edLab(T), fm = String(T.formation || "4-3-3").trim(), slots = pitchSlots(fm), mine = shCan(k), cat = teamOfKey(k);
-    const drop = (i) => ({ onDragOver: (e) => { e.stopPropagation(); if (shCanDrop(k, "p" + i)) { e.preventDefault(); if (shOver !== k + "|p" + i) setShOver(k + "|p" + i); } },
-      onDragLeave: () => { if (shOver === k + "|p" + i) setShOver(null); }, onDrop: (e) => { e.preventDefault(); e.stopPropagation(); if (shCanDrop(k, "p" + i)) shDrop(k, "p" + i); } });
-    const men = slots.map((_, i) => { const id = sq[i], r = id && recNow(id); if (!r) return null;
-      const own = ownOfId(id), place = lab[i], { first, last } = splitSurname(r.name, r.name), lock = edLockedMen.has("p:" + id);
-      return { first, last, label: r.name, shot: r.name, code: place, clr: POS_CLR[place] || "var(--chrome-border)", oop: uxOop(own, place),
-        rtg: uxPitchRtg(seen(id, r.ovr), own, place, ringed(id)), warn: uxPlWarn(seen(id, r.ovr), own, place), traits: null,
-        onClick: () => { setShRec({ kind: "p", id, k }); setShDock("rec"); }, cls: "ux-sh-ppl" + (shOver === k + "|p" + i ? " ux-sh-pover" : ""),
-        tok: { draggable: mine && !lock, onDragStart: mine && !lock ? (e) => shDragStart(e, { kind: "p", id, from: { k, i } }) : undefined, onDragEnd: shDragEnd },
-        wrap: drop(i) }; });
-    const nums = shNums(T);
-    return (
-      <div className="ux-sh-line" key={"line" + k}>
-        <div className="ux-sh-lh">{cat && <TeamCrest team={cat} size={26} />}
-          <div><b><SlideName text={T.name.trim()} /></b><span>{edDots(nums.ovr != null ? "OVR " + nums.ovr.toFixed(1) : null, nums.xi != null ? "XI " + nums.xi.toFixed(1) : null)}</span></div>
-          {mine ? <label className="ux-pick ux-sh-lfm"><Sel aria-label="Formation" value={fm} onChange={(e) => shCommit(k, "formation", e.target.value)}>
-            {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label> : <span className="ux-chip" style={mono}>{fm}</span>}</div>
-        <div className="ux-sh-lpitch"><UxLineup slots={slots} men={men} scale={30 / 44} /></div>
-        <section className="ux-sh-sec">
-          <div className="ux-sh-sech"><span>Bench</span></div>
-          {sq.slice(11).map((id, x) => { const i = 11 + x, cell = k + "|p" + i;
-            return (
-              <div key={i} className={"ux-sh-lb" + (shOver === cell ? " ux-sh-over" : "")} {...drop(i)}>
-                {/* The man's own position (user, 26 October 2026: "This needs to show specific position"), the one of his that
-                    fits the place, else his first, as the side page's bench shows it; an open place shows its group. */}
-                {(() => { const own = id ? ownOfId(id) : [], shown = own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
-                  return <span className="ux-sh-pl" style={{ color: POS_CLR[shown] || "var(--ux-text-3)", ...mono }}
-                    title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` : undefined}>{shown}</span>; })()}
-                {id ? shChip(id, k, i, lab[i], isNational(T) ? T.code : T.nation, mine) : (shWaitChip(k, i) || <span className="ux-sh-open">{mine ? "Open" : "–"}</span>)}
-              </div>); })}
-        </section>
-      </div>);
-  };
-  // A RECORD ON THE DOCK: a short head (face, name, positions, nation, age, rating), then his facts as one aligned list,
-  // each value plain until it is clicked, when it becomes its own box in the same place (the sheet's way of editing); the
-  // sides he plays for; and his traits as chips, the full list only behind Edit Traits. The overseer edits everything; an
-  // editor's own man has only his positions to ask for; another nation's man is read-only, with Make An Offer.
-  const [shRecEd, setShRecEd] = useState(null);       // the fact being typed into
-  const [shTraitsOpen, setShTraitsOpen] = useState(false);
-  const [shSubOpen, setShSubOpen] = useState(false);
-  const [shFull, setShFull] = useState(false);
-  const shGoFull = (on) => { setShFull(on);
-    try { if (on) document.documentElement.requestFullscreen?.()?.catch?.(() => {}); else if (document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {}); } catch {} };
-  useEffect(() => { if (!shFull) return;
-    const left = () => { if (!document.fullscreenElement) setShFull(false); };
-    const key = (e) => { if (e.key === "Escape" && !shEdit) shGoFull(false); };
-    document.addEventListener("fullscreenchange", left); window.addEventListener("keydown", key);
-    return () => { document.removeEventListener("fullscreenchange", left); window.removeEventListener("keydown", key); }; }, [shFull, shEdit]);
-  useEffect(() => { setShRecEd(null); setShTraitsOpen(false); setShSubOpen(false); setShFormEdit(null); shDropPristine(); setShFormOpen(null); }, [shRec]);
-  useEffect(() => { setShTraitsOpen(false); }, [shFormOpen, shFormEdit?.src]);
-  // TRADES FROM THE DOCK (Moukden and Kirin, 12 October 2026: "The trades feature should still work domestically in tandem
-  // with this, so that we can still see values"): a man's own side's deal opens with him in it, an own man's from his
-  // club, another's (or a free agent) coming to this person's club.
-  const shTrade = (kind, id) => {
-    const tk = kind === "m" ? "manager" : "player";
-    const from = tk === "manager" ? (() => { const x = edSidesOfMgr(id).find(s => !isNational(s)); return x ? teamKey(x) : null; })() : whereIs.get(id)?.club?.key || null;
-    const mine = from && edMine(from) ? from : trFresh().sides[0] || null; if (!mine) return shSay("You Have No Club To Trade For");
-    const sides = [mine, ...(from && from !== mine ? [from] : [])];
-    setEdSec("trades"); setTrOpen(null); setTrArm(null); setTrMsg(null); setTrNote(""); setTrQ(""); setTrPick(null);
-    setTrDeal({ sides, fa: !from, tab: sides[1] || (!from ? "FA" : null), moves: from === mine ? [] : [{ kind: tk, id, to: mine }] }); };
-  const shFact = (f, label, shown, edit) => (
-    <div className="ux-sh-fr" key={f}>
-      <dt>{label}</dt>
-      <dd>{shRecEd === f && edit ? edit : (
-        <button type="button" className={"ux-btnreset ux-sh-fv" + (edit ? " ux-ed" : "")} disabled={!edit} onClick={() => edit && setShRecEd(f)}>{shown}</button>)}</dd>
-    </div>);
-  // A box that keeps its edit until Enter or leaving it, and drops it on Escape.
-  const shBox = (value, commit, props = {}) => (
-    <input className="ux-sh-fi" autoFocus defaultValue={value ?? ""} {...props}
-      onKeyDown={(e) => { if (e.key === "Enter") { commit(e.currentTarget.value); setShRecEd(null); } else if (e.key === "Escape") setShRecEd(null); }}
-      onBlur={(e) => { commit(e.currentTarget.value); setShRecEd(null); }} />);
-  const shPosEdit = (own, set) => (
-    <span className="ux-sh-posed">{[0, 1].map(pi => (
-      <Sel key={pi} className="ux-sh-fi ux-sh-fsel" style={mono} autoFocus={pi === 0} value={own[pi] || ""} onChange={(e) => { const next = [...own]; next[pi] = e.target.value; set(posList(next.filter(Boolean))); }}>
-        {pi === 1 && <option value="">None</option>}{POSITIONS.map(x => <option key={x} value={x} disabled={own[1 - pi] === x}>{x}</option>)}</Sel>))}
-      <button type="button" className="ux-btnreset ux-sh-done" onClick={() => setShRecEd(null)}>Done</button></span>);
-  const shPosChips = (own) => (own.length ? own.map(p => <span key={p} className="ux-sh-posc" style={{ color: POS_CLR[p], ...mono }}>{p}</span>) : <span className="ux-dim">None</span>);
-  // His traits as chips; the overseer's Edit Traits opens every trait by level (TraitPicker), within what his rating affords.
-  const shTraits = (ids, ovr, set) => { const o = Math.round(+ovr) || 0, budget = budgetOf(o), spent = traitCost(ids || []);
-    return (
-      <section className="ux-sh-sec">
-        <div className="ux-sh-sech"><span>Traits</span><span className="ux-sh-pts">{set ? <><b style={mono}>{spent}</b> Of <b style={mono}>{budget}</b> Points</> : null}</span></div>
-        <div className="ux-sh-trl">{(ids || []).length ? badgeOrder(ids).map(b => <span key={b} className="ux-sh-trc" data-trait={b}><BadgeIcon id={b} size={18} />{badgeOf(b)?.name}</span>)
-          : <span className="ux-dim">None</span>}
-          {set && <button type="button" className="ux-btnreset ux-sh-trb" aria-expanded={shTraitsOpen} onClick={() => setShTraitsOpen(v => !v)}>{shTraitsOpen ? "Close" : "Edit Traits"}</button>}</div>
-        {set && shTraitsOpen && <div className="ux-sh-trp"><TraitPicker keys={ids || []} onSet={set} ovr={o} limit /></div>}
-      </section>); };
-  // The new-record form, laid out as the dock's facts: everything the New Player and New Manager forms had. "new" is a
-  // record being made (Add To Cart, Cancel); "edit" one already made (Done, Remove, Cancel).
-  const shFormPanel = (kind, f, upd, mode) => {
-    const isMg = kind === "managers", age = f.born ? ageOf(f.born) : null, ready = shFormReady(kind, f);
-    const club = f.side?.startsWith("new:") ? shClubOf(f.side)?.c : null, T = f.side && !club ? edTeamRec(f.side) : null;
-    const sideName = club ? (club.name || "").trim() || "New Club" : T ? T.name.trim() : null, place = isMg ? null : shPlaceOf(f.side, f.at);
-    const cap = isMg ? null : edCapOf(f.nat), blank = f.ovr === "" || f.ovr == null, overCap = !isMg && !blank && !edUnderCap(f.nat, f.ovr);
-    const row = (label, el) => <div className="ux-sh-fr"><dt>{label}</dt><dd>{el}</dd></div>;
-    const posSel = (label, v, onChange, none, skip) => (
-      <Sel className="ux-sh-fi ux-sh-flat" aria-label={label} value={v || ""} onChange={e => onChange(e.target.value)}>
-        <option value="">{none}</option>{Object.keys(POS_NAME).filter(c => c !== skip).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</Sel>);
-    return (
-      <div className="ux-sh-rec" key={mode + kind + (mode === "edit" ? JSON.stringify(shFormEdit?.src) : "")}>
-        <div className="ux-sh-rh"><span className="ux-sh-rface ux-sh-rnew">{uxIcon("plus", "ux-s")}</span>
-          <div><b>{(f.name || "").trim() || (isMg ? "New Manager" : "New Player")}</b>
-            <span>{edDots(isMg ? uxStyleName(f.style || "balanced") : posText(posList([f.pos, f.pos2].filter(Boolean))) || null, f.nat || null, age != null ? `${age}` : null)}</span></div>
-          {mode === "new" && !isMg && !club ? (
-            <div className="ux-seg ux-sh-many" role="group" aria-label="How Many">
-              <button type="button" className="ux-btnreset ux-on" aria-pressed="true">One</button>
-              <button type="button" className="ux-btnreset" aria-pressed="false" onClick={shToMany}>Many</button></div>)
-            : <span className="ux-sh-tag">New</span>}
-        </div>
-        <section className="ux-sh-sec">
-          <div className="ux-sh-sech"><span>Details</span>{sideName && <span className="ux-dim ux-sh-joins">
-            <SlideName text={(isMg ? "Manages " : "Joins ") + sideName + (place ? " · " + place : "")} /></span>}</div>
-          <dl className="ux-sh-facts ux-sh-wide">
-            {row("Name", <input className="ux-sh-fi ux-sh-flat" autoFocus={mode === "new"} placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
-            {row("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || !isMg, isMg ? mgrNations(scope) : undefined)} placeholder="Search Nations" cls="ux-sh-spk" onPick={it => upd({ nat: it.k })} />)}
-            {row("Born", <span className="ux-sh-born">
-              <input className={"ux-sh-fi ux-sh-flat" + (f.born ? "" : " ux-need")} type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "", bornSet: true })} />
-              <input className="ux-sh-fi ux-sh-flat ux-sh-fage" style={mono} placeholder="Age" aria-label="Age" title="Draws A Date Of Birth For This Age" key={"age" + (f.born || "")} defaultValue={age ?? ""}
-                onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= (isMg ? 90 : 60) && y !== age) upd({ born: edBornFor(y), bornSet: true }); }}
-                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
-              <button type="button" className="ux-btnreset ux-sh-dice" aria-label="Another Date For This Age" title="Another Date For This Age" disabled={!f.born}
-                onClick={() => upd({ born: edBornFor(ageOf(f.born)), bornSet: true })}>{uxIcon("dice", "ux-s")}</button></span>)}
-            {isMg ? row("Style", <Sel className="ux-sh-fi ux-sh-flat" aria-label="Style" value={f.style || "balanced"} onChange={e => upd({ style: e.target.value })}>
-                {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</Sel>)
-              : <>{row("Position", posSel("Position", f.pos, (v) => upd({ pos: v, ...(f.pos2 === v ? { pos2: "" } : null) }), "Choose"))}
-                  {row("Second Position", posSel("Second Position", f.pos2, (v) => upd({ pos2: v }), "None", f.pos))}</>}
-            {/* At a college, the year he is in (DESIGN.md, The ANCC): his age's until one is picked. */}
-            {!isMg && shCollege(f.side) && row("Year", <Sel className="ux-sh-fi ux-sh-flat" aria-label="Year" value={yearOf(f.grad ?? gradFor(age)) || 1}
-              onChange={e => upd({ grad: COLLEGE_SEASON + 4 - +e.target.value })}>{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</Sel>)}
-            {!isMg && mode === "new" && f.at == null && row("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" cls="ux-sh-spk"
-              onPick={it => upd({ side: it.k || null, at: null })} />)}
-            {row("Rating", <input className={"ux-sh-fi ux-sh-flat ux-sh-fnum" + (overCap ? " ux-need" : "")} style={mono} inputMode="numeric" aria-label="Rating"
-              placeholder={overseer && !club ? "25-99" : cap != null ? `< ${cap}` : "Blank"} title={cap != null ? `A ${natOptions.name.get(f.nat) || f.nat} National Needs A Rating Below ${cap}` : undefined}
-              value={f.ovr ?? ""} onChange={e => upd({ ovr: e.target.value.replace(/\D/g, "").slice(0, 2) })} />)}
-          </dl>
-        </section>
-        {!isMg && shTraits(f.badges || [], f.ovr, (ids) => upd({ badges: ids }))}
-        <p className="ux-sh-rule">Portraits are made on request. Badges go to Kirin on Discord, zipped.</p>
-        <div className="ux-sh-recact">
-          {mode === "edit" ? <>
-              <button type="button" className="ux-btnreset ux-btn" onClick={shFormRemove}>{uxIcon("trash", "ux-s")}Remove</button>
-              <span className="ux-sh-grow" />
-              <button type="button" className="ux-btnreset ux-btn" onClick={() => setShFormEdit(null)}>Cancel</button>
-              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(f.name || "").trim()} onClick={shFormDone}>Done</button></>
-            : <>
-              <button type="button" className="ux-btnreset ux-btn" onClick={() => shCancelNew(kind)}>Cancel</button>
-              <span className="ux-sh-grow" />
-              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready} onClick={() => shAddNew(kind)}>Add To Cart</button></>}
-        </div>
-      </div>);
-  };
-  const shRecPanel = () => {
-    if (shFormEdit) return shFormPanel(shFormEdit.kind, shFormEdit.f, (p) => setShFormEdit(e => (e ? { ...e, f: { ...e.f, ...p } } : e)), "edit");
-    if (shFormOpen && edForms[shFormOpen]) return shFormPanel(shFormOpen, edForms[shFormOpen], (p) => setEdForms(m => (m[shFormOpen] ? { ...m, [shFormOpen]: { ...m[shFormOpen], ...p, fresh: false } } : m)), "new");
-    if (!shRec) return <div className="ux-empty">Click A Chip</div>;
-    if (shRec.kind === "lg") { const lg = (curRecs.leagues || []).find(l => l.id === shRec.id); if (!lg) return <div className="ux-empty">Gone</div>;
-      const mineLg = overseer || clubNations(scope).includes(lg.nation), put = (p) => shPut(draftWith(draft, recBase, lg.id, p, "leagues"));
-      const clubs = curRecs.teams.filter(x => !isNational(x) && x.nation === lg.nation && x.group === lg.name).length, natT = natTeamByCode.get(lg.nation);
-      return (
-        <div className="ux-sh-rec" key={"lg" + lg.id}>
-          <div className="ux-sh-rh"><span className="ux-sh-rface ux-sh-rlg"><LeagueCrest league={lg.name} size={30} /></span>
-            <div><b>{lg.name}</b><span>{edDots(natT ? natT.name : lg.nation, `${clubs} ${clubs === 1 ? "Club" : "Clubs"}`)}</span></div></div>
-          <section className="ux-sh-sec">
-            <div className="ux-sh-sech"><span>Details</span>{!mineLg && <span className="ux-sh-lockh">{uxIcon("lock", "ux-xs")}Not Yours</span>}</div>
-            <dl className="ux-sh-facts">
-              {shFact("lgname", "Name", lg.name, mineLg && shBox(lg.name, (v) => v.trim() && v.trim() !== lg.name && put({ name: v.trim() })))}
-              {shFact("tier", "Tier", <span style={mono}>{lg.tier ?? "–"}</span>, mineLg && shBox(lg.tier, (v) => { const x = Math.round(+v); if (x >= 0 && x <= 5 && x !== lg.tier) put({ tier: x }); }, { style: mono, className: "ux-sh-fi ux-sh-fnum" }))}
-              {shFact("cup", "Cup", lg.cup || "None", mineLg && shBox(lg.cup || "", (v) => { const x = v.trim() || null; if (x !== (lg.cup || null)) put({ cup: x }); }))}
-              {overseer && shFact("up", "Promoted", <span style={mono}>{lg.up ?? "–"}</span>, null)}
-              {overseer && shFact("down", "Relegated", <span style={mono}>{lg.down ?? "–"}</span>, null)}
-            </dl>
-          </section>
-          {/* Its conferences in the order its playoff crosses them (DESIGN.md, The ANCC), each renamed here, with its clubs. */}
-          {(lg.conferences || []).length > 0 && (
-            <section className="ux-sh-sec">
-              <div className="ux-sh-sech"><span>Conferences</span></div>
-              {lg.conferences.map((c, i) => (
-                <div key={i} className="ux-sh-conf">
-                  <dl className="ux-sh-facts">{shFact("conf" + i, "Name", c.name, mineLg && shBox(c.name, (v) => { const x = v.trim();
-                    if (!x || x === c.name) return;
-                    if (lg.conferences.some((y, j) => j !== i && y.name.toLowerCase() === x.toLowerCase())) return shSay("Another Conference Is Called That");
-                    put({ conferences: lg.conferences.map((y, j) => (j === i ? { ...y, name: x } : y)) }); }))}</dl>
-                  <div className="ux-sh-confc">{c.clubs.map(id => { const T = edTeamRec(id), cat = teamOfKey(id); if (!T || T.group !== lg.name) return null;
-                    return <span key={id} className="ux-sh-confk" title={T.name.trim()}>{cat ? <TeamCrest team={cat} size={16} /> : <span className="ux-crest-gap" />}<b style={mono}>{T.code}</b></span>; })}</div>
-                </div>))}
-            </section>)}
-        </div>); }
-    const isM = shRec.kind === "m", r = isM ? mgrNow(shRec.id) : recNow(shRec.id); if (!r) return <div className="ux-empty">Gone</div>;
-    const sides = isM ? edSidesOfMgr(r.id) : [whereIs.get(r.id)?.club?.key, whereIs.get(r.id)?.nt?.key].filter(Boolean).map(edTeamRec).filter(Boolean);
-    const ours = overseer || sides.some(t => edMine(teamKey(t))) || (!sides.length && (scope.nations || []).includes(r.nat));
-    const age = r.born ? ageOf(r.born) : null, value = !isM ? trValueOf("player", r.id) : null, own = isM ? [] : ownOfId(r.id);
-    const put = (p) => shPut(draftWith(draft, recBase, r.id, p, isM ? "managers" : "players"));
-    const asked = !overseer && !isM && draft.players?.[r.id]?.pos, natT = natTeamByCode.get(r.nat);
-    const O = overseer, posOk = O || (ours && !isM);
-    return (
-      <div className="ux-sh-rec" key={shRec.kind + r.id}>
-        <div className="ux-sh-rh"><span className="ux-sh-rface"><PlayerShot name={r.name} size={44} /></span>
-          <div><b>{r.name}</b><span>{edDots(isM ? uxStyleName(edStyleOfMgr(r.id)) : posText(own) || posOfId(r.id), r.nat, age != null ? `${age}` : null)}</span></div>
-          {isM ? uxBadge(r.ovr, true) : manBadge(r.id, r.ovr, true)}</div>
-        <section className="ux-sh-sec">
-          <div className="ux-sh-sech"><span>Details</span>{!O && <span className="ux-sh-lockh">{uxIcon("lock", "ux-xs")}The Overseer's</span>}</div>
-          <dl className="ux-sh-facts">
-            {shFact("name", "Name", r.name, O && shBox(r.name, (v) => v.trim() && v.trim() !== r.name && put({ name: v.trim() })))}
-            {shFact("nat", "Nationality", <>{natT && <TeamCrest team={natT} size={16} />}<span>{natT ? natT.name : r.nat}</span></>,
-              O && <UxSidePick label="Nationality" value={r.nat} groups={edNatChoices(true)} placeholder="Search Nations" cls="ux-sh-spk" startOpen onClose={() => setTimeout(() => setShRecEd(null), 0)} onPick={it => { put({ nat: it.k }); setShRecEd(null); }} />)}
-            {shFact("born", "Born", r.born ? <>{uxDate(r.born)}<span className="ux-dim">{age}</span></> : "–",
-              O && shBox(r.born, (v) => v && v !== r.born && put({ born: v }), { type: "date" }))}
-            {shFact("ovr", "Rating", <span style={mono}>{showOvr(isM ? r.ovr : seen(r.id, r.ovr))}</span>,
-              O && shBox(r.ovr, (v) => { const x = Math.round(+v); if (x >= 25 && x <= 99 && x !== r.ovr) put({ ovr: x }); }, { style: mono, className: "ux-sh-fi ux-sh-fnum" }))}
-            {isM ? shFact("style", "Style", uxStyleName(edStyleOfMgr(r.id)), null)
-              : shFact("pos", "Positions", <>{shPosChips(own)}{asked && <span className="ux-sh-asked ux-sh-askin">Requested</span>}</>, posOk && shPosEdit(own, (p) => put({ pos: p })))}
-            {!isM && shFact("value", "Value", <span style={mono}>{value != null ? moneyLabel(value) : "–"}</span>, null)}
-            {/* A college man's year (DESIGN.md, The ANCC), stored as the year his course ends. */}
-            {!isM && hidMan(r.id) && shFact("grad", "Year", yearOf(r.grad) ? YEARS[yearOf(r.grad) - 1] : "–",
-              O && <Sel className="ux-sh-fi ux-sh-fsel" autoFocus value={yearOf(r.grad) || ""} onChange={(e) => { put({ grad: COLLEGE_SEASON + 4 - +e.target.value }); setShRecEd(null); }}
-                onBlur={() => setShRecEd(null)} aria-label="Year">{!yearOf(r.grad) && <option value="">None</option>}{YEARS.map((y, i) => <option key={y} value={i + 1}>{y}</option>)}</Sel>)}
-          </dl>
-        </section>
-        <section className="ux-sh-sec">
-          <div className="ux-sh-sech"><span>{isM ? "Manages" : "Plays For"}</span></div>
-          {sides.length ? sides.map(t => { const cat = teamOfKey(teamKey(t));
-            return (
-              <div key={teamKey(t)} className="ux-sh-side">{cat ? <TeamCrest team={cat} size={18} /> : <span className="ux-crest-gap" />}
-                <span className="ux-sh-sn"><SlideName text={t.name.trim()} /></span><span className="ux-dim">{isNational(t) ? "National Side" : "Club"}</span></div>); })
-            : <div className="ux-sh-side"><span className="ux-dim">Free Agent</span></div>}
-        </section>
-        {!isM && !veiled(r.id) && shTraits(r.badges || [], r.ovr, O ? (ids) => put({ badges: ids }) : null)}
-        {(() => { const k = shRec.k, T = !isM && k && !k.startsWith("new:") ? edTeamRec(k) : null, sq = T ? edSq(T) : [], at = T ? sq.indexOf(r.id) : -1;
-          const canSub = T && at >= 0 && shCan(k) && !edLockedMen.has("p:" + r.id), lab = T ? edLab(T) : [];
-          const cands = canSub ? sq.map((v, j) => [v, j]).filter(([v, j]) => v && j !== at && (at < 11 ? j >= 11 : j < 11) && !edLockedMen.has("p:" + v)) : [];
-          const swap = (j) => { const s = [...sq]; [s[at], s[j]] = [s[j], s[at]]; shPut(draftWith(draft, recBase, k, { squad: s }, "teams")); setShSubOpen(false); };
-          return (<>
-            <div className="ux-sh-recact">
-              {canSub && cands.length > 0 && <button type="button" className={"ux-btnreset ux-btn" + (shSubOpen ? " ux-on" : "")} aria-expanded={shSubOpen} onClick={() => setShSubOpen(v => !v)}>
-                {uxIcon("swapH", "ux-s")}{at < 11 ? "Sub Out" : "Sub In"}</button>}
-              {ours ? <button type="button" className="ux-btnreset ux-btn" onClick={() => shTrade(isM ? "m" : "p", r.id)}>{uxIcon("swap", "ux-s")}Trade</button>
-                : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => shTrade(isM ? "m" : "p", r.id)}>{uxIcon("swap", "ux-s")}Make An Offer</button>}
-              {O && !isM && <button type="button" className="ux-btnreset ux-btn ux-sh-danger" onClick={() => edRetire(r.id)}>Retire</button>}
-            </div>
-            {canSub && shSubOpen && (
-              <section className="ux-sh-sec">
-                <div className="ux-sh-sech"><span>{at < 11 ? "Bring On" : "Take Off"}</span><span className="ux-dim">{T.name.trim()}</span></div>
-                {cands.map(([v, j]) => { const m = recNow(v);
-                  return (
-                    <button key={v} type="button" className="ux-btnreset ux-sh-subr" onClick={() => swap(j)}>
-                      <span className="ux-sh-pl" style={{ color: POS_CLR[lab[j]] || "var(--ux-text-3)", ...mono }}>{lab[j]}</span>
-                      <span className="ux-sh-sn"><SlideName text={m?.name || v} /></span>
-                      <b style={{ ...mono, color: POS_CLR[posOfId(v)] }}>{posText(ownOfId(v)) || posOfId(v)}</b>{uxBadge(m?.ovr)}</button>); })}
-              </section>)}
-          </>); })()}
-      </div>);
-  };
-  const shRowMenuAt = (e, k) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect();
-    setShRowMenu(m => (m?.k === k && e.type === "click" ? null : { k, x: Math.round(r.right + 4), y: Math.round(r.top) })); };
-  const shDropClub = (k) => { const x = shClubOf(k); if (!x) return;
-    shPut({ ...draft, new: x.lg ? shNew.map(m => (m.id === x.lg ? { ...m, clubs: m.clubs.filter(c2 => c2.id !== x.c.id) } : m)) : shNew.filter(m => m.id !== x.c.id) }); };
   // Remove Club (the overseer's, DESIGN.md "Editor"): out of the records when the cart is saved, its men and manager free
   // and its seasons kept in the archive; not while a request or offer still names it or holds one of its men.
   const shRemoveClub = (k) => { const T = edTeamRec(k); if (!T || !overseer || isNational(T)) return;
@@ -16617,114 +15862,38 @@ export default function App() {
     for (const v of out) if (isN(v)) { if (v.batch) { const j = +String(v.id).slice(String(v.id).lastIndexOf(":") + 1); lists.set(v.batch, (lists.get(v.batch) || new Map()).set(j, v)); } else one.set(v.id, v); }
     shPut({ ...draft, new: shNew.map(n => (one.has(n.id) ? { ...n, ...keep(one.get(n.id)) }
       : lists.has(n.id) ? { ...n, men: (n.men || []).map((m, j) => (lists.get(n.id).has(j) ? { ...m, ...keep(lists.get(n.id).get(j)) } : m)) } : n)) }); };
-  const shRowMenuPanel = () => {
-    const mm = shRowMenu, k = mm.k, fresh = k.startsWith("new:"), x = fresh ? shClubOf(k) : null, T = fresh ? null : edTeamRec(k);
-    if (fresh ? !x : !T) return null;
-    const name = fresh ? (x.c.name || "").trim() || "New Club" : T.name.trim(), close = () => setShRowMenu(null), isN = (v) => !!v && typeof v === "object";
-    const R = shRollSquad(k), men = R ? R.sq.filter(isN) : [], rolls = shCan(k) && (fresh || men.length > 0);
-    let panel = null;
-    if (rolls && mm.roll === "ovr") {
-      const rs = R.sq.map(v => (!v ? null : isN(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(v => v != null), now = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
-      const free = men.filter(v => !(+v.ovr > 0) || v.auto).length, typed = men.length - free, goal = parseFloat(mm.target);
-      panel = (<div className="ux-sh-roll">
-        <label className="ux-ed-rollrow"><span>Team Rating</span><input className="ux-ed-in ux-ed-age" type="number" min={25} max={99} autoFocus placeholder="–" style={mono}
-          value={mm.target || ""} onChange={e => setShRowMenu(m => ({ ...m, target: e.target.value }))} /></label>
+  // ROLLS on a side's new men (user, 12 October 2026: "I can then use the OVR randomizer? Also add an age randomizer with an
+  // age range"), on its own page since the Sheet was retired (26 November 2026): a new club's men, or the new men in the
+  // cart placed in one of this person's sides. Roll Ratings rates every one left blank, or rolled before, so the side
+  // averages the team rating given; Roll Ages draws a date of birth in the range for every one whose date was not set by
+  // hand. Ratings typed, dates set by hand and men already on file stay as they are.
+  const uxRollPanel = (k) => {
+    if (!shCan(k)) return null;
+    const R = shRollSquad(k), isN = (v) => !!v && typeof v === "object", men = R ? R.sq.filter(isN) : [];
+    if (!men.length) return null;
+    const f = edRoll[k] || {}, set = (p) => setEdRoll(m => ({ ...m, [k]: { ...(m[k] || {}), ...p } }));
+    const rs = R.sq.map(v => (!v ? null : isN(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(v => v != null), now = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+    const free = men.filter(v => !(+v.ovr > 0) || v.auto).length, goal = parseFloat(f.target);
+    const lo0 = f.lo ?? "18", hi0 = f.hi ?? (shCollege(k) ? "21" : "32"), lo = Math.round(+lo0), hi = Math.round(+hi0), ageOk = lo >= 14 && hi <= 60 && lo <= hi;
+    const freeB = men.filter(v => !v.bornSet).length, ages = men.map(v => ageOf(v.born)).filter(a => a != null);
+    return uxPanel("Roll", null, (
+      <div className="ux-uce-checks">
+        <div className="ux-ed-rollrow"><span>Team Rating</span><input className="ux-ed-in ux-ed-age" type="number" min={25} max={99} placeholder="–" style={mono} aria-label="Team Rating"
+          value={f.target || ""} onChange={e => set({ target: e.target.value })} /></div>
         <div className="ux-ed-rollrow"><span>Now</span><b style={mono}>{now != null ? now.toFixed(1) : "–"}</b></div>
-        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{free}</span>, Keeps <span style={mono}>{typed}</span> Typed</span>
+        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{free}</span>, Keeps <span style={mono}>{men.length - free}</span> Typed</span>
           <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(goal >= 25 && goal <= 99) || !free} onClick={() => {
             const out = rollSquad(R.sq, R.lab, goal, (id) => recNow(id)?.ovr, Math.random, (v) => { const lim = edCapOf(v.nat); return lim == null ? 99 : lim - 1; });
-            shRollWrite(k, out.map(v => (isN(v) ? { ...v, ovr: shNum(v.ovr) } : v))); close(); }}>{uxIcon("dice", "ux-s")}Roll</button></div>
-      </div>); }
-    if (rolls && mm.roll === "age") {
-      const lo = Math.round(+mm.lo), hi = Math.round(+mm.hi), ok = lo >= 14 && hi <= 60 && lo <= hi;
-      const free = men.filter(v => !v.bornSet).length, ages = men.map(v => ageOf(v.born)).filter(a => a != null);
-      panel = (<div className="ux-sh-roll">
+            shRollWrite(k, out.map(v => (isN(v) ? { ...v, ovr: shNum(v.ovr) } : v))); }}>{uxIcon("dice", "ux-s")}Roll Ratings</button></div>
         <div className="ux-ed-rollrow"><span>Ages</span><span className="ux-sh-agerange">
-          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} autoFocus aria-label="Youngest" style={mono} value={mm.lo ?? ""} onChange={e => setShRowMenu(m => ({ ...m, lo: e.target.value }))} />
+          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" style={mono} value={lo0} onChange={e => set({ lo: e.target.value })} />
           <span>To</span>
-          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" style={mono} value={mm.hi ?? ""} onChange={e => setShRowMenu(m => ({ ...m, hi: e.target.value }))} /></span></div>
+          <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" style={mono} value={hi0} onChange={e => set({ hi: e.target.value })} /></span></div>
         <div className="ux-ed-rollrow"><span>Now</span><b style={mono}>{ages.length ? `${Math.min(...ages)} To ${Math.max(...ages)}` : "–"}</b></div>
-        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{free}</span>, Keeps <span style={mono}>{men.length - free}</span> Set By Hand</span>
-          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ok || !free} onClick={() => {
-            shRollWrite(k, R.sq.map(v => (isN(v) && !v.bornSet ? { ...v, born: edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1))) } : v))); close(); }}>{uxIcon("dice", "ux-s")}Roll</button></div>
-      </div>); }
-    return (<>
-      <div className="ux-scrim ux-sh-rowscrim" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
-      <div className="ux-menu ux-sh-rowmenu" role="menu" aria-label={name} style={{ left: mm.x, top: mm.y }} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
-        <div className="ux-menu-head"><b><SlideName text={name} /></b>{fresh ? ((x.c.name || "").trim() ? "New Club" : null) : T.group || null}</div>
-        {panel || <>
-          {rolls && <>
-            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "ovr", target: m.target || "" }))}>{uxIcon("dice", "ux-s")}Roll Ratings</button>
-            <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => setShRowMenu(m => ({ ...m, roll: "age", lo: m.lo ?? "18", hi: m.hi ?? (shCollege(k) ? "21" : "32") }))}>{uxIcon("dice", "ux-s")}Roll Ages</button></>}
-          {fresh && <button type="button" role="menuitem" className="ux-btnreset ux-menu-item ux-sh-mdanger" onClick={() => { shDropClub(k); close(); }}>{uxIcon("trash", "ux-s")}Remove</button>}
-          {!fresh && overseer && !isNational(T) && <button type="button" role="menuitem" className={"ux-btnreset ux-menu-item ux-sh-mdanger" + (mm.arm ? " ux-on" : "")}
-              onClick={() => { if (mm.arm) { shRemoveClub(k); close(); } else setShRowMenu(m => ({ ...m, arm: true })); }}>{uxIcon("trash", "ux-s")}{mm.arm ? "Confirm Remove" : "Remove Club"}</button>}</>}
-      </div></>);
-  };
-  const renderEdSheet = () => {
-    const tab = shTabIs; shFlat.current = [];
-    if (!tab) return <div className="ux-panel ux-grow"><div className="ux-empty">No Sides</div></div>;
-    const sec = shSections(tab), n = tab === "ARTERRA" ? null : shNats.by.get(tab), natCode = n ? n.code : null;
-    const colour = n ? n.nt.home : "#3a4a66", rowN = { n: 0 };
-    const places = SQUAD_PLACES, sel = shSel && shRowOf(shSel.k), refCols = sel ? shCols(places) : [];
-    const ref = sel ? shLetter(Math.max(0, refCols.findIndex(c => c.c === shSel.c))) : "";
-    return (
-      <div className={"ux-body ux-sh" + (shFull ? " ux-sh-full" : "")} onClick={() => { setShFiltOpen(null); setShAll(false); }}>
-        <section className="ux-panel ux-sh-main">
-          <div className="ux-sh-fx">
-            <span className="ux-sh-ref" style={mono}>{sel ? `${ref}${(shRowNo.current.get(shSel.k) || "")}` : ""}</span>
-            <span className="ux-sh-fxi" style={mono}>fx</span>
-            <div className="ux-sh-fxv"><SlideName text={sel ? shText(sel, shSel.c) || "–" : ""} /></div>
-            {shMsg && <span className="ux-sh-msg">{shMsg}</span>}
-            <button type="button" className="ux-btnreset ux-sh-ib" aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!shHist.past.length} onClick={shUndo}>{uxIcon("undo", "ux-s")}</button>
-            <button type="button" className="ux-btnreset ux-sh-ib" aria-label="Redo" title="Redo (Ctrl+Y)" disabled={!shHist.future.length} onClick={shRedo}>{uxIcon("redo", "ux-s")}</button>
-            <button type="button" className="ux-btnreset ux-sh-ib" aria-label={shFull ? "Leave Fullscreen" : "Fullscreen"} aria-pressed={shFull} title={shFull ? "Leave Fullscreen (Escape)" : "Fullscreen"}
-              onClick={() => shGoFull(!shFull)}>{uxIcon(shFull ? "shrink" : "expand", "ux-s")}</button>
-            <div className="ux-search ux-sh-find" onClick={(e) => e.stopPropagation()}>{uxIcon("search", "ux-s")}
-              <input type="search" placeholder="Find A Player, Manager Or Side" aria-label="Find" value={shFind} onChange={e => { setShFind(e.target.value); setShFindOpen(true); setShFindIdx(0); }}
-                onFocus={() => setShFindOpen(true)} onBlur={() => setTimeout(() => setShFindOpen(false), 120)}
-                onKeyDown={e => { if (e.key === "ArrowDown") { e.preventDefault(); setShFindIdx(i => Math.min(i + 1, shFindHits.length - 1)); }
-                  else if (e.key === "ArrowUp") { e.preventDefault(); setShFindIdx(i => Math.max(0, i - 1)); }
-                  else if (e.key === "Enter" && shFindHits[shFindIdx]) { e.preventDefault(); shGo(shFindHits[shFindIdx].go); }
-                  else if (e.key === "Escape") { setShFind(""); setShFindOpen(false); } }} />
-              {shFindOpen && shFind.trim().length >= 2 && (
-                <div className="ux-hits ux-sh-hits" role="listbox">
-                  {!shFindHits.length && <div className="ux-hits-none">No Matches</div>}
-                  {shFindHits.map((h, i) => <div key={h.key} role="option" aria-selected={i === shFindIdx} className={"ux-hit" + (i === shFindIdx ? " ux-on" : "")}
-                    onMouseDown={(e) => { e.preventDefault(); shGo(h.go); }} onMouseEnter={() => setShFindIdx(i)}><span><SlideName text={h.label} /></span><span className="ux-dim">{h.sub}</span></div>)}
-                </div>)}
-            </div>
-          </div>
-          <div className="ux-sh-grid" ref={shGrid} tabIndex={0} onKeyDown={shKey} onPaste={(e) => {
-            if (shEdit || e.target !== e.currentTarget || !shSel || !shSel.c.startsWith("p")) return; const txt = e.clipboardData.getData("text"); if (!txt.trim()) return; e.preventDefault();
-            shNewMen(shSel.k, +shSel.c.slice(1), txt.split(/\r?\n/).filter(x => x.trim())); }}>
-            {sec.groups.length > 0 && shTable(sec.groups, places, natCode, colour, rowN, "t")}
-            {sec.groups.some(g => !g.nt) && n && (overseer || clubNations(scope).includes(natCode)) && (
-              <div className="ux-sh-nolg"><button type="button" className="ux-btnreset ux-btn" onClick={() => shAddLeague(natCode)}>{uxIcon("plus", "ux-s")}New League</button></div>)}
-            {!sec.groups.some(g => !g.nt) && n && <div className="ux-sh-nolg">{(overseer || clubNations(scope).includes(natCode)) ? <button type="button" className="ux-btnreset ux-btn" onClick={() => shAddLeague(natCode)}>{uxIcon("plus", "ux-s")}New League</button> : <span className="ux-dim">No Clubs</span>}</div>}
-          </div>
-          <div className="ux-sh-tabs" role="tablist" aria-label="Nations" onClick={(e) => e.stopPropagation()}>
-            <div className="ux-sh-tabsin">
-              {shNats.bar.map(x => (
-                <button key={x.code} type="button" role="tab" aria-selected={x.code === tab} className={"ux-btnreset ux-sh-tab" + (x.code === tab ? " ux-on" : "")}
-                  style={{ ["--tc"]: x.nt.home }} title={x.name} onClick={() => shOpenTab(x.code)}>{!(overseer || clubNations(scope).includes(x.code)) && uxIcon("lock", "ux-xs")}{x.code}</button>))}
-              {!shNats.bar.some(x => x.code === tab) && tab !== "ARTERRA" && n && (
-                <button type="button" role="tab" aria-selected className="ux-btnreset ux-sh-tab ux-on" style={{ ["--tc"]: n.nt.home }} title={n.name}>{n.code}</button>)}
-              {arterraOn && <button type="button" role="tab" aria-selected={tab === "ARTERRA"} className={"ux-btnreset ux-sh-tab" + (tab === "ARTERRA" ? " ux-on" : "")} onClick={() => shOpenTab("ARTERRA")}>ARTERRA</button>}
-            </div>
-            <div className="ux-sh-allw">
-              <button type="button" className="ux-btnreset ux-sh-tab ux-sh-allb" aria-expanded={shAll} onClick={() => setShAll(v => !v)}>All Nations{uxIcon("caret", "ux-xs")}</button>
-              {shAll && (
-                <div className="ux-sh-allm" role="menu">{shNats.all.map(x => (
-                  <button key={x.code} type="button" role="menuitem" className={"ux-btnreset ux-sh-allr" + (x.code === tab ? " ux-on" : "")} onClick={() => shOpenTab(x.code)}>
-                    {natTeamByCode.get(x.code) ? <TeamCrest team={natTeamByCode.get(x.code)} size={16} /> : null}<span>{x.name}</span><span className="ux-dim" style={mono}>{x.code}</span>
-                    {x.clubs.length > 0 && <span className="ux-dim">{x.clubs.length} Clubs</span>}</button>))}</div>)}
-            </div>
-          </div>
-        </section>
-        {shDockPanel()}
-        {shRowMenu && shRowMenuPanel()}
-      </div>);
+        <div className="ux-ed-rollf"><span className="ux-cb-when">Rolls <span style={mono}>{freeB}</span>, Keeps <span style={mono}>{men.length - freeB}</span> Set By Hand</span>
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ageOk || !freeB} onClick={() =>
+            shRollWrite(k, R.sq.map(v => (isN(v) && !v.bornSet ? { ...v, born: edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1))) } : v)))}>{uxIcon("dice", "ux-s")}Roll Ages</button></div>
+      </div>), false);
   };
   // ════ THE EDITOR, REDESIGNED (DESIGN.md "The Editor, redesigned", Moukden and Kirin, 21 November 2026: "Make it a
   // completely user-facing feature-rich editor with very connected and navigable interface"). Edit where you read: one's
@@ -17057,6 +16226,7 @@ export default function App() {
                 <button key={m.id} type="button" className="ux-btnreset ux-uce-pr" onClick={() => { shMoveMgr({ id: m.id, from: {} }, k); setUcDet(null); }}>
                   <span className="ux-uce-pn"><SlideName text={fullDisplayName(m.name)} /></span><span className="ux-dim">{uxStyleName(edStyleOfMgr(m.id))}</span>{uxBadge(m.ovr)}</button>))}
                 {!freeMgrs.length && <div className="ux-empty-sm">None</div>}</div>
+              {(overseer || mgrNations(scope).length > 0) && <button type="button" className="ux-btnreset ux-btn" onClick={() => { setUcDet(null); edGoNewManager(k); }}>{uxIcon("plus", "ux-s")}New Manager</button>}
               {mgr && !isNew && uxArmBtn("sack:" + k, "Sack " + fullDisplayName(mgr.name), "Confirm Sack", () => { shSack({ from: { k } }); setUcDet(null); })}
               {mgr && isNew && <button type="button" className="ux-btnreset ux-btn" onClick={() => { shSetClub(k, { manager: null }); setUcDet(null); }}>Remove {fullDisplayName(mgr.name)}</button>}
             </div>)
@@ -17245,6 +16415,7 @@ export default function App() {
         <div className="ux-col">{uxSquadEdit(T, k, sq, lab, staged, own, extra, nt ? null : target)}</div>
         <div className="ux-col">{third}{nt && pickNew ? card : null}</div>
         <div className="ux-col">
+          {uxRollPanel(k)}
           {uxPanel("Checks", null, (
             <div className="ux-uce-checks">{checks.map(([ok, l, kind]) => (
               <div key={l} className={"ux-uce-chk" + (ok ? " ux-ok" : "")}>{ok ? uxIcon("check", "ux-xs") : <i className="ux-uce-dot" aria-hidden="true" />}<span>{l}</span>
@@ -17310,6 +16481,7 @@ export default function App() {
           </table></div>), true)}</div>
         <div className="ux-col">{uxAddPanel(T, k, target, sq, lab, (id) => take(id, target), addNew)}</div>
         <div className="ux-col">
+          {uxRollPanel(k)}
           {uxPanel("Checks", <b className="ux-drop-n" style={mono}>{todo.length + 1}</b>, (
             <div className="ux-uce-checks">
               {[["Name", (c.name || "").trim()], ["Code", c.code], ["City", c.location], ["Ground", stripVenue(c.stadium || "")], ["Manager", c.manager]].map(([l, ok]) => (
@@ -17459,6 +16631,65 @@ export default function App() {
             <button type="button" className="ux-btnreset ux-btn" onClick={() => { shCancelNew("players"); setEdSec("home"); }}>Cancel</button>
             {T && opens.length > 1 && <button type="button" className="ux-btnreset ux-btn" disabled={!ready} onClick={() => add(true)}>Add And Next</button>}
             <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready} onClick={() => add(false)}>{uxIcon("plus", "ux-s")}Add Player</button>
+          </div>
+        </div>
+      </div>);
+  };
+  // ── NEW MANAGER: a manager's page, blank, filled where it reads, as a new player's (user, 26 November 2026: "add a new
+  // manager feature, same style as new player and new team and new league"). He manages the club picked, or is a free agent. ──
+  const edGoNewManager = (side = null) => { shOpenNew("managers", side); setTab("editor"); setEdSec("newmanager"); };
+  const renderNewManager = () => {
+    const f = edForms.managers || null;
+    if (!f) return <div className="ux-body"><div className="ux-panel ux-grow"><div className="ux-empty"><button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => edGoNewManager()}>{uxIcon("plus", "ux-s")}New Manager</button></div></div></div>;
+    const upd = (p) => setEdForms(m => (m.managers ? { ...m, managers: { ...m.managers, ...p, fresh: false } } : m));
+    const age = f.born ? ageOf(f.born) : null, natT = natTeamByCode.get(f.nat) || null, ovr = +f.ovr > 0 ? Math.round(+f.ovr) : null;
+    const nc = f.side?.startsWith("new:") ? shClubOf(f.side)?.c : null, T = f.side && !nc ? edTeamRec(f.side) : null, clubT = T ? teamOfKey(teamKey(T)) : null;
+    const sideName = nc ? (nc.name || "").trim() || "New Club" : T ? T.name.trim() : null, ready = shFormReady("managers", f);
+    const disp = (f.name || "").trim() ? fullDisplayName(f.name.trim()) : "New Manager", word = splitSurname(disp, f.name || "").last.toUpperCase() || "NEW";
+    const c1 = (clubT || natT)?.primaryColor || "var(--ux-panel-3)", c2 = (clubT || natT)?.secondaryColor || c1, st = f.style || "balanced";
+    const sitting = T ? mgrNow(idOf(T.manager)) : null;
+    const add = () => { const side = f.side; shAddNew("managers"); if (side && !side.startsWith("new:") && teamOfKey(side)) ucGo(side); else setEdSec("home"); };
+    return (
+      <div className="ux-body ux-np" style={{ gridTemplateColumns: "minmax(300px, 0.8fr) minmax(0, 1.6fr)", gridTemplateRows: "auto minmax(0, 1fr)" }}>
+        <section className="ux-panel ux-plb-panel" aria-label={disp}>
+          <div className="ux-banner ux-plb" style={{ ["--c1"]: c1, ["--c2"]: c2, ["--word"]: c2 }}>
+            <UxSurname key={word} word={word} />
+            <div className="ux-plb-light" aria-hidden="true" />
+            <div className="ux-plb-face"><UxFace key={disp} name={disp} /></div>
+            <div className="ux-plb-crests">{[natT, clubT].filter(Boolean).map(t => <span key={t.id} className="ux-plb-crest"><TeamCrest team={t} size={96} /></span>)}</div>
+            <dl className="ux-plb-facts">
+              <div><dt>Style</dt><dd><span style={{ color: STYLE_CLR[st] }}>{STYLE_LBL[st]}</span></dd></div>
+              <div className="ux-np-ed"><dt>OVR</dt><dd><input className="ux-np-ovr" style={{ ...mono, background: ovr ? ovrSheen(ovrMetal(ovr)) : undefined }} inputMode="numeric" aria-label="Rating"
+                placeholder="–" value={f.ovr ?? ""} onChange={e => upd({ ovr: e.target.value.replace(/\D/g, "").slice(0, 2) })} /></dd></div>
+              <div><dt>Age</dt><dd>{age ?? "–"}{f.born && <small style={mono}>{uxDate(f.born)}</small>}</dd></div>
+              <div><dt>Manages</dt><dd className="ux-np-joins"><SlideName text={sideName || "Free Agent"} /></dd></div>
+            </dl>
+          </div>
+        </section>
+        <div className="ux-col">
+          {uxPanel("Record", null, (
+            <div className="ux-np-rec">
+              <label className="ux-uce-f ux-np-wide"><span>Name</span><input className="ux-ed-in" autoFocus placeholder="Given SURNAME" value={f.name || ""} onChange={e => upd({ name: e.target.value })} /></label>
+              <div className="ux-uce-f"><span>Nationality</span><UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer, mgrNations(scope))} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} /></div>
+              <div className="ux-uce-f"><span>Born</span><span className="ux-uce-age">
+                <input className="ux-ed-in" type="date" aria-label="Date Of Birth" value={f.born || ""} onChange={e => upd({ born: e.target.value || "" })} />
+                <input className="ux-ed-in ux-np-age" style={mono} aria-label="Age" key={"age" + (f.born || "")} defaultValue={age ?? ""}
+                  onBlur={e => { const y = Math.round(+e.target.value); if (y >= 14 && y <= 90 && y !== age) upd({ born: edBornFor(y) }); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                <button type="button" className="ux-btnreset ux-cb-x" title="Another Date For This Age" aria-label="Another Date For This Age" disabled={!f.born} onClick={() => upd({ born: edBornFor(ageOf(f.born)) })}>{uxIcon("dice", "ux-s")}</button></span></div>
+              <label className="ux-uce-f"><span>Style</span>{uxPick("Style", st, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v }))}</label>
+              <div className="ux-uce-f"><span>Manages</span>{nc ? <span className="ux-uce-ro">{sideName}</span>
+                : <UxSidePick label="Manages" value={f.side || ""} groups={edSideChoices(true, true).filter(([, l]) => l.some(x => !x.k || edMine(x.k))).map(([h, l]) => [h, l.filter(x => !x.k || edMine(x.k))])} placeholder="Search Clubs"
+                    onPick={it => upd({ side: it.k || null })} />}</div>
+            </div>), false)}
+          {uxPanel("On Save", null, (
+            <div className="ux-uce-checks">
+              {sitting && <div className="ux-uce-chk ux-ok"><span>Replaces</span><b>{fullDisplayName(sitting.name)}</b></div>}
+              {sideName && <div className="ux-uce-chk ux-ok"><span>{sideName} Plays</span><b style={{ color: STYLE_CLR[st] }}>{STYLE_LBL[st]}</b></div>}
+              <div className="ux-uce-chk ux-ok"><span>Goes In</span><span className={"ux-uce-st " + (overseer ? "ux-live" : "ux-rev")}>{overseer ? "Right Away" : "For Review"}</span></div>
+            </div>), false)}
+          <div className="ux-np-acts">
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => { shCancelNew("managers"); setEdSec("home"); }}>Cancel</button>
+            <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready} onClick={add}>{uxIcon("plus", "ux-s")}Add Manager</button>
           </div>
         </div>
       </div>);
@@ -17632,6 +16863,7 @@ export default function App() {
     ].filter(Boolean);
     const newMenu = (code) => [
       ["New Player", () => edGoNewPlayer()],
+      ...(overseer || mgrNations(scope).length ? [["New Manager", () => edGoNewManager()]] : []),
       ["New Club", () => { const lg0 = (curRecs.leagues || []).filter(l => l.nation === code).sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9))[0]; if (code) edNewClub(code, lg0?.name || ""); }],
       ["New League", () => { if (code) edNewLeague(code); }],
       ["New Deal", () => setEdSec("trades")]];
@@ -17815,6 +17047,7 @@ export default function App() {
   const lgCanEdit = (l) => !!l && (overseer || (isEditor && clubNations(scope).includes(l.nation)));
   const renderUxEditor = () => {
     if (edSec === "newplayer") return renderNewPlayer();
+    if (edSec === "newmanager") return renderNewManager();
     if (edSec === "newplayers") return renderNewMany();
     if (edSec === "club" && edDraftK) return renderClubDraft(edDraftK);
     if (edSec === "league" && edDraftK) return renderLeagueEdit({ draft: edDraftK });
@@ -17824,7 +17057,10 @@ export default function App() {
     if (edSec === "activity") return renderEdActivity();
     if (edSec === "requests") return renderEdRequests();
     if (edSec === "trades") return renderEdTrades();
-    if (edSec === "sheet" || !edNew || (!edRev && !(edNew.kind === "players" && edNew.mode === "many"))) return renderEdSheet();
+    // The Sheet is retired (user, 26 November 2026): a new man has his own page, anything else opens Home.
+    if (edNew && !edRev && edNew.kind === "managers") return renderNewManager();
+    if (edNew && !edRev && edNew.kind === "players" && edNew.mode !== "many") return renderNewPlayer();
+    if (!edNew || (!edRev && !(edNew.kind === "players" && edNew.mode === "many"))) return renderEdHome();
     if (!edRev) return <div className="ux-body ux-ed ux-ed-solo">{renderEdBatch(edNew)}</div>;
     if (edSec === "leagues") {
       const groups = edLgRows(), picked = edPick.leagues || groups.flatMap(([, l]) => l)[0]?.key;
@@ -17962,6 +17198,10 @@ export default function App() {
       // In work, Overview and History; out of it, his history is the whole page.
       if (uxMgr.club || uxMgr.nt) { const cur = reg.tab === "history" ? "history" : "overview";
         [["overview", "Overview"], ["history", "History"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === "history" ? "history" : null }))))); }
+      // His editor, as a player's: his record is the overseer's (src/data/rules.js).
+      if (overseer && (!(uxMgr.club || uxMgr.nt) || reg.tab !== "history"))
+        right = <button type="button" className={"ux-btnreset ux-btn ux-uce-tog" + (mgEdit ? " ux-on" : "")} aria-pressed={mgEdit}
+          onClick={() => { setMgEdit(!mgEdit); setMgOvr(null); }}>{uxIcon("edit", "ux-s")}{mgEdit ? "Editing" : "Edit Manager"}</button>;
     } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams" || reg.sec === "trades" || reg.sec === "stadiums")))) {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
@@ -18061,6 +17301,10 @@ export default function App() {
         <h1>Play Match</h1></>);
       tabs.push(pageTab("match", lmFixtureName(tg), true));
       right = renderUxMatchBar();
+    } else if (tab === "editor" && edSec === "newmanager") {
+      const side = edForms.managers?.side, T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
+      title = (<>{T ? <button type="button" className="ux-btnreset ux-pb-up" onClick={() => ucGo(side)}>{teamOfKey(side) && <TeamCrest team={teamOfKey(side)} size={18} />}{T.name.trim()}{uxIcon("fwd", "ux-s")}</button>
+        : <button type="button" className="ux-btnreset ux-pb-up" onClick={() => setEdSec("home")}>Editor{uxIcon("fwd", "ux-s")}</button>}<h1>New Manager</h1></>);
     } else if (tab === "editor" && (edSec === "newplayer" || edSec === "newplayers" || ((edSec === "club" || edSec === "league") && edDraftK))) {
       // The new pages: a new player, many, and a new club's or league's draft, each under its nation.
       const back = (code) => { const nt = code ? natTeamByCode.get(code) : null; return nt ? <button type="button" className="ux-btnreset ux-pb-up" onClick={() => openNation(code)}><TeamCrest team={nt} size={18} />{nt.name.trim()}{uxIcon("fwd", "ux-s")}</button> : null; };
@@ -18087,11 +17331,11 @@ export default function App() {
     } else if (tab === "editor") {
       // The Editor: Teams, Players, Managers, Leagues, Trades and Requests.
       title = <h1>Editor</h1>;
-      // The desk (DESIGN.md "The Editor, redesigned"): Home, the Inbox (Sent for an editor), Trades, Activity; the Sheet
-      // stays until the pages cover all it does.
+      // The desk (DESIGN.md "The Editor, redesigned"): Home, the Inbox (Sent for an editor), Trades, Activity. The Sheet is
+      // retired (user, 26 November 2026); every record is edited on its own page.
       const waitN = overseer ? reqFor.filter(r => !reqMine.includes(r)).length : 0;
       [["home", "Home"], ["inbox", <>{overseer ? "Inbox" : "Sent"}{waitN > 0 && <b className="ux-pb-n" style={mono}>{waitN}</b>}</>], ["trades", "Trades"], ["activity", "Activity"],
-       ...(draftSees ? [["draft", <>Draft{draftYours && <i className="ux-pb-dot" title="Your Pick" />}</>]] : []), ["sheet", "Sheet"]].forEach(([id, l]) =>
+       ...(draftSees ? [["draft", <>Draft{draftYours && <i className="ux-pb-dot" title="Your Pick" />}</>]] : [])].forEach(([id, l]) =>
         tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdCall(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.
@@ -19198,6 +18442,7 @@ export default function App() {
     || Object.keys(LEAGUE_CUPS).some(l => LEAGUE_CUPS[l] === s.comp && lgRail.some(c => c.name === l)));
 
   useEffect(() => { setPlEdit(false); setPlSlot(0); setPlOvr(null); }, [uxPlayerName]);
+  useEffect(() => { setMgEdit(false); setMgOvr(null); }, [reg.mgr]);
   useEffect(() => { setUcNew(null); setUcQ(""); setUcForOff(false); }, [regTeamObj?.id]);
   useEffect(() => { setLgEdit(false); }, [reg.comp]);
   const renderUxPlayer = (d) => {
@@ -22635,8 +21880,12 @@ export default function App() {
   };
   const renderUxManager = (m) => {
     const natT = natTeamByCode.get(m.nat) || null, sides = [m.club, m.nt].filter(Boolean);
+    // EDITING HIS PAGE, as a player's: his record where it reads, the overseer's alone. His style is his side's while he has
+    // one; out of work it is his own.
+    const ed = mgEdit && overseer, M = ed ? mgrNow(m.id) : null;
+    const putM = (x) => shPut(draftWith(draft, recBase, m.id, x, "managers"));
     // In work, History is a page of its own; out of work, it is the page under his banner.
-    if (sides.length && reg.tab === "history")
+    if (sides.length && reg.tab === "history" && !ed)
       return <div className="ux-body" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>{uxMgrHistory(m)}</div>;
     const kit = m.club || m.nt || natT, c1 = kit?.primaryColor || "var(--ux-panel-3)", c2 = kit?.secondaryColor || c1;
     const ink = kit?.primaryColor && (lumOf(kit.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
@@ -22663,7 +21912,7 @@ export default function App() {
       .sort((a, b) => uxWhen(b.s) - uxWhen(a.s) || b.t - a.t || b.cup - a.cup);
     const two = sides.length > 1;
     return (
-      <div className="ux-body" style={{ gridTemplateColumns: side ? "minmax(0, calc((100vh - 370px) * 0.75 + 386px)) minmax(320px, 1fr)" : "minmax(0, 1fr) 340px",
+      <div className="ux-body" style={{ gridTemplateColumns: ed ? "minmax(0, 1fr) 340px" : side ? "minmax(0, calc((100vh - 370px) * 0.75 + 386px)) minmax(320px, 1fr)" : "minmax(0, 1fr) 340px",
         gridTemplateRows: "auto minmax(0, 1fr)" }}>
         <section className="ux-panel ux-plb-panel" aria-label={m.name}>
           <div className="ux-banner ux-plb" style={{ ["--c1"]: c1, ["--c2"]: c2, ["--word"]: wordClr, color: ink }}>
@@ -22678,13 +21927,29 @@ export default function App() {
               </div>)}
             <dl className="ux-plb-facts ux-plb-five">
               <div><dt>Style</dt><dd>{m.style ? <span style={{ color: STYLE_CLR[m.style] }}>{STYLE_LBL[m.style]}</span> : "–"}</dd></div>
-              <div><dt>OVR</dt><dd><span className="ux-plb-ovr" style={{ background: ovrSheen(ovrMetal(m.ovr)) }}>{showOvr(m.ovr)}</span></dd></div>
+              <div className={ed ? "ux-np-ed" : undefined}><dt>OVR</dt><dd>{ed ? <input className="ux-np-ovr" style={{ ...mono, background: M?.ovr ? ovrSheen(ovrMetal(M.ovr)) : undefined }} inputMode="numeric" aria-label="Rating"
+                value={mgOvr ?? M?.ovr ?? ""} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2), x = +v; setMgOvr(v); if (x >= 25 && x <= 99 && x !== M?.ovr) putM({ ovr: x }); }}
+                onBlur={() => setMgOvr(null)} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                : <span className="ux-plb-ovr" style={{ background: ovrSheen(ovrMetal(m.ovr)) }}>{showOvr(m.ovr)}</span>}</dd></div>
               {wins.map(([l, w, x]) => <div key={l} title={x?.p ? `Played ${x.p}, Won ${x.w}, Drawn ${x.d}, Lost ${x.l}` : undefined}><dt>{l}</dt><dd>{w.win == null ? "–" : <span className={w.ok ? undefined : "ux-dim"}>{w.win.toFixed(1)}</span>}</dd></div>)}
               <div><dt>Age</dt><dd>{age ?? "–"}{m.born && <small style={mono}>{uxDate(m.born)}</small>}</dd></div>
             </dl>
           </div>
         </section>
-        {side && (
+        {ed && M && (
+          <div className="ux-col">
+            {uxPanel("Record", null, (
+              <div className="ux-np-rec">
+                <label className="ux-uce-f ux-np-wide"><span>Name</span><input className="ux-ed-in" key={"mn" + m.id + M.name} defaultValue={M.name}
+                  onBlur={e => { const v = e.target.value.trim(); if (v && v !== M.name) putM({ name: v }); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>
+                <div className="ux-uce-f"><span>Nationality</span><UxSidePick label="Nationality" value={M.nat} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => it.k && it.k !== M.nat && putM({ nat: it.k })} /></div>
+                <div className="ux-uce-f"><span>Born</span><input className="ux-ed-in" type="date" aria-label="Date Of Birth" value={M.born || ""} onChange={e => e.target.value && birthDateOk(e.target.value) && putM({ born: e.target.value })} /></div>
+                <div className="ux-uce-f"><span>Style</span>{sides.length ? <span className="ux-uce-ro">{m.style ? STYLE_LBL[m.style] : "–"}<span className="ux-dim">Set By {sides[0].name}</span></span>
+                  : uxPick("Style", m.style || "balanced", STYLES.map(s => [s, STYLE_LBL[s]]), v => v && v !== m.style && putM({ style: STYLE_LBL[v] }))}</div>
+              </div>), false)}
+          </div>)}
+        {ed && <div className="ux-col">{uxChangesPanel(cartList.filter(it => it.groups.some(g => g.kind === "managers" && g.id === m.id)))}</div>}
+        {!ed && side && (
           <div className="ux-col">
             {uxPanel("Tactics", two ? (
               <div className="ux-seg" role="group" aria-label="Side">
@@ -22708,7 +21973,7 @@ export default function App() {
                 </table></div>
               </div>), true)}
           </div>)}
-        {sides.length > 0 && (
+        {!ed && sides.length > 0 && (
           <div className="ux-col">
             {uxPanel("Sides", null, (
               <div className="ux-pbody ux-fit"><table className="ux-tbl">
@@ -22742,7 +22007,7 @@ export default function App() {
                   {!results.length && <tr><td colSpan={two ? 6 : 5} className="ux-dim">{regLoading ? "Loading" : "None"}</td></tr>}</tbody>
               </table></div>), true)}
           </div>)}
-        {!side && uxMgrHistory(m)}
+        {!ed && !side && uxMgrHistory(m)}
       </div>);
   };
 

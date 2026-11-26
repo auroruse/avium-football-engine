@@ -220,7 +220,7 @@ export const DOCS = [
   { id: "editing", title: "Editing", sections: [
     { id: "editors", title: "Editors And Kirin", body: [
       "Each editor keeps their own nation: its national side, its clubs and its leagues. An editor may also be given another nation's clubs and leagues without its national side. Kirin can change anything, and answers the requests editors send.",
-      "Sign in with the GitHub account Kirin has listed for you, and the top bar gains the Editor section, Requests and the Cart. Everything is edited on its own page: Edit, at the top right of one of your sides, a league or a player, turns that page into its editor. The Editor section holds Home, Sent (Kirin's Inbox), Trades and Activity, the pages for new players, clubs and leagues, and the Sheet until the pages cover everything it does.",
+      "Sign in with the GitHub account Kirin has listed for you, and the top bar gains the Editor section, Requests and the Cart. Everything is edited on its own page: Edit, at the top right of one of your sides, a league or a player, turns that page into its editor. The Editor section holds Home, Sent (Kirin's Inbox), Trades and Activity, and the pages for new players, managers, clubs and leagues.",
       { dl: [
         ["Yours To Change", "A side's name, kits, ground, capacity, city, time wasting and formation, and who plays where; players and managers moved between your own sides, free agents signed and players released; your national side's call-ups; a league's name, tier and cup; and a new player rated at or under his side's level for him, its best starter at his position."],
         ["By Request", "A club's code, one of your players' positions, a new player rated over his side's level or left blank, and every new manager, club and league. Kirin answers these."],
@@ -243,12 +243,17 @@ export const DOCS = [
     { id: "player-page", title: "Editing A Player", body: [
       "Edit Player on a player's page edits him there. Kirin sets his rating in the banner, his positions on the pitch (Primary, or Second for the one he also plays; clicking his second again drops it), his traits and their levels, his name, nationality and date of birth, and can retire him. An editor asks for one of their own players' positions the same way, and Request New Portrait asks for a new picture of him. Changes, on the right, lists what is done to him with Undo and Send.",
     ] },
-    { id: "new-pages", title: "New Players, Clubs And Leagues", body: [
+    { id: "manager-page", title: "Editing A Manager", body: [
+      "Edit Manager on a manager's page edits him there, and only Kirin has it. His rating is set in the banner; his name, nationality and date of birth in Record. His style is his club's while he has one and is changed with the club's; out of work, his style is set in Record. Changes lists what was done to him, each with its undo.",
+    ] },
+    { id: "new-pages", title: "New Players, Managers, Clubs And Leagues", body: [
       { dl: [
         ["New Player", "From Home, or One at the top of the page: a blank player page, filled where it reads. His name, nationality, date of birth or age (the die draws another date), positions on the pitch, rating in the banner, traits, and the club and place he joins or none. On Save says whether he goes in at once or for review. Add Player puts him in the cart, and Add And Next starts the next open place at the same club. An editor's new player has his portrait asked for with him."],
+        ["New Manager", "From Home, or New Manager in a club's Manager section: a blank manager page, filled where it reads. His name, nationality, date of birth or age, style, rating in the banner, and the club he manages or none. On Save says whose place he takes and whether he goes in at once or for review. Add Manager puts him in the cart."],
         ["Many", "A list pasted a player a line, into one club's open places or to free agency. Each line becomes a row to put right before anything is added: name, position, age and rating can be changed in the row, and a row with something wrong says what. Ages and ratings not given are drawn or left as chosen."],
         ["New Club", "From Home, or New Club on a league's page: a blank club page marked Draft, filled where it reads, its squad from free agents, your other clubs or new players. Checks says what it still needs, and Send sends it for review."],
         ["New League", "From Home: a blank league page marked Draft, with its name, tier and cup, and its clubs made with New Club, each opening its own draft page. The league and its clubs go for review together."],
+        ["Roll", "On a new club's page, and on one of your sides with new players in the cart. Roll Ratings takes a team rating and rates every new player left blank, or rolled before, so the side averages it: the starters about a point above it and each bench player below the starter at his position. Roll Ages takes an age range and draws a new date of birth in it for every new player whose date was not set by hand. Ratings you typed and players already on file stay as they are."],
         ["A League's Page", "Edit on one of your leagues changes its name, tier and cup, lists its clubs with Edit on each, and starts a New Club in it. Kirin also moves clubs in and out."],
       ] },
     ] },
@@ -274,58 +279,7 @@ export const DOCS = [
         ["Withdraw All", "Takes back a whole block."],
         ["+3", "A new player rated that far above his club's best starter at his position."],
       ] },
-      "Four or more requests from one save show as one block, its new players a row each under their club. A new player waiting for review shows faintly in his place on the Sheet and on his side's page. Decline, Withdraw and Dismiss each ask twice.",
-    ] },
-    { id: "sheet", title: "The Sheet", body: [
-      "The Sheet is the registry as a spreadsheet. Each nation has a tab along the foot, yours first and then every nation with clubs; the rest are under All Nations. Every tab can be read, and another nation's is locked.",
-      "A tab is one table: the national side first, then the clubs league by league, each league under a strip with its badge and name. Clubs stand best first, sorted when the tab opens, so a row stays put while you work on it.",
-      "The badge, code and name stay in place while the rest scrolls: OVR, XI, Bench and Value, worked out as players move; formation and time wasting; the manager; home and away kits; city, ground and capacity; and then the places, twenty-two for every side. Each place starts with its position in the side's formation, and on the bench its group: keeper, defenders, midfielders and forwards, in that order.",
-      "A player is a chip with his rating, his name, and his nation's code when he is not the tab's. One out of position, a substitute in another group's place too, shows the rating he plays the place at, ringed in red, with what it costs him. A manager's chip carries his style.",
-      "One click opens any cell you can change: a list for formation and time wasting, a colour picker for a kit, a search for the city, a box for the rest. Enter or Tab keeps the change and Escape drops it. The arrow keys and Tab move around the sheet, typing on a cell starts on it, Enter on a chip opens his record, and Delete releases a player or sacks a manager. The bar over the grid shows the picked cell in full.",
-      "A changed cell stays marked until the cart is saved, and an editor's change to a code shows Requested until Kirin answers. Undo and Redo, beside the bar, or Ctrl+Z and Ctrl+Y, step back and forward through your changes.",
-      { dl: [
-        ["Sort And Filter", "A column's name sorts every league by it, and its funnel keeps only the values you tick."],
-        ["Find", "Looks across every tab for a player, a manager or a side, and takes you to his cell."],
-        ["Fullscreen", "Lays the sheet and the dock over the whole screen. Escape brings it back."],
-      ] },
-    ] },
-    { id: "moving-men", title: "Moving Players", body: [
-      "Drag a chip onto a place. Onto another player, the two change places, wherever each came from: two of your clubs, or the eleven and the bench. Onto an open place, he moves there.",
-      "A club's player dragged onto his national side is called up and stays at his club; dropped onto a player already there, that player leaves the squad. Managers move the same way between your sides.",
-      "A starting place can't be left empty, and a player in an offer or request that is still waiting carries a lock and can't move. A move to another nation's club is made on Trades.",
-      { dl: [
-        ["Record", "The chip you clicked: his details, the sides he plays for, his traits and his value. Sub Out on a starter and Sub In on a substitute list the players he can change places with. Trade opens Trades with him in a deal; on another nation's player it reads Make An Offer. Kirin edits the record here and can retire a player."],
-        ["Lineup", "The picked side on a pitch, with its bench under it and its formation at the top. Drag players around it, or between it and the sheet. Clicking a side's badge opens it here."],
-        ["Free Agents", "Every player and manager without a club, best first, on two tabs, Players and Managers, each with a search; a player who plays only for his national side is one. Drag one onto an open place to sign him, or onto a player to sign him in that player's place. Drag a player from the sheet onto this panel to release him, or a manager to sack him. New Player and New Manager are at the top, and new players in the cart without a side show first in the list."],
-        ["Nationals", "With a national side picked: its players not called up, best first. Drag one up into the squad."],
-      ] },
-    ] },
-    { id: "new-records", title: "New Players And Managers", body: [
-      "New Player, at the top of Free Agents, opens the form on the dock: name, nationality, date of birth (or an age, which draws a date for it, and the die another), position and second position, the side he joins if any, rating and traits. Add To Cart puts him in the cart, and Cancel throws the form away. A form left for something else is kept in this browser, and New Player brings it back. The + in an open place opens the same form for that place.",
-      "New Manager, and the + in an empty manager cell, do the same for a manager, with his style in place of positions; one made for a side takes it over when he is let in.",
-      "Typing into an open place is quicker, a player a line: (86) Kenji MORISHITA, ST, 24, Finisher, Composed",
-      { tbl: { head: ["Part", "Written", "If Left Out"], w: [110, 0, 380], rows: [
-        ["Rating", "In brackets, first", "He stays blank"],
-        ["Name", "A surname in lower case is put in capitals", "Needed"],
-        ["Position", "After a comma, and a second after another comma", "He plays the place's"],
-        ["Age", "A number", "A date of birth is drawn for an age from 18 to 32, or 18 to 21 at a college"],
-        ["Traits", "By name, each with a number after it for its level (Vision 3)", "None"],
-      ] } },
-      "A college's player starts in the year his age gives. Paste several lines to make a player in each open place from there on. A row copied from a sheet works too, a player a cell as the registry writes him, (76) Cihan KARTACA [SEL], with his nation in brackets when it is not the side's: the players go to the places one after another, an empty cell leaves its place as it is, and a cell holding only a position gives it to the player before it. A manager's name typed into an empty manager cell makes him the same way.",
-      "A new player's chip, typed or made with the form, opens him in the form, where Done keeps a change and Remove takes him out.",
-      "Many, at the top of the New Player form, opens a list across the page for a whole squad or a group of free agents: a line a player as above, one nationality unless a line tags his own, an age range for the lines without an age, and each player rated in the table if his line has no rating. A free agent's line needs his position; a player joining a side plays the place he takes. It goes to Kirin as one request, and its players show in the places they will take, or at the top of Free Agents.",
-      { dl: [
-        ["Roll Ratings", "In the menu on a side's row number, wherever it has new players: a new club's, or the new players in the cart in one of your sides. Give it a team rating and it rates every new player left blank, or rolled before, so the side averages it: the starters about a point above it and each bench player below the starter at his position. Ratings you typed, and players already on file, stay as they are."],
-        ["Roll Ages", "Beside it. Give it an age range, 18 to 32 to start, and every new player there gets a new date of birth for an age in it. A date set by hand on his form stays."],
-      ] },
-      "Everything new is sent when the cart is saved. For an editor each new player is one request, which Kirin may change before letting it in; Kirin's own go in at once. A rating can be left blank for Kirin to set, and a new player's traits are those his rating affords. A new player can be of any nation, but one from outside your own needs a rating below that nation's level, its national side's rating, which the Rating box shows. New managers are of your own nation.",
-    ] },
-    { id: "leagues", title: "Clubs And Leagues", body: [
-      "+ New Club, at the foot of each league, adds a row to fill in place: name, code, kits, city, ground and capacity, formation and time wasting. Its players come from Free Agents and your own clubs, or are made in its places; its manager comes from Free Agents or the + in its manager cell. It needs its eleven starters, and the bench can wait. Remove, in a new club's menu, takes it out of the cart with the players made there.",
-      "New League, under the last league, adds a strip for the league's name, tier and cup, with + New Club for its founding clubs. A new club with its players is one request, and so is a new league with its clubs.",
-      "A league's name, on its strip, opens it on the dock: its name, tier and cup are yours to change without a request. Two leagues can share a tier, for regional divisions. A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it. A league split into conferences, as the collegiate championship is, lists them on its dock with their clubs, and its editor renames them there.",
-      "Kirin also sees how many places go up and down, and moves a club into another league by dragging its row number onto that league's strip.",
-      "Kirin removes a club from its row number's menu: Remove Club, then Confirm Remove. When the cart is saved the club leaves the records, its players and manager become free agents, and its seasons stay in the archive. A club named in a waiting offer or request, or holding a player who is, can't be removed.",
+      "Four or more requests from one save show as one block, its new players a row each under their club. A new player waiting for review shows faintly in his place on his side's page. Decline, Withdraw and Dismiss each ask twice.",
     ] },
     { id: "trades", title: "Trades", body: [
       "Trades is where players and managers change clubs: signings, releases, moves between your own clubs and swaps with other nations' clubs, between as many clubs as you like. Down the left are your offers: Your Move, the ones waiting on you; Waiting, yours and the ones you have accepted that still wait on others; and Declined. New Deal starts another.",
@@ -333,7 +287,7 @@ export const DOCS = [
       "Each club counts its places as the deal stands, and one that would hold too many asks who makes way, with Release beside each of its players; the deal cannot go until every squad fits. A player coming in takes the place of a player leaving, but a keeper's place only ever goes to a keeper, and a starting place left empty is filled from the bench.",
       "Each player shows his transfer value where he stands now. The Deal lists what each club gets and gives, with the value coming in and going out, and where each player coming in will play. A deal between your own clubs, or with free agents, goes live with Confirm. One with another nation's club is an offer: Send Offer sends it to that nation's editors, or to Kirin where it has none. Kirin has Apply Now as well, to put it straight in.",
       "Every club in an offer accepts the same version. Accept, Decline (with a note) or Counter answer it: a counter changes the deal from your side and sends it back to every other club to accept again. Withdraw takes back one of yours. Until it is settled only the players in it are held, and each accept checks again that it still fits.",
-      "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals on the Sheet.",
+      "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals on their own page.",
     ] },
     { id: "college-draft", title: "The College Draft", body: [
       "After each NL season the final-year college players are drafted in one round of 44 picks, NL2's last club picking first and NL1's champion last, except where a pick has been traded. Its board is the Draft page in the Editor, which Kirin and every editor holding a pick see.",
@@ -421,7 +375,7 @@ export const DOCS = [
     ] },
     { id: "college-players", title: "College Players", body: [
       "The All-Nichirin Collegiate Championship is Nichirin's third tier: thirty-two college sides in four conferences. A player at a college shows no rating, value or traits, and no rating changes, to anyone but Kirin. Everyone sees his name, positions, age, college, year and figures, his match ratings included. A college side's own rating, its lines and its squad's value still show, and the moment a player leaves a college he shows like anyone else.",
-      "A college course runs four years, First Year to Final Year. A player's year stands on his page where a value would, and beside his name on the Sheet.",
+      "A college course runs four years, First Year to Final Year. A player's year stands on his page where a value would.",
     ] },
   ] },
   { id: "tactics", title: "Tactics", sections: [
