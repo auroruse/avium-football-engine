@@ -15986,7 +15986,7 @@ export default function App() {
     const nat = shSideNat(side), own = overseer || (scope.nations || []).includes(nat) ? nat : (scope.nations || [])[0] || nat;
     const T = side && !side.startsWith("new:") ? edTeamRec(side) : null;
     const f = kind === "players"
-      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * (shCollege(side) ? 4 : 15))), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, portrait: !overseer, fresh: true }
+      ? { kind, mode: "one", name: "", nat, born: edBornFor(18 + Math.floor(Math.random() * (shCollege(side) ? 4 : 15))), pos: shDefPos(shPlaceOf(side, at)), pos2: "", ovr: "", badges: [], side, at, portrait: false, fresh: true }
       : { kind, name: "", nat: own, born: edBornFor(38 + Math.floor(Math.random() * 17)), style: styleKeyOf(T?.style) || "balanced", ovr: "", side, fresh: true };
     setEdForms(m => ({ ...m, [kind]: f })); setEdFormOff(o => ({ ...o, [kind]: false }));
     setShFormEdit(null); setShFormOpen(kind); setShDock("rec"); setShMsg("");
@@ -16278,7 +16278,7 @@ export default function App() {
   // ONE NEW MAN, made beside a squad for the place picked (the user, 25 November 2026: "add back the option to add new
   // player for Club, though one at a time only"): name, positions, nationality, age, rating against the club's level,
   // traits, and for an editor his portrait asked for with him.
-  const ucNewSeed = (T, place, nat) => ({ name: "", pos: shDefPos(place) || "CM", pos2: "", nat, age: 18 + Math.floor(Math.random() * 15), born: null, ovr: "", badges: [], portrait: !overseer, tsel: false });
+  const ucNewSeed = (T, place, nat) => ({ name: "", pos: shDefPos(place) || "CM", pos2: "", nat, age: 18 + Math.floor(Math.random() * 15), born: null, ovr: "", badges: [], portrait: false, tsel: false });
   const uxNewManForm = (T, k, i, place, onAdd) => {
     const nat0 = isNational(T) ? T.code : T.nation || (scope.nations || [])[0] || "";
     const f = ucNew && ucNew.k === k ? ucNew : { k, ...ucNewSeed(T, place, nat0) };
@@ -16935,10 +16935,10 @@ export default function App() {
   // ── NEW PLAYERS, MANY: pasted, a line a man, then a table to put right before they go in; into one club's open places
   // or to free agency ──
   const edGoMany = (side = null) => { setUcMany(m => ({ text: m?.text || "", nat: (side && edTeamRec(side) ? (isNational(edTeamRec(side)) ? edTeamRec(side).code : edTeamRec(side).nation) : null) || m?.nat || (scope.nations || [])[0] || "",
-    side: side || m?.side || (ucRun[0] && !isNational(ucRun[0]) ? teamKey(ucRun[0]) : null), into: side ? "club" : m?.into || "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: !overseer, seed: Date.now() }));
+    side: side || m?.side || (ucRun[0] && !isNational(ucRun[0]) ? teamKey(ucRun[0]) : null), into: side ? "club" : m?.into || "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: false, seed: Date.now() }));
     setTab("editor"); setEdSec("newplayers"); };
   const renderNewMany = () => {
-    const f = ucMany || { text: "", nat: (scope.nations || [])[0] || "", side: null, into: "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: !overseer, seed: 0 };
+    const f = ucMany || { text: "", nat: (scope.nations || [])[0] || "", side: null, into: "club", amin: 18, amax: 32, mode: "level", edits: {}, cut: [], portrait: false, seed: 0 };
     const upd = (p) => setUcMany({ ...f, ...p });
     const T = f.into === "club" && f.side ? edTeamRec(f.side) : null, lines = f.text.split(/\r?\n/).filter(x => x.trim());
     const key = JSON.stringify([f.text, f.side, f.into, f.mode, f.amin, f.amax, f.nat, f.seed]);
