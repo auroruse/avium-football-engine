@@ -1,5 +1,21 @@
 [
  {
+  "id": "a03d0368",
+  "by": "cornafiable",
+  "at": "2026-11-26T11:26:49.389Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0400",
+    "name": "FK Tombaq",
+    "field": "manager",
+    "from": "m0341",
+    "to": "m0175"
+   }
+  ]
+ },
+ {
   "id": "a83a4768",
   "by": "cornafiable",
   "at": "2026-11-26T11:25:20.799Z",
