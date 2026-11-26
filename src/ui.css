@@ -1560,9 +1560,9 @@ tr.ux-vac { cursor: default; }
 /* Square in the panels over the pitch, as in the sidebar. */
 .ux-lm-panel .ux-panel, .ux-lm-panel .ux-seg, .ux-lm-panel .ux-seg button, .ux-lm-panel .ux-chip { border-radius: 0; }
 .ux-tc-val { min-width: 0; white-space: nowrap; }
-.ux-tc-mv { display: inline-flex; flex: none; }
-.ux-tc-mv.ux-up .ux-arw { stroke: var(--ui-ok); }
-.ux-tc-mv.ux-down .ux-arw { stroke: var(--ui-warn); }
+.ux-tcv-mv { display: inline-flex; flex: none; }
+.ux-tcv-mv.ux-up .ux-arw { stroke: var(--ui-ok); }
+.ux-tcv-mv.ux-down .ux-arw { stroke: var(--ui-warn); }
 .ux-tc-watch { display: grid; grid-template-columns: minmax(0, 1fr) 36px auto; align-items: center; gap: 8px; width: 100%; }
 .ux-tc-tags { display: flex; gap: 4px; justify-content: flex-end; }
 .ux-tc-pc { font-size: 10.5px; color: var(--ux-text-3); }

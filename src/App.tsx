@@ -25117,7 +25117,7 @@ export default function App() {
                                 <div className="ux-tc-v" style={{ "--ux-tc-lean": clr || "var(--ux-text)" }}>
                                   <span className="ux-tc-pips" aria-hidden="true">{v.vals.map(([vv]) => <i key={vv} className={vv === near ? "ux-on" : undefined} />)}</span>
                                   <span className="ux-tc-val" style={{ color: clr }}>{v.vals.find(([vv]) => vv === near)?.[1]}</span>
-                                  {Math.abs(mv) >= 0.25 && <span className={"ux-tc-mv" + (mv > 0 ? " ux-up" : " ux-down")} data-tip={"From " + (v.vals.find(([vv]) => vv === nearOf(v, b0))?.[1] || "")}><UxArrow up={mv > 0} /></span>}</div>
+                                  {Math.abs(mv) >= 0.25 && <span className={"ux-tcv-mv" + (mv > 0 ? " ux-up" : " ux-down")} data-tip={"From " + (v.vals.find(([vv]) => vv === nearOf(v, b0))?.[1] || "")}><UxArrow up={mv > 0} /></span>}</div>
                               </div>); });
                           const sheet = []; for (let i = 0; i < sheet1.length; i += 2) sheet.push(two(sheet1[i], sheet1[i + 1], "s" + i));
                           // THE STYLE BY PHASE

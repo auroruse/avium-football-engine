@@ -1900,7 +1900,7 @@ played to its end, its summary and its exports have not been run.
 **Zones (26 November 2026).** A division's zones come off its league's record (src/data/leagues.js, seasonZones): the
 Club World Cup's places (`cwc`) and the Club World Shield's (`cws`) from the top of the top division, who goes up (`up`)
 and the promotion playoff's places after them (`playoff`) in the others, and who goes down. No zone marks the champions;
-a season's stakes keep the title as a line of their own. NL1 has four and two, NL2 two up and a playoff of four. Each
+a season's stakes keep the title as a line of their own. NL1 has four and two, NL2 two up and a playoff of eight (third to tenth, as in 1935). Each
 division's zones are edited for that season on its Rules page, colour only.
 
 ## New Tournament, redesigned (26 November 2026)

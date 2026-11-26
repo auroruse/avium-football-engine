@@ -7,7 +7,7 @@
 
 // HOW MANY GO UP AND DOWN (Moukden and Kirin, 11 October 2026): `up` and `down` are the places a season sends to the
 // division above and below outright; a playoff its report records settles any place besides (seasonMoves in App.tsx).
-// `playoff` is how many places after the ones that go up play the promotion playoff (NL2's third to sixth), and `cwc`
+// `playoff` is how many places after the ones that go up play the promotion playoff (NL2's third to tenth), and `cwc`
 // and `cws` how many from the top go to the Club World Cup and then the Club World Shield (the user, 26 November 2026:
 // NL1 has four and two). A season marks them on its tables (seasonZones); nothing plays the playoff yet.
 // A SEASON'S FORMAT (the user, 26 November 2026: seasons are made from a nation only, "format on its leagues"): `legs`

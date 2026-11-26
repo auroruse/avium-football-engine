@@ -10,7 +10,7 @@
 {"id":"l0009","name":"Frederikka Cup","nation":"KFK","tier":0,"cup":null},
 {"id":"l0010","name":"Kullanmaan Cup","nation":"KKM","tier":0,"cup":null},
 {"id":"l0011","name":"Nichirin League One","nation":"NCH","tier":1,"cup":"Sei'i Tai Shogun Cup","down":3,"cwc":4,"cws":2},
-{"id":"l0012","name":"Nichirin League Two","nation":"NCH","tier":2,"cup":"Sei'i Tai Shogun Cup","up":2,"playoff":4},
+{"id":"l0012","name":"Nichirin League Two","nation":"NCH","tier":2,"cup":"Sei'i Tai Shogun Cup","up":2,"playoff":8},
 {"id":"l0013","name":"Rudanian First League","nation":"RUD","tier":1,"cup":null},
 {"id":"l0014","name":"Hagbia Haleumi Hashiboniti","nation":"SHI","tier":1,"cup":null},
 {"id":"l0015","name":"Allskyärnskan","nation":"SKJ","tier":1,"cup":null},
