@@ -1,1 +1,130 @@
-[]
+[
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T17:53:10.048Z",
+  "approved": [],
+  "id": "a7644c0b",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Alla QUPIWA",
+  "rec": {
+   "what": "players",
+   "side": "t0405",
+   "at": 12,
+   "name": "Alla QUPIWA",
+   "nat": "ANT",
+   "born": "1915-07-28",
+   "pos": [
+    "RB",
+    "LB"
+   ],
+   "ovr": 75,
+   "badges": [
+    "tikitaka",
+    "rapid:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T17:53:10.048Z",
+  "approved": [],
+  "id": "aa5a39b2",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Yuwa WAKARI",
+  "rec": {
+   "what": "players",
+   "side": "t0405",
+   "at": 16,
+   "name": "Yuwa WAKARI",
+   "nat": "ANT",
+   "born": "1910-04-13",
+   "pos": [
+    "CM",
+    "AM"
+   ],
+   "ovr": 76,
+   "badges": [
+    "longshot:3",
+    "finisher:1",
+    "greedy"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T17:53:10.048Z",
+  "approved": [],
+  "id": "ec8347f9",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Pacha PELKA",
+  "rec": {
+   "what": "players",
+   "side": "t0405",
+   "at": 20,
+   "name": "Pacha PELKA",
+   "nat": "ANT",
+   "born": "1913-03-21",
+   "pos": [
+    "ST"
+   ],
+   "ovr": 75,
+   "badges": [
+    "poacher",
+    "outoflegs:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T17:53:10.048Z",
+  "approved": [],
+  "id": "7d074324",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Jujo MUKAQ",
+  "rec": {
+   "what": "players",
+   "side": "t0405",
+   "at": 14,
+   "name": "Jujo MUKAQ",
+   "nat": "ANT",
+   "born": "1908-03-15",
+   "pos": [
+    "LB",
+    "CB"
+   ],
+   "ovr": 75,
+   "badges": [
+    "manon:1",
+    "tightmarker:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ }
+]
