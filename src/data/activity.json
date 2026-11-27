@@ -1,5 +1,90 @@
 [
  {
+  "id": "3ed2e048",
+  "by": "auroruse",
+  "at": "2026-11-27T21:29:20.273Z",
+  "what": "accept",
+  "for": [
+   "cornafiable"
+  ],
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0407",
+    "name": "Qahuaya Hukllachasqa",
+    "field": "squad",
+    "from": [
+     "p6754",
+     "p6530",
+     "p6774",
+     "p6653",
+     "p6800",
+     "p6825",
+     "p6860",
+     "p6861",
+     "p6536",
+     "p6836",
+     "p6872",
+     "p6650",
+     "p6651",
+     null,
+     null,
+     "p6654",
+     null,
+     null,
+     "p6658",
+     "p6656",
+     "p6657",
+     "p6660"
+    ],
+    "to": [
+     "p6754",
+     "p6530",
+     "p6774",
+     "p6653",
+     "p6800",
+     "p6825",
+     "p6860",
+     "p6861",
+     "p6536",
+     "p6836",
+     "p6872",
+     "p6650",
+     "p6651",
+     "p7023",
+     "p7025",
+     "p6654",
+     "p7022",
+     "p7024",
+     "p6658",
+     "p6656",
+     "p6657",
+     "p6660"
+    ]
+   }
+  ],
+  "added": {
+   "players": [
+    {
+     "id": "p7022",
+     "name": "Tuzo KAKALAKA"
+    },
+    {
+     "id": "p7023",
+     "name": "Tusay WILLKACHUKA"
+    },
+    {
+     "id": "p7024",
+     "name": "Ronaldo QUWAYA"
+    },
+    {
+     "id": "p7025",
+     "name": "Alla ILLQIRI"
+    }
+   ]
+  }
+ },
+ {
   "id": "74121e4c",
   "by": "cornafiable",
   "at": "2026-11-27T20:41:30.581Z",

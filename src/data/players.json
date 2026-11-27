@@ -6953,5 +6953,9 @@
 {"id":"p7018","name":"Pacha PELKA","nat":"ANT","ovr":75,"born":"1913-03-21","pos":["ST"],"badges":["poacher","outoflegs:1"]},
 {"id":"p7019","name":"Jujo MUKAQ","nat":"ANT","ovr":75,"born":"1908-03-15","pos":["LB","CB"],"badges":["manon:1","tightmarker:1"]},
 {"id":"p7020","name":"Xupanta QACHAWOL","nat":"ANT","ovr":75,"born":"1909-07-16","pos":["DM","CM"],"badges":["manon:1","tightmarker:1"]},
-{"id":"p7021","name":"Esko GREFA","nat":"ANT","ovr":74,"born":"1915-11-18","pos":["AM"],"badges":["vision:1"]}
+{"id":"p7021","name":"Esko GREFA","nat":"ANT","ovr":74,"born":"1915-11-18","pos":["AM"],"badges":["vision:1"]},
+{"id":"p7022","name":"Tuzo KAKALAKA","nat":"ANT","ovr":76,"born":"1916-07-31","pos":["AM"],"badges":["vision:1","passandmove:1"]},
+{"id":"p7023","name":"Tusay WILLKACHUKA","nat":"ANT","ovr":75,"born":"1910-07-03","pos":["CB"],"badges":["manon:1","tightmarker:1"]},
+{"id":"p7024","name":"Ronaldo QUWAYA","nat":"ANT","ovr":76,"born":"1913-02-14","pos":["DM","CM"],"badges":["shouldercheck:2"]},
+{"id":"p7025","name":"Alla ILLQIRI","nat":"ANT","ovr":75,"born":"1913-04-11","pos":["CB"],"badges":["disciplined:1","closesdown:1"]}
 ]
