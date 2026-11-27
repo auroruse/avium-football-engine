@@ -122,5 +122,100 @@
    ]
   },
   "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T20:46:43.776Z",
+  "approved": [],
+  "id": "7b876e12",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Ribo YUWARQ",
+  "rec": {
+   "what": "players",
+   "side": "t0402",
+   "at": 12,
+   "name": "Ribo YUWARQ",
+   "nat": "ANT",
+   "born": "1909-04-25",
+   "pos": [
+    "RB",
+    "RM"
+   ],
+   "ovr": 75,
+   "badges": [
+    "quickstep:1",
+    "drives:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T20:46:43.776Z",
+  "approved": [],
+  "id": "3efedf19",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Tuto CHALLA",
+  "rec": {
+   "what": "players",
+   "side": "t0402",
+   "at": 16,
+   "name": "Tuto CHALLA",
+   "nat": "ANT",
+   "born": "1912-10-29",
+   "pos": [
+    "CM"
+   ],
+   "ovr": 76,
+   "badges": [
+    "composed",
+    "vision:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
+ },
+ {
+  "by": "cornafiable",
+  "at": "2026-11-27T20:46:43.776Z",
+  "approved": [],
+  "id": "c111d416",
+  "kind": "new",
+  "what": "players",
+  "teamName": "Estay WULA",
+  "rec": {
+   "what": "players",
+   "side": "t0402",
+   "at": 19,
+   "name": "Estay WULA",
+   "nat": "ANT",
+   "born": "1919-03-01",
+   "pos": [
+    "RW",
+    "AM"
+   ],
+   "ovr": 75,
+   "badges": [
+    "pressresistant:1",
+    "trickster:1"
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": []
  }
 ]
