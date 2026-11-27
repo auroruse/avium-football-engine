@@ -3492,12 +3492,12 @@ const UX_TITLES = ARTERRA ? [WORLD_CUP] : ["World Cup", "Nations League", "Club 
 // A national side's honours: every title it can win, the retired championships with them, in this order.
 const UX_HONOURS = ARTERRA ? [WORLD_CUP] : ["World Cup", "Nations League", ...ARCHIVED_COMPS];
 // The home's Leaders, in FM's order and words. GA (goals and assists) and GP (appearances) are added up from the boards.
-// Goals, assists, contributions and appearances are totals; rating, chances, defensive actions and saves are per game
-// (the user, 28 November 2026: "some of these should be per-game (with a game quota as % of season ofc)"), since those
-// pile up with minutes more than with how well a man plays them.
-const UX_LEADERS = [["RTG", "Highest Average Rating"], ["G", "Most Goals"], ["A", "Most Assists"], ["GA", "Most Goal Contributions"],
-  ["CC", "Most Chances Created per Game"], ["DC", "Most Defensive Actions per Game"], ["SV", "Most Saves per Game"], ["GP", "Most Appearances"]];
-const UX_PER_GAME = new Set(["CC", "DC", "SV"]);
+// Everything but appearances is per game (the user, 28 November 2026: "some of these should be per-game (with a game
+// quota as % of season ofc)", then "...not goals, assists, goal contributions?").
+const UX_LEADERS = [["RTG", "Highest Average Rating"], ["G", "Most Goals per Game"], ["A", "Most Assists per Game"],
+  ["GA", "Most Goal Contributions per Game"], ["CC", "Most Chances Created per Game"], ["DC", "Most Defensive Actions per Game"],
+  ["SV", "Most Saves per Game"], ["GP", "Most Appearances"]];
+const UX_PER_GAME = new Set(["G", "A", "GA", "CC", "DC", "SV"]);
 // An average rating counts once a man has this many games, where no season is behind it.
 const UX_RTG_MIN_GP = 15;
 // The quota for a year: a share of the most games anyone played in it, so a World Cup year asks three of its seven and a
@@ -13743,12 +13743,12 @@ export default function App() {
       }
     }
     const all = [...tot.values()];
-    // Per-game figures and the average rating need the year's quota of games (uxRtgMinOf); totals need none.
+    // Per-game figures and the average rating need the year's quota of games (uxRtgMinOf); appearances need none.
     // (a World Cup's seven: four), and an average rating always has a man behind it.
     const minGp = uxRtgMinOf(all.map(a => a.rg));
     const minPg = uxRtgMinOf(all.map(a => a.gp));
-    const val = (a, k) => k === "RTG" ? (a.rg >= minGp ? a.rs / a.rg : -1) : UX_PER_GAME.has(k) ? (a.gp >= minPg ? a[k] / a.gp : -1)
-      : k === "GA" ? a.G + a.A : k === "GP" ? a.gp : a[k];
+    const val = (a, k) => k === "RTG" ? (a.rg >= minGp ? a.rs / a.rg : -1) : UX_PER_GAME.has(k) ? (a.gp >= minPg ? (k === "GA" ? a.G + a.A : a[k]) / a.gp : -1)
+      : k === "GP" ? a.gp : a[k];
     return UX_LEADERS.map(([k, label]) => {
       let best = null; for (const a of all) if (!best || val(a, k) > val(best, k)) best = a;
       return best && val(best, k) > 0 && { k, label, a: best, v: k === "RTG" || UX_PER_GAME.has(k) ? val(best, k).toFixed(2) : val(best, k) };
