@@ -17853,7 +17853,7 @@ export default function App() {
   const uxPick = (label, value, options, onChange) => (
     <label className="ux-pick"><Sel aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
       {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Sel>{uxIcon("caret", "ux-xs")}</label>);
-  const uxSeasonLabel = (y) => `${y - 1}/${String(y).slice(2)}`;
+  const uxSeasonLabel = (y) => String(y);
   const uxSeasonName = (s) => (!COMP_SCOPE[s.comp] && /^\d{4}$/.test(s.season) ? uxSeasonLabel(+s.season) : s.season);
   // A history as bars, a season each: the higher the place, the taller the bar, first place in gold. A bar with a season
   // behind it opens that season. A handful of bars each carry their place over them. Hovering a bar, or reaching it by
@@ -18771,7 +18771,7 @@ export default function App() {
     const clubSpells = spells.filter(x => !x.intl), natSpells = spells.filter(x => x.intl);
     const spellRow = (x, i) => (
       <tr key={i} className={x.side ? "ux-link" : undefined} onClick={() => x.side && openTeam(x.side)}>
-        <td className="ux-dim" style={mono}>{x.from === x.to ? uxSeasonLabel(x.from) : `${x.from - 1}–${String(x.to).slice(2)}`}</td>
+        <td className="ux-dim" style={mono}>{x.from === x.to ? uxSeasonLabel(x.from) : `${x.from}–${x.to}`}</td>
         <td><div className="ux-tc">{x.side ? <TeamCrest team={x.side} size={16} /> : null}<span>{x.side ? x.side.name : formerName(x.code)}</span></div></td>
         <td className="ux-n" style={mono}>{x.gp}</td><td className="ux-n" style={mono}>{x.g}</td>
       </tr>);
