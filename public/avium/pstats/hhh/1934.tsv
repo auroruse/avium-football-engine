@@ -1,127 +1,127 @@
 #	PLAYER	POS	TEAM	GP	G		#	PLAYER	POS	TEAM	GP	A		#	PLAYER	POS	TEAM	GP	RTG		#	PLAYER	POS	TEAM	GP	CC		#	PLAYER	POS	TEAM	GP	DC		#	PLAYER	POS	TEAM	GP	S
-1	Boaz Ben-Ami	FWD	HET	13	11		1	Uri Kastiel	FWD	SGN	14	4		1	Boaz Ben-Ami	FWD	HET	13	7.2		1	Dolev Nagar	MID	MGN	14	11		1	Koby Ben-Shabbat	MID	SGN	14	68		1	Mahmoud Nassar	GK	HNH	14	54
-2	Behrouz Sabzevari	FWD	KHS	14	10		2	Segev Even-Khen	MID	MGN	13	3		2	Raz Zoaretz	MID	SGN	14	7.1		2	Ravid Biton	MID	ESH	14	11		2	Bassel Barakat	DEF	ESH	14	67		2	Sagi Melamed	GK	MKA	13	47
-3	Ramin Qajarian	FWD	SGN	14	9		3	Raz Zoaretz	MID	SGN	14	3		3	Asaf Bar-Lev	DEF	HNH	14	7.1		3	Yishai Galili	MID	KHS	14	10		3	Boaz Ben-Ami	FWD	HET	13	65		3	Adnan Tamimi	GK	AIS	14	43
-4	Gilad Dahan	FWD	MGN	14	8		4	Nevo Pinto	FWD	SGN	14	3		4	Omar Jubran	FWD	HNH	12	7.0		4	Adi Madmoni	MID	HET	14	9		4	Guy Sharabi	DEF	SGN	14	65		4	Shai Sabag	GK	KHS	14	33
-5	Issam Zoghbi	FWD	ESH	14	7		5	Yonah Golan	MID	HET	14	3		5	Koby Ben-Shabbat	MID	SGN	14	7.0		5	Bassel Barakat	DEF	ESH	14	9		5	Ravid Biton	MID	ESH	14	65		5	Yonatan Cohen	GK	MGN	14	32
-6	Uri Kastiel	FWD	SGN	14	6		6	Itamar Ben-Zaken	MID	MGN	14	3		6	Hillel Friedman	MID	HNH	14	7.0		6	Avichai Biran	FWD	ESH	14	9		6	Raz Zoaretz	MID	SGN	14	64		6	Iddo Avni	GK	SGN	14	27
-7	Omar Jubran	FWD	HNH	12	5		7	Peleg Peleg-Or	FWD	ESH	14	3		7	Nader Al-Sayed	MID	HNH	14	7.0		7	Koby Ben-Shabbat	MID	SGN	14	8		7	Ghassan Ghanem	MID	ESH	14	63		7	Yaniv Nachmias	GK	ESH	14	24
-8	Peleg Peleg-Or	FWD	ESH	14	5		8	Eyal Segal	FWD	KHS	12	2		8	Kyrillos Sennefer	DEF	MGN	14	7.0		8	Nevo Pinto	FWD	SGN	14	8		8	Shai Azoulay	MID	HET	14	60		8	Ehud Halevi	GK	HET	14	21
-9	Elad Ifrach	FWD	SGN	14	4		9	Boaz Ben-Ami	FWD	HET	13	2		9	Dolev Nagar	MID	MGN	14	7.0		9	Ran Uzan	MID	HET	14	8		9	Yishai Galili	MID	KHS	14	60		9	Dor Kadosh	GK	HNH	7	15
-10	Zohar Hershkovitz	FWD	MKA	14	4		10	Koby Ben-Shabbat	MID	SGN	14	2		10	Gilad Dahan	FWD	MGN	14	7.0		10	Eyal Ovadia	FWD	ESH	14	8		10	Adi Madmoni	MID	HET	14	59		10	Gal Grinberg	GK	AIS	7	11
-11	Navid Zarrinkoub	MID	MGN	14	4		11	Erez Dahari	MID	HNH	14	2		11	Bassel Barakat	DEF	ESH	14	7.0		11	Issam Zoghbi	FWD	ESH	14	8		11	Ziyad Al-Rifai	DEF	MKA	14	58		11	Ramin Kashani	GK	KHS	6	5
-12	Meir Barda	MID	ESH	14	4		12	Itamar Tzarfati	FWD	HNH	14	2		12	Meir Barda	MID	ESH	14	7.0		12	Eyal Segal	FWD	KHS	12	7		12	Dolev Nagar	MID	MGN	14	58		12	Noam Bar-On	GK	MGN	4	4
-13	Nevo Pinto	FWD	SGN	14	3		13	Harel Mamo	DEF	HET	14	2		13	Yishai Galili	MID	KHS	14	7.0		13	Raz Zoaretz	MID	SGN	14	7		13	Tal Sasson	DEF	KHS	14	56		13	Ilan Gabay	GK	HET	1	2
-14	Yigal Revivo	FWD	SGN	14	3		14	Adi Madmoni	MID	HET	14	2		14	Behrouz Sabzevari	FWD	KHS	14	7.0		14	Liran Gozlan	MID	SGN	14	7		14	Meir Barda	MID	ESH	14	55		14	Ghassan Darwish	GK	MKA	4	2
-15	Adi Madmoni	MID	HET	14	3		15	Ran Uzan	MID	HET	14	2		15	Sagi Melamed	GK	MKA	13	6.9		15	Ramin Qajarian	FWD	SGN	14	7		15	Zamir Peled	MID	MKA	14	54							
-16	Yonah Golan	MID	HET	14	3		16	Idan Suissa	MID	HET	14	2		16	Segev Even-Khen	MID	MGN	13	6.9		16	Elad Ifrach	FWD	SGN	14	7		16	Idan Suissa	MID	HET	14	54							
-17	Dolev Nagar	MID	MGN	14	3		17	Amir Buzaglo	MID	KHS	14	2		17	Nevo Pinto	FWD	SGN	14	6.9		17	Idan Suissa	MID	HET	14	7		17	Kyrillos Sennefer	DEF	MGN	14	54							
-18	Eyal Ovadia	FWD	ESH	14	3		18	Ziv Tayar	DEF	MGN	8	1		18	Ramin Qajarian	FWD	SGN	14	6.9		18	Meir Barda	MID	ESH	14	7		18	Tomer Ivgi	DEF	SGN	14	53							
-19	Itai Shapira	FWD	KHS	14	3		19	Omar Jubran	FWD	HNH	12	1		19	Uri Kastiel	FWD	SGN	14	6.9		19	Maoz Shaked	MID	AIS	13	6		19	Hisham Saleh	DEF	AIS	14	53							
-20	Oren Shemesh	MID	SGN	11	2		20	Ariel Lugassy	MID	MKA	13	1		20	Ziyad Al-Rifai	DEF	MKA	14	6.9		20	Shai Azoulay	MID	HET	14	6		20	Nadav Tzur	DEF	MGN	14	53							
-21	Siavash Tabatabai	FWD	MKA	12	2		21	Yuval Levkovich	FWD	HET	13	1		21	Zamir Peled	MID	MKA	14	6.9		21	Itamar Ben-Zaken	MID	MGN	14	6		21	Amjad Nabhan	DEF	KHS	14	53							
-22	Bnaya Kabalo	MID	KHS	13	2		22	Bnaya Kabalo	MID	KHS	13	1		22	Shai Azoulay	MID	HET	14	6.9		22	Ghassan Ghanem	MID	ESH	14	6		22	Lahav Agam	DEF	ESH	14	52							
-23	Raz Zoaretz	MID	SGN	14	2		23	Yigal Revivo	FWD	SGN	14	1		23	Adi Madmoni	MID	HET	14	6.9		23	Uriel Mazor	MID	KHS	10	5		23	Yotam Menashe	MID	MKA	14	50							
-24	Itamar Tzarfati	FWD	HNH	14	2		24	Liran Gozlan	MID	SGN	14	1		24	Idan Suissa	MID	HET	14	6.9		24	Uri Kastiel	FWD	SGN	14	5		24	Zvi Dayan	DEF	MKA	14	50							
-25	Louay Abu-Sitta	FWD	AIS	14	2		25	Ramin Qajarian	FWD	SGN	14	1		25	Nadav Tzur	DEF	MGN	14	6.9		25	Zamir Peled	MID	MKA	14	5		25	Hillel Friedman	MID	HNH	14	49							
-26	Shai Azoulay	MID	HET	14	2		26	Elad Ifrach	FWD	SGN	14	1		26	Elkana Rotem	MID	MGN	14	6.9		26	Yonah Golan	MID	HET	14	5		26	Nader Al-Sayed	MID	HNH	14	49							
-27	Netanel Elbaz	MID	MGN	14	2		27	Wael Halabi	MID	MKA	14	1		27	Ravid Biton	MID	ESH	14	6.9		27	Elkana Rotem	MID	MGN	14	5		27	Ran Uzan	MID	HET	14	49							
-28	Ghassan Ghanem	MID	ESH	14	2		28	Yotam Menashe	MID	MKA	14	1		28	Ghassan Ghanem	MID	ESH	14	6.9		28	Dariush Hamedani	DEF	ESH	14	5		28	Gadi Harari	DEF	ESH	14	49							
-29	Erez Malka	FWD	MGN	7	1		29	Zamir Peled	MID	MKA	14	1		29	Issam Zoghbi	FWD	ESH	14	6.9		29	Peleg Peleg-Or	FWD	ESH	14	5		29	Dariush Hamedani	DEF	ESH	14	47							
-30	Nawaf Hijazi	MID	HNH	11	1		30	Zohar Hershkovitz	FWD	MKA	14	1		30	Zohar Lavi	DEF	MGN	10	6.9		30	Abanoub Rekhmire	MID	KHS	14	5		30	Diaa Odeh	DEF	KHS	14	47							
-31	Ori Elharar	MID	ESH	12	1		31	Khaled Al-Najjar	DEF	HNH	14	1		31	Ihab Mikhail	MID	AIS	12	6.9		31	Amir Buzaglo	MID	KHS	14	5		31	Jad Qassem	DEF	MKA	13	46							
-32	Eyal Segal	FWD	KHS	12	1		32	Nader Al-Sayed	MID	HNH	14	1		32	Guy Sharabi	DEF	SGN	14	6.9		32	Behrouz Sabzevari	FWD	KHS	14	5		32	Dor Adari	MID	MGN	14	46							
-33	Ariel Lugassy	MID	MKA	13	1		33	Marwan Touma	FWD	AIS	14	1		33	Erez Dahari	MID	HNH	14	6.9		33	Erez Malka	FWD	MGN	7	4		33	Elkana Rotem	MID	MGN	14	46							
-34	Segev Even-Khen	MID	MGN	13	1		34	Oded Levi	DEF	HET	14	1		34	Oded Levi	DEF	HET	14	6.9		34	Ariel Lugassy	MID	MKA	13	4		34	Oded Levi	DEF	HET	14	45							
-35	Gilad Kaplan	FWD	KHS	13	1		35	Shai Azoulay	MID	HET	14	1		35	Yonah Golan	MID	HET	14	6.9		35	Boaz Ben-Ami	FWD	HET	13	4		35	Gilad Zaguri	MID	ESH	14	45							
-36	Koby Ben-Shabbat	MID	SGN	14	1		36	Kyrillos Sennefer	DEF	MGN	14	1		36	Ran Uzan	MID	HET	14	6.9		36	Segev Even-Khen	MID	MGN	13	4		36	Peleg Peleg-Or	FWD	ESH	14	43							
-37	Liran Gozlan	MID	SGN	14	1		37	Dolev Nagar	MID	MGN	14	1		37	Roi Ben-Haim	DEF	MGN	14	6.9		37	Bnaya Kabalo	MID	KHS	13	4		37	Issam Zoghbi	FWD	ESH	14	42							
-38	Erez Dahari	MID	HNH	14	1		38	Netanel Elbaz	MID	MGN	14	1		38	Netanel Elbaz	MID	MGN	14	6.9		38	Gilad Kaplan	FWD	KHS	13	4		38	Ramin Qajarian	FWD	SGN	14	41							
-39	Tariq Al-Amin	FWD	HNH	14	1		39	Navid Zarrinkoub	MID	MGN	14	1		39	Navid Zarrinkoub	MID	MGN	14	6.9		39	Zohar Hershkovitz	FWD	MKA	14	4		39	Uri Kastiel	FWD	SGN	14	41							
-40	Nader Al-Sayed	MID	HNH	14	1		40	Dariush Hamedani	DEF	ESH	14	1		40	Lahav Agam	DEF	ESH	14	6.9		40	Itamar Tzarfati	FWD	HNH	14	4		40	Jamal Wahbeh	MID	AIS	14	41							
-41	Qusai Rayyan	FWD	AIS	14	1		41	Meir Barda	MID	ESH	14	1		41	Peleg Peleg-Or	FWD	ESH	14	6.9		41	Netanel Elbaz	MID	MGN	14	4		41	Roi Ben-Haim	DEF	MGN	14	41							
-42	Marwan Touma	FWD	AIS	14	1		42	Gilad Zaguri	MID	ESH	14	1		42	Amjad Nabhan	DEF	KHS	14	6.9		42	Gadi Harari	DEF	ESH	14	4		42	Gilad Dahan	FWD	MGN	14	41							
-43	Nissim Rubinstein	DEF	HET	14	1		43	Eyal Ovadia	FWD	ESH	14	1		43	Tal Sasson	DEF	KHS	14	6.9		43	Gilad Zaguri	MID	ESH	14	4		43	Asaf Bar-Lev	DEF	HNH	14	40							
-44	Ran Uzan	MID	HET	14	1		44	Issam Zoghbi	FWD	ESH	14	1		44	Nabil Kurdi	DEF	AIS	5	6.8		44	Serhat Gökmen	MID	KHS	14	4		44	Avichai Biran	FWD	ESH	14	40							
-45	Idan Suissa	MID	HET	14	1		45	Diaa Odeh	DEF	KHS	14	1		45	Ramin Kashani	GK	KHS	6	6.8		45	Oren Shemesh	MID	SGN	11	3		45	Uriel Mazor	MID	KHS	10	39							
-46	Kyrillos Sennefer	DEF	MGN	14	1		46	Abanoub Rekhmire	MID	KHS	14	1		46	Uriel Mazor	MID	KHS	10	6.8		46	Roee Yehezkel	MID	HET	12	3		46	Omar Jubran	FWD	HNH	12	39							
-47	Roi Ben-Haim	DEF	MGN	14	1		47	Yishai Galili	MID	KHS	14	1		47	Nizar Farhat	MID	AIS	13	6.8		47	Yuval Levkovich	FWD	HET	13	3		47	Netanel Elbaz	MID	MGN	14	39							
-48	Elkana Rotem	MID	MGN	14	1		48	Serhat Gökmen	MID	KHS	14	1		48	Iddo Avni	GK	SGN	14	6.8		48	Yotam Menashe	MID	MKA	14	3		48	Yair Ohana	DEF	SGN	14	38							
-49	Lahav Agam	DEF	ESH	14	1									49	Tomer Ivgi	DEF	SGN	14	6.8		49	Zaid Nakhleh	MID	MKA	14	3		49	Itamar Tzarfati	FWD	HNH	14	38							
-50	Bassel Barakat	DEF	ESH	14	1									50	Elad Ifrach	FWD	SGN	14	6.8		50	Marwan Touma	FWD	AIS	14	3		50	Harel Mamo	DEF	HET	14	38							
-51	Ravid Biton	MID	ESH	14	1									51	Yotam Menashe	MID	MKA	14	6.8		51	Louay Abu-Sitta	FWD	AIS	14	3		51	Nizar Farhat	MID	AIS	13	37							
-52	Avichai Biran	FWD	ESH	14	1									52	Mahmoud Nassar	GK	HNH	14	6.8		52	Gilad Dahan	FWD	MGN	14	3		52	Nevo Pinto	FWD	SGN	14	36							
-53	Abanoub Rekhmire	MID	KHS	14	1									53	Hisham Saleh	DEF	AIS	14	6.8		53	Lahav Agam	DEF	ESH	14	3		53	Yonah Golan	MID	HET	14	36							
-54	Serhat Gökmen	MID	KHS	14	1									54	Firas Bishara	DEF	AIS	14	6.8		54	Tal Sasson	DEF	KHS	14	3		54	Abanoub Rekhmire	MID	KHS	14	36							
-														55	Jamal Wahbeh	MID	AIS	14	6.8		55	Itai Shapira	FWD	KHS	14	3		55	Kfir Turgeman	DEF	MKA	14	35							
-														56	Ehud Halevi	GK	HET	14	6.8		56	Siavash Tabatabai	FWD	MKA	12	2		56	Netanel Vaknin	DEF	HNH	14	35							
-														57	Yonatan Cohen	GK	MGN	14	6.8		57	Ori Elharar	MID	ESH	12	2		57	Firas Bishara	DEF	AIS	14	35							
-														58	Yaniv Nachmias	GK	ESH	14	6.8		58	Yair Ohana	DEF	SGN	14	2		58	Marwan Touma	FWD	AIS	14	35							
-														59	Gadi Harari	DEF	ESH	14	6.8		59	Tomer Ivgi	DEF	SGN	14	2		59	Segev Even-Khen	MID	MGN	13	34							
-														60	Dariush Hamedani	DEF	ESH	14	6.8		60	Yigal Revivo	FWD	SGN	14	2		60	Wael Halabi	MID	MKA	14	34							
-														61	Shai Sabag	GK	KHS	14	6.8		61	Erez Dahari	MID	HNH	14	2		61	Erez Dahari	MID	HNH	14	34							
-														62	Noam Bar-On	GK	MGN	4	6.7		62	Nissim Rubinstein	DEF	HET	14	2		62	Serhat Gökmen	MID	KHS	14	34							
-														63	Dor Kadosh	GK	HNH	7	6.7		63	Roi Ben-Haim	DEF	MGN	14	2		63	Behrouz Sabzevari	FWD	KHS	14	34							
-														64	Hamza Al-Qadi	DEF	AIS	8	6.7		64	Navid Zarrinkoub	MID	MGN	14	2		64	Maoz Shaked	MID	AIS	13	33							
-														65	Maoz Shaked	MID	AIS	13	6.7		65	Amjad Nabhan	DEF	KHS	14	2		65	Zohar Hershkovitz	FWD	MKA	14	33							
-														66	Yair Ohana	DEF	SGN	14	6.7		66	Diaa Odeh	DEF	KHS	14	2		66	Khaled Al-Najjar	DEF	HNH	14	33							
-														67	Yigal Revivo	FWD	SGN	14	6.7		67	Yaniv Gershon	DEF	KHS	2	1		67	Nissim Rubinstein	DEF	HET	14	32							
-														68	Liran Gozlan	MID	SGN	14	6.7		68	Ziv Tayar	DEF	MGN	8	1		68	Yigal Revivo	FWD	SGN	14	31							
-														69	Zohar Hershkovitz	FWD	MKA	14	6.7		69	Eliya Klein	MID	MKA	10	1		69	Navid Zarrinkoub	MID	MGN	14	31							
-														70	Itamar Tzarfati	FWD	HNH	14	6.7		70	Omar Jubran	FWD	HNH	12	1		70	Elad Ifrach	FWD	SGN	14	29							
-														71	Adnan Tamimi	GK	AIS	14	6.7		71	Ihab Mikhail	MID	AIS	12	1		71	Ihab Mikhail	MID	AIS	12	28							
-														72	Nissim Rubinstein	DEF	HET	14	6.7		72	Jad Qassem	DEF	MKA	13	1		72	Ori Elharar	MID	ESH	12	28							
-														73	Dor Adari	MID	MGN	14	6.7		73	Jaber Al-Zoubi	MID	AIS	13	1		73	Amir Buzaglo	MID	KHS	14	28							
-														74	Serhat Gökmen	MID	KHS	14	6.7		74	Walid Mansour	MID	AIS	13	1		74	Zohar Lavi	DEF	MGN	10	27							
-														75	Amir Buzaglo	MID	KHS	14	6.7		75	Nizar Farhat	MID	AIS	13	1		75	Amichai Shtern	DEF	HET	14	27							
-														76	Lev Ben-David	DEF	HET	3	6.7		76	Hadar Rahamim	DEF	SGN	14	1		76	Itai Shapira	FWD	KHS	14	27							
-														77	Lior Zilberman	DEF	SGN	3	6.7		77	Wael Halabi	MID	MKA	14	1		77	Eyal Segal	FWD	KHS	12	26							
-														78	Dolev Amsalem	DEF	MKA	5	6.7		78	Gal Yardeni	MID	HNH	14	1		78	Hadar Rahamim	DEF	SGN	14	26							
-														79	Erez Malka	FWD	MGN	7	6.7		79	Nader Al-Sayed	MID	HNH	14	1		79	Siavash Tabatabai	FWD	MKA	12	25							
-														80	Gal Grinberg	GK	AIS	7	6.7		80	Firas Bishara	DEF	AIS	14	1		80	Ariel Lugassy	MID	MKA	13	25							
-														81	Ziv Tayar	DEF	MGN	8	6.7		81	Qusai Rayyan	FWD	AIS	14	1		81	Liran Gozlan	MID	SGN	14	25							
-														82	Oren Shemesh	MID	SGN	11	6.7		82	Harel Mamo	DEF	HET	14	1		82	Louay Abu-Sitta	FWD	AIS	14	24							
-														83	Nawaf Hijazi	MID	HNH	11	6.7		83	Amichai Shtern	DEF	HET	14	1		83	Nabil Kurdi	DEF	AIS	5	23							
-														84	Jad Qassem	DEF	MKA	13	6.7		84	Oded Levi	DEF	HET	14	1		84	Zaid Nakhleh	MID	MKA	14	23							
-														85	Ariel Lugassy	MID	MKA	13	6.7		85	Kyrillos Sennefer	DEF	MGN	14	1		85	Jaber Al-Zoubi	MID	AIS	13	21							
-														86	Jaber Al-Zoubi	MID	AIS	13	6.7		86	Dor Adari	MID	MGN	14	1		86	Bnaya Kabalo	MID	KHS	13	21							
-														87	Walid Mansour	MID	AIS	13	6.7									87	Gilad Kaplan	FWD	KHS	13	21							
-														88	Bnaya Kabalo	MID	KHS	13	6.7									88	Eyal Ovadia	FWD	ESH	14	21							
-														89	Gal Yardeni	MID	HNH	14	6.7									89	Itamar Ben-Zaken	MID	MGN	14	19							
-														90	Marwan Touma	FWD	AIS	14	6.7									90	Kamran Farahmand	MID	HNH	9	18							
-														91	Louay Abu-Sitta	FWD	AIS	14	6.7									91	Qusai Rayyan	FWD	AIS	14	18							
-														92	Amichai Shtern	DEF	HET	14	6.7									92	Yuval Levkovich	FWD	HET	13	17							
-														93	Itamar Ben-Zaken	MID	MGN	14	6.7									93	Iddo Avni	GK	SGN	14	17							
-														94	Gilad Zaguri	MID	ESH	14	6.7									94	Shlomi Barkan	FWD	MKA	14	15							
-														95	Eyal Ovadia	FWD	ESH	14	6.7									95	Roee Yehezkel	MID	HET	12	14							
-														96	Abanoub Rekhmire	MID	KHS	14	6.7									96	Mahmoud Nassar	GK	HNH	14	14							
-														97	Itai Shapira	FWD	KHS	14	6.7									97	Tariq Al-Amin	FWD	HNH	14	14							
-														98	Rami Sayegh	DEF	HNH	3	6.6									98	Adnan Tamimi	GK	AIS	14	14							
-														99	Ghassan Darwish	GK	MKA	4	6.6									99	Ziv Tayar	DEF	MGN	8	13							
-														100	Kamran Farahmand	MID	HNH	9	6.6									100	Oren Shemesh	MID	SGN	11	13							
-														101	Eliya Klein	MID	MKA	10	6.6									101	Ehud Weizman	DEF	HNH	14	13							
-														102	Siavash Tabatabai	FWD	MKA	12	6.6									102	Gal Yardeni	MID	HNH	14	13							
-														103	Ori Elharar	MID	ESH	12	6.6									103	Hamza Al-Qadi	DEF	AIS	8	12							
-														104	Eyal Segal	FWD	KHS	12	6.6									104	Rashid Al-Attar	MID	AIS	14	12							
-														105	Yuval Levkovich	FWD	HET	13	6.6									105	Shaul Damari	MID	HET	14	12							
-														106	Zaid Nakhleh	MID	MKA	14	6.6									106	Sagi Melamed	GK	MKA	13	11							
-														107	Zvi Dayan	DEF	MKA	14	6.6									107	Yaniv Nachmias	GK	ESH	14	11							
-														108	Netanel Vaknin	DEF	HNH	14	6.6									108	Dolev Amsalem	DEF	MKA	5	10							
-														109	Khaled Al-Najjar	DEF	HNH	14	6.6									109	Eliya Klein	MID	MKA	10	10							
-														110	Ehud Weizman	DEF	HNH	14	6.6									110	Ehud Halevi	GK	HET	14	10							
-														111	Tariq Al-Amin	FWD	HNH	14	6.6									111	Shai Sabag	GK	KHS	14	10							
-														112	Qusai Rayyan	FWD	AIS	14	6.6									112	Walid Mansour	MID	AIS	13	9							
-														113	Harel Mamo	DEF	HET	14	6.6									113	Yonatan Cohen	GK	MGN	14	9							
-														114	Avichai Biran	FWD	ESH	14	6.6									114	Yaniv Gershon	DEF	KHS	2	8							
-														115	Diaa Odeh	DEF	KHS	14	6.6									115	Lev Ben-David	DEF	HET	3	8							
-														116	Gilad Kaplan	FWD	KHS	13	6.5									116	Lior Zilberman	DEF	SGN	3	6							
-														117	Hadar Rahamim	DEF	SGN	14	6.5									117	Gal Grinberg	GK	AIS	7	5							
-														118	Wael Halabi	MID	MKA	14	6.5									118	Nawaf Hijazi	MID	HNH	11	5							
-														119	Shlomi Barkan	FWD	MKA	14	6.5									119	Dor Kadosh	GK	HNH	7	4							
-														120	Rashid Al-Attar	MID	AIS	14	6.5									120	Matan Ozeri	DEF	ESH	2	3							
-														121	Shaul Damari	MID	HET	14	6.5									121	Ramin Kashani	GK	KHS	6	3							
-														122	Roee Yehezkel	MID	HET	12	6.5									122	Rami Sayegh	DEF	HNH	3	1							
-														123	Kfir Turgeman	DEF	MKA	14	6.4									123	Ghassan Darwish	GK	MKA	4	1							
-														124	Ilan Gabay	GK	HET	1	7.1									124	Noam Bar-On	GK	MGN	4	1							
-														125	Yaniv Gershon	DEF	KHS	2	6.9									125	Erez Malka	FWD	MGN	7	1							
-														126	Matan Ozeri	DEF	ESH	2	6.5																					
+1	Boaz Ben-Ami	FWD	HET	13	11		1	Uri Kastiel	FWD	SGN	14	6		1	Boaz Ben-Ami	FWD	HET	13	7.6		1	Avichai Biran	FWD	ESH	14	37		1	Bassel Barakat	DEF	ESH	14	54		1	Mahmoud Nassar	GK	HNH	14	89
+2	Behrouz Sabzevari	FWD	KHS	14	10		2	Segev Even-Khen	MID	MGN	13	5		2	Raz Zoaretz	MID	SGN	14	7.4		2	Nevo Pinto	FWD	SGN	14	33		2	Guy Sharabi	DEF	SGN	14	52		2	Sagi Melamed	GK	MKA	13	77
+3	Ramin Qajarian	FWD	SGN	14	9		3	Raz Zoaretz	MID	SGN	14	5		3	Asaf Bar-Lev	DEF	HNH	14	7.4		3	Eyal Ovadia	FWD	ESH	14	33		3	Ziyad Al-Rifai	DEF	MKA	14	47		3	Adnan Tamimi	GK	AIS	14	71
+4	Gilad Dahan	FWD	MGN	14	8		4	Nevo Pinto	FWD	SGN	14	5		4	Omar Jubran	FWD	HNH	12	7.2		4	Issam Zoghbi	FWD	ESH	14	33		4	Tal Sasson	DEF	KHS	14	45		4	Shai Sabag	GK	KHS	14	54
+5	Issam Zoghbi	FWD	ESH	14	7		5	Yonah Golan	MID	HET	14	5		5	Koby Ben-Shabbat	MID	SGN	14	7.2		5	Dolev Nagar	MID	MGN	14	31		5	Kyrillos Sennefer	DEF	MGN	14	43		5	Yonatan Cohen	GK	MGN	14	53
+6	Uri Kastiel	FWD	SGN	14	6		6	Itamar Ben-Zaken	MID	MGN	14	5		6	Hillel Friedman	MID	HNH	14	7.2		6	Ravid Biton	MID	ESH	14	31		6	Tomer Ivgi	DEF	SGN	14	43		6	Iddo Avni	GK	SGN	14	44
+7	Omar Jubran	FWD	HNH	12	5		7	Peleg Peleg-Or	FWD	ESH	14	5		7	Nader Al-Sayed	MID	HNH	14	7.2		7	Yishai Galili	MID	KHS	14	28		7	Hisham Saleh	DEF	AIS	14	42		7	Yaniv Nachmias	GK	ESH	14	40
+8	Peleg Peleg-Or	FWD	ESH	14	5		8	Eyal Segal	FWD	KHS	12	3		8	Kyrillos Sennefer	DEF	MGN	14	7.2		8	Eyal Segal	FWD	KHS	12	28		8	Nadav Tzur	DEF	MGN	14	42		8	Ehud Halevi	GK	HET	14	35
+9	Elad Ifrach	FWD	SGN	14	4		9	Boaz Ben-Ami	FWD	HET	13	3		9	Dolev Nagar	MID	MGN	14	7.2		9	Ramin Qajarian	FWD	SGN	14	28		9	Amjad Nabhan	DEF	KHS	14	42		9	Dor Kadosh	GK	HNH	7	25
+10	Zohar Hershkovitz	FWD	MKA	14	4		10	Koby Ben-Shabbat	MID	SGN	14	3		10	Gilad Dahan	FWD	MGN	14	7.2		10	Elad Ifrach	FWD	SGN	14	28		10	Lahav Agam	DEF	ESH	14	42		10	Gal Grinberg	GK	AIS	7	18
+11	Navid Zarrinkoub	MID	MGN	14	4		11	Erez Dahari	MID	HNH	14	3		11	Bassel Barakat	DEF	ESH	14	7.2		11	Adi Madmoni	MID	HET	14	26		11	Zvi Dayan	DEF	MKA	14	40		11	Ramin Kashani	GK	KHS	6	8
+12	Meir Barda	MID	ESH	14	4		12	Itamar Tzarfati	FWD	HNH	14	3		12	Meir Barda	MID	ESH	14	7.2		12	Koby Ben-Shabbat	MID	SGN	14	23		12	Gadi Harari	DEF	ESH	14	39		12	Noam Bar-On	GK	MGN	4	7
+13	Nevo Pinto	FWD	SGN	14	3		13	Harel Mamo	DEF	HET	14	3		13	Yishai Galili	MID	KHS	14	7.2		13	Ran Uzan	MID	HET	14	23		13	Koby Ben-Shabbat	MID	SGN	14	38		13	Ilan Gabay	GK	HET	1	3
+14	Yigal Revivo	FWD	SGN	14	3		14	Adi Madmoni	MID	HET	14	3		14	Behrouz Sabzevari	FWD	KHS	14	7.2		14	Raz Zoaretz	MID	SGN	14	20		14	Dariush Hamedani	DEF	ESH	14	38		14	Ghassan Darwish	GK	MKA	4	3
+15	Adi Madmoni	MID	HET	14	3		15	Ran Uzan	MID	HET	14	3		15	Sagi Melamed	GK	MKA	13	7.0		15	Liran Gozlan	MID	SGN	14	20		15	Diaa Odeh	DEF	KHS	14	38
+16	Yonah Golan	MID	HET	14	3		16	Idan Suissa	MID	HET	14	3		16	Segev Even-Khen	MID	MGN	13	7.0		16	Idan Suissa	MID	HET	14	20		16	Jad Qassem	DEF	MKA	13	37
+17	Dolev Nagar	MID	MGN	14	3		17	Amir Buzaglo	MID	KHS	14	3		17	Nevo Pinto	FWD	SGN	14	7.0		17	Meir Barda	MID	ESH	14	20		17	Ravid Biton	MID	ESH	14	36
+18	Eyal Ovadia	FWD	ESH	14	3		18	Ziv Tayar	DEF	MGN	8	2		18	Ramin Qajarian	FWD	SGN	14	7.0		18	Uri Kastiel	FWD	SGN	14	20		18	Raz Zoaretz	MID	SGN	14	36
+19	Itai Shapira	FWD	KHS	14	3		19	Omar Jubran	FWD	HNH	12	2		19	Uri Kastiel	FWD	SGN	14	7.0		19	Peleg Peleg-Or	FWD	ESH	14	20		19	Oded Levi	DEF	HET	14	36
+20	Oren Shemesh	MID	SGN	11	2		20	Ariel Lugassy	MID	MKA	13	2		20	Ziyad Al-Rifai	DEF	MKA	14	7.0		20	Behrouz Sabzevari	FWD	KHS	14	20		20	Ghassan Ghanem	MID	ESH	14	35
+21	Siavash Tabatabai	FWD	MKA	12	2		21	Yuval Levkovich	FWD	HET	13	2		21	Zamir Peled	MID	MKA	14	7.0		21	Maoz Shaked	MID	AIS	13	17		21	Shai Azoulay	MID	HET	14	33
+22	Bnaya Kabalo	MID	KHS	13	2		22	Bnaya Kabalo	MID	KHS	13	2		22	Shai Azoulay	MID	HET	14	7.0		22	Shai Azoulay	MID	HET	14	17		22	Yishai Galili	MID	KHS	14	33
+23	Raz Zoaretz	MID	SGN	14	2		23	Yigal Revivo	FWD	SGN	14	2		23	Adi Madmoni	MID	HET	14	7.0		23	Itamar Ben-Zaken	MID	MGN	14	17		23	Adi Madmoni	MID	HET	14	33
+24	Itamar Tzarfati	FWD	HNH	14	2		24	Liran Gozlan	MID	SGN	14	2		24	Idan Suissa	MID	HET	14	7.0		24	Ghassan Ghanem	MID	ESH	14	17		24	Roi Ben-Haim	DEF	MGN	14	33
+25	Louay Abu-Sitta	FWD	AIS	14	2		25	Ramin Qajarian	FWD	SGN	14	2		25	Nadav Tzur	DEF	MGN	14	7.0		25	Erez Malka	FWD	MGN	7	16		25	Dolev Nagar	MID	MGN	14	32
+26	Shai Azoulay	MID	HET	14	2		26	Elad Ifrach	FWD	SGN	14	2		26	Elkana Rotem	MID	MGN	14	7.0		26	Boaz Ben-Ami	FWD	HET	13	16		26	Asaf Bar-Lev	DEF	HNH	14	32
+27	Netanel Elbaz	MID	MGN	14	2		27	Wael Halabi	MID	MKA	14	2		27	Ravid Biton	MID	ESH	14	7.0		27	Gilad Kaplan	FWD	KHS	13	16		27	Meir Barda	MID	ESH	14	31
+28	Ghassan Ghanem	MID	ESH	14	2		28	Yotam Menashe	MID	MKA	14	2		28	Ghassan Ghanem	MID	ESH	14	7.0		28	Zohar Hershkovitz	FWD	MKA	14	16		28	Zamir Peled	MID	MKA	14	30
+29	Erez Malka	FWD	MGN	7	1		29	Zamir Peled	MID	MKA	14	2		29	Issam Zoghbi	FWD	ESH	14	7.0		29	Itamar Tzarfati	FWD	HNH	14	16		29	Idan Suissa	MID	HET	14	30
+30	Nawaf Hijazi	MID	HNH	11	1		30	Zohar Hershkovitz	FWD	MKA	14	2		30	Zohar Lavi	DEF	MGN	10	7.0		30	Bassel Barakat	DEF	ESH	14	14		30	Yair Ohana	DEF	SGN	14	30
+31	Ori Elharar	MID	ESH	12	1		31	Khaled Al-Najjar	DEF	HNH	14	2		31	Ihab Mikhail	MID	AIS	12	7.0		31	Uriel Mazor	MID	KHS	10	14		31	Harel Mamo	DEF	HET	14	30
+32	Eyal Segal	FWD	KHS	12	1		32	Nader Al-Sayed	MID	HNH	14	2		32	Guy Sharabi	DEF	SGN	14	7.0		32	Zamir Peled	MID	MKA	14	14		32	Yotam Menashe	MID	MKA	14	28
+33	Ariel Lugassy	MID	MKA	13	1		33	Marwan Touma	FWD	AIS	14	2		33	Erez Dahari	MID	HNH	14	7.0		33	Yonah Golan	MID	HET	14	14		33	Kfir Turgeman	DEF	MKA	14	28
+34	Segev Even-Khen	MID	MGN	13	1		34	Oded Levi	DEF	HET	14	2		34	Oded Levi	DEF	HET	14	7.0		34	Elkana Rotem	MID	MGN	14	14		34	Netanel Vaknin	DEF	HNH	14	28
+35	Gilad Kaplan	FWD	KHS	13	1		35	Shai Azoulay	MID	HET	14	2		35	Yonah Golan	MID	HET	14	7.0		35	Abanoub Rekhmire	MID	KHS	14	14		35	Firas Bishara	DEF	AIS	14	28
+36	Koby Ben-Shabbat	MID	SGN	14	1		36	Kyrillos Sennefer	DEF	MGN	14	2		36	Ran Uzan	MID	HET	14	7.0		36	Amir Buzaglo	MID	KHS	14	14		36	Hillel Friedman	MID	HNH	14	27
+37	Liran Gozlan	MID	SGN	14	1		37	Dolev Nagar	MID	MGN	14	1		37	Roi Ben-Haim	DEF	MGN	14	7.0		37	Yuval Levkovich	FWD	HET	13	12		37	Nader Al-Sayed	MID	HNH	14	27
+38	Erez Dahari	MID	HNH	14	1		38	Netanel Elbaz	MID	MGN	14	1		38	Netanel Elbaz	MID	MGN	14	7.0		38	Marwan Touma	FWD	AIS	14	12		38	Ran Uzan	MID	HET	14	27
+39	Tariq Al-Amin	FWD	HNH	14	1		39	Navid Zarrinkoub	MID	MGN	14	1		39	Navid Zarrinkoub	MID	MGN	14	7.0		39	Louay Abu-Sitta	FWD	AIS	14	12		39	Dor Adari	MID	MGN	14	26
+40	Nader Al-Sayed	MID	HNH	14	1		40	Dariush Hamedani	DEF	ESH	14	1		40	Lahav Agam	DEF	ESH	14	7.0		40	Gilad Dahan	FWD	MGN	14	12		40	Elkana Rotem	MID	MGN	14	26
+41	Qusai Rayyan	FWD	AIS	14	1		41	Meir Barda	MID	ESH	14	1		41	Peleg Peleg-Or	FWD	ESH	14	7.0		41	Itai Shapira	FWD	KHS	14	12		41	Khaled Al-Najjar	DEF	HNH	14	26
+42	Marwan Touma	FWD	AIS	14	1		42	Gilad Zaguri	MID	ESH	14	1		42	Amjad Nabhan	DEF	KHS	14	7.0		42	Ariel Lugassy	MID	MKA	13	11		42	Nissim Rubinstein	DEF	HET	14	26
+43	Nissim Rubinstein	DEF	HET	14	1		43	Eyal Ovadia	FWD	ESH	14	1		43	Tal Sasson	DEF	KHS	14	7.0		43	Segev Even-Khen	MID	MGN	13	11		43	Gilad Zaguri	MID	ESH	14	25
+44	Ran Uzan	MID	HET	14	1		44	Issam Zoghbi	FWD	ESH	14	1		44	Nabil Kurdi	DEF	AIS	5	6.9		44	Bnaya Kabalo	MID	KHS	13	11		44	Jamal Wahbeh	MID	AIS	14	23
+45	Idan Suissa	MID	HET	14	1		45	Diaa Odeh	DEF	KHS	14	1		45	Ramin Kashani	GK	KHS	6	6.9		45	Netanel Elbaz	MID	MGN	14	11		45	Uriel Mazor	MID	KHS	10	22
+46	Kyrillos Sennefer	DEF	MGN	14	1		46	Abanoub Rekhmire	MID	KHS	14	1		46	Uriel Mazor	MID	KHS	10	6.9		46	Gilad Zaguri	MID	ESH	14	11		46	Netanel Elbaz	MID	MGN	14	22
+47	Roi Ben-Haim	DEF	MGN	14	1		47	Yishai Galili	MID	KHS	14	1		47	Nizar Farhat	MID	AIS	13	6.9		47	Serhat Gökmen	MID	KHS	14	11		47	Zohar Lavi	DEF	MGN	10	22
+48	Elkana Rotem	MID	MGN	14	1		48	Serhat Gökmen	MID	KHS	14	1		48	Iddo Avni	GK	SGN	14	6.9		48	Oren Shemesh	MID	SGN	11	9		48	Amichai Shtern	DEF	HET	14	22
+49	Lahav Agam	DEF	ESH	14	1									49	Tomer Ivgi	DEF	SGN	14	6.9		49	Roee Yehezkel	MID	HET	12	9		49	Boaz Ben-Ami	FWD	HET	13	21
+50	Bassel Barakat	DEF	ESH	14	1									50	Elad Ifrach	FWD	SGN	14	6.9		50	Dariush Hamedani	DEF	ESH	14	8		50	Nizar Farhat	MID	AIS	13	21
+51	Ravid Biton	MID	ESH	14	1									51	Yotam Menashe	MID	MKA	14	6.9		51	Yotam Menashe	MID	MKA	14	8		51	Hadar Rahamim	DEF	SGN	14	21
+52	Avichai Biran	FWD	ESH	14	1									52	Mahmoud Nassar	GK	HNH	14	6.9		52	Zaid Nakhleh	MID	MKA	14	8		52	Yonah Golan	MID	HET	14	20
+53	Abanoub Rekhmire	MID	KHS	14	1									53	Hisham Saleh	DEF	AIS	14	6.9		53	Siavash Tabatabai	FWD	MKA	12	8		53	Abanoub Rekhmire	MID	KHS	14	20
+54	Serhat Gökmen	MID	KHS	14	1									54	Firas Bishara	DEF	AIS	14	6.9		54	Yigal Revivo	FWD	SGN	14	8		54	Segev Even-Khen	MID	MGN	13	19
+														55	Jamal Wahbeh	MID	AIS	14	6.9		55	Gadi Harari	DEF	ESH	14	6		55	Wael Halabi	MID	MKA	14	19
+														56	Ehud Halevi	GK	HET	14	6.9		56	Ori Elharar	MID	ESH	12	6		56	Erez Dahari	MID	HNH	14	19
+														57	Yonatan Cohen	GK	MGN	14	6.9		57	Erez Dahari	MID	HNH	14	6		57	Serhat Gökmen	MID	KHS	14	19
+														58	Yaniv Nachmias	GK	ESH	14	6.9		58	Navid Zarrinkoub	MID	MGN	14	6		58	Maoz Shaked	MID	AIS	13	18
+														59	Gadi Harari	DEF	ESH	14	6.9		59	Lahav Agam	DEF	ESH	14	5		59	Nabil Kurdi	DEF	AIS	5	18
+														60	Dariush Hamedani	DEF	ESH	14	6.9		60	Tal Sasson	DEF	KHS	14	5		60	Navid Zarrinkoub	MID	MGN	14	17
+														61	Shai Sabag	GK	KHS	14	6.9		61	Omar Jubran	FWD	HNH	12	4		61	Ihab Mikhail	MID	AIS	12	16
+														62	Noam Bar-On	GK	MGN	4	6.7		62	Qusai Rayyan	FWD	AIS	14	4		62	Ori Elharar	MID	ESH	12	16
+														63	Dor Kadosh	GK	HNH	7	6.7		63	Yair Ohana	DEF	SGN	14	3		63	Amir Buzaglo	MID	KHS	14	16
+														64	Hamza Al-Qadi	DEF	AIS	8	6.7		64	Tomer Ivgi	DEF	SGN	14	3		64	Peleg Peleg-Or	FWD	ESH	14	14
+														65	Maoz Shaked	MID	AIS	13	6.7		65	Nissim Rubinstein	DEF	HET	14	3		65	Ariel Lugassy	MID	MKA	13	14
+														66	Yair Ohana	DEF	SGN	14	6.7		66	Roi Ben-Haim	DEF	MGN	14	3		66	Liran Gozlan	MID	SGN	14	14
+														67	Yigal Revivo	FWD	SGN	14	6.7		67	Amjad Nabhan	DEF	KHS	14	3		67	Issam Zoghbi	FWD	ESH	14	13
+														68	Liran Gozlan	MID	SGN	14	6.7		68	Diaa Odeh	DEF	KHS	14	3		68	Ramin Qajarian	FWD	SGN	14	13
+														69	Zohar Hershkovitz	FWD	MKA	14	6.7		69	Eliya Klein	MID	MKA	10	3		69	Uri Kastiel	FWD	SGN	14	13
+														70	Itamar Tzarfati	FWD	HNH	14	6.7		70	Ihab Mikhail	MID	AIS	12	3		70	Gilad Dahan	FWD	MGN	14	13
+														71	Adnan Tamimi	GK	AIS	14	6.7		71	Jaber Al-Zoubi	MID	AIS	13	3		71	Avichai Biran	FWD	ESH	14	13
+														72	Nissim Rubinstein	DEF	HET	14	6.7		72	Walid Mansour	MID	AIS	13	3		72	Omar Jubran	FWD	HNH	12	13
+														73	Dor Adari	MID	MGN	14	6.7		73	Nizar Farhat	MID	AIS	13	3		73	Zaid Nakhleh	MID	MKA	14	13
+														74	Serhat Gökmen	MID	KHS	14	6.7		74	Wael Halabi	MID	MKA	14	3		74	Itamar Tzarfati	FWD	HNH	14	12
+														75	Amir Buzaglo	MID	KHS	14	6.7		75	Gal Yardeni	MID	HNH	14	3		75	Nevo Pinto	FWD	SGN	14	12
+														76	Lev Ben-David	DEF	HET	3	6.7		76	Nader Al-Sayed	MID	HNH	14	3		76	Jaber Al-Zoubi	MID	AIS	13	12
+														77	Lior Zilberman	DEF	SGN	3	6.7		77	Dor Adari	MID	MGN	14	3		77	Bnaya Kabalo	MID	KHS	13	12
+														78	Dolev Amsalem	DEF	MKA	5	6.7		78	Yaniv Gershon	DEF	KHS	2	2		78	Marwan Touma	FWD	AIS	14	11
+														79	Erez Malka	FWD	MGN	7	6.7		79	Ziv Tayar	DEF	MGN	8	2		79	Behrouz Sabzevari	FWD	KHS	14	11
+														80	Gal Grinberg	GK	AIS	7	6.7		80	Jad Qassem	DEF	MKA	13	2		80	Zohar Hershkovitz	FWD	MKA	14	11
+														81	Ziv Tayar	DEF	MGN	8	6.7		81	Hadar Rahamim	DEF	SGN	14	2		81	Yigal Revivo	FWD	SGN	14	10
+														82	Oren Shemesh	MID	SGN	11	6.7		82	Firas Bishara	DEF	AIS	14	2		82	Itamar Ben-Zaken	MID	MGN	14	10
+														83	Nawaf Hijazi	MID	HNH	11	6.7		83	Harel Mamo	DEF	HET	14	2		83	Kamran Farahmand	MID	HNH	9	10
+														84	Jad Qassem	DEF	MKA	13	6.7		84	Amichai Shtern	DEF	HET	14	2		84	Ziv Tayar	DEF	MGN	8	10
+														85	Ariel Lugassy	MID	MKA	13	6.7		85	Oded Levi	DEF	HET	14	1		85	Ehud Weizman	DEF	HNH	14	10
+														86	Jaber Al-Zoubi	MID	AIS	13	6.7		86	Kyrillos Sennefer	DEF	MGN	14	1		86	Hamza Al-Qadi	DEF	AIS	8	10
+														87	Walid Mansour	MID	AIS	13	6.7									87	Elad Ifrach	FWD	SGN	14	9
+														88	Bnaya Kabalo	MID	KHS	13	6.7									88	Itai Shapira	FWD	KHS	14	9
+														89	Gal Yardeni	MID	HNH	14	6.7									89	Eyal Segal	FWD	KHS	12	8
+														90	Marwan Touma	FWD	AIS	14	6.7									90	Siavash Tabatabai	FWD	MKA	12	8
+														91	Louay Abu-Sitta	FWD	AIS	14	6.7									91	Louay Abu-Sitta	FWD	AIS	14	8
+														92	Amichai Shtern	DEF	HET	14	6.7									92	Roee Yehezkel	MID	HET	12	8
+														93	Itamar Ben-Zaken	MID	MGN	14	6.7									93	Dolev Amsalem	DEF	MKA	5	8
+														94	Gilad Zaguri	MID	ESH	14	6.7									94	Gilad Kaplan	FWD	KHS	13	7
+														95	Eyal Ovadia	FWD	ESH	14	6.7									95	Eyal Ovadia	FWD	ESH	14	7
+														96	Abanoub Rekhmire	MID	KHS	14	6.7									96	Oren Shemesh	MID	SGN	11	7
+														97	Itai Shapira	FWD	KHS	14	6.7									97	Gal Yardeni	MID	HNH	14	7
+														98	Rami Sayegh	DEF	HNH	3	6.5									98	Rashid Al-Attar	MID	AIS	14	7
+														99	Ghassan Darwish	GK	MKA	4	6.5									99	Shaul Damari	MID	HET	14	7
+														100	Kamran Farahmand	MID	HNH	9	6.5									100	Qusai Rayyan	FWD	AIS	14	6
+														101	Eliya Klein	MID	MKA	10	6.5									101	Yaniv Gershon	DEF	KHS	2	6
+														102	Siavash Tabatabai	FWD	MKA	12	6.5									102	Lev Ben-David	DEF	HET	3	6
+														103	Ori Elharar	MID	ESH	12	6.5									103	Yuval Levkovich	FWD	HET	13	5
+														104	Eyal Segal	FWD	KHS	12	6.5									104	Shlomi Barkan	FWD	MKA	14	5
+														105	Yuval Levkovich	FWD	HET	13	6.5									105	Eliya Klein	MID	MKA	10	5
+														106	Zaid Nakhleh	MID	MKA	14	6.5									106	Walid Mansour	MID	AIS	13	5
+														107	Zvi Dayan	DEF	MKA	14	6.5									107	Lior Zilberman	DEF	SGN	3	5
+														108	Netanel Vaknin	DEF	HNH	14	6.5									108	Tariq Al-Amin	FWD	HNH	14	4
+														109	Khaled Al-Najjar	DEF	HNH	14	6.5									109	Nawaf Hijazi	MID	HNH	11	3
+														110	Ehud Weizman	DEF	HNH	14	6.5									110	Matan Ozeri	DEF	ESH	2	2
+														111	Tariq Al-Amin	FWD	HNH	14	6.5									111	Iddo Avni	GK	SGN	14	1
+														112	Qusai Rayyan	FWD	AIS	14	6.5									112	Mahmoud Nassar	GK	HNH	14	1
+														113	Harel Mamo	DEF	HET	14	6.5									113	Adnan Tamimi	GK	AIS	14	1
+														114	Avichai Biran	FWD	ESH	14	6.5									114	Sagi Melamed	GK	MKA	13	1
+														115	Diaa Odeh	DEF	KHS	14	6.5									115	Yaniv Nachmias	GK	ESH	14	1
+														116	Gilad Kaplan	FWD	KHS	13	6.3									116	Ehud Halevi	GK	HET	14	1
+														117	Hadar Rahamim	DEF	SGN	14	6.3									117	Shai Sabag	GK	KHS	14	1
+														118	Wael Halabi	MID	MKA	14	6.3									118	Rami Sayegh	DEF	HNH	3	1
+														119	Shlomi Barkan	FWD	MKA	14	6.3
+														120	Rashid Al-Attar	MID	AIS	14	6.3
+														121	Shaul Damari	MID	HET	14	6.3
+														122	Roee Yehezkel	MID	HET	12	6.3
+														123	Kfir Turgeman	DEF	MKA	14	6.1
+														124	Ilan Gabay	GK	HET	1	7.4
+														125	Yaniv Gershon	DEF	KHS	2	7.0
+														126	Matan Ozeri	DEF	ESH	2	6.3

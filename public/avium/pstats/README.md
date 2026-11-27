@@ -61,8 +61,8 @@ standings they produced.
 its own: NL2 1935 closes with `## Promotion Playoff`, its `### Quarter-finals`, `### Semi-finals` and
 `### Final` captions over knockout fixture tables in the formats below. Each shows as a tab beside the
 rounds, drawn the way a tournament's stages are, and a club's page lists those matches with its
-season. The table, the champion and the player boards stay the league's own: playoff statistics are
-not added to the season's boards. A playoff between two divisions is filed in both seasons' reports,
+season. The table and the champion stay the league's own. NL2 1935's playoff statistics are not in its
+boards; from NL2 1936 on, the playoff's are added to the season's. A playoff between two divisions is filed in both seasons' reports,
 so each club's page and each season shows it: Varahmehr 1935 closes the Mellī's with `## Relegation
 Playoff` and the Bālande's with `## Promotion Playoff`, the same tie in both.
 
@@ -204,6 +204,23 @@ Because the factors differ by position, the converted boards were re-sorted and 
 reordering is the correction, not a side effect. Residual error against 33/34's own distribution is
 around 2–5 across the top half of each board, except forwards' DC at 8.5: that group's redefinition
 is the least linear of the seven and its converted figures are the roughest in the archive.
+
+## The 1936 engine
+
+Every season filed before the 1936 Nichirian seasons was converted to the engine those seasons were
+played on, with NL1 1936, NL2 1936 and the 1936 Sei'i Tai Shogun Cup as the reference. Goals
+and appearances are untouched. Assists are scaled to the reference's 0.818 a goal, the same way as
+the counts below.
+
+**RTG**: each season's mean is moved to the reference's 6.81, and its spread to what the reference
+gives for a season of that length, since a season of a few matches spreads its averages wider than
+one of forty. The spread of the qualified men's averages is fitted as `sd² = 0.0531 + 0.4380 / n`,
+`n` the qualified men's mean appearances. A linear change of units, so every ordering survives it.
+
+**CC, DC and SV**: a factor per position group per season, setting each group's rate per 90 minutes
+(per appearance in the files without minutes) to the reference's. Counts are rounded so each group's
+total is the scaled total; a man who scales to nothing leaves the board. Boards are re-sorted and
+renumbered.
 
 ## changelog.tsv
 
