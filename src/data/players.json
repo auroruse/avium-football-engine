@@ -6951,5 +6951,7 @@
 {"id":"p7016","name":"Alla QUPIWA","nat":"ANT","ovr":75,"born":"1915-07-28","pos":["RB","LB"],"badges":["rapid:1","tikitaka"]},
 {"id":"p7017","name":"Yuwa WAKARI","nat":"ANT","ovr":76,"born":"1910-04-13","pos":["CM","AM"],"badges":["finisher:1","longshot:3","greedy"]},
 {"id":"p7018","name":"Pacha PELKA","nat":"ANT","ovr":75,"born":"1913-03-21","pos":["ST"],"badges":["poacher","outoflegs:1"]},
-{"id":"p7019","name":"Jujo MUKAQ","nat":"ANT","ovr":75,"born":"1908-03-15","pos":["LB","CB"],"badges":["manon:1","tightmarker:1"]}
+{"id":"p7019","name":"Jujo MUKAQ","nat":"ANT","ovr":75,"born":"1908-03-15","pos":["LB","CB"],"badges":["manon:1","tightmarker:1"]},
+{"id":"p7020","name":"Xupanta QACHAWOL","nat":"ANT","ovr":75,"born":"1909-07-16","pos":["DM","CM"],"badges":["manon:1","tightmarker:1"]},
+{"id":"p7021","name":"Esko GREFA","nat":"ANT","ovr":74,"born":"1915-11-18","pos":["AM"],"badges":["vision:1"]}
 ]
