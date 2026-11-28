@@ -1,5 +1,245 @@
 [
  {
+  "id": "9e89eb1d",
+  "by": "cornafiable",
+  "at": "2026-11-28T13:41:55.829Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "teams",
+    "id": "t0407",
+    "name": "Qahuaya Hukllachasqa",
+    "field": "home",
+    "from": "#017289",
+    "to": "#007d4b"
+   },
+   {
+    "kind": "teams",
+    "id": "t0407",
+    "name": "Qahuaya Hukllachasqa",
+    "field": "away",
+    "from": "#b30000",
+    "to": "#fbfbcc"
+   },
+   {
+    "kind": "teams",
+    "id": "t0404",
+    "name": "FTK Maqarqa",
+    "field": "home",
+    "from": "#2e0000",
+    "to": "#03774b"
+   },
+   {
+    "kind": "teams",
+    "id": "t0404",
+    "name": "FTK Maqarqa",
+    "field": "away",
+    "from": "#db0000",
+    "to": "#f5f4db"
+   },
+   {
+    "kind": "teams",
+    "id": "t0402",
+    "name": "Chaqalay HFK",
+    "field": "home",
+    "from": "#afbb58",
+    "to": "#c7201b"
+   },
+   {
+    "kind": "teams",
+    "id": "t0402",
+    "name": "Chaqalay HFK",
+    "field": "away",
+    "from": "#ae0a90",
+    "to": "#ffde59"
+   },
+   {
+    "kind": "teams",
+    "id": "t0405",
+    "name": "FK Qahuita",
+    "field": "home",
+    "from": "#5c7057",
+    "to": "#881f19"
+   },
+   {
+    "kind": "teams",
+    "id": "t0405",
+    "name": "FK Qahuita",
+    "field": "away",
+    "from": "#005f8f",
+    "to": "#ffffff"
+   },
+   {
+    "kind": "teams",
+    "id": "t0400",
+    "name": "FK Tombaq",
+    "field": "home",
+    "from": "#ab1717",
+    "to": "#113f7a"
+   },
+   {
+    "kind": "teams",
+    "id": "t0400",
+    "name": "FK Tombaq",
+    "field": "away",
+    "from": "#1408bf",
+    "to": "#f9b924"
+   },
+   {
+    "kind": "teams",
+    "id": "t0406",
+    "name": "FK Urkurunakuna",
+    "field": "home",
+    "from": "#993d00",
+    "to": "#ff9100"
+   },
+   {
+    "kind": "teams",
+    "id": "t0401",
+    "name": "Riqpa Hukllachasqa",
+    "field": "home",
+    "from": "#085915",
+    "to": "#c7201b"
+   },
+   {
+    "kind": "teams",
+    "id": "t0401",
+    "name": "Riqpa Hukllachasqa",
+    "field": "away",
+    "from": "#7a0634",
+    "to": "#004aad"
+   },
+   {
+    "kind": "teams",
+    "id": "t0409",
+    "name": "FK Quri Wamp'u",
+    "field": "home",
+    "from": "#0e250e",
+    "to": "#113f7a"
+   },
+   {
+    "kind": "teams",
+    "id": "t0409",
+    "name": "FK Quri Wamp'u",
+    "field": "away",
+    "from": "#a30080",
+    "to": "#c69f41"
+   },
+   {
+    "kind": "teams",
+    "id": "t0410",
+    "name": "FK Yuchayurqu",
+    "field": "home",
+    "from": "#990000",
+    "to": "#113f7a"
+   },
+   {
+    "kind": "teams",
+    "id": "t0410",
+    "name": "FK Yuchayurqu",
+    "field": "away",
+    "from": "#006b07",
+    "to": "#ffffff"
+   },
+   {
+    "kind": "teams",
+    "id": "t0415",
+    "name": "Pamananqa Llaqta",
+    "field": "home",
+    "from": "#542d1c",
+    "to": "#ff3131"
+   },
+   {
+    "kind": "teams",
+    "id": "t0415",
+    "name": "Pamananqa Llaqta",
+    "field": "away",
+    "from": "#fef1f1",
+    "to": "#000000"
+   },
+   {
+    "kind": "teams",
+    "id": "t0414",
+    "name": "Challwaq Runakuna Futbol",
+    "field": "home",
+    "from": "#d3c0c0",
+    "to": "#c69f41"
+   },
+   {
+    "kind": "teams",
+    "id": "t0414",
+    "name": "Challwaq Runakuna Futbol",
+    "field": "away",
+    "from": "#860909",
+    "to": "#113f7a"
+   },
+   {
+    "kind": "teams",
+    "id": "t0413",
+    "name": "FK Piqwa Hukllachasqa",
+    "field": "home",
+    "from": "#396f4e",
+    "to": "#f9b924"
+   },
+   {
+    "kind": "teams",
+    "id": "t0413",
+    "name": "FK Piqwa Hukllachasqa",
+    "field": "away",
+    "from": "#1a0099",
+    "to": "#00bf63"
+   },
+   {
+    "kind": "teams",
+    "id": "t0411",
+    "name": "HFK Nawasqa",
+    "field": "home",
+    "from": "#034694",
+    "to": "#132257"
+   },
+   {
+    "kind": "teams",
+    "id": "t0411",
+    "name": "HFK Nawasqa",
+    "field": "away",
+    "from": "#3b3b3b",
+    "to": "#ffffff"
+   },
+   {
+    "kind": "teams",
+    "id": "t0408",
+    "name": "FK Yuhuac",
+    "field": "home",
+    "from": "#00608a",
+    "to": "#ffde59"
+   },
+   {
+    "kind": "teams",
+    "id": "t0408",
+    "name": "FK Yuhuac",
+    "field": "away",
+    "from": "#febebe",
+    "to": "#000000"
+   },
+   {
+    "kind": "teams",
+    "id": "t0412",
+    "name": "Piqwa Llaqta",
+    "field": "home",
+    "from": "#d67d00",
+    "to": "#841f7c"
+   },
+   {
+    "kind": "teams",
+    "id": "t0412",
+    "name": "Piqwa Llaqta",
+    "field": "away",
+    "from": "#006110",
+    "to": "#ffffff"
+   }
+  ]
+ },
+ {
   "id": "32eb8d01",
   "by": "auroruse",
   "at": "2026-11-28T09:53:59.038Z",
