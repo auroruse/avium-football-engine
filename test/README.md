@@ -33,7 +33,7 @@ zsh test/rebuild.sh
 node test/golden.mjs            # check against the baseline
 node test/golden.mjs write      # re-baseline, once you can name why every diverging fixture moved
 node test/ratings.mjs check     # the pars and the keeper balance still hold (about a minute on 8 cores)
-node test/ratings.mjs derive    # after touching any rate constant: the ratePos / gkExp to ship
+node test/ratings.mjs derive    # after touching any rate constant: the rateFin / gkExp / gkPs to ship
 node test/natxi.mjs > natxi.tsv  # recompute the national sheets' player columns
 npx vite build && node test/tdz.mjs   # after any App.tsx edit: does the shipped bundle still evaluate
 node test/mvp.mjs               # who every archived season would name MVP
