@@ -1,151 +1,151 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
-1	Rosendo Zapatero	FWD	LUT	18	18	1271	15		1	Dorian Roussel	MID	OL	18	18	1469	7		1	Rosendo Zapatero	FWD	LUT	18	18	1271	7.6		1	Rosendo Zapatero	FWD	LUT	18	18	1271	60		1	Xavier Montbrun	DEF	BOR	18	18	1510	95		1	Léon Chastellain	GK	RCC	18	18	1620	79
-2	Nicolas Boulloche	FWD	ULT	18	18	1426	6		2	Silvio Caruso	FWD	LUT	18	18	1243	6		2	Baptiste Noirclerc	DEF	ULT	8	8	631	7.5		2	Siegmund Stracke	FWD	LUT	18	18	1396	45		2	Fabio Marchisio	DEF	CDM	18	18	1592	86		2	Étienne Barral	GK	CDM	18	18	1620	76
-3	Đại Đông Nguyễn	FWD	OM	18	18	933	6		3	Youssef Valverde	MID	FCB	18	18	1393	6		3	Nabil Ouazzani	MID	OM	18	18	1359	7.5		3	Silvio Caruso	FWD	LUT	18	18	1243	40		3	Oriol Cabestany	DEF	FCB	18	18	1605	84		3	Wouter Claessens	GK	BLG	18	18	1620	76
-4	Hervé Thibodeau	FWD	OL	18	18	1055	5		4	Conan Neitzel	MID	OM	15	2	704	4		4	Jean-Pierre Susilovic	MID	LUT	18	18	1465	7.3		4	Nolan Perrigault	FWD	RCC	18	18	1391	40		4	Valentin Peixoto	DEF	RCC	18	18	1474	76		4	Brice Viardot	GK	ULT	18	18	1620	73
-5	Édouard Pescatore	FWD	LUZ	18	18	1175	5		5	Ruben Delacroix	FWD	LUT	17	2	673	4		5	Valentin Peixoto	DEF	RCC	18	18	1474	7.3		5	Dorian Roussel	MID	OL	18	18	1469	39		5	Olivier De Verley	DEF	OM	18	18	1559	73		5	Christophe Gagnon	GK	OL	18	18	1620	70
-6	Élie Marchesseau	FWD	RCC	18	18	1103	5		6	Octave Faravel	MID	OL	18	18	1520	4		6	Jocelyn Teissier	MID	RCC	18	18	1405	7.3		6	Roger Casadevall	MID	OM	18	16	1184	38		6	Aurèle Castelnau	DEF	BOR	18	18	1446	72		6	Ahmet Aydin	GK	OM	18	18	1620	68
-7	Petr Procházka	FWD	FCB	18	18	1306	5		7	Vincent Tremblay	FWD	ULT	18	18	1263	4		7	Aurèle Castelnau	DEF	BOR	18	18	1446	7.3		7	Régis Chambonnet	FWD	BOR	18	18	1450	38		7	Jocelyn Teissier	MID	RCC	18	18	1405	69		7	Ronan Brival	GK	BOR	18	18	1620	65
-8	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	4		8	Jean-Pierre Susilovic	MID	LUT	18	18	1465	4		8	Oriol Cabestany	DEF	FCB	18	18	1605	7.3		8	Thibaut Maesschalck	MID	BLG	18	18	1363	35		8	Killian Charpentier	DEF	LUZ	18	18	1606	68		8	Fabien Blanchet	GK	LUT	18	18	1620	64
-9	Dorian Roussel	MID	OL	18	18	1469	4		9	Siegmund Stracke	FWD	LUT	18	18	1396	4		9	Fructuoso Elorriaga	MID	FCB	18	18	1526	7.3		9	Gaku Ibusuki	FWD	FCB	18	18	1446	34		9	Sergei Smirnov	DEF	OM	18	18	1557	67		9	Jostein Helgesen	GK	FCB	18	18	1620	57
-10	Côme Delacroix	MID	LUT	18	18	1594	4		10	Ambroise Guerrier	MID	RCC	18	18	1399	4		10	Youssef Valverde	MID	FCB	18	18	1393	7.3		10	Gauthier Dewinter	FWD	BLG	18	18	1584	34		10	Pierrick Berthelot	DEF	OL	18	18	1620	66		10	Mathis Weiler	GK	LUZ	18	18	1620	50
-11	Siegmund Stracke	FWD	LUT	18	18	1396	4		11	Fabio Marchisio	DEF	CDM	18	18	1592	4		11	Jonas Verstraete	DEF	BLG	18	18	1566	7.3		11	Léandre Pochard	MID	OL	17	17	1476	33		11	Rachid Benyahia	DEF	OM	18	18	1445	66
-12	Fernand Mullenbach	MID	LUZ	18	18	1233	4		12	Loïc Tardiveau	MID	BOR	13	13	1105	3		12	Léandre Pochard	MID	OL	17	17	1476	7.2		12	Léo Origer	MID	LUZ	18	18	1414	33		12	Émile D'Artagnan	DEF	LUT	18	18	1515	66
-13	Nabil Ouazzani	MID	OM	18	18	1359	4		13	Antoine Bagradian	MID	LUT	16	16	1361	3		13	Dorian Roussel	MID	OL	18	18	1469	7.2		13	Nicolas Boulloche	FWD	ULT	18	18	1426	31		13	Enzo Gorlomi	DEF	OM	18	18	1563	66
-14	Loïc Tardiveau	MID	BOR	13	13	1105	3		14	Léandre Pochard	MID	OL	17	17	1476	3		14	Hervé Thibodeau	FWD	OL	18	18	1055	7.2		14	Élie Marchesseau	FWD	RCC	18	18	1103	31		14	Jonas Verstraete	DEF	BLG	18	18	1566	65
-15	Octave Étienne	FWD	OM	15	0	538	3		15	Félicien Couture	MID	OL	18	18	1437	3		15	Louis-Marie Gerbault	MID	ULT	18	18	1353	7.2		15	Pau Puigcorbé	FWD	FCB	18	18	1269	31		15	Grégoire Sauveterre	MID	BOR	18	18	1349	63
-16	Ettore Bianchi	MID	OM	17	6	871	3		16	Adrien Vauthier	MID	ULT	18	18	1458	3		16	Émile D'Artagnan	DEF	LUT	18	18	1515	7.2		16	Youssef Valverde	MID	FCB	18	18	1393	29		16	Nabil Ouazzani	MID	OM	18	18	1359	61
-17	Silvio Caruso	FWD	LUT	18	18	1243	3		17	Émile D'Artagnan	DEF	LUT	18	18	1515	3		17	Fernand Mullenbach	MID	LUZ	18	18	1233	7.2		17	Loïc Tardiveau	MID	BOR	13	13	1105	28		17	Bruno Vandeputte	DEF	BLG	18	18	1529	60
-18	Léo Origer	MID	LUZ	18	18	1414	3		18	Rosendo Zapatero	FWD	LUT	18	18	1271	3		18	Sergei Smirnov	DEF	OM	18	18	1557	7.2		18	Côme Delacroix	MID	LUT	18	18	1594	28		18	Aurélien Fouché	DEF	ULT	18	18	1582	57
-19	Damien Scholtes	MID	LUZ	18	18	1441	3		19	Camille Theisen	DEF	LUZ	18	18	1620	2		19	Xavier Montbrun	DEF	BOR	18	18	1510	7.2		19	Théo Santini	MID	OM	18	18	1620	28		19	Alban Fresnaye	DEF	RCC	18	18	1581	57
-20	Osamu Matsumoto	MID	RCC	18	18	1545	3		20	Léo Origer	MID	LUZ	18	18	1414	2		20	Grégoire Sauveterre	MID	BOR	18	18	1349	7.2		20	Jean-Pierre Susilovic	MID	LUT	18	18	1465	27		20	Guiu Martorell	DEF	FCB	18	18	1579	57
-21	Fructuoso Elorriaga	MID	FCB	18	18	1526	3		21	Damien Scholtes	MID	LUZ	18	18	1441	2		21	Thibaut Maesschalck	MID	BLG	18	18	1363	7.2		21	Nabil Ouazzani	MID	OM	18	18	1359	27		21	Lothaire Chalumeau	DEF	OL	18	18	1620	55
-22	Gaku Ibusuki	FWD	FCB	18	18	1446	3		22	Fernand Mullenbach	MID	LUZ	18	18	1233	2		22	Rémy Bourdelle	DEF	RCC	11	11	852	7.1		22	Ivan Soubeyran	FWD	BOR	18	18	1506	27		22	Aurélien Vanhecke	MID	BLG	17	17	1376	54
-23	Renzo Pastorelli	MID	CDM	18	18	1173	3		23	Enzo Gorlomi	DEF	OM	18	18	1563	2		23	Loïc Tardiveau	MID	BOR	13	13	1105	7.1		23	Petr Procházka	FWD	FCB	18	18	1306	27		23	Octave Faravel	MID	OL	18	18	1520	52
-24	Charles-Henri Boissieu	MID	CDM	18	18	1458	3		24	Théo Santini	MID	OM	18	18	1620	2		24	Pierrick Berthelot	DEF	OL	18	18	1620	7.1		24	Adrien Vauthier	MID	ULT	18	18	1458	25		24	Thibaut Maesschalck	MID	BLG	18	18	1363	52
-25	Gauthier Dewinter	FWD	BLG	18	18	1584	3		25	Charles-Henri Boissieu	MID	CDM	18	18	1458	2		25	Sylvain Courtemanche	DEF	OL	18	18	1620	7.1		25	Marin Chassagne	FWD	ULT	18	18	1369	25		25	Clément Desrosiers	DEF	ULT	18	18	1525	52
-26	Nathan Grandmaison	FWD	OL	9	0	304	2		26	Thibaut Maesschalck	MID	BLG	18	18	1363	2		26	Brice Viardot	GK	ULT	18	18	1620	7.1		26	Vincent Tremblay	FWD	ULT	18	18	1263	25		26	Oriol Montagut	DEF	LUT	18	18	1540	52
-27	Hippolyte Sergent	FWD	ULT	14	0	412	2		27	Malik Seddiki	DEF	OM	8	0	238	1		27	Clément Desrosiers	DEF	ULT	18	18	1525	7.1		27	Đại Đông Nguyễn	FWD	OM	18	18	933	25		27	Marçal Vidiella	DEF	FCB	16	16	1340	50
-28	Timothée Arsenault	FWD	OL	18	1	622	2		28	Alberto Acin	FWD	FCB	10	4	517	1		28	Côme Delacroix	MID	LUT	18	18	1594	7.1		28	Octave Faravel	MID	OL	18	18	1520	23		28	Philippe Taillardat	DEF	LUT	18	18	1575	50
-29	Federico Cardinale	MID	OL	18	18	1336	2		29	Olivier Zenner	DEF	LUZ	13	0	321	1		29	Siegmund Stracke	FWD	LUT	18	18	1396	7.1		29	Federico Cardinale	MID	OL	18	18	1336	23		29	Osamu Matsumoto	MID	RCC	18	18	1545	49
-30	Rémi Wagener	MID	LUZ	18	18	1591	2		30	Tristan Fabron	DEF	LUT	14	0	305	1		30	Rachid Benyahia	DEF	OM	18	18	1445	7.1		30	Pascal Villemain	MID	BOR	18	18	1540	23		30	Stijn Delvaux	MID	BLG	18	18	1527	49
-31	Aarne Peltoniemi	MID	OM	18	18	1428	2		31	Octave Étienne	FWD	OM	15	0	538	1		31	Olivier De Verley	DEF	OM	18	18	1559	7.1		31	Ruben Delacroix	FWD	LUT	17	2	673	22		31	Sylvain Courtemanche	DEF	OL	18	18	1620	49
-32	Roger Casadevall	MID	OM	18	16	1184	2		32	Ellison Hargrove	DEF	FCB	15	15	1189	1		32	Enzo Gorlomi	DEF	OM	18	18	1563	7.1		32	Dario Spinetta	FWD	CDM	18	18	1326	22		32	Séverin Malbranque	DEF	ULT	18	18	1547	47
-33	Pau Puigcorbé	FWD	FCB	18	18	1269	2		33	Marçal Vidiella	DEF	FCB	16	16	1340	1		33	Đại Đông Nguyễn	FWD	OM	18	18	933	7.1		33	Damien Scholtes	MID	LUZ	18	18	1441	21		33	Gaspard Reuter	DEF	LUZ	18	18	1523	47
-34	Kobe Servais	MID	BLG	18	18	1575	2		34	Anselme Vauquelin	MID	LUT	16	0	496	1		34	Roger Casadevall	MID	OM	18	16	1184	7.1		34	Antoine Bagradian	MID	LUT	16	16	1361	20		34	Lucien Debaets	DEF	BLG	18	18	1532	47
-35	Lander Bruneel	FWD	BLG	18	18	1156	2		35	Joris Lambrechts	MID	BLG	16	0	408	1		35	Fabio Marchisio	DEF	CDM	18	18	1592	7.1		35	Jean-Michel Roubaud	MID	CDM	16	16	1246	20		35	Norbert Schiltz	DEF	LUZ	18	18	1573	46
-36	Pieter-Jan Moens	FWD	BLG	5	0	133	1		36	Ettore Bianchi	MID	OM	17	6	871	1		36	Wouter Claessens	GK	BLG	18	18	1620	7.1		36	Fructuoso Elorriaga	MID	FCB	18	18	1526	20		36	Camille Theisen	DEF	LUZ	18	18	1620	45
-37	Itsuki Sakagami	FWD	LUT	6	0	174	1		37	Émile Vandersteen	DEF	BLG	17	1	514	1		37	Jean-Michel Roubaud	MID	CDM	16	16	1246	7.0		37	Octave Étienne	FWD	OM	15	0	538	20		37	Fructuoso Elorriaga	MID	FCB	18	18	1526	44
-38	Julien Bellando	FWD	CDM	11	0	296	1		38	Gaël Bonnafous	MID	ULT	17	10	1176	1		38	Aurélien Vanhecke	MID	BLG	17	17	1376	7.0		38	Lander Bruneel	FWD	BLG	18	18	1156	20		38	Ambroise Guerrier	MID	RCC	18	18	1399	44
-39	Tristan Fabron	DEF	LUT	14	0	305	1		39	Timothée Arsenault	FWD	OL	18	1	622	1		39	Christophe Gagnon	GK	OL	18	18	1620	7.0		39	Conan Neitzel	MID	OM	15	2	704	19		39	Laurent Grimaldi	DEF	CDM	18	18	1512	44
-40	Hervé Laffitte	FWD	BOR	14	1	467	1		40	Federico Cardinale	MID	OL	18	18	1336	1		40	Octave Faravel	MID	OL	18	18	1520	7.0		40	Louis-Marie Gerbault	MID	ULT	18	18	1353	19		40	Amaury Brissaud	DEF	OL	16	16	1383	43
-41	Anatole Vergnaud	MID	ULT	15	0	317	1		41	Aurélien Fouché	DEF	ULT	18	18	1582	1		41	Aurélien Fouché	DEF	ULT	18	18	1582	7.0		41	Fernand Mullenbach	MID	LUZ	18	18	1233	19		41	Olivier Sanguinetti	DEF	CDM	18	18	1585	43
-42	Léandre Pochard	MID	OL	17	17	1476	1		42	Séverin Malbranque	DEF	ULT	18	18	1547	1		42	Séverin Malbranque	DEF	ULT	18	18	1547	7.0		42	Jocelyn Teissier	MID	RCC	18	18	1405	19		42	Aarne Peltoniemi	MID	OM	18	18	1428	42
-43	Ruben Delacroix	FWD	LUT	17	2	673	1		43	Louis-Marie Gerbault	MID	ULT	18	18	1353	1		43	Nicolas Boulloche	FWD	ULT	18	18	1426	7.0		43	Grégoire Sauveterre	MID	BOR	18	18	1349	19		43	Baptiste Noirclerc	DEF	ULT	8	8	631	42
-44	Aurélien Vanhecke	MID	BLG	17	17	1376	1		44	Philippe Taillardat	DEF	LUT	18	18	1575	1		44	Adrien Vauthier	MID	ULT	18	18	1458	7.0		44	Renaat Houthoofd	MID	BLG	18	18	1391	19		44	Hugo Saint-Laurent	DEF	LUT	18	18	1592	42
-45	Lothaire Chalumeau	DEF	OL	18	18	1620	1		45	Killian Charpentier	DEF	LUZ	18	18	1606	1		45	Silvio Caruso	FWD	LUT	18	18	1243	7.0		45	Édouard Pescatore	FWD	LUZ	18	18	1175	18		45	Fabrice Duquesnoy	DEF	BOR	18	18	1572	42
-46	Pierrick Berthelot	DEF	OL	18	18	1620	1		46	Julien Kirsch	MID	LUZ	18	18	1582	1		46	Killian Charpentier	DEF	LUZ	18	18	1606	7.0		46	Bastien Cavaillès	MID	OM	17	12	1202	17		46	Antoine Faravel	DEF	CDM	18	18	1519	41
-47	Sylvain Courtemanche	DEF	OL	18	18	1620	1		47	Gaspard Reuter	DEF	LUZ	18	18	1523	1		47	Julien Kirsch	MID	LUZ	18	18	1582	7.0		47	Aurélien Vanhecke	MID	BLG	17	17	1376	17		47	Côme Delacroix	MID	LUT	18	18	1594	40
-48	Félicien Couture	MID	OL	18	18	1437	1		48	Cyprien Malartre	MID	RCC	18	18	1491	1		48	Léo Origer	MID	LUZ	18	18	1414	7.0		48	Félicien Couture	MID	OL	18	18	1437	17		48	Renaat Houthoofd	MID	BLG	18	18	1391	40
-49	Clément Desrosiers	DEF	ULT	18	18	1525	1		49	Jocelyn Teissier	MID	RCC	18	18	1405	1		49	Léon Chastellain	GK	RCC	18	18	1620	7.0		49	Julien Kirsch	MID	LUZ	18	18	1582	17		49	Rémy Bourdelle	DEF	RCC	11	11	852	40
-50	Vincent Tremblay	FWD	ULT	18	18	1263	1		50	Nabil Ouazzani	MID	OM	18	18	1359	1		50	Ahmet Aydin	GK	OM	18	18	1620	7.0		50	Cyprien Malartre	MID	RCC	18	18	1491	17		50	Cyprien Malartre	MID	RCC	18	18	1491	38
-51	Louis-Marie Gerbault	MID	ULT	18	18	1353	1		51	Aarne Peltoniemi	MID	OM	18	18	1428	1		51	Aarne Peltoniemi	MID	OM	18	18	1428	7.0		51	Osamu Matsumoto	MID	RCC	18	18	1545	17		51	Roger Casadevall	MID	OM	18	16	1184	38
-52	Philippe Taillardat	DEF	LUT	18	18	1575	1		52	Đại Đông Nguyễn	FWD	OM	18	18	933	1		52	Fabrice Duquesnoy	DEF	BOR	18	18	1572	7.0		52	Charles-Henri Boissieu	MID	CDM	18	18	1458	17		52	Bertrand Mauclair	MID	BOR	18	18	1620	38
-53	Jocelyn Teissier	MID	RCC	18	18	1405	1		53	Roger Casadevall	MID	OM	18	16	1184	1		53	Guiu Martorell	DEF	FCB	18	18	1579	7.0		53	Ettore Bianchi	MID	OM	17	6	871	16		53	Dorian Roussel	MID	OL	18	18	1469	37
-54	Nolan Perrigault	FWD	RCC	18	18	1391	1		54	Pascal Villemain	MID	BOR	18	18	1540	1		54	Petr Procházka	FWD	FCB	18	18	1306	7.0		54	Hervé Thibodeau	FWD	OL	18	18	1055	16		54	Julien Kirsch	MID	LUZ	18	18	1582	37
-55	Enzo Gorlomi	DEF	OM	18	18	1563	1		55	Ivan Soubeyran	FWD	BOR	18	18	1506	1		55	Gaku Ibusuki	FWD	FCB	18	18	1446	7.0		55	Théophile Anquetil	MID	ULT	18	18	1574	15		55	Félicien Couture	MID	OL	18	18	1437	36
-56	Fabrice Duquesnoy	DEF	BOR	18	18	1572	1		56	Régis Chambonnet	FWD	BOR	18	18	1450	1		56	Bruno Vandeputte	DEF	BLG	18	18	1529	7.0		56	Renzo Pastorelli	MID	CDM	18	18	1173	15		56	Théo Santini	MID	OM	18	18	1620	36
-57	Pascal Villemain	MID	BOR	18	18	1540	1		57	Oriol Cabestany	DEF	FCB	18	18	1605	1		57	Alberto Acin	FWD	FCB	10	4	517	6.9		57	Bertrand Mauclair	MID	BOR	18	18	1620	13		57	Léo Origer	MID	LUZ	18	18	1414	36
-58	Ivan Soubeyran	FWD	BOR	18	18	1506	1		58	Guiu Martorell	DEF	FCB	18	18	1579	1		58	Ettore Bianchi	MID	OM	17	6	871	6.9		58	Quim Estanyol	MID	FCB	18	18	1576	13		58	Youssef Valverde	MID	FCB	18	18	1393	35
-59	Grégoire Sauveterre	MID	BOR	18	18	1349	1		59	Quim Estanyol	MID	FCB	18	18	1576	1		59	Lothaire Chalumeau	DEF	OL	18	18	1620	6.9		59	Édouard Laroche	FWD	RCC	13	0	449	13		59	Renzo Pastorelli	MID	CDM	18	18	1173	34
-60	Youssef Valverde	MID	FCB	18	18	1393	1		60	Petr Procházka	FWD	FCB	18	18	1306	1		60	Federico Cardinale	MID	OL	18	18	1336	6.9		60	Aarne Peltoniemi	MID	OM	18	18	1428	12		60	Jean-Pierre Susilovic	MID	LUT	18	18	1465	34
-61	Quim Estanyol	MID	FCB	18	18	1576	1		61	Pau Puigcorbé	FWD	FCB	18	18	1269	1		61	Fabien Blanchet	GK	LUT	18	18	1620	6.9		61	Kobe Servais	MID	BLG	18	18	1575	11		61	Ellison Hargrove	DEF	FCB	15	15	1189	33
-62	Antoine Ferracci	MID	CDM	18	18	1508	1		62	Dario Spinetta	FWD	CDM	18	18	1326	1		62	Mathis Weiler	GK	LUZ	18	18	1620	6.9		62	Hippolyte Sergent	FWD	ULT	14	0	412	11		62	Léandre Pochard	MID	OL	17	17	1476	32
+1	Rosendo Zapatero	FWD	LUT	18	18	1271	15		1	Dorian Roussel	MID	OL	18	18	1469	7		1	Nabil Ouazzani	MID	OM	18	18	1359	7.8		1	Rosendo Zapatero	FWD	LUT	18	18	1271	60		1	Xavier Montbrun	DEF	BOR	18	18	1510	95		1	Léon Chastellain	GK	RCC	18	18	1620	79
+2	Nicolas Boulloche	FWD	ULT	18	18	1426	6		2	Silvio Caruso	FWD	LUT	18	18	1243	6		2	Rosendo Zapatero	FWD	LUT	18	18	1271	7.6		2	Siegmund Stracke	FWD	LUT	18	18	1396	45		2	Fabio Marchisio	DEF	CDM	18	18	1592	86		2	Étienne Barral	GK	CDM	18	18	1620	76
+3	Đại Đông Nguyễn	FWD	OM	18	18	933	6		3	Youssef Valverde	MID	FCB	18	18	1393	6		3	Baptiste Noirclerc	DEF	ULT	8	8	631	7.4		3	Silvio Caruso	FWD	LUT	18	18	1243	40		3	Oriol Cabestany	DEF	FCB	18	18	1605	84		3	Wouter Claessens	GK	BLG	18	18	1620	76
+4	Hervé Thibodeau	FWD	OL	18	18	1055	5		4	Conan Neitzel	MID	OM	15	2	704	4		4	Jean-Pierre Susilovic	MID	LUT	18	18	1465	7.4		4	Nolan Perrigault	FWD	RCC	18	18	1391	40		4	Valentin Peixoto	DEF	RCC	18	18	1474	76		4	Brice Viardot	GK	ULT	18	18	1620	73
+5	Édouard Pescatore	FWD	LUZ	18	18	1175	5		5	Ruben Delacroix	FWD	LUT	17	2	673	4		5	Jocelyn Teissier	MID	RCC	18	18	1405	7.4		5	Dorian Roussel	MID	OL	18	18	1469	39		5	Olivier De Verley	DEF	OM	18	18	1559	73		5	Christophe Gagnon	GK	OL	18	18	1620	70
+6	Élie Marchesseau	FWD	RCC	18	18	1103	5		6	Octave Faravel	MID	OL	18	18	1520	4		6	Fructuoso Elorriaga	MID	FCB	18	18	1526	7.4		6	Roger Casadevall	MID	OM	18	16	1184	38		6	Aurèle Castelnau	DEF	BOR	18	18	1446	72		6	Ahmet Aydin	GK	OM	18	18	1620	68
+7	Petr Procházka	FWD	FCB	18	18	1306	5		7	Vincent Tremblay	FWD	ULT	18	18	1263	4		7	Youssef Valverde	MID	FCB	18	18	1393	7.4		7	Régis Chambonnet	FWD	BOR	18	18	1450	38		7	Jocelyn Teissier	MID	RCC	18	18	1405	69		7	Ronan Brival	GK	BOR	18	18	1620	65
+8	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	4		8	Jean-Pierre Susilovic	MID	LUT	18	18	1465	4		8	Hervé Thibodeau	FWD	OL	18	18	1055	7.4		8	Thibaut Maesschalck	MID	BLG	18	18	1363	35		8	Killian Charpentier	DEF	LUZ	18	18	1606	68		8	Fabien Blanchet	GK	LUT	18	18	1620	64
+9	Dorian Roussel	MID	OL	18	18	1469	4		9	Siegmund Stracke	FWD	LUT	18	18	1396	4		9	Brice Viardot	GK	ULT	18	18	1620	7.3		9	Gaku Ibusuki	FWD	FCB	18	18	1446	34		9	Sergei Smirnov	DEF	OM	18	18	1557	67		9	Jostein Helgesen	GK	FCB	18	18	1620	57
+10	Côme Delacroix	MID	LUT	18	18	1594	4		10	Ambroise Guerrier	MID	RCC	18	18	1399	4		10	Wouter Claessens	GK	BLG	18	18	1620	7.3		10	Gauthier Dewinter	FWD	BLG	18	18	1584	34		10	Pierrick Berthelot	DEF	OL	18	18	1620	66		10	Mathis Weiler	GK	LUZ	18	18	1620	50
+11	Siegmund Stracke	FWD	LUT	18	18	1396	4		11	Fabio Marchisio	DEF	CDM	18	18	1592	4		11	Valentin Peixoto	DEF	RCC	18	18	1474	7.2		11	Léandre Pochard	MID	OL	17	17	1476	33		11	Rachid Benyahia	DEF	OM	18	18	1445	66
+12	Fernand Mullenbach	MID	LUZ	18	18	1233	4		12	Loïc Tardiveau	MID	BOR	13	13	1105	3		12	Aurèle Castelnau	DEF	BOR	18	18	1446	7.2		12	Léo Origer	MID	LUZ	18	18	1414	33		12	Émile D'Artagnan	DEF	LUT	18	18	1515	66
+13	Nabil Ouazzani	MID	OM	18	18	1359	4		13	Antoine Bagradian	MID	LUT	16	16	1361	3		13	Oriol Cabestany	DEF	FCB	18	18	1605	7.2		13	Nicolas Boulloche	FWD	ULT	18	18	1426	31		13	Enzo Gorlomi	DEF	OM	18	18	1563	66
+14	Loïc Tardiveau	MID	BOR	13	13	1105	3		14	Léandre Pochard	MID	OL	17	17	1476	3		14	Jonas Verstraete	DEF	BLG	18	18	1566	7.2		14	Élie Marchesseau	FWD	RCC	18	18	1103	31		14	Jonas Verstraete	DEF	BLG	18	18	1566	65
+15	Octave Étienne	FWD	OM	15	0	538	3		15	Félicien Couture	MID	OL	18	18	1437	3		15	Siegmund Stracke	FWD	LUT	18	18	1396	7.2		15	Pau Puigcorbé	FWD	FCB	18	18	1269	31		15	Grégoire Sauveterre	MID	BOR	18	18	1349	63
+16	Ettore Bianchi	MID	OM	17	6	871	3		16	Adrien Vauthier	MID	ULT	18	18	1458	3		16	Đại Đông Nguyễn	FWD	OM	18	18	933	7.2		16	Youssef Valverde	MID	FCB	18	18	1393	29		16	Nabil Ouazzani	MID	OM	18	18	1359	61
+17	Silvio Caruso	FWD	LUT	18	18	1243	3		17	Émile D'Artagnan	DEF	LUT	18	18	1515	3		17	Léandre Pochard	MID	OL	17	17	1476	7.1		17	Loïc Tardiveau	MID	BOR	13	13	1105	28		17	Bruno Vandeputte	DEF	BLG	18	18	1529	60
+18	Léo Origer	MID	LUZ	18	18	1414	3		18	Rosendo Zapatero	FWD	LUT	18	18	1271	3		18	Dorian Roussel	MID	OL	18	18	1469	7.1		18	Côme Delacroix	MID	LUT	18	18	1594	28		18	Aurélien Fouché	DEF	ULT	18	18	1582	57
+19	Damien Scholtes	MID	LUZ	18	18	1441	3		19	Camille Theisen	DEF	LUZ	18	18	1620	2		19	Louis-Marie Gerbault	MID	ULT	18	18	1353	7.1		19	Théo Santini	MID	OM	18	18	1620	28		19	Alban Fresnaye	DEF	RCC	18	18	1581	57
+20	Osamu Matsumoto	MID	RCC	18	18	1545	3		20	Léo Origer	MID	LUZ	18	18	1414	2		20	Émile D'Artagnan	DEF	LUT	18	18	1515	7.1		20	Jean-Pierre Susilovic	MID	LUT	18	18	1465	27		20	Guiu Martorell	DEF	FCB	18	18	1579	57
+21	Fructuoso Elorriaga	MID	FCB	18	18	1526	3		21	Damien Scholtes	MID	LUZ	18	18	1441	2		21	Fernand Mullenbach	MID	LUZ	18	18	1233	7.1		21	Nabil Ouazzani	MID	OM	18	18	1359	27		21	Lothaire Chalumeau	DEF	OL	18	18	1620	55
+22	Gaku Ibusuki	FWD	FCB	18	18	1446	3		22	Fernand Mullenbach	MID	LUZ	18	18	1233	2		22	Sergei Smirnov	DEF	OM	18	18	1557	7.1		22	Ivan Soubeyran	FWD	BOR	18	18	1506	27		22	Aurélien Vanhecke	MID	BLG	17	17	1376	54
+23	Renzo Pastorelli	MID	CDM	18	18	1173	3		23	Enzo Gorlomi	DEF	OM	18	18	1563	2		23	Xavier Montbrun	DEF	BOR	18	18	1510	7.1		23	Petr Procházka	FWD	FCB	18	18	1306	27		23	Octave Faravel	MID	OL	18	18	1520	52
+24	Charles-Henri Boissieu	MID	CDM	18	18	1458	3		24	Théo Santini	MID	OM	18	18	1620	2		24	Grégoire Sauveterre	MID	BOR	18	18	1349	7.1		24	Adrien Vauthier	MID	ULT	18	18	1458	25		24	Thibaut Maesschalck	MID	BLG	18	18	1363	52
+25	Gauthier Dewinter	FWD	BLG	18	18	1584	3		25	Charles-Henri Boissieu	MID	CDM	18	18	1458	2		25	Thibaut Maesschalck	MID	BLG	18	18	1363	7.1		25	Marin Chassagne	FWD	ULT	18	18	1369	25		25	Clément Desrosiers	DEF	ULT	18	18	1525	52
+26	Nathan Grandmaison	FWD	OL	9	0	304	2		26	Thibaut Maesschalck	MID	BLG	18	18	1363	2		26	Christophe Gagnon	GK	OL	18	18	1620	7.1		26	Vincent Tremblay	FWD	ULT	18	18	1263	25		26	Oriol Montagut	DEF	LUT	18	18	1540	52
+27	Hippolyte Sergent	FWD	ULT	14	0	412	2		27	Malik Seddiki	DEF	OM	8	0	238	1		27	Léon Chastellain	GK	RCC	18	18	1620	7.1		27	Đại Đông Nguyễn	FWD	OM	18	18	933	25		27	Marçal Vidiella	DEF	FCB	16	16	1340	50
+28	Timothée Arsenault	FWD	OL	18	1	622	2		28	Alberto Acin	FWD	FCB	10	4	517	1		28	Ahmet Aydin	GK	OM	18	18	1620	7.1		28	Octave Faravel	MID	OL	18	18	1520	23		28	Philippe Taillardat	DEF	LUT	18	18	1575	50
+29	Federico Cardinale	MID	OL	18	18	1336	2		29	Olivier Zenner	DEF	LUZ	13	0	321	1		29	Rémy Bourdelle	DEF	RCC	11	11	852	7.0		29	Federico Cardinale	MID	OL	18	18	1336	23		29	Osamu Matsumoto	MID	RCC	18	18	1545	49
+30	Rémi Wagener	MID	LUZ	18	18	1591	2		30	Tristan Fabron	DEF	LUT	14	0	305	1		30	Loïc Tardiveau	MID	BOR	13	13	1105	7.0		30	Pascal Villemain	MID	BOR	18	18	1540	23		30	Stijn Delvaux	MID	BLG	18	18	1527	49
+31	Aarne Peltoniemi	MID	OM	18	18	1428	2		31	Octave Étienne	FWD	OM	15	0	538	1		31	Pierrick Berthelot	DEF	OL	18	18	1620	7.0		31	Ruben Delacroix	FWD	LUT	17	2	673	22		31	Sylvain Courtemanche	DEF	OL	18	18	1620	49
+32	Roger Casadevall	MID	OM	18	16	1184	2		32	Ellison Hargrove	DEF	FCB	15	15	1189	1		32	Sylvain Courtemanche	DEF	OL	18	18	1620	7.0		32	Dario Spinetta	FWD	CDM	18	18	1326	22		32	Séverin Malbranque	DEF	ULT	18	18	1547	47
+33	Pau Puigcorbé	FWD	FCB	18	18	1269	2		33	Marçal Vidiella	DEF	FCB	16	16	1340	1		33	Clément Desrosiers	DEF	ULT	18	18	1525	7.0		33	Damien Scholtes	MID	LUZ	18	18	1441	21		33	Gaspard Reuter	DEF	LUZ	18	18	1523	47
+34	Kobe Servais	MID	BLG	18	18	1575	2		34	Anselme Vauquelin	MID	LUT	16	0	496	1		34	Côme Delacroix	MID	LUT	18	18	1594	7.0		34	Antoine Bagradian	MID	LUT	16	16	1361	20		34	Lucien Debaets	DEF	BLG	18	18	1532	47
+35	Lander Bruneel	FWD	BLG	18	18	1156	2		35	Joris Lambrechts	MID	BLG	16	0	408	1		35	Rachid Benyahia	DEF	OM	18	18	1445	7.0		35	Jean-Michel Roubaud	MID	CDM	16	16	1246	20		35	Norbert Schiltz	DEF	LUZ	18	18	1573	46
+36	Pieter-Jan Moens	FWD	BLG	5	0	133	1		36	Ettore Bianchi	MID	OM	17	6	871	1		36	Olivier De Verley	DEF	OM	18	18	1559	7.0		36	Fructuoso Elorriaga	MID	FCB	18	18	1526	20		36	Camille Theisen	DEF	LUZ	18	18	1620	45
+37	Itsuki Sakagami	FWD	LUT	6	0	174	1		37	Émile Vandersteen	DEF	BLG	17	1	514	1		37	Enzo Gorlomi	DEF	OM	18	18	1563	7.0		37	Octave Étienne	FWD	OM	15	0	538	20		37	Fructuoso Elorriaga	MID	FCB	18	18	1526	44
+38	Julien Bellando	FWD	CDM	11	0	296	1		38	Gaël Bonnafous	MID	ULT	17	10	1176	1		38	Roger Casadevall	MID	OM	18	16	1184	7.0		38	Lander Bruneel	FWD	BLG	18	18	1156	20		38	Ambroise Guerrier	MID	RCC	18	18	1399	44
+39	Tristan Fabron	DEF	LUT	14	0	305	1		39	Timothée Arsenault	FWD	OL	18	1	622	1		39	Fabio Marchisio	DEF	CDM	18	18	1592	7.0		39	Conan Neitzel	MID	OM	15	2	704	19		39	Laurent Grimaldi	DEF	CDM	18	18	1512	44
+40	Hervé Laffitte	FWD	BOR	14	1	467	1		40	Federico Cardinale	MID	OL	18	18	1336	1		40	Nicolas Boulloche	FWD	ULT	18	18	1426	7.0		40	Louis-Marie Gerbault	MID	ULT	18	18	1353	19		40	Amaury Brissaud	DEF	OL	16	16	1383	43
+41	Anatole Vergnaud	MID	ULT	15	0	317	1		41	Aurélien Fouché	DEF	ULT	18	18	1582	1		41	Silvio Caruso	FWD	LUT	18	18	1243	7.0		41	Fernand Mullenbach	MID	LUZ	18	18	1233	19		41	Olivier Sanguinetti	DEF	CDM	18	18	1585	43
+42	Léandre Pochard	MID	OL	17	17	1476	1		42	Séverin Malbranque	DEF	ULT	18	18	1547	1		42	Petr Procházka	FWD	FCB	18	18	1306	7.0		42	Jocelyn Teissier	MID	RCC	18	18	1405	19		42	Aarne Peltoniemi	MID	OM	18	18	1428	42
+43	Ruben Delacroix	FWD	LUT	17	2	673	1		43	Louis-Marie Gerbault	MID	ULT	18	18	1353	1		43	Gaku Ibusuki	FWD	FCB	18	18	1446	7.0		43	Grégoire Sauveterre	MID	BOR	18	18	1349	19		43	Baptiste Noirclerc	DEF	ULT	8	8	631	42
+44	Aurélien Vanhecke	MID	BLG	17	17	1376	1		44	Philippe Taillardat	DEF	LUT	18	18	1575	1		44	Fabien Blanchet	GK	LUT	18	18	1620	7.0		44	Renaat Houthoofd	MID	BLG	18	18	1391	19		44	Hugo Saint-Laurent	DEF	LUT	18	18	1592	42
+45	Lothaire Chalumeau	DEF	OL	18	18	1620	1		45	Killian Charpentier	DEF	LUZ	18	18	1606	1		45	Mathis Weiler	GK	LUZ	18	18	1620	7.0		45	Édouard Pescatore	FWD	LUZ	18	18	1175	18		45	Fabrice Duquesnoy	DEF	BOR	18	18	1572	42
+46	Pierrick Berthelot	DEF	OL	18	18	1620	1		46	Julien Kirsch	MID	LUZ	18	18	1582	1		46	Ronan Brival	GK	BOR	18	18	1620	7.0		46	Bastien Cavaillès	MID	OM	17	12	1202	17		46	Antoine Faravel	DEF	CDM	18	18	1519	41
+47	Sylvain Courtemanche	DEF	OL	18	18	1620	1		47	Gaspard Reuter	DEF	LUZ	18	18	1523	1		47	Étienne Barral	GK	CDM	18	18	1620	7.0		47	Aurélien Vanhecke	MID	BLG	17	17	1376	17		47	Côme Delacroix	MID	LUT	18	18	1594	40
+48	Félicien Couture	MID	OL	18	18	1437	1		48	Cyprien Malartre	MID	RCC	18	18	1491	1		48	Alberto Acin	FWD	FCB	10	4	517	6.9		48	Félicien Couture	MID	OL	18	18	1437	17		48	Renaat Houthoofd	MID	BLG	18	18	1391	40
+49	Clément Desrosiers	DEF	ULT	18	18	1525	1		49	Jocelyn Teissier	MID	RCC	18	18	1405	1		49	Jean-Michel Roubaud	MID	CDM	16	16	1246	6.9		49	Julien Kirsch	MID	LUZ	18	18	1582	17		49	Rémy Bourdelle	DEF	RCC	11	11	852	40
+50	Vincent Tremblay	FWD	ULT	18	18	1263	1		50	Nabil Ouazzani	MID	OM	18	18	1359	1		50	Aurélien Vanhecke	MID	BLG	17	17	1376	6.9		50	Cyprien Malartre	MID	RCC	18	18	1491	17		50	Cyprien Malartre	MID	RCC	18	18	1491	38
+51	Louis-Marie Gerbault	MID	ULT	18	18	1353	1		51	Aarne Peltoniemi	MID	OM	18	18	1428	1		51	Octave Faravel	MID	OL	18	18	1520	6.9		51	Osamu Matsumoto	MID	RCC	18	18	1545	17		51	Roger Casadevall	MID	OM	18	16	1184	38
+52	Philippe Taillardat	DEF	LUT	18	18	1575	1		52	Đại Đông Nguyễn	FWD	OM	18	18	933	1		52	Aurélien Fouché	DEF	ULT	18	18	1582	6.9		52	Charles-Henri Boissieu	MID	CDM	18	18	1458	17		52	Bertrand Mauclair	MID	BOR	18	18	1620	38
+53	Jocelyn Teissier	MID	RCC	18	18	1405	1		53	Roger Casadevall	MID	OM	18	16	1184	1		53	Séverin Malbranque	DEF	ULT	18	18	1547	6.9		53	Ettore Bianchi	MID	OM	17	6	871	16		53	Dorian Roussel	MID	OL	18	18	1469	37
+54	Nolan Perrigault	FWD	RCC	18	18	1391	1		54	Pascal Villemain	MID	BOR	18	18	1540	1		54	Adrien Vauthier	MID	ULT	18	18	1458	6.9		54	Hervé Thibodeau	FWD	OL	18	18	1055	16		54	Julien Kirsch	MID	LUZ	18	18	1582	37
+55	Enzo Gorlomi	DEF	OM	18	18	1563	1		55	Ivan Soubeyran	FWD	BOR	18	18	1506	1		55	Killian Charpentier	DEF	LUZ	18	18	1606	6.9		55	Théophile Anquetil	MID	ULT	18	18	1574	15		55	Félicien Couture	MID	OL	18	18	1437	36
+56	Fabrice Duquesnoy	DEF	BOR	18	18	1572	1		56	Régis Chambonnet	FWD	BOR	18	18	1450	1		56	Julien Kirsch	MID	LUZ	18	18	1582	6.9		56	Renzo Pastorelli	MID	CDM	18	18	1173	15		56	Théo Santini	MID	OM	18	18	1620	36
+57	Pascal Villemain	MID	BOR	18	18	1540	1		57	Oriol Cabestany	DEF	FCB	18	18	1605	1		57	Léo Origer	MID	LUZ	18	18	1414	6.9		57	Bertrand Mauclair	MID	BOR	18	18	1620	13		57	Léo Origer	MID	LUZ	18	18	1414	36
+58	Ivan Soubeyran	FWD	BOR	18	18	1506	1		58	Guiu Martorell	DEF	FCB	18	18	1579	1		58	Aarne Peltoniemi	MID	OM	18	18	1428	6.9		58	Quim Estanyol	MID	FCB	18	18	1576	13		58	Youssef Valverde	MID	FCB	18	18	1393	35
+59	Grégoire Sauveterre	MID	BOR	18	18	1349	1		59	Quim Estanyol	MID	FCB	18	18	1576	1		59	Fabrice Duquesnoy	DEF	BOR	18	18	1572	6.9		59	Édouard Laroche	FWD	RCC	13	0	449	13		59	Renzo Pastorelli	MID	CDM	18	18	1173	34
+60	Youssef Valverde	MID	FCB	18	18	1393	1		60	Petr Procházka	FWD	FCB	18	18	1306	1		60	Guiu Martorell	DEF	FCB	18	18	1579	6.9		60	Aarne Peltoniemi	MID	OM	18	18	1428	12		60	Jean-Pierre Susilovic	MID	LUT	18	18	1465	34
+61	Quim Estanyol	MID	FCB	18	18	1576	1		61	Pau Puigcorbé	FWD	FCB	18	18	1269	1		61	Bruno Vandeputte	DEF	BLG	18	18	1529	6.9		61	Kobe Servais	MID	BLG	18	18	1575	11		61	Ellison Hargrove	DEF	FCB	15	15	1189	33
+62	Antoine Ferracci	MID	CDM	18	18	1508	1		62	Dario Spinetta	FWD	CDM	18	18	1326	1		62	Lothaire Chalumeau	DEF	OL	18	18	1620	6.9		62	Hippolyte Sergent	FWD	ULT	14	0	412	11		62	Léandre Pochard	MID	OL	17	17	1476	32
 63	Dario Spinetta	FWD	CDM	18	18	1326	1		63	Renzo Pastorelli	MID	CDM	18	18	1173	1		63	Norbert Schiltz	DEF	LUZ	18	18	1573	6.9		63	Nicolas Glesener	FWD	LUZ	18	0	576	11		63	Jean-Michel Roubaud	MID	CDM	16	16	1246	32
 64	Stijn Delvaux	MID	BLG	18	18	1527	1		64	Renaat Houthoofd	MID	BLG	18	18	1391	1		64	Camille Theisen	DEF	LUZ	18	18	1620	6.9		64	Camille Theisen	DEF	LUZ	18	18	1620	9		64	Élie Marchesseau	FWD	RCC	18	18	1103	31
-									65	Kobe Servais	MID	BLG	18	18	1575	1		65	Damien Scholtes	MID	LUZ	18	18	1441	6.9		65	Ambroise Guerrier	MID	RCC	18	18	1399	9		65	Fernand Mullenbach	MID	LUZ	18	18	1233	31
-									66	Bruno Vandeputte	DEF	BLG	18	18	1529	1		66	Osamu Matsumoto	MID	RCC	18	18	1545	6.9		66	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	9		66	Adrien Vauthier	MID	ULT	18	18	1458	30
-																		67	Élie Marchesseau	FWD	RCC	18	18	1103	6.9		67	Nil Berenguer	FWD	FCB	17	0	373	9		67	Pascal Villemain	MID	BOR	18	18	1540	30
-																		68	Ronan Brival	GK	BOR	18	18	1620	6.9		68	Timothée Arsenault	FWD	OL	18	1	622	9		68	Antoine Bagradian	MID	LUT	16	16	1361	29
-																		69	Étienne Barral	GK	CDM	18	18	1620	6.9		69	Damien Roquefeuil	FWD	RCC	18	18	1534	9		69	Louis-Marie Gerbault	MID	ULT	18	18	1353	29
-																		70	Renzo Pastorelli	MID	CDM	18	18	1173	6.9		70	Enzo Gorlomi	DEF	OM	18	18	1563	8		70	Loïc Tardiveau	MID	BOR	13	13	1105	28
-																		71	Lucien Debaets	DEF	BLG	18	18	1532	6.9		71	Anselme Vauquelin	MID	LUT	16	0	496	8		71	Gaël Bonnafous	MID	ULT	17	10	1176	28
-																		72	Conan Neitzel	MID	OM	15	2	704	6.8		72	Rémi Wagener	MID	LUZ	18	18	1591	8		72	Damien Scholtes	MID	LUZ	18	18	1441	28
-																		73	Octave Étienne	FWD	OM	15	0	538	6.8		73	Yvan Massena	MID	CDM	18	18	1575	8		73	Rémi Wagener	MID	LUZ	18	18	1591	27
-																		74	Ellison Hargrove	DEF	FCB	15	15	1189	6.8		74	Rachid Benyahia	DEF	OM	18	18	1445	7		74	Bastien Cavaillès	MID	OM	17	12	1202	26
-																		75	Antoine Bagradian	MID	LUT	16	16	1361	6.8		75	Oriol Cabestany	DEF	FCB	18	18	1605	7		75	Federico Cardinale	MID	OL	18	18	1336	26
-																		76	Marçal Vidiella	DEF	FCB	16	16	1340	6.8		76	Marc Duhr	MID	LUZ	15	0	313	7		76	Quim Estanyol	MID	FCB	18	18	1576	26
-																		77	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	6.8		77	Stijn Delvaux	MID	BLG	18	18	1527	7		77	Antoine Ferracci	MID	CDM	18	18	1508	25
-																		78	Félicien Couture	MID	OL	18	18	1437	6.8		78	Yann Mercereau	FWD	BOR	18	5	803	7		78	Siegmund Stracke	FWD	LUT	18	18	1396	23
-																		79	Hugo Saint-Laurent	DEF	LUT	18	18	1592	6.8		79	Ansgar Vielhauer	FWD	FCB	18	1	592	7		79	Gauthier Dewinter	FWD	BLG	18	18	1584	22
-																		80	Oriol Montagut	DEF	LUT	18	18	1540	6.8		80	Pierre-Louis Anfossi	FWD	CDM	18	2	659	7		80	Charles-Henri Boissieu	MID	CDM	18	18	1458	22
-																		81	Philippe Taillardat	DEF	LUT	18	18	1575	6.8		81	Amaury Brissaud	DEF	OL	16	16	1383	6		81	Conan Neitzel	MID	OM	15	2	704	22
-																		82	Édouard Pescatore	FWD	LUZ	18	18	1175	6.8		82	Clément Desrosiers	DEF	ULT	18	18	1525	6		82	Kobe Servais	MID	BLG	18	18	1575	21
-																		83	Gaspard Reuter	DEF	LUZ	18	18	1523	6.8		83	Killian Charpentier	DEF	LUZ	18	18	1606	6		83	Aymeric Lescure	FWD	RCC	16	7	875	20
-																		84	Cyprien Malartre	MID	RCC	18	18	1491	6.8		84	Émile D'Artagnan	DEF	LUT	18	18	1515	5		84	Đại Đông Nguyễn	FWD	OM	18	18	933	19
-																		85	Ambroise Guerrier	MID	RCC	18	18	1399	6.8		85	Philippe Taillardat	DEF	LUT	18	18	1575	5		85	Marin Chassagne	FWD	ULT	18	18	1369	19
-																		86	Théo Santini	MID	OM	18	18	1620	6.8		86	Norbert Schiltz	DEF	LUZ	18	18	1573	5		86	Théophile Anquetil	MID	ULT	18	18	1574	18
-																		87	Pascal Villemain	MID	BOR	18	18	1540	6.8		87	Lucien Debaets	DEF	BLG	18	18	1532	5		87	Pau Puigcorbé	FWD	FCB	18	18	1269	16
-																		88	Bertrand Mauclair	MID	BOR	18	18	1620	6.8		88	Antoine Ferracci	MID	CDM	18	18	1508	5		88	Gaku Ibusuki	FWD	FCB	18	18	1446	16
-																		89	Jostein Helgesen	GK	FCB	18	18	1620	6.8		89	Alberto Acin	FWD	FCB	10	4	517	5		89	Ettore Bianchi	MID	OM	17	6	871	16
-																		90	Quim Estanyol	MID	FCB	18	18	1576	6.8		90	Lothaire Chalumeau	DEF	OL	18	18	1620	4		90	Émile Vandersteen	DEF	BLG	17	1	514	16
-																		91	Charles-Henri Boissieu	MID	CDM	18	18	1458	6.8		91	Valentin Peixoto	DEF	RCC	18	18	1474	4		91	Alberto Acin	FWD	FCB	10	4	517	15
-																		92	Stijn Delvaux	MID	BLG	18	18	1527	6.8		92	Arnau Vilaplana	DEF	FCB	13	0	427	4		92	Rosendo Zapatero	FWD	LUT	18	18	1271	15
-																		93	Gauthier Dewinter	FWD	BLG	18	18	1584	6.8		93	Aurélien Fouché	DEF	ULT	18	18	1582	4		93	Lander Bruneel	FWD	BLG	18	18	1156	15
-																		94	Lander Bruneel	FWD	BLG	18	18	1156	6.8		94	Séverin Malbranque	DEF	ULT	18	18	1547	4		94	Silvio Caruso	FWD	LUT	18	18	1243	15
-																		95	Nathan Grandmaison	FWD	OL	9	0	304	6.7		95	Antoine Faravel	DEF	CDM	18	18	1519	4		95	Yvan Massena	MID	CDM	18	18	1575	15
-																		96	Gaël Bonnafous	MID	ULT	17	10	1176	6.7		96	Bruno Vandeputte	DEF	BLG	18	18	1529	4		96	Hervé Thibodeau	FWD	OL	18	18	1055	14
-																		97	Théophile Anquetil	MID	ULT	18	18	1574	6.7		97	Émeric Boisclair	MID	OL	15	0	345	4		97	Petr Procházka	FWD	FCB	18	18	1306	14
+									65	Kobe Servais	MID	BLG	18	18	1575	1		65	Élie Marchesseau	FWD	RCC	18	18	1103	6.9		65	Ambroise Guerrier	MID	RCC	18	18	1399	9		65	Fernand Mullenbach	MID	LUZ	18	18	1233	31
+									66	Bruno Vandeputte	DEF	BLG	18	18	1529	1		66	Lucien Debaets	DEF	BLG	18	18	1532	6.9		66	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	9		66	Adrien Vauthier	MID	ULT	18	18	1458	30
+																		67	Octave Étienne	FWD	OM	15	0	538	6.8		67	Nil Berenguer	FWD	FCB	17	0	373	9		67	Pascal Villemain	MID	BOR	18	18	1540	30
+																		68	Ellison Hargrove	DEF	FCB	15	15	1189	6.8		68	Timothée Arsenault	FWD	OL	18	1	622	9		68	Antoine Bagradian	MID	LUT	16	16	1361	29
+																		69	Marçal Vidiella	DEF	FCB	16	16	1340	6.8		69	Damien Roquefeuil	FWD	RCC	18	18	1534	9		69	Louis-Marie Gerbault	MID	ULT	18	18	1353	29
+																		70	Ettore Bianchi	MID	OM	17	6	871	6.8		70	Enzo Gorlomi	DEF	OM	18	18	1563	8		70	Loïc Tardiveau	MID	BOR	13	13	1105	28
+																		71	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	6.8		71	Anselme Vauquelin	MID	LUT	16	0	496	8		71	Gaël Bonnafous	MID	ULT	17	10	1176	28
+																		72	Federico Cardinale	MID	OL	18	18	1336	6.8		72	Rémi Wagener	MID	LUZ	18	18	1591	8		72	Damien Scholtes	MID	LUZ	18	18	1441	28
+																		73	Damien Scholtes	MID	LUZ	18	18	1441	6.8		73	Yvan Massena	MID	CDM	18	18	1575	8		73	Rémi Wagener	MID	LUZ	18	18	1591	27
+																		74	Osamu Matsumoto	MID	RCC	18	18	1545	6.8		74	Rachid Benyahia	DEF	OM	18	18	1445	7		74	Bastien Cavaillès	MID	OM	17	12	1202	26
+																		75	Renzo Pastorelli	MID	CDM	18	18	1173	6.8		75	Oriol Cabestany	DEF	FCB	18	18	1605	7		75	Federico Cardinale	MID	OL	18	18	1336	26
+																		76	Hugo Saint-Laurent	DEF	LUT	18	18	1592	6.8		76	Marc Duhr	MID	LUZ	15	0	313	7		76	Quim Estanyol	MID	FCB	18	18	1576	26
+																		77	Oriol Montagut	DEF	LUT	18	18	1540	6.8		77	Stijn Delvaux	MID	BLG	18	18	1527	7		77	Antoine Ferracci	MID	CDM	18	18	1508	25
+																		78	Philippe Taillardat	DEF	LUT	18	18	1575	6.8		78	Yann Mercereau	FWD	BOR	18	5	803	7		78	Siegmund Stracke	FWD	LUT	18	18	1396	23
+																		79	Édouard Pescatore	FWD	LUZ	18	18	1175	6.8		79	Ansgar Vielhauer	FWD	FCB	18	1	592	7		79	Gauthier Dewinter	FWD	BLG	18	18	1584	22
+																		80	Gaspard Reuter	DEF	LUZ	18	18	1523	6.8		80	Pierre-Louis Anfossi	FWD	CDM	18	2	659	7		80	Charles-Henri Boissieu	MID	CDM	18	18	1458	22
+																		81	Jostein Helgesen	GK	FCB	18	18	1620	6.8		81	Amaury Brissaud	DEF	OL	16	16	1383	6		81	Conan Neitzel	MID	OM	15	2	704	22
+																		82	Gauthier Dewinter	FWD	BLG	18	18	1584	6.8		82	Clément Desrosiers	DEF	ULT	18	18	1525	6		82	Kobe Servais	MID	BLG	18	18	1575	21
+																		83	Lander Bruneel	FWD	BLG	18	18	1156	6.8		83	Killian Charpentier	DEF	LUZ	18	18	1606	6		83	Aymeric Lescure	FWD	RCC	16	7	875	20
+																		84	Nathan Grandmaison	FWD	OL	9	0	304	6.7		84	Émile D'Artagnan	DEF	LUT	18	18	1515	5		84	Đại Đông Nguyễn	FWD	OM	18	18	933	19
+																		85	Hippolyte Sergent	FWD	ULT	14	0	412	6.7		85	Philippe Taillardat	DEF	LUT	18	18	1575	5		85	Marin Chassagne	FWD	ULT	18	18	1369	19
+																		86	Conan Neitzel	MID	OM	15	2	704	6.7		86	Norbert Schiltz	DEF	LUZ	18	18	1573	5		86	Théophile Anquetil	MID	ULT	18	18	1574	18
+																		87	Antoine Bagradian	MID	LUT	16	16	1361	6.7		87	Lucien Debaets	DEF	BLG	18	18	1532	5		87	Pau Puigcorbé	FWD	FCB	18	18	1269	16
+																		88	Ruben Delacroix	FWD	LUT	17	2	673	6.7		88	Antoine Ferracci	MID	CDM	18	18	1508	5		88	Gaku Ibusuki	FWD	FCB	18	18	1446	16
+																		89	Félicien Couture	MID	OL	18	18	1437	6.7		89	Alberto Acin	FWD	FCB	10	4	517	5		89	Ettore Bianchi	MID	OM	17	6	871	16
+																		90	Cyprien Malartre	MID	RCC	18	18	1491	6.7		90	Lothaire Chalumeau	DEF	OL	18	18	1620	4		90	Émile Vandersteen	DEF	BLG	17	1	514	16
+																		91	Ambroise Guerrier	MID	RCC	18	18	1399	6.7		91	Valentin Peixoto	DEF	RCC	18	18	1474	4		91	Alberto Acin	FWD	FCB	10	4	517	15
+																		92	Théo Santini	MID	OM	18	18	1620	6.7		92	Arnau Vilaplana	DEF	FCB	13	0	427	4		92	Rosendo Zapatero	FWD	LUT	18	18	1271	15
+																		93	Pascal Villemain	MID	BOR	18	18	1540	6.7		93	Aurélien Fouché	DEF	ULT	18	18	1582	4		93	Lander Bruneel	FWD	BLG	18	18	1156	15
+																		94	Bertrand Mauclair	MID	BOR	18	18	1620	6.7		94	Séverin Malbranque	DEF	ULT	18	18	1547	4		94	Silvio Caruso	FWD	LUT	18	18	1243	15
+																		95	Quim Estanyol	MID	FCB	18	18	1576	6.7		95	Antoine Faravel	DEF	CDM	18	18	1519	4		95	Yvan Massena	MID	CDM	18	18	1575	15
+																		96	Charles-Henri Boissieu	MID	CDM	18	18	1458	6.7		96	Bruno Vandeputte	DEF	BLG	18	18	1529	4		96	Hervé Thibodeau	FWD	OL	18	18	1055	14
+																		97	Stijn Delvaux	MID	BLG	18	18	1527	6.7		97	Émeric Boisclair	MID	OL	15	0	345	4		97	Petr Procházka	FWD	FCB	18	18	1306	14
 																		98	Marin Chassagne	FWD	ULT	18	18	1369	6.7		98	Joris Lambrechts	MID	BLG	16	0	408	4		98	Serge Boucheron	DEF	BOR	16	0	454	14
-																		99	Rémi Wagener	MID	LUZ	18	18	1591	6.7		99	Hervé Laffitte	FWD	BOR	14	1	467	4		99	Ivan Soubeyran	FWD	BOR	18	18	1506	13
-																		100	Alban Fresnaye	DEF	RCC	18	18	1581	6.7		100	Gilles Champeaux	FWD	RCC	15	0	437	4		100	Régis Chambonnet	FWD	BOR	18	18	1450	12
-																		101	Pau Puigcorbé	FWD	FCB	18	18	1269	6.7		101	Pierrick Berthelot	DEF	OL	18	18	1620	3		101	Vincent Tremblay	FWD	ULT	18	18	1263	12
-																		102	Olivier Sanguinetti	DEF	CDM	18	18	1585	6.7		102	Xavier Montbrun	DEF	BOR	18	18	1510	3		102	Édouard Pescatore	FWD	LUZ	18	18	1175	12
-																		103	Antoine Ferracci	MID	CDM	18	18	1508	6.7		103	Aurèle Castelnau	DEF	BOR	18	18	1446	3		103	Octave Étienne	FWD	OM	15	0	538	11
-																		104	Dario Spinetta	FWD	CDM	18	18	1326	6.7		104	Fabrice Duquesnoy	DEF	BOR	18	18	1572	3		104	Nolan Perrigault	FWD	RCC	18	18	1391	11
-																		105	Renaat Houthoofd	MID	BLG	18	18	1391	6.7		105	Fabio Marchisio	DEF	CDM	18	18	1592	3		105	Nicolas Boulloche	FWD	ULT	18	18	1426	11
-																		106	Kobe Servais	MID	BLG	18	18	1575	6.7		106	Victorin Dauphiné	MID	RCC	17	0	586	3		106	Malik Seddiki	DEF	OM	8	0	238	11
+																		99	Alban Fresnaye	DEF	RCC	18	18	1581	6.7		99	Hervé Laffitte	FWD	BOR	14	1	467	4		99	Ivan Soubeyran	FWD	BOR	18	18	1506	13
+																		100	Pau Puigcorbé	FWD	FCB	18	18	1269	6.7		100	Gilles Champeaux	FWD	RCC	15	0	437	4		100	Régis Chambonnet	FWD	BOR	18	18	1450	12
+																		101	Olivier Sanguinetti	DEF	CDM	18	18	1585	6.7		101	Pierrick Berthelot	DEF	OL	18	18	1620	3		101	Vincent Tremblay	FWD	ULT	18	18	1263	12
+																		102	Dario Spinetta	FWD	CDM	18	18	1326	6.7		102	Xavier Montbrun	DEF	BOR	18	18	1510	3		102	Édouard Pescatore	FWD	LUZ	18	18	1175	12
+																		103	Vincent Tremblay	FWD	ULT	18	18	1263	6.7		103	Aurèle Castelnau	DEF	BOR	18	18	1446	3		103	Octave Étienne	FWD	OM	15	0	538	11
+																		104	Ivan Soubeyran	FWD	BOR	18	18	1506	6.7		104	Fabrice Duquesnoy	DEF	BOR	18	18	1572	3		104	Nolan Perrigault	FWD	RCC	18	18	1391	11
+																		105	Marc-Olivier Savelli	MID	CDM	11	0	271	6.6		105	Fabio Marchisio	DEF	CDM	18	18	1592	3		105	Nicolas Boulloche	FWD	ULT	18	18	1426	11
+																		106	Gaspard Moulinier	MID	OL	12	2	373	6.6		106	Victorin Dauphiné	MID	RCC	17	0	586	3		106	Malik Seddiki	DEF	OM	8	0	238	11
 																		107	Arnau Vilaplana	DEF	FCB	13	0	427	6.6		107	Gaël Bonnafous	MID	ULT	17	10	1176	3		107	Marc-Antoine Peyrefitte	FWD	BOR	17	17	1113	10
-																		108	Hippolyte Sergent	FWD	ULT	14	0	412	6.6		108	Sébastien Lauriol	MID	ULT	18	0	567	3		108	Gilles Champeaux	FWD	RCC	15	0	437	9
-																		109	Tristan Fabron	DEF	LUT	14	0	305	6.6		109	Mathis Weiler	GK	LUZ	18	18	1620	3		109	Dario Spinetta	FWD	CDM	18	18	1326	9
-																		110	Amaury Brissaud	DEF	OL	16	16	1383	6.6		110	Marçal Vidiella	DEF	FCB	16	16	1340	2		110	Gaspard Moulinier	MID	OL	12	2	373	9
-																		111	Serge Boucheron	DEF	BOR	16	0	454	6.6		111	Jonas Verstraete	DEF	BLG	18	18	1566	2		111	Sébastien Lauriol	MID	ULT	18	0	567	9
-																		112	Ruben Delacroix	FWD	LUT	17	2	673	6.6		112	Malik Seddiki	DEF	OM	8	0	238	2		112	Arnau Vilaplana	DEF	FCB	13	0	427	9
-																		113	Bastien Cavaillès	MID	OM	17	12	1202	6.6		113	Tristan Fabron	DEF	LUT	14	0	305	2		113	Anselme Vauquelin	MID	LUT	16	0	496	9
-																		114	Émile Vandersteen	DEF	BLG	17	1	514	6.6		114	Ellison Hargrove	DEF	FCB	15	15	1189	2		114	Tristan Fabron	DEF	LUT	14	0	305	9
-																		115	Vincent Tremblay	FWD	ULT	18	18	1263	6.6		115	Émile Vandersteen	DEF	BLG	17	1	514	2		115	Ansgar Vielhauer	FWD	FCB	18	1	592	8
-																		116	Ivan Soubeyran	FWD	BOR	18	18	1506	6.6		116	Sylvain Courtemanche	DEF	OL	18	18	1620	2		116	Damien Roquefeuil	FWD	RCC	18	18	1534	7
-																		117	Laurent Grimaldi	DEF	CDM	18	18	1512	6.6		117	Hugo Saint-Laurent	DEF	LUT	18	18	1592	2		117	Yann Mercereau	FWD	BOR	18	5	803	6
-																		118	Antoine Faravel	DEF	CDM	18	18	1519	6.6		118	Gaspard Reuter	DEF	LUZ	18	18	1523	2		118	Nil Berenguer	FWD	FCB	17	0	373	6
-																		119	Marc-Olivier Savelli	MID	CDM	11	0	271	6.4		119	Alban Fresnaye	DEF	RCC	18	18	1581	2		119	Marc-Olivier Savelli	MID	CDM	11	0	271	6
-																		120	Gaspard Moulinier	MID	OL	12	2	373	6.4		120	Sergei Smirnov	DEF	OM	18	18	1557	2		120	Émeric Boisclair	MID	OL	15	0	345	6
-																		121	Olivier Zenner	DEF	LUZ	13	0	321	6.4		121	Guiu Martorell	DEF	FCB	18	18	1579	2		121	Théo Gastaldi	MID	CDM	16	0	401	6
-																		122	Hervé Laffitte	FWD	BOR	14	1	467	6.4		122	Pieter-Jan Moens	FWD	BLG	5	0	133	2		122	Joris Lambrechts	MID	BLG	16	0	408	6
-																		123	Émeric Boisclair	MID	OL	15	0	345	6.4		123	Itsuki Sakagami	FWD	LUT	6	0	174	2		123	Timothée Arsenault	FWD	OL	18	1	622	5
-																		124	Anatole Vergnaud	MID	ULT	15	0	317	6.4		124	Étienne Barral	GK	CDM	18	18	1620	2		124	Frédéric Anglade	MID	BOR	12	0	254	5
-																		125	Marc Duhr	MID	LUZ	15	0	313	6.4		125	Olivier Zenner	DEF	LUZ	13	0	321	1		125	Olivier Zenner	DEF	LUZ	13	0	321	5
-																		126	Gilles Champeaux	FWD	RCC	15	0	437	6.4		126	Serge Boucheron	DEF	BOR	16	0	454	1		126	Victorin Dauphiné	MID	RCC	17	0	586	5
-																		127	Aymeric Lescure	FWD	RCC	16	7	875	6.4		127	Ruben Decoster	DEF	BLG	17	0	524	1		127	Ruben Delacroix	FWD	LUT	17	2	673	4
-																		128	Théo Gastaldi	MID	CDM	16	0	401	6.4		128	Oriol Montagut	DEF	LUT	18	18	1540	1		128	Pierre-Louis Anfossi	FWD	CDM	18	2	659	4
-																		129	Anselme Vauquelin	MID	LUT	16	0	496	6.4		129	Laurent Grimaldi	DEF	CDM	18	18	1512	1		129	Nicolas Glesener	FWD	LUZ	18	0	576	4
-																		130	Joris Lambrechts	MID	BLG	16	0	408	6.4		130	Olivier Sanguinetti	DEF	CDM	18	18	1585	1		130	Ruben Decoster	DEF	BLG	17	0	524	4
-																		131	Nil Berenguer	FWD	FCB	17	0	373	6.4		131	Baptiste Noirclerc	DEF	ULT	8	8	631	1		131	Itsuki Sakagami	FWD	LUT	6	0	174	3
-																		132	Timothée Arsenault	FWD	OL	18	1	622	6.4		132	Marc-Olivier Savelli	MID	CDM	11	0	271	1		132	Édouard Laroche	FWD	RCC	13	0	449	3
-																		133	Nicolas Glesener	FWD	LUZ	18	0	576	6.4		133	Gaspard Moulinier	MID	OL	12	2	373	1		133	Hippolyte Sergent	FWD	ULT	14	0	412	3
-																		134	Nolan Perrigault	FWD	RCC	18	18	1391	6.4		134	Anatole Vergnaud	MID	ULT	15	0	317	1		134	Julien Bellando	FWD	CDM	11	0	296	3
-																		135	Régis Chambonnet	FWD	BOR	18	18	1450	6.4		135	Théo Gastaldi	MID	CDM	16	0	401	1		135	Fabien Blanchet	GK	LUT	18	18	1620	3
-																		136	Ansgar Vielhauer	FWD	FCB	18	1	592	6.4											136	Nathan Grandmaison	FWD	OL	9	0	304	2
-																		137	Yvan Massena	MID	CDM	18	18	1575	6.4											137	Hervé Laffitte	FWD	BOR	14	1	467	2
-																		138	Julien Bellando	FWD	CDM	11	0	296	6.3											138	Marc Duhr	MID	LUZ	15	0	313	2
-																		139	Victorin Dauphiné	MID	RCC	17	0	586	6.3											139	Étienne Barral	GK	CDM	18	18	1620	2
-																		140	Ruben Decoster	DEF	BLG	17	0	524	6.3											140	Pieter-Jan Moens	FWD	BLG	5	0	133	1
-																		141	Sébastien Lauriol	MID	ULT	18	0	567	6.3											141	Paul Scholer	FWD	LUZ	8	0	215	1
-																		142	Yann Mercereau	FWD	BOR	18	5	803	6.3											142	Anatole Vergnaud	MID	ULT	15	0	317	1
-																		143	Pierre-Louis Anfossi	FWD	CDM	18	2	659	6.3											143	Christophe Gagnon	GK	OL	18	18	1620	1
-																		144	Édouard Laroche	FWD	RCC	13	0	449	6.2											144	Mathis Weiler	GK	LUZ	18	18	1620	1
-																		145	Damien Roquefeuil	FWD	RCC	18	18	1534	6.0											145	Léon Chastellain	GK	RCC	18	18	1620	1
-																		146	Malik Seddiki	DEF	OM	8	0	238	6.9											146	Jostein Helgesen	GK	FCB	18	18	1620	1
+																		108	Tristan Fabron	DEF	LUT	14	0	305	6.6		108	Sébastien Lauriol	MID	ULT	18	0	567	3		108	Gilles Champeaux	FWD	RCC	15	0	437	9
+																		109	Hervé Laffitte	FWD	BOR	14	1	467	6.6		109	Mathis Weiler	GK	LUZ	18	18	1620	3		109	Dario Spinetta	FWD	CDM	18	18	1326	9
+																		110	Émeric Boisclair	MID	OL	15	0	345	6.6		110	Marçal Vidiella	DEF	FCB	16	16	1340	2		110	Gaspard Moulinier	MID	OL	12	2	373	9
+																		111	Anatole Vergnaud	MID	ULT	15	0	317	6.6		111	Jonas Verstraete	DEF	BLG	18	18	1566	2		111	Sébastien Lauriol	MID	ULT	18	0	567	9
+																		112	Marc Duhr	MID	LUZ	15	0	313	6.6		112	Malik Seddiki	DEF	OM	8	0	238	2		112	Arnau Vilaplana	DEF	FCB	13	0	427	9
+																		113	Gilles Champeaux	FWD	RCC	15	0	437	6.6		113	Tristan Fabron	DEF	LUT	14	0	305	2		113	Anselme Vauquelin	MID	LUT	16	0	496	9
+																		114	Amaury Brissaud	DEF	OL	16	16	1383	6.6		114	Ellison Hargrove	DEF	FCB	15	15	1189	2		114	Tristan Fabron	DEF	LUT	14	0	305	9
+																		115	Serge Boucheron	DEF	BOR	16	0	454	6.6		115	Émile Vandersteen	DEF	BLG	17	1	514	2		115	Ansgar Vielhauer	FWD	FCB	18	1	592	8
+																		116	Aymeric Lescure	FWD	RCC	16	7	875	6.6		116	Sylvain Courtemanche	DEF	OL	18	18	1620	2		116	Damien Roquefeuil	FWD	RCC	18	18	1534	7
+																		117	Théo Gastaldi	MID	CDM	16	0	401	6.6		117	Hugo Saint-Laurent	DEF	LUT	18	18	1592	2		117	Yann Mercereau	FWD	BOR	18	5	803	6
+																		118	Anselme Vauquelin	MID	LUT	16	0	496	6.6		118	Gaspard Reuter	DEF	LUZ	18	18	1523	2		118	Nil Berenguer	FWD	FCB	17	0	373	6
+																		119	Joris Lambrechts	MID	BLG	16	0	408	6.6		119	Alban Fresnaye	DEF	RCC	18	18	1581	2		119	Marc-Olivier Savelli	MID	CDM	11	0	271	6
+																		120	Gaël Bonnafous	MID	ULT	17	10	1176	6.6		120	Sergei Smirnov	DEF	OM	18	18	1557	2		120	Émeric Boisclair	MID	OL	15	0	345	6
+																		121	Bastien Cavaillès	MID	OM	17	12	1202	6.6		121	Guiu Martorell	DEF	FCB	18	18	1579	2		121	Théo Gastaldi	MID	CDM	16	0	401	6
+																		122	Émile Vandersteen	DEF	BLG	17	1	514	6.6		122	Pieter-Jan Moens	FWD	BLG	5	0	133	2		122	Joris Lambrechts	MID	BLG	16	0	408	6
+																		123	Nil Berenguer	FWD	FCB	17	0	373	6.6		123	Itsuki Sakagami	FWD	LUT	6	0	174	2		123	Timothée Arsenault	FWD	OL	18	1	622	5
+																		124	Théophile Anquetil	MID	ULT	18	18	1574	6.6		124	Étienne Barral	GK	CDM	18	18	1620	2		124	Frédéric Anglade	MID	BOR	12	0	254	5
+																		125	Rémi Wagener	MID	LUZ	18	18	1591	6.6		125	Olivier Zenner	DEF	LUZ	13	0	321	1		125	Olivier Zenner	DEF	LUZ	13	0	321	5
+																		126	Antoine Ferracci	MID	CDM	18	18	1508	6.6		126	Serge Boucheron	DEF	BOR	16	0	454	1		126	Victorin Dauphiné	MID	RCC	17	0	586	5
+																		127	Renaat Houthoofd	MID	BLG	18	18	1391	6.6		127	Ruben Decoster	DEF	BLG	17	0	524	1		127	Ruben Delacroix	FWD	LUT	17	2	673	4
+																		128	Kobe Servais	MID	BLG	18	18	1575	6.6		128	Oriol Montagut	DEF	LUT	18	18	1540	1		128	Pierre-Louis Anfossi	FWD	CDM	18	2	659	4
+																		129	Laurent Grimaldi	DEF	CDM	18	18	1512	6.6		129	Laurent Grimaldi	DEF	CDM	18	18	1512	1		129	Nicolas Glesener	FWD	LUZ	18	0	576	4
+																		130	Antoine Faravel	DEF	CDM	18	18	1519	6.6		130	Olivier Sanguinetti	DEF	CDM	18	18	1585	1		130	Ruben Decoster	DEF	BLG	17	0	524	4
+																		131	Timothée Arsenault	FWD	OL	18	1	622	6.6		131	Baptiste Noirclerc	DEF	ULT	8	8	631	1		131	Itsuki Sakagami	FWD	LUT	6	0	174	3
+																		132	Nicolas Glesener	FWD	LUZ	18	0	576	6.6		132	Marc-Olivier Savelli	MID	CDM	11	0	271	1		132	Édouard Laroche	FWD	RCC	13	0	449	3
+																		133	Nolan Perrigault	FWD	RCC	18	18	1391	6.6		133	Gaspard Moulinier	MID	OL	12	2	373	1		133	Hippolyte Sergent	FWD	ULT	14	0	412	3
+																		134	Régis Chambonnet	FWD	BOR	18	18	1450	6.6		134	Anatole Vergnaud	MID	ULT	15	0	317	1		134	Julien Bellando	FWD	CDM	11	0	296	3
+																		135	Ansgar Vielhauer	FWD	FCB	18	1	592	6.6		135	Théo Gastaldi	MID	CDM	16	0	401	1		135	Fabien Blanchet	GK	LUT	18	18	1620	3
+																		136	Yvan Massena	MID	CDM	18	18	1575	6.6											136	Nathan Grandmaison	FWD	OL	9	0	304	2
+																		137	Julien Bellando	FWD	CDM	11	0	296	6.5											137	Hervé Laffitte	FWD	BOR	14	1	467	2
+																		138	Olivier Zenner	DEF	LUZ	13	0	321	6.5											138	Marc Duhr	MID	LUZ	15	0	313	2
+																		139	Édouard Laroche	FWD	RCC	13	0	449	6.5											139	Étienne Barral	GK	CDM	18	18	1620	2
+																		140	Ruben Decoster	DEF	BLG	17	0	524	6.5											140	Pieter-Jan Moens	FWD	BLG	5	0	133	1
+																		141	Yann Mercereau	FWD	BOR	18	5	803	6.5											141	Paul Scholer	FWD	LUZ	8	0	215	1
+																		142	Pierre-Louis Anfossi	FWD	CDM	18	2	659	6.5											142	Anatole Vergnaud	MID	ULT	15	0	317	1
+																		143	Victorin Dauphiné	MID	RCC	17	0	586	6.4											143	Christophe Gagnon	GK	OL	18	18	1620	1
+																		144	Sébastien Lauriol	MID	ULT	18	0	567	6.4											144	Mathis Weiler	GK	LUZ	18	18	1620	1
+																		145	Damien Roquefeuil	FWD	RCC	18	18	1534	6.4											145	Léon Chastellain	GK	RCC	18	18	1620	1
+																		146	Malik Seddiki	DEF	OM	8	0	238	6.6											146	Jostein Helgesen	GK	FCB	18	18	1620	1
 																		147	Itsuki Sakagami	FWD	LUT	6	0	174	6.6
 																		148	Pieter-Jan Moens	FWD	BLG	5	0	133	6.6
-																		149	Frédéric Anglade	MID	BOR	12	0	254	6.4
-																		150	Paul Scholer	FWD	LUZ	8	0	215	6.2
+																		149	Frédéric Anglade	MID	BOR	12	0	254	6.6
+																		150	Paul Scholer	FWD	LUZ	8	0	215	6.5

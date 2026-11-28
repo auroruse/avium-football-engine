@@ -1,271 +1,271 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
-1	Adrian Sorge	FWD	BER	34	34	2032	22		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	19		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	8.0		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	116		1	Stephan Lewerenz	DEF	SFF	34	34	3044	192		1	Theodor Berger	GK	SFF	34	34	3060	212
-2	Ernst Colijn	FWD	GRU	34	34	1889	20		2	Riny Maas	MID	EYN	34	34	2644	15		2	Adi Maurer	MID	BER	34	34	2432	7.9		2	Adi Maurer	MID	BER	34	34	2432	82		2	Till Metz	DEF	RWE	34	34	2848	189		2	Lex Hofwegen	GK	KOL	34	34	3060	152
-3	Leo Erkens	FWD	EYN	34	34	1765	19		3	Adi Maurer	MID	BER	34	34	2432	11		3	Adrian Sorge	FWD	BER	34	34	2032	7.6		3	Norbert Diefenbach	FWD	SSC	34	34	2059	79		3	Sören Kundert	DEF	SFF	34	34	2953	179		3	Jan Itor	GK	STP	34	34	3060	150
-4	Jonatan Feld	FWD	DSC	34	34	1629	19		4	Atse Antuma	MID	GRU	34	34	2813	11		4	Leo Erkens	FWD	EYN	34	34	1765	7.5		4	Karl-Heinz Sorg	MID	M95	34	34	2541	76		4	Nicolaus Unruh	DEF	STP	34	34	2947	179		4	Andi Latte	GK	RWE	34	34	3060	146
-5	Gereon Hölzer	FWD	UKB	34	34	1940	15		5	Chris Mounce	MID	BER	34	34	2962	10		5	Jonatan Feld	FWD	DSC	34	34	1629	7.5		5	Reinhard Walkenhorst	MID	SSC	34	34	2632	76		5	Eugen Kurzmann	DEF	SAA	34	34	2985	178		5	Gebhard Fabel	GK	MAI	34	34	3060	140
-6	Fabian Schüler	FWD	RBZ	34	34	1951	15		6	Johann Baptist Kühn	MID	STP	34	34	2543	10		6	Gereon Hölzer	FWD	UKB	34	34	1940	7.4		6	Arnošt Walther	MID	DSC	31	31	2026	73		6	Freddy Käufer	DEF	MAI	34	34	2739	165		6	Gerd Rochen	GK	FCZ	34	34	3060	138
-7	Youri Van Schoorl	FWD	STP	34	34	2115	15		7	Arnošt Walther	MID	DSC	31	31	2026	9		7	Eugen Kurzmann	DEF	SAA	34	34	2985	7.4		7	Heiner Appelhof	MID	SSC	33	33	2187	69		7	Jürg Gottlieb	DEF	AKE	34	34	2557	159		7	Alexander Haas	GK	LSV	34	34	3060	135
-8	Edgar Gold	FWD	KOL	34	34	1898	15		8	Hans Günther Dirks	MID	LSV	32	32	2553	7		8	Edgar Gold	FWD	KOL	34	34	1898	7.4		8	Ronald Werner	MID	FCZ	34	34	2745	66		8	Tjaard De Vos	DEF	STP	34	34	2953	158		8	Reiner Schiss	GK	SAA	34	34	3060	135
-9	Gerhard Süss	FWD	RBZ	34	34	1432	14		9	Gregor Krämer	MID	MAI	33	33	2693	7		9	Arnošt Walther	MID	DSC	31	31	2026	7.2		9	Edgar Gold	FWD	KOL	34	34	1898	65		9	Immanuel Hasenkamp	MID	RBZ	34	34	2188	154		9	Tilman Westenberg	GK	BER	34	34	3060	129
-10	Izaäk Coenen	FWD	EYN	32	0	1639	13		10	Karl-Heinz Sorg	MID	M95	34	34	2541	7		10	Heiner Appelhof	MID	SSC	33	33	2187	7.2		10	Jonatan Feld	FWD	DSC	34	34	1629	63		10	Peter Schneiders	DEF	AKE	34	34	3060	154		10	Konstantin Rose	GK	M95	34	34	3060	129
-11	Bart Carl	FWD	SSC	33	0	1494	13		11	Konstanty Krall	MID	DSC	34	34	2885	7		11	Klaus Essert	DEF	UKB	34	34	2896	7.2		11	Joord Koeman	MID	SSC	34	34	2842	62		11	Dietrich Manz	DEF	MAI	34	34	2927	153		11	Peer Verser	GK	TUS	34	34	3060	125
-12	Norbert Diefenbach	FWD	SSC	34	34	2059	13		12	Joord Koeman	MID	SSC	34	34	2842	7		12	Sören Kundert	DEF	SFF	34	34	2953	7.2		12	Izaäk Coenen	FWD	EYN	32	0	1639	59		12	Wilhelm Teufel	DEF	M95	34	34	2920	143		12	Volker Racho	GK	UKB	34	34	3060	116
-13	Jannis Leverenz	FWD	M95	34	34	1657	12		13	Alwin Duerr	MID	M95	30	30	2424	6		13	Achim Armbrüster	DEF	RBZ	34	34	2876	7.2		13	Gerhard Süss	FWD	RBZ	34	34	1432	59		13	Arjan Van Kan	DEF	RWE	34	34	2955	143		13	Mateusz Hielder	GK	DSC	34	34	3060	112
-14	Rudi Garber	FWD	TUS	34	34	1814	12		14	Jules Wieck	DEF	SAA	31	31	2226	6		14	Thorben Arbeit	DEF	RBZ	34	34	3012	7.2		14	Ronald Haanraats	MID	EYN	34	34	2659	57		14	Klaus Aldenkamp	DEF	KOL	34	34	3023	143		14	Ullrich Riecht	GK	GRU	34	34	3060	106
-15	Wouter De Veen	FWD	KOL	34	0	1415	12		15	Jonasz Rybář	MID	DSC	31	3	1453	6		15	Gerhard Süss	FWD	RBZ	34	34	1432	7.2		15	Alwin Duerr	MID	M95	30	30	2424	56		15	Funske Fischer	DEF	RWE	34	34	2823	142		15	Johann Talon	GK	SSC	34	34	3060	99
-16	Wit Szweda	FWD	DSC	33	0	1524	11		16	Faas Wouters	MID	EYN	32	0	1577	6		16	Karl-Heinz Sorg	MID	M95	34	34	2541	7.2		16	Jannis Derichs	FWD	UKB	34	34	2199	56		16	Dagobert Amsel	DEF	TUS	34	34	2689	139		16	Eric Köhler	GK	AKE	34	34	3060	97
-17	Malte Schroeder	FWD	BER	34	34	1903	11		17	Gert Mendel	MID	KOL	33	33	2658	6		17	Ernst Colijn	FWD	GRU	34	34	1889	7.2		17	Gereon Hölzer	FWD	UKB	34	34	1940	56		17	Ruben Hiedler	DEF	AKE	34	34	2930	137		17	Artur KRAUß	GK	RBZ	34	34	3060	97
-18	David Zimmermann	FWD	M95	34	34	1619	11		18	Klaus-Peter Denzel	MID	UKB	34	34	2704	6		18	Youri Van Schoorl	FWD	STP	34	34	2115	7.2		18	Ingolf Schnur	FWD	RBZ	34	0	1697	56		18	Knut Schrum	DEF	EYN	34	34	3000	134		18	Axel Schweiß	GK	EYN	34	34	3060	88
-19	Klaas Vieth	FWD	AKE	34	34	1583	10		19	Jörg Wörner	MID	RBZ	34	34	3009	6		19	Tjaard De Vos	DEF	STP	34	34	2953	7.2		19	Riny Maas	MID	EYN	34	34	2644	55		19	Lorenz Reier	DEF	SFF	34	34	2919	130
-20	Günther Kron	FWD	SFF	34	34	2172	10		20	Diedrich Wörner	MID	TUS	34	34	2857	6		20	Feliks Slezák	MID	DSC	34	34	1924	7.2		20	Feliks Slezák	MID	DSC	34	34	1924	55		20	Heinrich Eichel	DEF	SFF	34	34	3000	128
-21	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	10		21	Bastiaan Bachmann	MID	STP	34	34	2936	6		21	Gerd Rochen	GK	FCZ	34	34	3060	7.2		21	Atse Antuma	MID	GRU	34	34	2813	53		21	Achim Armbrüster	DEF	RBZ	34	34	2876	128
-22	Philipp Hoffmann	FWD	TUS	34	34	1795	10		22	Norbert Diefenbach	FWD	SSC	34	34	2059	6		22	Joord Koeman	MID	SSC	34	34	2842	7.2		22	Otto Baier	MID	TUS	31	31	2321	52		22	Georg Kron	DEF	TUS	34	34	2890	123
-23	Roan Habich	FWD	STP	30	0	1044	9		23	Otto Baier	MID	TUS	31	31	2321	5		23	Alwin Duerr	MID	M95	30	30	2424	7.1		23	Chris Mounce	MID	BER	34	34	2962	52		23	Konstantin Pfaff	DEF	LSV	34	34	3021	121
-24	Benedikt Scherer	FWD	BER	33	0	1290	9		24	Wessel Achterkamp	MID	GRU	33	33	2835	5		24	Izaäk Coenen	FWD	EYN	32	0	1639	7.1		24	Leo Erkens	FWD	EYN	34	34	1765	52		24	Freddy Steuben	DEF	M95	34	34	2941	120
-25	Ties Meeuwsen	FWD	GRU	33	0	1553	9		25	Marco Von Ingersleben	DEF	BER	34	34	2978	5		25	Peter Schneiders	DEF	AKE	34	34	3060	7.1		25	Wit Szweda	FWD	DSC	33	0	1524	50		25	Bertram Kiefer	DEF	M95	34	34	2740	120
-26	Siegbert Hahn	FWD	LSV	34	34	2135	9		26	Adrian Sorge	FWD	BER	34	34	2032	5		26	Ruben Hiedler	DEF	AKE	34	34	2930	7.1		26	Adrian Sorge	FWD	BER	34	34	2032	50		26	Gerhardt Rapp	DEF	MAI	31	31	2724	117
-27	Ime Aartsen	FWD	GRU	34	34	2117	9		27	Fredy Szwarc	DEF	UKB	34	34	2985	5		27	August Herberts	MID	AKE	34	34	2460	7.1		27	Roland Ziegler	FWD	UKB	34	34	2462	50		27	Nico Krause	DEF	KOL	34	34	2937	117
-28	Baptist Gerber	FWD	RWE	34	0	1534	9		28	Gereon Hölzer	FWD	UKB	34	34	1940	5		28	Jürg Gottlieb	DEF	AKE	34	34	2557	7.1		28	Barend Andriessen	MID	AKE	34	34	3060	47		28	Wide Anjema	DEF	GRU	34	34	3060	116
-29	Rudolf Schmeling	FWD	FCZ	34	34	1997	9		29	Gerhard Süss	FWD	RBZ	34	34	1432	5		29	Tilman Westenberg	GK	BER	34	34	3060	7.1		29	Klaus-Peter Denzel	MID	UKB	34	34	2704	47		29	Marvin Simonis	MID	MAI	34	34	2678	115
-30	Wolfhard Rosenberger	FWD	AKE	34	0	1716	8		30	Finn Adenauer	MID	LSV	34	34	2977	5		30	Riny Maas	MID	EYN	34	34	2644	7.1		30	Johann Baptist Kühn	MID	STP	34	34	2543	47		30	Klaus Essert	DEF	UKB	34	34	2896	115
-31	Christof Dunst	FWD	RBZ	34	34	2305	8		31	David Zimmermann	FWD	M95	34	34	1619	5		31	Ronald Haanraats	MID	EYN	34	34	2659	7.1		31	Bastiaan Bachmann	MID	STP	34	34	2936	47		31	Thorben Arbeit	DEF	RBZ	34	34	3012	115
-32	Detlev Bachmann	FWD	LSV	34	34	2130	8		32	Philipp Hoffmann	FWD	TUS	34	34	1795	5		32	Volker Racho	GK	UKB	34	34	3060	7.1		32	Horst Fürst	FWD	AKE	34	34	1705	47		32	Korbinian Groot	DEF	RWE	34	34	3006	109
-33	Edmund Melsbach	FWD	SAA	34	34	2144	8		33	Dennis Junge	FWD	RWE	34	34	2744	5		33	Gero Wild	FWD	SFF	34	34	2309	7.1		33	Klaas Vieth	FWD	AKE	34	34	1583	47		33	Wolfgang Weimann	DEF	SFF	34	34	2872	106
-34	Kay Sorge	FWD	RWE	34	34	1820	8		34	Feliks Slezák	MID	DSC	34	34	1924	5		34	Artur KRAUß	GK	RBZ	34	34	3060	7.1		34	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	47		34	Uwe Böhmer	DEF	SSC	34	34	2985	106
-35	Felix Albrecht	FWD	MAI	34	34	1922	8		35	Jakob Brune	MID	FCZ	34	34	2658	5		35	Fabian Schüler	FWD	RBZ	34	34	1951	7.1		35	Ernst Colijn	FWD	GRU	34	34	1889	47		35	Jip Reijnders	DEF	GRU	34	34	2884	105
-36	Gerhardt Schlender	FWD	MAI	34	34	1802	8		36	Ronald Werner	MID	FCZ	34	34	2745	5		36	David Zimmermann	FWD	M95	34	34	1619	7.1		36	Hans Günter Weiss	FWD	FCZ	34	34	1921	47		36	Knut Kruse	DEF	MAI	34	34	3006	105
-37	Feliks Slezák	MID	DSC	34	34	1924	8		37	Gerd Hoover	DEF	SSC	34	34	2941	5		37	Peer Verser	GK	TUS	34	34	3060	7.1		37	Gert Mendel	MID	KOL	33	33	2658	46		37	Karl-Heinz Sorg	MID	M95	34	34	2541	103
-38	Frank GROßEL	FWD	MAI	33	0	1553	7		38	Reinhard Walkenhorst	MID	SSC	34	34	2632	5		38	Rudi Garber	FWD	TUS	34	34	1814	7.1		38	Diedrich Wörner	MID	TUS	34	34	2857	46		38	Gerd Hoover	DEF	SSC	34	34	2941	103
-39	Ingolf Schnur	FWD	RBZ	34	0	1697	7		39	Ueli Garb	FWD	SSC	34	34	2057	5		39	Jan Itor	GK	STP	34	34	3060	7.1		39	Ottmar Fertig	MID	KOL	34	34	2700	46		39	Ronald Haanraats	MID	EYN	34	34	2659	101
-40	Christoph GROß	FWD	M95	34	0	1556	7		40	Konrad Rosenfeld	MID	MAI	29	29	1967	4		40	Kay Sorge	FWD	RWE	34	34	1820	7.1		40	Silvester Gehring	MID	BER	28	28	2435	45		40	Finn Hartmann	DEF	FCZ	34	34	2910	101
-41	Burkhard Unruh	FWD	TUS	34	0	1455	7		41	Erik Haase	MID	KOL	29	29	1978	4		41	Till Metz	DEF	RWE	34	34	2848	7.1		41	Gerlof Sitz	MID	AKE	34	34	2673	45		41	Gustav Freudenberger	DEF	LSV	34	34	2858	100
-42	Hans Günter Weiss	FWD	FCZ	34	34	1921	7		42	Willibald Otto	MID	UKB	31	31	2499	4		42	Mateusz Hielder	GK	DSC	34	34	3060	7.1		42	Konstanty Krall	MID	DSC	34	34	2885	45		42	Gerlof Sitz	MID	AKE	34	34	2673	97
-43	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	6		43	Heiner Appelhof	MID	SSC	33	33	2187	4		43	Reinhard Walkenhorst	MID	SSC	34	34	2632	7.1		43	Roger Fried	FWD	RWE	34	34	2779	45		43	Joachim Ackermann	MID	RWE	34	34	2839	97
-44	Immanuel Hasenkamp	MID	RBZ	34	34	2188	6		44	Ruben Hiedler	DEF	AKE	34	34	2930	4		44	Norbert Diefenbach	FWD	SSC	34	34	2059	7.1		44	Wessel Achterkamp	MID	GRU	33	33	2835	43		44	Tim Schuchard	DEF	MAI	26	3	1267	97
-45	Arjen Paulis	FWD	GRU	34	34	1876	6		45	Gerlof Sitz	MID	AKE	34	34	2673	4		45	Silvester Gehring	MID	BER	28	28	2435	7.0		45	Zbyšek Löwe	MID	DSC	33	10	1901	43		45	Christoph Kasprzak	DEF	DSC	34	34	2974	96
-46	Ueli Garb	FWD	SSC	34	34	2057	6		46	Barend Andriessen	MID	AKE	34	34	3060	4		46	Jules Wieck	DEF	SAA	31	31	2226	7.0		46	Jakob Brune	MID	FCZ	34	34	2658	43		46	Barend Andriessen	MID	AKE	34	34	3060	95
-47	Arnošt Walther	MID	DSC	31	31	2026	5		47	Mario Ahner	DEF	EYN	34	34	2905	4		47	Faas Wouters	MID	EYN	32	0	1577	7.0		47	Fabian Schüler	FWD	RBZ	34	34	1951	43		47	John Marquering	DEF	EYN	34	34	2843	94
-48	Gert Mendel	MID	KOL	33	33	2658	5		48	Alfons Haan	DEF	EYN	34	34	2793	4		48	Wit Szweda	FWD	DSC	33	0	1524	7.0		48	Rudolf Schmeling	FWD	FCZ	34	34	1997	43		48	August Herberts	MID	AKE	34	34	2460	93
-49	Horst Fürst	FWD	AKE	34	34	1705	5		49	John Marquering	DEF	EYN	34	34	2843	4		49	Gerlof Sitz	MID	AKE	34	34	2673	7.0		49	Ueli Garb	FWD	SSC	34	34	2057	43		49	Mario Ahner	DEF	EYN	34	34	2905	93
-50	Joost Yonker	FWD	EYN	34	34	2279	5		50	Ronald Haanraats	MID	EYN	34	34	2659	4		50	Wolfhard Rosenberger	FWD	AKE	34	0	1716	7.0		50	Finn Adenauer	MID	LSV	34	34	2977	42		50	Alwin Duerr	MID	M95	30	30	2424	92
-51	Jannis Derichs	FWD	UKB	34	34	2199	5		51	Wieland Voll	DEF	UKB	34	34	2975	4		51	Klaas Vieth	FWD	AKE	34	34	1583	7.0		51	Kay Sorge	FWD	RWE	34	34	1820	41		51	Riny Maas	MID	EYN	34	34	2644	92
-52	Gero Wild	FWD	SFF	34	34	2309	5		52	Jannis Derichs	FWD	UKB	34	34	2199	4		52	Hermann Sulzbach	DEF	BER	34	34	2847	7.0		52	Erik Haase	MID	KOL	29	29	1978	40		52	Patrick Königsmann	MID	RWE	34	34	2846	92
-53	Frenske Van Agteren	FWD	RWE	34	34	1804	5		53	Ulrich Kranz	MID	SFF	34	34	2764	4		53	Malte Schroeder	FWD	BER	34	34	1903	7.0		53	Faas Wouters	MID	EYN	32	0	1577	40		53	Silvan Schuchard	DEF	FCZ	34	34	2931	90
-54	Jonasz Rybář	MID	DSC	31	3	1453	4		54	Armin Weiner	MID	SAA	34	34	2612	4		54	Klaus-Peter Denzel	MID	UKB	34	34	2704	7.0		54	Paul Wanger	MID	FCZ	34	34	2772	40		54	Hans-Günter Schroeter	MID	AKE	30	30	2522	89
-55	Heiner Appelhof	MID	SSC	33	33	2187	4		55	Gabriel Siebert	MID	SAA	34	34	2928	4		55	Theodor Berger	GK	SFF	34	34	3060	7.0		55	Theophil Wild	MID	RBZ	34	34	2813	39		55	Gregor Krämer	MID	MAI	33	33	2693	89
-56	Klaus-Peter Denzel	MID	UKB	34	34	2704	4		56	Jannis Leverenz	FWD	M95	34	34	1657	4		56	Stephan Lewerenz	DEF	SFF	34	34	3044	7.0		56	Edmund Melsbach	FWD	SAA	34	34	2144	38		56	Michi Messer	MID	MAI	34	34	2754	89
-57	Benjamin Jöllenbeck	MID	SSC	13	0	555	3		57	Ime Aartsen	FWD	GRU	34	34	2117	4		57	Günther Kron	FWD	SFF	34	34	2172	7.0		57	Willibald Otto	MID	UKB	31	31	2499	36		57	Heiner Appelhof	MID	SSC	33	33	2187	89
-58	Stéphane Klassen	FWD	SAA	31	0	1183	3		58	Eckhart Schnyder	DEF	DSC	34	34	3004	4		58	Konstantin Pfaff	DEF	LSV	34	34	3021	7.0		58	Hans Günther Dirks	MID	LSV	32	32	2553	36		58	Arnošt Walther	MID	DSC	31	31	2026	88
-59	Adi Maurer	MID	BER	34	34	2432	3		59	Hans Günter Weiss	FWD	FCZ	34	34	1921	4		59	Detlev Bachmann	FWD	LSV	34	34	2130	7.0		59	Gabriel Siebert	MID	SAA	34	34	2928	36		59	Zacharie Gerst	DEF	SAA	34	34	2907	88
-60	Riny Maas	MID	EYN	34	34	2644	3		60	Paul Wanger	MID	FCZ	34	34	2772	4		60	Siegbert Hahn	FWD	LSV	34	34	2135	7.0		60	Ties Meeuwsen	FWD	GRU	33	0	1553	36		60	Hartwig Holland	DEF	SSC	34	34	2970	87
-61	Ronald Haanraats	MID	EYN	34	34	2659	3		61	Ottmar Fertig	MID	KOL	34	34	2700	4		61	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	7.0		61	Gero Wild	FWD	SFF	34	34	2309	36		61	Hermann Sulzbach	DEF	BER	34	34	2847	86
-62	Roland Ziegler	FWD	UKB	34	34	2462	3		62	Sjeng Wang	MID	KOL	21	0	707	3		62	Jannis Leverenz	FWD	M95	34	34	1657	7.0		62	Detlev Bachmann	FWD	LSV	34	34	2130	36		62	Alfons Haan	DEF	EYN	34	34	2793	86
-63	Achim Armbrüster	DEF	RBZ	34	34	2876	3		63	Konstanty Michael	MID	DSC	27	27	2170	3		63	Wilhelm Teufel	DEF	M95	34	34	2920	7.0		63	Siegbert Hahn	FWD	LSV	34	34	2135	36		63	Fredy Szwarc	DEF	UKB	34	34	2985	86
-64	Dennis Ohme	MID	TUS	34	34	3006	3		64	Dieter Wendel	DEF	TUS	28	28	2439	3		64	Jip Reijnders	DEF	GRU	34	34	2884	7.0		64	Jannis Leverenz	FWD	M95	34	34	1657	36		64	Gottfried Pahlke	DEF	SSC	34	34	2976	86
-65	Paul Wanger	MID	FCZ	34	34	2772	3		65	Sieghard Schnoor	DEF	RWE	28	0	1095	3		65	Atse Antuma	MID	GRU	34	34	2813	7.0		65	Ime Aartsen	FWD	GRU	34	34	2117	36		65	Ernst Oberst	DEF	AKE	31	0	1369	85
-66	Reinhard Walkenhorst	MID	SSC	34	34	2632	3		66	Alfons Assendorp	DEF	GRU	31	8	1684	3		66	Dagobert Amsel	DEF	TUS	34	34	2689	7.0		66	Rudi Garber	FWD	TUS	34	34	1814	36		66	Jannis Salzwedel	DEF	AKE	34	34	2957	85
-67	Sebastian Überseher	FWD	SSC	34	34	2159	3		67	Dominik Spellmeyer	MID	DSC	31	31	2488	3		67	Philipp Hoffmann	FWD	TUS	34	34	1795	7.0		67	Youri Van Schoorl	FWD	STP	34	34	2115	36		67	Heike Nagel	DEF	M95	34	34	3060	85
-68	Konstanty Michael	MID	DSC	27	27	2170	2		68	Ime Reynders	DEF	GRU	32	32	2702	3		68	Nicolaus Unruh	DEF	STP	34	34	2947	7.0		68	August Herberts	MID	AKE	34	34	2460	34		68	Thaddäus Rothenberg	DEF	BER	34	34	2919	84
-69	Konrad Rosenfeld	MID	MAI	29	29	1967	2		69	Ronald Heinrich	FWD	FCZ	33	0	1487	3		69	Joachim Ackermann	MID	RWE	34	34	2839	7.0		69	Ronald Heinrich	FWD	FCZ	33	0	1487	34		69	Gregor Laurenz	DEF	TUS	34	34	2985	83
-70	Alwin Kunz	FWD	SFF	33	0	867	2		70	Jacob Dohman	MID	AKE	34	4	1661	3		70	Dietrich Manz	DEF	MAI	34	34	2927	7.0		70	Bart Carl	FWD	SSC	33	0	1494	34		70	Justus Janz	MID	SFF	34	34	3020	81
-71	Ronald Heinrich	FWD	FCZ	33	0	1487	2		71	Horst Fürst	FWD	AKE	34	34	1705	3		71	Freddy Käufer	DEF	MAI	34	34	2739	7.0		71	Joost Yonker	FWD	EYN	34	34	2279	34		71	Diedrich Wörner	MID	TUS	34	34	2857	81
-72	Gerlof Sitz	MID	AKE	34	34	2673	2		72	Knut Schrum	DEF	EYN	34	34	3000	3		72	Christoph Kasprzak	DEF	DSC	34	34	2974	7.0		72	Kerneels Jansink	FWD	EYN	34	34	1733	34		72	Arno Janson	DEF	RBZ	31	31	2696	81
-73	Eberhard Mohren	MID	UKB	34	3	1409	2		73	Leo Erkens	FWD	EYN	34	34	1765	3		73	Paul Wanger	MID	FCZ	34	34	2772	7.0		73	Arjen Paulis	FWD	GRU	34	34	1876	34		73	Filip Jundt	DEF	DSC	34	34	3060	81
-74	Karl Schreier	DEF	LSV	34	34	3003	2		74	Klaus Essert	DEF	UKB	34	34	2896	3		74	Lex Hofwegen	GK	KOL	34	34	3060	7.0		74	Gregor Krämer	MID	MAI	33	33	2693	32		74	Otokar Kunz	DEF	DSC	34	34	3000	81
-75	Maxi Ernst	FWD	LSV	34	0	1003	2		75	Baptist Baumer	MID	UKB	34	34	2875	3		75	Klaus Aldenkamp	DEF	KOL	34	34	3023	7.0		75	Émilien WEIß	MID	SAA	34	34	2736	32		75	Valentin Papp	DEF	FCZ	34	34	2855	81
-76	Atse Antuma	MID	GRU	34	34	2813	2		76	Justus Janz	MID	SFF	34	34	3020	3		76	Johann Talon	GK	SSC	34	34	3060	7.0		76	Benedikt Scherer	FWD	BER	33	0	1290	32		76	Konstanty Krall	MID	DSC	34	34	2885	80
-77	Ottmar Van Bokhoven	MID	STP	34	34	2516	2		77	Günther Kron	FWD	SFF	34	34	2172	3		77	Uwe Böhmer	DEF	SSC	34	34	2985	7.0		77	Malte Schroeder	FWD	BER	34	34	1903	32		77	Dieter Wendel	DEF	TUS	28	28	2439	79
-78	Bastiaan Bachmann	MID	STP	34	34	2936	2		78	Dieter Saller	MID	RBZ	34	34	3060	3		78	Gottfried Pahlke	DEF	SSC	34	34	2976	7.0		78	Kobus Van Rompaey	MID	EYN	34	34	3006	30		78	Jens Aubert Habicht	DEF	SAA	34	34	3008	79
-79	Joachim Ackermann	MID	RWE	34	34	2839	2		79	Fabian Schüler	FWD	RBZ	34	34	1951	3		79	Gerd Hoover	DEF	SSC	34	34	2941	7.0		79	Joachim Ackermann	MID	RWE	34	34	2839	29		79	Siegbert Siemon	DEF	FCZ	31	31	2503	78
-80	Christoph Kasprzak	DEF	DSC	34	34	2974	2		80	Theophil Wild	MID	RBZ	34	34	2813	3		80	Šimon Wirt	DEF	DSC	12	0	542	6.8		80	Veit Laurenz	MID	SSC	34	1	1678	29		80	Jo Teufel	DEF	LSV	34	34	3042	78
-81	Ronald Werner	MID	FCZ	34	34	2745	2		81	Edmund Melsbach	FWD	SAA	34	34	2144	3		81	Tim Schuchard	DEF	MAI	26	3	1267	6.8		81	Wolfhard Rosenberger	FWD	AKE	34	0	1716	29		81	Kobus Van Rompaey	MID	EYN	34	34	3006	76
-82	Joord Koeman	MID	SSC	34	34	2842	2		82	Wide Anjema	DEF	GRU	34	34	3060	2		82	Dick Heymans	DEF	EYN	28	0	1405	6.8		82	Frenske Van Agteren	FWD	RWE	34	34	1804	29		82	Frederick Schwarzenegger	MID	M95	34	34	3060	76
-83	Veit Laurenz	MID	SSC	34	1	1678	2		83	Jip Reijnders	DEF	GRU	34	34	2884	2		83	Konrad Rosenfeld	MID	MAI	29	29	1967	6.8		83	Wouter De Veen	FWD	KOL	34	0	1415	29		83	Dick Heymans	DEF	EYN	28	0	1405	76
-84	Adriaan Romijn	MID	GRU	12	0	506	1		84	Elbert Asjes	MID	GRU	34	34	2684	2		84	Erik Haase	MID	KOL	29	29	1978	6.8		84	Sebastian Überseher	FWD	SSC	34	34	2159	29		84	Wieland Voll	DEF	UKB	34	34	2975	76
-85	Silvester Gehring	MID	BER	28	28	2435	1		85	Arjen Paulis	FWD	GRU	34	34	1876	2		85	Hans-Günter Schroeter	MID	AKE	30	30	2522	6.8		85	Konrad Rosenfeld	MID	MAI	29	29	1967	27		85	Hilaire Adam	DEF	SAA	34	34	2933	76
-86	Edgar Christian	DEF	UKB	28	0	1042	1		86	Tjaard De Vos	DEF	STP	34	34	2953	2		86	Otto Baier	MID	TUS	31	31	2321	6.8		86	Jonasz Rybář	MID	DSC	31	3	1453	27		86	Joachim Giese	MID	SFF	34	34	2930	75
-87	Ale Aukema	DEF	GRU	28	28	2472	1		87	Korbinian Groot	DEF	RWE	34	34	3006	2		87	Gerhardt Rapp	DEF	MAI	31	31	2724	6.8		87	Dennis Ohme	MID	TUS	34	34	3006	27		87	Eckhart Schnyder	DEF	DSC	34	34	3004	75
-88	Sieghard Schnoor	DEF	RWE	28	0	1095	1		88	Joachim Ackermann	MID	RWE	34	34	2839	2		88	Dominik Spellmeyer	MID	DSC	31	31	2488	6.8		88	Stéphane Klassen	FWD	SAA	31	0	1183	27		88	Konrad Rosenfeld	MID	MAI	29	29	1967	74
-89	Hans-Günter Schroeter	MID	AKE	30	30	2522	1		89	Helge Schwarz	MID	RWE	34	0	1241	2		89	Siegbert Siemon	DEF	FCZ	31	31	2503	6.8		89	David Zimmermann	FWD	M95	34	34	1619	27		89	Marco Von Ingersleben	DEF	BER	34	34	2978	74
-90	Alwin Duerr	MID	M95	30	30	2424	1		90	Frenske Van Agteren	FWD	RWE	34	34	1804	2		90	Jonasz Rybář	MID	DSC	31	3	1453	6.8		90	Elbert Asjes	MID	GRU	34	34	2684	26		90	Émilien WEIß	MID	SAA	34	34	2736	73
-91	Wessel Achterkamp	MID	GRU	33	33	2835	1		91	Filip Jundt	DEF	DSC	34	34	3060	2		91	Ime Reynders	DEF	GRU	32	32	2702	6.8		91	Ottmar Van Bokhoven	MID	STP	34	34	2516	26		91	Jakob Brune	MID	FCZ	34	34	2658	72
-92	Zbyšek Löwe	MID	DSC	33	10	1901	1		92	Jonatan Feld	FWD	DSC	34	34	1629	2		92	Ties Meeuwsen	FWD	GRU	33	0	1553	6.8		92	Dennis Junge	FWD	RWE	34	34	2744	25		92	Ime Reynders	DEF	GRU	32	32	2702	72
-93	Peter Schneiders	DEF	AKE	34	34	3060	1		93	Christoph Kasprzak	DEF	DSC	34	34	2974	2		93	Gert Mendel	MID	KOL	33	33	2658	6.8		93	Felix Albrecht	FWD	MAI	34	34	1922	25		93	Georg Geisler	DEF	UKB	34	34	2996	72
-94	August Herberts	MID	AKE	34	34	2460	1		94	Finn Hartmann	DEF	FCZ	34	34	2910	2		94	Bart Carl	FWD	SSC	33	0	1494	6.8		94	Justus Janz	MID	SFF	34	34	3020	24		94	Egon Hochberg	DEF	M95	31	0	1275	71
-95	Marco Von Ingersleben	DEF	BER	34	34	2978	1		95	Edgar Mueller	MID	FCZ	34	0	1403	2		95	Eric Köhler	GK	AKE	34	34	3060	6.8		95	Armin Weiner	MID	SAA	34	34	2612	24		95	Theophil Wild	MID	RBZ	34	34	2813	70
-96	Chris Mounce	MID	BER	34	34	2962	1		96	Karl Mann	MID	KOL	34	6	1481	2		96	Barend Andriessen	MID	AKE	34	34	3060	6.8		96	Patrick Königsmann	MID	RWE	34	34	2846	24		96	Ale Aukema	DEF	GRU	28	28	2472	70
-97	Hans-Günter Blumenthal	DEF	BER	34	34	2973	1		97	Edgar Gold	FWD	KOL	34	34	1898	2		97	Horst Fürst	FWD	AKE	34	34	1705	6.8		97	Jörg Wörner	MID	RBZ	34	34	3009	23		97	Otto Baier	MID	TUS	31	31	2321	69
-98	John Marquering	DEF	EYN	34	34	2843	1		98	Herman Krusen	MID	KOL	34	34	2769	2		98	Marco Von Ingersleben	DEF	BER	34	34	2978	6.8		98	Marvin Simonis	MID	MAI	34	34	2678	23		98	Gabriel Siebert	MID	SAA	34	34	2928	69
-99	Kobus Van Rompaey	MID	EYN	34	34	3006	1		99	Uwe Böhmer	DEF	SSC	34	34	2985	2		99	Thaddäus Rothenberg	DEF	BER	34	34	2919	6.8		99	Christof Dunst	FWD	RBZ	34	34	2305	23		99	Joord Koeman	MID	SSC	34	34	2842	69
-100	Kerneels Jansink	FWD	EYN	34	34	1733	1		100	Gottfried Pahlke	DEF	SSC	34	34	2976	2		100	Chris Mounce	MID	BER	34	34	2962	6.8		100	Burkhard Unruh	FWD	TUS	34	0	1455	23		100	Jules Wieck	DEF	SAA	31	31	2226	69
-101	Fredy Szwarc	DEF	UKB	34	34	2985	1		101	Bastian Reier	MID	AKE	7	0	316	1		101	Axel Schweiß	GK	EYN	34	34	3060	6.8		101	Gerhardt Schlender	FWD	MAI	34	34	1802	23		101	Faas Wouters	MID	EYN	32	0	1577	68
-102	Gustav Beyer	MID	RBZ	34	0	1620	1		102	Kaspar Weiner	MID	BER	11	0	334	1		102	Knut Schrum	DEF	EYN	34	34	3000	6.8		102	Konstanty Michael	MID	DSC	27	27	2170	22		102	Sieghard Schnoor	DEF	RWE	28	0	1095	67
-103	Korbinian Fürst	DEF	LSV	34	34	3060	1		103	Šimon Wirt	DEF	DSC	12	0	542	1		103	Mario Ahner	DEF	EYN	34	34	2905	6.8		103	Ulrich Kranz	MID	SFF	34	34	2764	22		103	Ulli Lafrentz	DEF	RBZ	31	3	1567	67
-104	Finn Adenauer	MID	LSV	34	34	2977	1		104	Norbert Steinbrück	MID	MAI	18	0	793	1		104	Alfons Haan	DEF	EYN	34	34	2793	6.8		104	Laurenz Franz	MID	TUS	34	34	3002	22		104	Hans-Günter Blumenthal	DEF	BER	34	34	2973	67
-105	Armin Weiner	MID	SAA	34	34	2612	1		105	Ivo De Brujin	MID	STP	22	0	576	1		105	Kobus Van Rompaey	MID	EYN	34	34	3006	6.8		105	Karl Mann	MID	KOL	34	6	1481	22		105	Dennis Ohme	MID	TUS	34	34	3006	66
-106	Freddy Steuben	DEF	M95	34	34	2941	1		106	Tim Schuchard	DEF	MAI	26	3	1267	1		106	Fredy Szwarc	DEF	UKB	34	34	2985	6.8		106	Dominik Spellmeyer	MID	DSC	31	31	2488	20		106	Ronald Werner	MID	FCZ	34	34	2745	66
-107	Stephan Shriver	MID	M95	34	4	1527	1		107	Silvester Gehring	MID	BER	28	28	2435	1		107	Jannis Derichs	FWD	UKB	34	34	2199	6.8		107	Baptist Baumer	MID	UKB	34	34	2875	20		107	Dominik Spellmeyer	MID	DSC	31	31	2488	65
-108	Wide Anjema	DEF	GRU	34	34	3060	1		108	Dick Heymans	DEF	EYN	28	0	1405	1		108	Lorenz Reier	DEF	SFF	34	34	2919	6.8		108	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	20		108	Laurenz Franz	MID	TUS	34	34	3002	65
-109	Dagobert Amsel	DEF	TUS	34	34	2689	1		109	Ulli Lafrentz	DEF	RBZ	31	3	1567	1		109	Theophil Wild	MID	RBZ	34	34	2813	6.8		109	Philipp Hoffmann	FWD	TUS	34	34	1795	20		109	Micha Siegert	MID	FCZ	34	34	2704	65
-110	Jörg Bachman	MID	TUS	34	3	1417	1		110	André Gensch	MID	LSV	31	31	2552	1		110	Alexander Haas	GK	LSV	34	34	3060	6.8		110	Hans-Günter Schroeter	MID	AKE	30	30	2522	19		110	Karl Schreier	DEF	LSV	34	34	3003	64
-111	Laurenz Franz	MID	TUS	34	34	3002	1		111	Egon Hochberg	DEF	M95	31	0	1275	1		111	Reiner Schiss	GK	SAA	34	34	3060	6.8		111	Frederick Schwarzenegger	MID	M95	34	34	3060	19		111	Dierk Achilles	MID	STP	34	34	2715	63
-112	Stefanus Van Hautum	MID	STP	34	34	2865	1		112	Siegbert Siemon	DEF	FCZ	31	31	2503	1		112	Edmund Melsbach	FWD	SAA	34	34	2144	6.8		112	Tjaard Hartman	MID	GRU	34	1	1514	19		112	Albert Daalman	DEF	STP	34	34	2661	63
-113	Dennis Junge	FWD	RWE	34	34	2744	1		113	Benedikt Scherer	FWD	BER	33	0	1290	1		113	Freddy Steuben	DEF	M95	34	34	2941	6.8		113	Stefanus Van Hautum	MID	STP	34	34	2865	19		113	Hermann Raimund Behrends	DEF	SAA	34	3	1423	62
-114	Eckhart Schnyder	DEF	DSC	34	34	3004	1		114	Alwin Kunz	FWD	SFF	33	0	867	1		114	Bertram Kiefer	DEF	M95	34	34	2740	6.8		114	Dierk Achilles	MID	STP	34	34	2715	19		114	Jacob Dohman	MID	AKE	34	4	1661	61
-115	Konstanty Krall	MID	DSC	34	34	2885	1		115	Ties Meeuwsen	FWD	GRU	33	0	1553	1		115	Ullrich Riecht	GK	GRU	34	34	3060	6.8		115	Michi Messer	MID	MAI	34	34	2754	19		115	Jörg Wörner	MID	RBZ	34	34	3009	60
-116	Micha Siegert	MID	FCZ	34	34	2704	1		116	Zbyšek Löwe	MID	DSC	33	10	1901	1		116	Wide Anjema	DEF	GRU	34	34	3060	6.8		116	Jules Wieck	DEF	SAA	31	31	2226	18		116	Helmar Knepp	MID	M95	34	34	3008	60
-117	Jakob Brune	MID	FCZ	34	34	2658	1		117	Wit Szweda	FWD	DSC	33	0	1524	1		117	Georg Kron	DEF	TUS	34	34	2890	6.8		117	Roan Habich	FWD	STP	30	0	1044	18		117	Wigbert Baanders	MID	KOL	34	34	2929	59
-118	Edgar Mueller	MID	FCZ	34	0	1403	1		118	Jannis Salzwedel	DEF	AKE	34	34	2957	1		118	Diedrich Wörner	MID	TUS	34	34	2857	6.8		118	Christoph GROß	FWD	M95	34	0	1556	18		118	Philipp Aleshire	DEF	TUS	30	6	1522	59
-119	Ottmar Fertig	MID	KOL	34	34	2700	1		119	August Herberts	MID	AKE	34	34	2460	1		119	Bastiaan Bachmann	MID	STP	34	34	2936	6.8		119	Baptist Gerber	FWD	RWE	34	0	1534	18		119	Helge Schwarz	MID	RWE	34	0	1241	58
-120	Karl Mann	MID	KOL	34	6	1481	1		120	Klaas Vieth	FWD	AKE	34	34	1583	1		120	Andi Latte	GK	RWE	34	34	3060	6.8		120	André Gensch	MID	LSV	31	31	2552	17		120	Reinhard Walkenhorst	MID	SSC	34	34	2632	58
-									121	Michi Häusler	MID	BER	34	6	1491	1		121	Arjan Van Kan	DEF	RWE	34	34	2955	6.8		121	Micha Siegert	MID	FCZ	34	34	2704	17		121	Gert Mendel	MID	KOL	33	33	2658	57
-									122	Hans-Günter Blumenthal	DEF	BER	34	34	2973	1		122	Funske Fischer	DEF	RWE	34	34	2823	6.8		122	Eberhard Mohren	MID	UKB	34	3	1409	16		122	Herman Krusen	MID	KOL	34	34	2769	57
-									123	Kobus Van Rompaey	MID	EYN	34	34	3006	1		123	Patrick Königsmann	MID	RWE	34	34	2846	6.8		123	Gustav Beyer	MID	RBZ	34	0	1620	16		123	Dan Fiedler	DEF	KOL	34	34	2564	57
-									124	Joost Yonker	FWD	EYN	34	34	2279	1		124	Gebhard Fabel	GK	MAI	34	34	3060	6.8		124	Herman Krusen	MID	KOL	34	34	2769	16		124	Korbinian Fürst	DEF	LSV	34	34	3060	56
-									125	Lorenz Reier	DEF	SFF	34	34	2919	1		125	Michi Messer	MID	MAI	34	34	2754	6.8		125	Günther Kron	FWD	SFF	34	34	2172	16		125	Wolf Claasen	DEF	KOL	34	34	2704	55
-									126	Joachim Giese	MID	SFF	34	34	2930	1		126	Konstanty Krall	MID	DSC	34	34	2885	6.8		126	Wide Anjema	DEF	GRU	34	34	3060	15		126	Chris Mounce	MID	BER	34	34	2962	51
-									127	Christof Dunst	FWD	RBZ	34	34	2305	1		127	Finn Hartmann	DEF	FCZ	34	34	2910	6.8		127	Karl Schreier	DEF	LSV	34	34	3003	14		127	Atse Antuma	MID	GRU	34	34	2813	51
-									128	Karl Schreier	DEF	LSV	34	34	3003	1		128	Valentin Papp	DEF	FCZ	34	34	2855	6.8		128	Finn Hartmann	DEF	FCZ	34	34	2910	14		128	Johann Baptist Kühn	MID	STP	34	34	2543	51
-									129	Gustav Freudenberger	DEF	LSV	34	34	2858	1		129	Jakob Brune	MID	FCZ	34	34	2658	6.8		129	Fredy Szwarc	DEF	UKB	34	34	2985	14		129	Laurens Borchard	DEF	STP	34	34	2864	51
-									130	Detlev Bachmann	FWD	LSV	34	34	2130	1		130	Ronald Werner	MID	FCZ	34	34	2745	6.8		130	Lorenz Reier	DEF	SFF	34	34	2919	14		130	Klaus-Peter Denzel	MID	UKB	34	34	2704	50
-									131	Siegbert Hahn	FWD	LSV	34	34	2135	1		131	Hans Günter Weiss	FWD	FCZ	34	34	1921	6.8		131	Gustav Freudenberger	DEF	LSV	34	34	2858	14		131	Ulrich Kranz	MID	SFF	34	34	2764	50
-									132	Eugen Kurzmann	DEF	SAA	34	34	2985	1		132	Wouter De Veen	FWD	KOL	34	0	1415	6.8		132	Frank GROßEL	FWD	MAI	33	0	1553	14		132	Paul Wanger	MID	FCZ	34	34	2772	50
-									133	Hermann Raimund Behrends	DEF	SAA	34	3	1423	1		133	Hartwig Holland	DEF	SSC	34	34	2970	6.8		133	Helge Schwarz	MID	RWE	34	0	1241	13		133	Bastiaan Bachmann	MID	STP	34	34	2936	49
-									134	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	1		134	Benjamin Jöllenbeck	MID	SSC	13	0	555	6.7		134	Edgar Mueller	MID	FCZ	34	0	1403	13		134	Feliks Slezák	MID	DSC	34	34	1924	49
-									135	Émilien WEIß	MID	SAA	34	34	2736	1		135	Konstanty Michael	MID	DSC	27	27	2170	6.7		135	Wigbert Baanders	MID	KOL	34	34	2929	13		135	Alfons Assendorp	DEF	GRU	31	8	1684	47
-									136	Freddy Steuben	DEF	M95	34	34	2941	1		136	Ale Aukema	DEF	GRU	28	28	2472	6.7		136	Maxi Ernst	FWD	LSV	34	0	1003	13		136	Ottmar Fertig	MID	KOL	34	34	2700	46
-									137	Frederick Schwarzenegger	MID	M95	34	34	3060	1		137	Dieter Wendel	DEF	TUS	28	28	2439	6.7		137	Klaus Essert	DEF	UKB	34	34	2896	12		137	Lodewijk Swango	DEF	SSC	23	0	1011	46
-									138	Stephan Shriver	MID	M95	34	4	1527	1		138	Roan Habich	FWD	STP	30	0	1044	6.7		138	Achim Armbrüster	DEF	RBZ	34	34	2876	12		138	Silvester Gehring	MID	BER	28	28	2435	45
-									139	Wilhelm Teufel	DEF	M95	34	34	2920	1		139	Ernst Oberst	DEF	AKE	31	0	1369	6.7		139	Jens Aubert Habicht	DEF	SAA	34	34	3008	12		139	Hans Günther Dirks	MID	LSV	32	32	2553	45
-									140	Tjaard Hartman	MID	GRU	34	1	1514	1		140	Willibald Otto	MID	UKB	31	31	2499	6.7		140	Adriaan Romijn	MID	GRU	12	0	506	12		140	Dieter Saller	MID	RBZ	34	34	3060	45
-									141	Ernst Colijn	FWD	GRU	34	34	1889	1		141	Arno Janson	DEF	RBZ	31	31	2696	6.7		141	Silvan Schuchard	DEF	FCZ	34	34	2931	11		141	Ottmar Van Bokhoven	MID	STP	34	34	2516	45
-									142	Georg Kron	DEF	TUS	34	34	2890	1		142	Ulli Lafrentz	DEF	RBZ	31	3	1567	6.7		142	Gerd Hoover	DEF	SSC	34	34	2941	11		142	Edgar Christian	DEF	UKB	28	0	1042	45
-									143	Dennis Ohme	MID	TUS	34	34	3006	1		143	Egon Hochberg	DEF	M95	31	0	1275	6.7		143	Hans-Günter Blumenthal	DEF	BER	34	34	2973	11		143	Adi Maurer	MID	BER	34	34	2432	43
-									144	Laurenz Franz	MID	TUS	34	34	3002	1		144	Hans Günther Dirks	MID	LSV	32	32	2553	6.7		144	Albert Daalman	DEF	STP	34	34	2661	11		144	Baptist Baumer	MID	UKB	34	34	2875	43
-									145	Burkhard Unruh	FWD	TUS	34	0	1455	1		145	Benedikt Scherer	FWD	BER	33	0	1290	6.7		145	Laurens Borchard	DEF	STP	34	34	2864	11		145	Willibald Otto	MID	UKB	31	31	2499	43
-									146	Rudi Garber	FWD	TUS	34	34	1814	1		146	Wessel Achterkamp	MID	GRU	33	33	2835	6.7		146	Michi Häusler	MID	BER	34	6	1491	11		146	Armin Weiner	MID	SAA	34	34	2612	43
-									147	Gregor Laurenz	DEF	TUS	34	34	2985	1		147	Jannis Salzwedel	DEF	AKE	34	34	2957	6.7		147	Stephan Shriver	MID	M95	34	4	1527	11		147	Wessel Achterkamp	MID	GRU	33	33	2835	42
-									148	Albert Daalman	DEF	STP	34	34	2661	1		148	Hans-Günter Blumenthal	DEF	BER	34	34	2973	6.7		148	Korbinian Groot	DEF	RWE	34	34	3006	10		148	Stefanus Van Hautum	MID	STP	34	34	2865	42
-									149	Laurens Borchard	DEF	STP	34	34	2864	1		149	John Marquering	DEF	EYN	34	34	2843	6.7		149	Christoph Kasprzak	DEF	DSC	34	34	2974	10		149	Roger Fried	FWD	RWE	34	34	2779	41
-									150	Gabriël Appelhof	MID	STP	34	0	1235	1		150	Wieland Voll	DEF	UKB	34	34	2975	6.7		150	John Marquering	DEF	EYN	34	34	2843	10		150	Leo Erkens	FWD	EYN	34	34	1765	41
-									151	Ottmar Van Bokhoven	MID	STP	34	34	2516	1		151	Georg Geisler	DEF	UKB	34	34	2996	6.7		151	Jip Reijnders	DEF	GRU	34	34	2884	10		151	Niko Meyers	MID	MAI	34	6	1722	41
-									152	Youri Van Schoorl	FWD	STP	34	34	2115	1		152	Roland Ziegler	FWD	UKB	34	34	2462	6.7		152	Dan Fiedler	DEF	KOL	34	34	2564	10		152	Elbert Asjes	MID	GRU	34	34	2684	40
-									153	Dierk Achilles	MID	STP	34	34	2715	1		153	Baptist Baumer	MID	UKB	34	34	2875	6.7		153	Silas Nussbaum	MID	FCZ	13	0	461	10		153	Jörg Bachman	MID	TUS	34	3	1417	39
-									154	Arjan Van Kan	DEF	RWE	34	34	2955	1		154	Heinrich Eichel	DEF	SFF	34	34	3000	6.7		154	Jacob Dohman	MID	AKE	34	4	1661	10		154	Veit Laurenz	MID	SSC	34	1	1678	39
-									155	Funske Fischer	DEF	RWE	34	34	2823	1		155	Justus Janz	MID	SFF	34	34	3020	6.7		155	Joachim Giese	MID	SFF	34	34	2930	10		155	Konstanty Michael	MID	DSC	27	27	2170	38
-									156	Patrick Königsmann	MID	RWE	34	34	2846	1		156	Joachim Giese	MID	SFF	34	34	2930	6.7		156	Gabriël Appelhof	MID	STP	34	0	1235	10		156	André Gensch	MID	LSV	31	31	2552	38
-									157	Roger Fried	FWD	RWE	34	34	2779	1		157	Ulrich Kranz	MID	SFF	34	34	2764	6.7		157	Ale Aukema	DEF	GRU	28	28	2472	9		157	Raimund Ebner	MID	BER	34	34	2770	38
-									158	Kay Sorge	FWD	RWE	34	34	1820	1		158	Jörg Wörner	MID	RBZ	34	34	3009	6.7		158	Peter Schneiders	DEF	AKE	34	34	3060	9		158	Wolfhard Rosenberger	FWD	AKE	34	0	1716	37
-									159	Dietrich Manz	DEF	MAI	34	34	2927	1		159	Ingolf Schnur	FWD	RBZ	34	0	1697	6.7		159	Jo Teufel	DEF	LSV	34	34	3042	9		159	Jonasz Rybář	MID	DSC	31	3	1453	36
-									160	Knut Kruse	DEF	MAI	34	34	3006	1		160	Christof Dunst	FWD	RBZ	34	34	2305	6.7		160	Korbinian Fürst	DEF	LSV	34	34	3060	9		160	Kay Sorge	FWD	RWE	34	34	1820	35
-									161	Marvin Simonis	MID	MAI	34	34	2678	1		161	Gustav Freudenberger	DEF	LSV	34	34	2858	6.7		161	Freddy Steuben	DEF	M95	34	34	2941	9		161	Gerhard Süss	FWD	RBZ	34	34	1432	35
-									162	Michi Messer	MID	MAI	34	34	2754	1		162	Finn Adenauer	MID	LSV	34	34	2977	6.7		162	Wolf Claasen	DEF	KOL	34	34	2704	9		162	Eberhard Mohren	MID	UKB	34	3	1409	35
-									163	Otokar Kunz	DEF	DSC	34	34	3000	1		163	Gabriel Siebert	MID	SAA	34	34	2928	6.7		163	Uwe Böhmer	DEF	SSC	34	34	2985	9		163	Stephan Shriver	MID	M95	34	4	1527	35
-									164	Micha Siegert	MID	FCZ	34	34	2704	1		164	Heike Nagel	DEF	M95	34	34	3060	6.7		164	Ulli Lafrentz	DEF	RBZ	31	3	1567	9		164	Gerhardt Schlender	FWD	MAI	34	34	1802	34
-									165	Wolf Claasen	DEF	KOL	34	34	2704	1		165	Frederick Schwarzenegger	MID	M95	34	34	3060	6.7		165	Marco Von Ingersleben	DEF	BER	34	34	2978	9		165	Zbyšek Löwe	MID	DSC	33	10	1901	34
-									166	Klaus Aldenkamp	DEF	KOL	34	34	3023	1		166	Christoph GROß	FWD	M95	34	0	1556	6.7		166	Knut Schrum	DEF	EYN	34	34	3000	9		166	Gustav Beyer	MID	RBZ	34	0	1620	34
-									167	Wouter De Veen	FWD	KOL	34	0	1415	1		167	Ime Aartsen	FWD	GRU	34	34	2117	6.7		167	Hannes Bauers	MID	M95	7	0	254	9		167	Finn Adenauer	MID	LSV	34	34	2977	33
-									168	Wigbert Baanders	MID	KOL	34	34	2929	1		168	Arjen Paulis	FWD	GRU	34	34	1876	6.7		168	Sjeng Wang	MID	KOL	21	0	707	9		168	Erik Haase	MID	KOL	29	29	1978	32
-									169	Veit Laurenz	MID	SSC	34	1	1678	1		169	Dennis Ohme	MID	TUS	34	34	3006	6.7		169	Ivo De Brujin	MID	STP	22	0	576	9		169	Karl Mann	MID	KOL	34	6	1481	32
-									170	Sebastian Überseher	FWD	SSC	34	34	2159	1		170	Laurenz Franz	MID	TUS	34	34	3002	6.7		170	Gregor Laurenz	DEF	TUS	34	34	2985	8		170	Klaas Vieth	FWD	AKE	34	34	1583	31
-																		171	Burkhard Unruh	FWD	TUS	34	0	1455	6.7		171	Dieter Wendel	DEF	TUS	28	28	2439	7		171	Frenske Van Agteren	FWD	RWE	34	34	1804	31
-																		172	Gregor Laurenz	DEF	TUS	34	34	2985	6.7		172	Wieland Voll	DEF	UKB	34	34	2975	7		172	Franz Zimmermann	DEF	FCZ	25	3	1232	31
-																		173	Johann Baptist Kühn	MID	STP	34	34	2543	6.7		173	Arjan Van Kan	DEF	RWE	34	34	2955	7		173	Horst Fürst	FWD	AKE	34	34	1705	30
-																		174	Ottmar Van Bokhoven	MID	STP	34	34	2516	6.7		174	Filip Jundt	DEF	DSC	34	34	3060	7		174	Edgar Mueller	MID	FCZ	34	0	1403	30
-																		175	Dierk Achilles	MID	STP	34	34	2715	6.7		175	Jannis Salzwedel	DEF	AKE	34	34	2957	7		175	Jonatan Feld	FWD	DSC	34	34	1629	29
-																		176	Korbinian Groot	DEF	RWE	34	34	3006	6.7		176	Mario Ahner	DEF	EYN	34	34	2905	7		176	Jannis Derichs	FWD	UKB	34	34	2199	29
-																		177	Baptist Gerber	FWD	RWE	34	0	1534	6.7		177	Hermann Raimund Behrends	DEF	SAA	34	3	1423	7		177	Gunther Berg	DEF	SFF	32	0	894	29
-																		178	Frenske Van Agteren	FWD	RWE	34	34	1804	6.7		178	Nicolaus Unruh	DEF	STP	34	34	2947	7		178	Gero Wild	FWD	SFF	34	34	2309	28
-																		179	Knut Kruse	DEF	MAI	34	34	3006	6.7		179	Otokar Kunz	DEF	DSC	34	34	3000	7		179	Fabian Schüler	FWD	RBZ	34	34	1951	28
-																		180	Marvin Simonis	MID	MAI	34	34	2678	6.7		180	Klaus Aldenkamp	DEF	KOL	34	34	3023	7		180	Arjen Paulis	FWD	GRU	34	34	1876	27
-																		181	Felix Albrecht	FWD	MAI	34	34	1922	6.7		181	Bastian Reier	MID	AKE	7	0	316	7		181	Youri Van Schoorl	FWD	STP	34	34	2115	27
-																		182	Gerhardt Schlender	FWD	MAI	34	34	1802	6.7		182	Raimund Ebner	MID	BER	34	34	2770	7		182	Gabriël Appelhof	MID	STP	34	0	1235	27
-																		183	Eckhart Schnyder	DEF	DSC	34	34	3004	6.7		183	Dieter Saller	MID	RBZ	34	34	3060	7		183	Henning Bischoffs	DEF	BER	30	0	1196	27
-																		184	Filip Jundt	DEF	DSC	34	34	3060	6.7		184	Hadrien Paul	MID	SAA	34	0	1137	7		184	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	26
-																		185	Micha Siegert	MID	FCZ	34	34	2704	6.7		185	Helmar Knepp	MID	M95	34	34	3008	7		185	Hadrien Paul	MID	SAA	34	0	1137	26
-																		186	Rudolf Schmeling	FWD	FCZ	34	34	1997	6.7		186	Jörg Bachman	MID	TUS	34	3	1417	7		186	Rudi Garber	FWD	TUS	34	34	1814	25
-																		187	Nico Krause	DEF	KOL	34	34	2937	6.7		187	Jürg Gottlieb	DEF	AKE	34	34	2557	6		187	Dennis Junge	FWD	RWE	34	34	2744	25
-																		188	Ottmar Fertig	MID	KOL	34	34	2700	6.7		188	Tjaard De Vos	DEF	STP	34	34	2953	6		188	Jannis Leverenz	FWD	M95	34	34	1657	25
-																		189	Veit Laurenz	MID	SSC	34	1	1678	6.7		189	Lenz Schmidt	MID	TUS	10	0	380	6		189	Adrian Sorge	FWD	BER	34	34	2032	24
-																		190	Ueli Garb	FWD	SSC	34	34	2057	6.7		190	Siegbert Siemon	DEF	FCZ	31	31	2503	5		190	Felix Albrecht	FWD	MAI	34	34	1922	24
-																		191	Timo Spitznagel	DEF	STP	16	0	630	6.6		191	Ime Reynders	DEF	GRU	32	32	2702	5		191	Edgar Gold	FWD	KOL	34	34	1898	24
-																		192	Sjeng Wang	MID	KOL	21	0	707	6.6		192	Sören Kundert	DEF	SFF	34	34	2953	5		192	Baptist Gerber	FWD	RWE	34	0	1534	24
-																		193	Lodewijk Swango	DEF	SSC	23	0	1011	6.6		193	Thorben Arbeit	DEF	RBZ	34	34	3012	5		193	Norbert Steinbrück	MID	MAI	18	0	793	24
-																		194	Franz Zimmermann	DEF	FCZ	25	3	1232	6.6		194	Heike Nagel	DEF	M95	34	34	3060	5		194	Šimon Wirt	DEF	DSC	12	0	542	24
-																		195	Edgar Christian	DEF	UKB	28	0	1042	6.6		195	Eckhart Schnyder	DEF	DSC	34	34	3004	5		195	Christoph GROß	FWD	M95	34	0	1556	23
-																		196	Sieghard Schnoor	DEF	RWE	28	0	1095	6.6		196	Dick Heymans	DEF	EYN	28	0	1405	5		196	Tjaard Hartman	MID	GRU	34	1	1514	23
-																		197	Philipp Aleshire	DEF	TUS	30	6	1522	6.6		197	Alfons Haan	DEF	EYN	34	34	2793	5		197	Johannes Wolter	DEF	LSV	32	0	893	23
-																		198	Stéphane Klassen	FWD	SAA	31	0	1183	6.6		198	Wolfgang Weimann	DEF	SFF	34	34	2872	5		198	David Zimmermann	FWD	M95	34	34	1619	22
-																		199	Alwin Kunz	FWD	SFF	33	0	867	6.6		199	Eugen Kurzmann	DEF	SAA	34	34	2985	5		199	Timo Spitznagel	DEF	STP	16	0	630	22
-																		200	Frank GROßEL	FWD	MAI	33	0	1553	6.6		200	Dagobert Amsel	DEF	TUS	34	34	2689	5		200	Roland Ziegler	FWD	UKB	34	34	2462	21
-																		201	Gregor Krämer	MID	MAI	33	33	2693	6.6		201	Dietrich Manz	DEF	MAI	34	34	2927	5		201	Sebastian Überseher	FWD	SSC	34	34	2159	21
-																		202	Zbyšek Löwe	MID	DSC	33	10	1901	6.6		202	Knut Kruse	DEF	MAI	34	34	3006	5		202	Joost Yonker	FWD	EYN	34	34	2279	21
-																		203	Jacob Dohman	MID	AKE	34	4	1661	6.6		203	Nico Krause	DEF	KOL	34	34	2937	5		203	Ueli Garb	FWD	SSC	34	34	2057	21
-																		204	Michi Häusler	MID	BER	34	6	1491	6.6		204	Tim Schuchard	DEF	MAI	26	3	1267	4		204	Günther Kron	FWD	SFF	34	34	2172	20
-																		205	Raimund Ebner	MID	BER	34	34	2770	6.6		205	Ruben Hiedler	DEF	AKE	34	34	2930	4		205	Christof Dunst	FWD	RBZ	34	34	2305	20
-																		206	Eberhard Mohren	MID	UKB	34	3	1409	6.6		206	Hermann Sulzbach	DEF	BER	34	34	2847	4		206	Siegbert Hahn	FWD	LSV	34	34	2135	20
-																		207	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	6.6		207	Stephan Lewerenz	DEF	SFF	34	34	3044	4		207	Michi Häusler	MID	BER	34	6	1491	20
-																		208	Wolfgang Weimann	DEF	SFF	34	34	2872	6.6		208	Hilaire Adam	DEF	SAA	34	34	2933	4		208	Ingolf Schnur	FWD	RBZ	34	0	1697	19
-																		209	Gustav Beyer	MID	RBZ	34	0	1620	6.6		209	Gottfried Pahlke	DEF	SSC	34	34	2976	4		209	Izaäk Coenen	FWD	EYN	32	0	1639	19
-																		210	Dieter Saller	MID	RBZ	34	34	3060	6.6		210	Theun Seelen	MID	EYN	4	0	200	4		210	Norbert Diefenbach	FWD	SSC	34	34	2059	19
-																		211	Jo Teufel	DEF	LSV	34	34	3042	6.6		211	Kaspar Weiner	MID	BER	11	0	334	4		211	Wit Szweda	FWD	DSC	33	0	1524	18
-																		212	Zacharie Gerst	DEF	SAA	34	34	2907	6.6		212	Norbert Steinbrück	MID	MAI	18	0	793	4		212	Kerneels Jansink	FWD	EYN	34	34	1733	18
-																		213	Hilaire Adam	DEF	SAA	34	34	2933	6.6		213	Mathias Protz	MID	LSV	27	5	982	4		213	Malte Schroeder	FWD	BER	34	34	1903	17
-																		214	Armin Weiner	MID	SAA	34	34	2612	6.6		214	Niko Meyers	MID	MAI	34	6	1722	4		214	Knut Van Der Laan	DEF	KOL	19	0	700	17
-																		215	Hermann Raimund Behrends	DEF	SAA	34	3	1423	6.6		215	Alwin Kunz	FWD	SFF	33	0	867	4		215	Frank GROßEL	FWD	MAI	33	0	1553	16
-																		216	Émilien WEIß	MID	SAA	34	34	2736	6.6		216	Tilman Westenberg	GK	BER	34	34	3060	4		216	Philipp Hoffmann	FWD	TUS	34	34	1795	16
-																		217	Konstantin Rose	GK	M95	34	34	3060	6.6		217	Ullrich Riecht	GK	GRU	34	34	3060	4		217	Gereon Hölzer	FWD	UKB	34	34	1940	16
-																		218	Helmar Knepp	MID	M95	34	34	3008	6.6		218	Jan Itor	GK	STP	34	34	3060	4		218	Roan Habich	FWD	STP	30	0	1044	15
-																		219	Stephan Shriver	MID	M95	34	4	1527	6.6		219	Lex Hofwegen	GK	KOL	34	34	3060	4		219	Rudolf Schmeling	FWD	FCZ	34	34	1997	15
-																		220	Elbert Asjes	MID	GRU	34	34	2684	6.6		220	Henning Bischoffs	DEF	BER	30	0	1196	3		220	Wouter De Veen	FWD	KOL	34	0	1415	15
-																		221	Jörg Bachman	MID	TUS	34	3	1417	6.6		221	Philipp Aleshire	DEF	TUS	30	6	1522	3		221	Ties Meeuwsen	FWD	GRU	33	0	1553	15
-																		222	Albert Daalman	DEF	STP	34	34	2661	6.6		222	Arno Janson	DEF	RBZ	31	31	2696	3		222	Ime Aartsen	FWD	GRU	34	34	2117	15
-																		223	Stefanus Van Hautum	MID	STP	34	34	2865	6.6		223	Johannes Wolter	DEF	LSV	32	0	893	3		223	Bart Carl	FWD	SSC	33	0	1494	14
-																		224	Roger Fried	FWD	RWE	34	34	2779	6.6		224	Zacharie Gerst	DEF	SAA	34	34	2907	3		224	Detlev Bachmann	FWD	LSV	34	34	2130	14
-																		225	Helge Schwarz	MID	RWE	34	0	1241	6.6		225	Bertram Kiefer	DEF	M95	34	34	2740	3		225	Sjeng Wang	MID	KOL	21	0	707	14
-																		226	Dennis Junge	FWD	RWE	34	34	2744	6.6		226	Till Metz	DEF	RWE	34	34	2848	3		226	Mathias Protz	MID	LSV	27	5	982	14
-																		227	Otokar Kunz	DEF	DSC	34	34	3000	6.6		227	Valentin Papp	DEF	FCZ	34	34	2855	3		227	Ernst Colijn	FWD	GRU	34	34	1889	13
-																		228	Silvan Schuchard	DEF	FCZ	34	34	2931	6.6		228	Franz Zimmermann	DEF	FCZ	25	3	1232	3		228	Burkhard Unruh	FWD	TUS	34	0	1455	12
-																		229	Edgar Mueller	MID	FCZ	34	0	1403	6.6		229	Ernst Oberst	DEF	AKE	31	0	1369	3		229	Lenz Schmidt	MID	TUS	10	0	380	12
-																		230	Wolf Claasen	DEF	KOL	34	34	2704	6.6		230	Egon Hochberg	DEF	M95	31	0	1275	3		230	Ivo De Brujin	MID	STP	22	0	576	12
-																		231	Wigbert Baanders	MID	KOL	34	34	2929	6.6		231	Alfons Assendorp	DEF	GRU	31	8	1684	3		231	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	11
-																		232	Karl Mann	MID	KOL	34	6	1481	6.6		232	Heinrich Eichel	DEF	SFF	34	34	3000	3		232	Edmund Melsbach	FWD	SAA	34	34	2144	11
-																		233	Dan Fiedler	DEF	KOL	34	34	2564	6.6		233	Konstantin Pfaff	DEF	LSV	34	34	3021	3		233	Hans Günter Weiss	FWD	FCZ	34	34	1921	11
-																		234	Herman Krusen	MID	KOL	34	34	2769	6.6		234	Georg Kron	DEF	TUS	34	34	2890	3		234	Tilo Hoedemaker	MID	RWE	6	0	215	11
-																		235	Norbert Steinbrück	MID	MAI	18	0	793	6.4		235	Funske Fischer	DEF	RWE	34	34	2823	3		235	Hannes Bauers	MID	M95	7	0	254	11
-																		236	Ivo De Brujin	MID	STP	22	0	576	6.4		236	Freddy Käufer	DEF	MAI	34	34	2739	3		236	Adriaan Romijn	MID	GRU	12	0	506	11
-																		237	Mathias Protz	MID	LSV	27	5	982	6.4		237	Guntram Wörnhör	MID	UKB	9	0	314	3		237	Jonathan Meier	MID	SFF	33	0	691	11
-																		238	Henning Bischoffs	DEF	BER	30	0	1196	6.4		238	Benjamin Jöllenbeck	MID	SSC	13	0	555	3		238	Benedikt Scherer	FWD	BER	33	0	1290	10
-																		239	André Gensch	MID	LSV	31	31	2552	6.4		239	Lodewijk Swango	DEF	SSC	23	0	1011	2		239	Ronald Heinrich	FWD	FCZ	33	0	1487	10
-																		240	Alfons Assendorp	DEF	GRU	31	8	1684	6.4		240	Šimon Wirt	DEF	DSC	12	0	542	1		240	Benjamin Jöllenbeck	MID	SSC	13	0	555	10
-																		241	Gunther Berg	DEF	SFF	32	0	894	6.4		241	Timo Spitznagel	DEF	STP	16	0	630	1		241	Stéphane Klassen	FWD	SAA	31	0	1183	9
-																		242	Johannes Wolter	DEF	LSV	32	0	893	6.4		242	Sieghard Schnoor	DEF	RWE	28	0	1095	1		242	Toussaint Jessy Guérin	MID	SAA	6	0	213	7
-																		243	Jonathan Meier	MID	SFF	33	0	691	6.4		243	Thaddäus Rothenberg	DEF	BER	34	34	2919	1		243	Bastian Reier	MID	AKE	7	0	316	7
-																		244	Ronald Heinrich	FWD	FCZ	33	0	1487	6.4		244	Georg Geisler	DEF	UKB	34	34	2996	1		244	Guntram Wörnhör	MID	UKB	9	0	314	7
-																		245	Joost Yonker	FWD	EYN	34	34	2279	6.4		245	Wilhelm Teufel	DEF	M95	34	34	2920	1		245	Eric Köhler	GK	AKE	34	34	3060	7
-																		246	Karl Schreier	DEF	LSV	34	34	3003	6.4		246	Hartwig Holland	DEF	SSC	34	34	2970	1		246	Andi Latte	GK	RWE	34	34	3060	7
-																		247	Korbinian Fürst	DEF	LSV	34	34	3060	6.4		247	Dan Thälmann	MID	RBZ	6	0	260	1		247	Alwin Kunz	FWD	SFF	33	0	867	6
-																		248	Jens Aubert Habicht	DEF	SAA	34	34	3008	6.4		248	Toussaint Jessy Guérin	MID	SAA	6	0	213	1		248	Kaspar Weiner	MID	BER	11	0	334	6
-																		249	Hadrien Paul	MID	SAA	34	0	1137	6.4		249	Bertram Lehmann	MID	LSV	14	0	322	1		249	Silas Nussbaum	MID	FCZ	13	0	461	6
-																		250	Tjaard Hartman	MID	GRU	34	1	1514	6.4		250	Knut Van Der Laan	DEF	KOL	19	0	700	1		250	Theun Seelen	MID	EYN	4	0	200	5
-																		251	Laurens Borchard	DEF	STP	34	34	2864	6.4		251	Edgar Christian	DEF	UKB	28	0	1042	1		251	Bertram Lehmann	MID	LSV	14	0	322	5
-																		252	Gabriël Appelhof	MID	STP	34	0	1235	6.4											252	Maxi Ernst	FWD	LSV	34	0	1003	4
-																		253	Niko Meyers	MID	MAI	34	6	1722	6.4											253	Johann Talon	GK	SSC	34	34	3060	4
-																		254	Sebastian Überseher	FWD	SSC	34	34	2159	6.4											254	Dan Thälmann	MID	RBZ	6	0	260	3
-																		255	Knut Van Der Laan	DEF	KOL	19	0	700	6.3											255	Axel Schweiß	GK	EYN	34	34	3060	2
-																		256	Maxi Ernst	FWD	LSV	34	0	1003	6.3											256	Volker Racho	GK	UKB	34	34	3060	2
-																		257	Kerneels Jansink	FWD	EYN	34	34	1733	6.2											257	Artur KRAUß	GK	RBZ	34	34	3060	2
-																		258	Bastian Reier	MID	AKE	7	0	316	6.7											258	Reiner Schiss	GK	SAA	34	34	3060	2
-																		259	Kaspar Weiner	MID	BER	11	0	334	6.6											259	Ullrich Riecht	GK	GRU	34	34	3060	2
-																		260	Hannes Bauers	MID	M95	7	0	254	6.6											260	Gebhard Fabel	GK	MAI	34	34	3060	2
-																		261	Adriaan Romijn	MID	GRU	12	0	506	6.6
-																		262	Dan Thälmann	MID	RBZ	6	0	260	6.6
-																		263	Theun Seelen	MID	EYN	4	0	200	6.6
-																		264	Tilo Hoedemaker	MID	RWE	6	0	215	6.4
-																		265	Bertram Lehmann	MID	LSV	14	0	322	6.4
-																		266	Silas Nussbaum	MID	FCZ	13	0	461	6.4
-																		267	Lenz Schmidt	MID	TUS	10	0	380	6.4
-																		268	Guntram Wörnhör	MID	UKB	9	0	314	6.4
-																		269	Toussaint Jessy Guérin	MID	SAA	6	0	213	6.4
-																		270	Jens Beckers	MID	SFF	1	0	18	6.3
+1	Adrian Sorge	FWD	BER	34	34	2032	22		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	19		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	7.8		1	Immanuel Hasenkamp	MID	RBZ	34	34	2188	116		1	Stephan Lewerenz	DEF	SFF	34	34	3044	192		1	Theodor Berger	GK	SFF	34	34	3060	212
+2	Ernst Colijn	FWD	GRU	34	34	1889	20		2	Riny Maas	MID	EYN	34	34	2644	15		2	Adrian Sorge	FWD	BER	34	34	2032	7.7		2	Adi Maurer	MID	BER	34	34	2432	82		2	Till Metz	DEF	RWE	34	34	2848	189		2	Lex Hofwegen	GK	KOL	34	34	3060	152
+3	Leo Erkens	FWD	EYN	34	34	1765	19		3	Adi Maurer	MID	BER	34	34	2432	11		3	Adi Maurer	MID	BER	34	34	2432	7.6		3	Norbert Diefenbach	FWD	SSC	34	34	2059	79		3	Sören Kundert	DEF	SFF	34	34	2953	179		3	Jan Itor	GK	STP	34	34	3060	150
+4	Jonatan Feld	FWD	DSC	34	34	1629	19		4	Atse Antuma	MID	GRU	34	34	2813	11		4	Arnošt Walther	MID	DSC	31	31	2026	7.4		4	Karl-Heinz Sorg	MID	M95	34	34	2541	76		4	Nicolaus Unruh	DEF	STP	34	34	2947	179		4	Andi Latte	GK	RWE	34	34	3060	146
+5	Gereon Hölzer	FWD	UKB	34	34	1940	15		5	Chris Mounce	MID	BER	34	34	2962	10		5	Heiner Appelhof	MID	SSC	33	33	2187	7.4		5	Reinhard Walkenhorst	MID	SSC	34	34	2632	76		5	Eugen Kurzmann	DEF	SAA	34	34	2985	178		5	Gebhard Fabel	GK	MAI	34	34	3060	140
+6	Fabian Schüler	FWD	RBZ	34	34	1951	15		6	Johann Baptist Kühn	MID	STP	34	34	2543	10		6	Leo Erkens	FWD	EYN	34	34	1765	7.4		6	Arnošt Walther	MID	DSC	31	31	2026	73		6	Freddy Käufer	DEF	MAI	34	34	2739	165		6	Gerd Rochen	GK	FCZ	34	34	3060	138
+7	Youri Van Schoorl	FWD	STP	34	34	2115	15		7	Arnošt Walther	MID	DSC	31	31	2026	9		7	Jonatan Feld	FWD	DSC	34	34	1629	7.4		7	Heiner Appelhof	MID	SSC	33	33	2187	69		7	Jürg Gottlieb	DEF	AKE	34	34	2557	159		7	Alexander Haas	GK	LSV	34	34	3060	135
+8	Edgar Gold	FWD	KOL	34	34	1898	15		8	Hans Günther Dirks	MID	LSV	32	32	2553	7		8	Karl-Heinz Sorg	MID	M95	34	34	2541	7.4		8	Ronald Werner	MID	FCZ	34	34	2745	66		8	Tjaard De Vos	DEF	STP	34	34	2953	158		8	Reiner Schiss	GK	SAA	34	34	3060	135
+9	Gerhard Süss	FWD	RBZ	34	34	1432	14		9	Gregor Krämer	MID	MAI	33	33	2693	7		9	Feliks Slezák	MID	DSC	34	34	1924	7.4		9	Edgar Gold	FWD	KOL	34	34	1898	65		9	Immanuel Hasenkamp	MID	RBZ	34	34	2188	154		9	Tilman Westenberg	GK	BER	34	34	3060	129
+10	Izaäk Coenen	FWD	EYN	32	0	1639	13		10	Karl-Heinz Sorg	MID	M95	34	34	2541	7		10	Gerd Rochen	GK	FCZ	34	34	3060	7.4		10	Jonatan Feld	FWD	DSC	34	34	1629	63		10	Peter Schneiders	DEF	AKE	34	34	3060	154		10	Konstantin Rose	GK	M95	34	34	3060	129
+11	Bart Carl	FWD	SSC	33	0	1494	13		11	Konstanty Krall	MID	DSC	34	34	2885	7		11	Joord Koeman	MID	SSC	34	34	2842	7.4		11	Joord Koeman	MID	SSC	34	34	2842	62		11	Dietrich Manz	DEF	MAI	34	34	2927	153		11	Peer Verser	GK	TUS	34	34	3060	125
+12	Norbert Diefenbach	FWD	SSC	34	34	2059	13		12	Joord Koeman	MID	SSC	34	34	2842	7		12	Eugen Kurzmann	DEF	SAA	34	34	2985	7.3		12	Izaäk Coenen	FWD	EYN	32	0	1639	59		12	Wilhelm Teufel	DEF	M95	34	34	2920	143		12	Volker Racho	GK	UKB	34	34	3060	116
+13	Jannis Leverenz	FWD	M95	34	34	1657	12		13	Alwin Duerr	MID	M95	30	30	2424	6		13	Klaus Essert	DEF	UKB	34	34	2896	7.3		13	Gerhard Süss	FWD	RBZ	34	34	1432	59		13	Arjan Van Kan	DEF	RWE	34	34	2955	143		13	Mateusz Hielder	GK	DSC	34	34	3060	112
+14	Rudi Garber	FWD	TUS	34	34	1814	12		14	Jules Wieck	DEF	SAA	31	31	2226	6		14	Sören Kundert	DEF	SFF	34	34	2953	7.3		14	Ronald Haanraats	MID	EYN	34	34	2659	57		14	Klaus Aldenkamp	DEF	KOL	34	34	3023	143		14	Ullrich Riecht	GK	GRU	34	34	3060	106
+15	Wouter De Veen	FWD	KOL	34	0	1415	12		15	Jonasz Rybář	MID	DSC	31	3	1453	6		15	Achim Armbrüster	DEF	RBZ	34	34	2876	7.3		15	Alwin Duerr	MID	M95	30	30	2424	56		15	Funske Fischer	DEF	RWE	34	34	2823	142		15	Johann Talon	GK	SSC	34	34	3060	99
+16	Wit Szweda	FWD	DSC	33	0	1524	11		16	Faas Wouters	MID	EYN	32	0	1577	6		16	Thorben Arbeit	DEF	RBZ	34	34	3012	7.3		16	Jannis Derichs	FWD	UKB	34	34	2199	56		16	Dagobert Amsel	DEF	TUS	34	34	2689	139		16	Eric Köhler	GK	AKE	34	34	3060	97
+17	Malte Schroeder	FWD	BER	34	34	1903	11		17	Gert Mendel	MID	KOL	33	33	2658	6		17	Tjaard De Vos	DEF	STP	34	34	2953	7.3		17	Gereon Hölzer	FWD	UKB	34	34	1940	56		17	Ruben Hiedler	DEF	AKE	34	34	2930	137		17	Artur KRAUß	GK	RBZ	34	34	3060	97
+18	David Zimmermann	FWD	M95	34	34	1619	11		18	Klaus-Peter Denzel	MID	UKB	34	34	2704	6		18	Alwin Duerr	MID	M95	30	30	2424	7.2		18	Ingolf Schnur	FWD	RBZ	34	0	1697	56		18	Knut Schrum	DEF	EYN	34	34	3000	134		18	Axel Schweiß	GK	EYN	34	34	3060	88
+19	Klaas Vieth	FWD	AKE	34	34	1583	10		19	Jörg Wörner	MID	RBZ	34	34	3009	6		19	Gereon Hölzer	FWD	UKB	34	34	1940	7.2		19	Riny Maas	MID	EYN	34	34	2644	55		19	Lorenz Reier	DEF	SFF	34	34	2919	130
+20	Günther Kron	FWD	SFF	34	34	2172	10		20	Diedrich Wörner	MID	TUS	34	34	2857	6		20	Edgar Gold	FWD	KOL	34	34	1898	7.2		20	Feliks Slezák	MID	DSC	34	34	1924	55		20	Heinrich Eichel	DEF	SFF	34	34	3000	128
+21	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	10		21	Bastiaan Bachmann	MID	STP	34	34	2936	6		21	Peter Schneiders	DEF	AKE	34	34	3060	7.2		21	Atse Antuma	MID	GRU	34	34	2813	53		21	Achim Armbrüster	DEF	RBZ	34	34	2876	128
+22	Philipp Hoffmann	FWD	TUS	34	34	1795	10		22	Norbert Diefenbach	FWD	SSC	34	34	2059	6		22	Ruben Hiedler	DEF	AKE	34	34	2930	7.2		22	Otto Baier	MID	TUS	31	31	2321	52		22	Georg Kron	DEF	TUS	34	34	2890	123
+23	Roan Habich	FWD	STP	30	0	1044	9		23	Otto Baier	MID	TUS	31	31	2321	5		23	August Herberts	MID	AKE	34	34	2460	7.2		23	Chris Mounce	MID	BER	34	34	2962	52		23	Konstantin Pfaff	DEF	LSV	34	34	3021	121
+24	Benedikt Scherer	FWD	BER	33	0	1290	9		24	Wessel Achterkamp	MID	GRU	33	33	2835	5		24	Jürg Gottlieb	DEF	AKE	34	34	2557	7.2		24	Leo Erkens	FWD	EYN	34	34	1765	52		24	Freddy Steuben	DEF	M95	34	34	2941	120
+25	Ties Meeuwsen	FWD	GRU	33	0	1553	9		25	Marco Von Ingersleben	DEF	BER	34	34	2978	5		25	Tilman Westenberg	GK	BER	34	34	3060	7.2		25	Wit Szweda	FWD	DSC	33	0	1524	50		25	Bertram Kiefer	DEF	M95	34	34	2740	120
+26	Siegbert Hahn	FWD	LSV	34	34	2135	9		26	Adrian Sorge	FWD	BER	34	34	2032	5		26	Riny Maas	MID	EYN	34	34	2644	7.2		26	Adrian Sorge	FWD	BER	34	34	2032	50		26	Gerhardt Rapp	DEF	MAI	31	31	2724	117
+27	Ime Aartsen	FWD	GRU	34	34	2117	9		27	Fredy Szwarc	DEF	UKB	34	34	2985	5		27	Ronald Haanraats	MID	EYN	34	34	2659	7.2		27	Roland Ziegler	FWD	UKB	34	34	2462	50		27	Nico Krause	DEF	KOL	34	34	2937	117
+28	Baptist Gerber	FWD	RWE	34	0	1534	9		28	Gereon Hölzer	FWD	UKB	34	34	1940	5		28	Volker Racho	GK	UKB	34	34	3060	7.2		28	Barend Andriessen	MID	AKE	34	34	3060	47		28	Wide Anjema	DEF	GRU	34	34	3060	116
+29	Rudolf Schmeling	FWD	FCZ	34	34	1997	9		29	Gerhard Süss	FWD	RBZ	34	34	1432	5		29	Artur KRAUß	GK	RBZ	34	34	3060	7.2		29	Klaus-Peter Denzel	MID	UKB	34	34	2704	47		29	Marvin Simonis	MID	MAI	34	34	2678	115
+30	Wolfhard Rosenberger	FWD	AKE	34	0	1716	8		30	Finn Adenauer	MID	LSV	34	34	2977	5		30	Peer Verser	GK	TUS	34	34	3060	7.2		30	Johann Baptist Kühn	MID	STP	34	34	2543	47		30	Klaus Essert	DEF	UKB	34	34	2896	115
+31	Christof Dunst	FWD	RBZ	34	34	2305	8		31	David Zimmermann	FWD	M95	34	34	1619	5		31	Jan Itor	GK	STP	34	34	3060	7.2		31	Bastiaan Bachmann	MID	STP	34	34	2936	47		31	Thorben Arbeit	DEF	RBZ	34	34	3012	115
+32	Detlev Bachmann	FWD	LSV	34	34	2130	8		32	Philipp Hoffmann	FWD	TUS	34	34	1795	5		32	Till Metz	DEF	RWE	34	34	2848	7.2		32	Horst Fürst	FWD	AKE	34	34	1705	47		32	Korbinian Groot	DEF	RWE	34	34	3006	109
+33	Edmund Melsbach	FWD	SAA	34	34	2144	8		33	Dennis Junge	FWD	RWE	34	34	2744	5		33	Mateusz Hielder	GK	DSC	34	34	3060	7.2		33	Klaas Vieth	FWD	AKE	34	34	1583	47		33	Wolfgang Weimann	DEF	SFF	34	34	2872	106
+34	Kay Sorge	FWD	RWE	34	34	1820	8		34	Feliks Slezák	MID	DSC	34	34	1924	5		34	Reinhard Walkenhorst	MID	SSC	34	34	2632	7.2		34	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	47		34	Uwe Böhmer	DEF	SSC	34	34	2985	106
+35	Felix Albrecht	FWD	MAI	34	34	1922	8		35	Jakob Brune	MID	FCZ	34	34	2658	5		35	Jules Wieck	DEF	SAA	31	31	2226	7.1		35	Ernst Colijn	FWD	GRU	34	34	1889	47		35	Jip Reijnders	DEF	GRU	34	34	2884	105
+36	Gerhardt Schlender	FWD	MAI	34	34	1802	8		36	Ronald Werner	MID	FCZ	34	34	2745	5		36	Gerhard Süss	FWD	RBZ	34	34	1432	7.1		36	Hans Günter Weiss	FWD	FCZ	34	34	1921	47		36	Knut Kruse	DEF	MAI	34	34	3006	105
+37	Feliks Slezák	MID	DSC	34	34	1924	8		37	Gerd Hoover	DEF	SSC	34	34	2941	5		37	Ernst Colijn	FWD	GRU	34	34	1889	7.1		37	Gert Mendel	MID	KOL	33	33	2658	46		37	Karl-Heinz Sorg	MID	M95	34	34	2541	103
+38	Frank GROßEL	FWD	MAI	33	0	1553	7		38	Reinhard Walkenhorst	MID	SSC	34	34	2632	5		38	Youri Van Schoorl	FWD	STP	34	34	2115	7.1		38	Diedrich Wörner	MID	TUS	34	34	2857	46		38	Gerd Hoover	DEF	SSC	34	34	2941	103
+39	Ingolf Schnur	FWD	RBZ	34	0	1697	7		39	Ueli Garb	FWD	SSC	34	34	2057	5		39	Hermann Sulzbach	DEF	BER	34	34	2847	7.1		39	Ottmar Fertig	MID	KOL	34	34	2700	46		39	Ronald Haanraats	MID	EYN	34	34	2659	101
+40	Christoph GROß	FWD	M95	34	0	1556	7		40	Konrad Rosenfeld	MID	MAI	29	29	1967	4		40	Theodor Berger	GK	SFF	34	34	3060	7.1		40	Silvester Gehring	MID	BER	28	28	2435	45		40	Finn Hartmann	DEF	FCZ	34	34	2910	101
+41	Burkhard Unruh	FWD	TUS	34	0	1455	7		41	Erik Haase	MID	KOL	29	29	1978	4		41	Stephan Lewerenz	DEF	SFF	34	34	3044	7.1		41	Gerlof Sitz	MID	AKE	34	34	2673	45		41	Gustav Freudenberger	DEF	LSV	34	34	2858	100
+42	Hans Günter Weiss	FWD	FCZ	34	34	1921	7		42	Willibald Otto	MID	UKB	31	31	2499	4		42	Konstantin Pfaff	DEF	LSV	34	34	3021	7.1		42	Konstanty Krall	MID	DSC	34	34	2885	45		42	Gerlof Sitz	MID	AKE	34	34	2673	97
+43	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	6		43	Heiner Appelhof	MID	SSC	33	33	2187	4		43	Wilhelm Teufel	DEF	M95	34	34	2920	7.1		43	Roger Fried	FWD	RWE	34	34	2779	45		43	Joachim Ackermann	MID	RWE	34	34	2839	97
+44	Immanuel Hasenkamp	MID	RBZ	34	34	2188	6		44	Ruben Hiedler	DEF	AKE	34	34	2930	4		44	Jip Reijnders	DEF	GRU	34	34	2884	7.1		44	Wessel Achterkamp	MID	GRU	33	33	2835	43		44	Tim Schuchard	DEF	MAI	26	3	1267	97
+45	Arjen Paulis	FWD	GRU	34	34	1876	6		45	Gerlof Sitz	MID	AKE	34	34	2673	4		45	Dagobert Amsel	DEF	TUS	34	34	2689	7.1		45	Zbyšek Löwe	MID	DSC	33	10	1901	43		45	Christoph Kasprzak	DEF	DSC	34	34	2974	96
+46	Ueli Garb	FWD	SSC	34	34	2057	6		46	Barend Andriessen	MID	AKE	34	34	3060	4		46	Nicolaus Unruh	DEF	STP	34	34	2947	7.1		46	Jakob Brune	MID	FCZ	34	34	2658	43		46	Barend Andriessen	MID	AKE	34	34	3060	95
+47	Arnošt Walther	MID	DSC	31	31	2026	5		47	Mario Ahner	DEF	EYN	34	34	2905	4		47	Dietrich Manz	DEF	MAI	34	34	2927	7.1		47	Fabian Schüler	FWD	RBZ	34	34	1951	43		47	John Marquering	DEF	EYN	34	34	2843	94
+48	Gert Mendel	MID	KOL	33	33	2658	5		48	Alfons Haan	DEF	EYN	34	34	2793	4		48	Freddy Käufer	DEF	MAI	34	34	2739	7.1		48	Rudolf Schmeling	FWD	FCZ	34	34	1997	43		48	August Herberts	MID	AKE	34	34	2460	93
+49	Horst Fürst	FWD	AKE	34	34	1705	5		49	John Marquering	DEF	EYN	34	34	2843	4		49	Christoph Kasprzak	DEF	DSC	34	34	2974	7.1		49	Ueli Garb	FWD	SSC	34	34	2057	43		49	Mario Ahner	DEF	EYN	34	34	2905	93
+50	Joost Yonker	FWD	EYN	34	34	2279	5		50	Ronald Haanraats	MID	EYN	34	34	2659	4		50	Lex Hofwegen	GK	KOL	34	34	3060	7.1		50	Finn Adenauer	MID	LSV	34	34	2977	42		50	Alwin Duerr	MID	M95	30	30	2424	92
+51	Jannis Derichs	FWD	UKB	34	34	2199	5		51	Wieland Voll	DEF	UKB	34	34	2975	4		51	Klaus Aldenkamp	DEF	KOL	34	34	3023	7.1		51	Kay Sorge	FWD	RWE	34	34	1820	41		51	Riny Maas	MID	EYN	34	34	2644	92
+52	Gero Wild	FWD	SFF	34	34	2309	5		52	Jannis Derichs	FWD	UKB	34	34	2199	4		52	Johann Talon	GK	SSC	34	34	3060	7.1		52	Erik Haase	MID	KOL	29	29	1978	40		52	Patrick Königsmann	MID	RWE	34	34	2846	92
+53	Frenske Van Agteren	FWD	RWE	34	34	1804	5		53	Ulrich Kranz	MID	SFF	34	34	2764	4		53	Uwe Böhmer	DEF	SSC	34	34	2985	7.1		53	Faas Wouters	MID	EYN	32	0	1577	40		53	Silvan Schuchard	DEF	FCZ	34	34	2931	90
+54	Jonasz Rybář	MID	DSC	31	3	1453	4		54	Armin Weiner	MID	SAA	34	34	2612	4		54	Gottfried Pahlke	DEF	SSC	34	34	2976	7.1		54	Paul Wanger	MID	FCZ	34	34	2772	40		54	Hans-Günter Schroeter	MID	AKE	30	30	2522	89
+55	Heiner Appelhof	MID	SSC	33	33	2187	4		55	Gabriel Siebert	MID	SAA	34	34	2928	4		55	Gerd Hoover	DEF	SSC	34	34	2941	7.1		55	Theophil Wild	MID	RBZ	34	34	2813	39		55	Gregor Krämer	MID	MAI	33	33	2693	89
+56	Klaus-Peter Denzel	MID	UKB	34	34	2704	4		56	Jannis Leverenz	FWD	M95	34	34	1657	4		56	Šimon Wirt	DEF	DSC	12	0	542	7.0		56	Edmund Melsbach	FWD	SAA	34	34	2144	38		56	Michi Messer	MID	MAI	34	34	2754	89
+57	Benjamin Jöllenbeck	MID	SSC	13	0	555	3		57	Ime Aartsen	FWD	GRU	34	34	2117	4		57	Tim Schuchard	DEF	MAI	26	3	1267	7.0		57	Willibald Otto	MID	UKB	31	31	2499	36		57	Heiner Appelhof	MID	SSC	33	33	2187	89
+58	Stéphane Klassen	FWD	SAA	31	0	1183	3		58	Eckhart Schnyder	DEF	DSC	34	34	3004	4		58	Silvester Gehring	MID	BER	28	28	2435	7.0		58	Hans Günther Dirks	MID	LSV	32	32	2553	36		58	Arnošt Walther	MID	DSC	31	31	2026	88
+59	Adi Maurer	MID	BER	34	34	2432	3		59	Hans Günter Weiss	FWD	FCZ	34	34	1921	4		59	Dick Heymans	DEF	EYN	28	0	1405	7.0		59	Gabriel Siebert	MID	SAA	34	34	2928	36		59	Zacharie Gerst	DEF	SAA	34	34	2907	88
+60	Riny Maas	MID	EYN	34	34	2644	3		60	Paul Wanger	MID	FCZ	34	34	2772	4		60	Gerhardt Rapp	DEF	MAI	31	31	2724	7.0		60	Ties Meeuwsen	FWD	GRU	33	0	1553	36		60	Hartwig Holland	DEF	SSC	34	34	2970	87
+61	Ronald Haanraats	MID	EYN	34	34	2659	3		61	Ottmar Fertig	MID	KOL	34	34	2700	4		61	Siegbert Siemon	DEF	FCZ	31	31	2503	7.0		61	Gero Wild	FWD	SFF	34	34	2309	36		61	Hermann Sulzbach	DEF	BER	34	34	2847	86
+62	Roland Ziegler	FWD	UKB	34	34	2462	3		62	Sjeng Wang	MID	KOL	21	0	707	3		62	Izaäk Coenen	FWD	EYN	32	0	1639	7.0		62	Detlev Bachmann	FWD	LSV	34	34	2130	36		62	Alfons Haan	DEF	EYN	34	34	2793	86
+63	Achim Armbrüster	DEF	RBZ	34	34	2876	3		63	Konstanty Michael	MID	DSC	27	27	2170	3		63	Faas Wouters	MID	EYN	32	0	1577	7.0		63	Siegbert Hahn	FWD	LSV	34	34	2135	36		63	Fredy Szwarc	DEF	UKB	34	34	2985	86
+64	Dennis Ohme	MID	TUS	34	34	3006	3		64	Dieter Wendel	DEF	TUS	28	28	2439	3		64	Ime Reynders	DEF	GRU	32	32	2702	7.0		64	Jannis Leverenz	FWD	M95	34	34	1657	36		64	Gottfried Pahlke	DEF	SSC	34	34	2976	86
+65	Paul Wanger	MID	FCZ	34	34	2772	3		65	Sieghard Schnoor	DEF	RWE	28	0	1095	3		65	Gero Wild	FWD	SFF	34	34	2309	7.0		65	Ime Aartsen	FWD	GRU	34	34	2117	36		65	Ernst Oberst	DEF	AKE	31	0	1369	85
+66	Reinhard Walkenhorst	MID	SSC	34	34	2632	3		66	Alfons Assendorp	DEF	GRU	31	8	1684	3		66	Fabian Schüler	FWD	RBZ	34	34	1951	7.0		66	Rudi Garber	FWD	TUS	34	34	1814	36		66	Jannis Salzwedel	DEF	AKE	34	34	2957	85
+67	Sebastian Überseher	FWD	SSC	34	34	2159	3		67	Dominik Spellmeyer	MID	DSC	31	31	2488	3		67	David Zimmermann	FWD	M95	34	34	1619	7.0		67	Youri Van Schoorl	FWD	STP	34	34	2115	36		67	Heike Nagel	DEF	M95	34	34	3060	85
+68	Konstanty Michael	MID	DSC	27	27	2170	2		68	Ime Reynders	DEF	GRU	32	32	2702	3		68	Rudi Garber	FWD	TUS	34	34	1814	7.0		68	August Herberts	MID	AKE	34	34	2460	34		68	Thaddäus Rothenberg	DEF	BER	34	34	2919	84
+69	Konrad Rosenfeld	MID	MAI	29	29	1967	2		69	Ronald Heinrich	FWD	FCZ	33	0	1487	3		69	Kay Sorge	FWD	RWE	34	34	1820	7.0		69	Ronald Heinrich	FWD	FCZ	33	0	1487	34		69	Gregor Laurenz	DEF	TUS	34	34	2985	83
+70	Alwin Kunz	FWD	SFF	33	0	867	2		70	Jacob Dohman	MID	AKE	34	4	1661	3		70	Norbert Diefenbach	FWD	SSC	34	34	2059	7.0		70	Bart Carl	FWD	SSC	33	0	1494	34		70	Justus Janz	MID	SFF	34	34	3020	81
+71	Ronald Heinrich	FWD	FCZ	33	0	1487	2		71	Horst Fürst	FWD	AKE	34	34	1705	3		71	Gerlof Sitz	MID	AKE	34	34	2673	7.0		71	Joost Yonker	FWD	EYN	34	34	2279	34		71	Diedrich Wörner	MID	TUS	34	34	2857	81
+72	Gerlof Sitz	MID	AKE	34	34	2673	2		72	Knut Schrum	DEF	EYN	34	34	3000	3		72	Klaus-Peter Denzel	MID	UKB	34	34	2704	7.0		72	Kerneels Jansink	FWD	EYN	34	34	1733	34		72	Arno Janson	DEF	RBZ	31	31	2696	81
+73	Eberhard Mohren	MID	UKB	34	3	1409	2		73	Leo Erkens	FWD	EYN	34	34	1765	3		73	Atse Antuma	MID	GRU	34	34	2813	7.0		73	Arjen Paulis	FWD	GRU	34	34	1876	34		73	Filip Jundt	DEF	DSC	34	34	3060	81
+74	Karl Schreier	DEF	LSV	34	34	3003	2		74	Klaus Essert	DEF	UKB	34	34	2896	3		74	Joachim Ackermann	MID	RWE	34	34	2839	7.0		74	Gregor Krämer	MID	MAI	33	33	2693	32		74	Otokar Kunz	DEF	DSC	34	34	3000	81
+75	Maxi Ernst	FWD	LSV	34	0	1003	2		75	Baptist Baumer	MID	UKB	34	34	2875	3		75	Paul Wanger	MID	FCZ	34	34	2772	7.0		75	Émilien WEIß	MID	SAA	34	34	2736	32		75	Valentin Papp	DEF	FCZ	34	34	2855	81
+76	Atse Antuma	MID	GRU	34	34	2813	2		76	Justus Janz	MID	SFF	34	34	3020	3		76	Eric Köhler	GK	AKE	34	34	3060	7.0		76	Benedikt Scherer	FWD	BER	33	0	1290	32		76	Konstanty Krall	MID	DSC	34	34	2885	80
+77	Ottmar Van Bokhoven	MID	STP	34	34	2516	2		77	Günther Kron	FWD	SFF	34	34	2172	3		77	Marco Von Ingersleben	DEF	BER	34	34	2978	7.0		77	Malte Schroeder	FWD	BER	34	34	1903	32		77	Dieter Wendel	DEF	TUS	28	28	2439	79
+78	Bastiaan Bachmann	MID	STP	34	34	2936	2		78	Dieter Saller	MID	RBZ	34	34	3060	3		78	Thaddäus Rothenberg	DEF	BER	34	34	2919	7.0		78	Kobus Van Rompaey	MID	EYN	34	34	3006	30		78	Jens Aubert Habicht	DEF	SAA	34	34	3008	79
+79	Joachim Ackermann	MID	RWE	34	34	2839	2		79	Fabian Schüler	FWD	RBZ	34	34	1951	3		79	Axel Schweiß	GK	EYN	34	34	3060	7.0		79	Joachim Ackermann	MID	RWE	34	34	2839	29		79	Siegbert Siemon	DEF	FCZ	31	31	2503	78
+80	Christoph Kasprzak	DEF	DSC	34	34	2974	2		80	Theophil Wild	MID	RBZ	34	34	2813	3		80	Knut Schrum	DEF	EYN	34	34	3000	7.0		80	Veit Laurenz	MID	SSC	34	1	1678	29		80	Jo Teufel	DEF	LSV	34	34	3042	78
+81	Ronald Werner	MID	FCZ	34	34	2745	2		81	Edmund Melsbach	FWD	SAA	34	34	2144	3		81	Mario Ahner	DEF	EYN	34	34	2905	7.0		81	Wolfhard Rosenberger	FWD	AKE	34	0	1716	29		81	Kobus Van Rompaey	MID	EYN	34	34	3006	76
+82	Joord Koeman	MID	SSC	34	34	2842	2		82	Wide Anjema	DEF	GRU	34	34	3060	2		82	Alfons Haan	DEF	EYN	34	34	2793	7.0		82	Frenske Van Agteren	FWD	RWE	34	34	1804	29		82	Frederick Schwarzenegger	MID	M95	34	34	3060	76
+83	Veit Laurenz	MID	SSC	34	1	1678	2		83	Jip Reijnders	DEF	GRU	34	34	2884	2		83	Fredy Szwarc	DEF	UKB	34	34	2985	7.0		83	Wouter De Veen	FWD	KOL	34	0	1415	29		83	Dick Heymans	DEF	EYN	28	0	1405	76
+84	Adriaan Romijn	MID	GRU	12	0	506	1		84	Elbert Asjes	MID	GRU	34	34	2684	2		84	Lorenz Reier	DEF	SFF	34	34	2919	7.0		84	Sebastian Überseher	FWD	SSC	34	34	2159	29		84	Wieland Voll	DEF	UKB	34	34	2975	76
+85	Silvester Gehring	MID	BER	28	28	2435	1		85	Arjen Paulis	FWD	GRU	34	34	1876	2		85	Alexander Haas	GK	LSV	34	34	3060	7.0		85	Konrad Rosenfeld	MID	MAI	29	29	1967	27		85	Hilaire Adam	DEF	SAA	34	34	2933	76
+86	Edgar Christian	DEF	UKB	28	0	1042	1		86	Tjaard De Vos	DEF	STP	34	34	2953	2		86	Reiner Schiss	GK	SAA	34	34	3060	7.0		86	Jonasz Rybář	MID	DSC	31	3	1453	27		86	Joachim Giese	MID	SFF	34	34	2930	75
+87	Ale Aukema	DEF	GRU	28	28	2472	1		87	Korbinian Groot	DEF	RWE	34	34	3006	2		87	Freddy Steuben	DEF	M95	34	34	2941	7.0		87	Dennis Ohme	MID	TUS	34	34	3006	27		87	Eckhart Schnyder	DEF	DSC	34	34	3004	75
+88	Sieghard Schnoor	DEF	RWE	28	0	1095	1		88	Joachim Ackermann	MID	RWE	34	34	2839	2		88	Bertram Kiefer	DEF	M95	34	34	2740	7.0		88	Stéphane Klassen	FWD	SAA	31	0	1183	27		88	Konrad Rosenfeld	MID	MAI	29	29	1967	74
+89	Hans-Günter Schroeter	MID	AKE	30	30	2522	1		89	Helge Schwarz	MID	RWE	34	0	1241	2		89	Ullrich Riecht	GK	GRU	34	34	3060	7.0		89	David Zimmermann	FWD	M95	34	34	1619	27		89	Marco Von Ingersleben	DEF	BER	34	34	2978	74
+90	Alwin Duerr	MID	M95	30	30	2424	1		90	Frenske Van Agteren	FWD	RWE	34	34	1804	2		90	Wide Anjema	DEF	GRU	34	34	3060	7.0		90	Elbert Asjes	MID	GRU	34	34	2684	26		90	Émilien WEIß	MID	SAA	34	34	2736	73
+91	Wessel Achterkamp	MID	GRU	33	33	2835	1		91	Filip Jundt	DEF	DSC	34	34	3060	2		91	Georg Kron	DEF	TUS	34	34	2890	7.0		91	Ottmar Van Bokhoven	MID	STP	34	34	2516	26		91	Jakob Brune	MID	FCZ	34	34	2658	72
+92	Zbyšek Löwe	MID	DSC	33	10	1901	1		92	Jonatan Feld	FWD	DSC	34	34	1629	2		92	Andi Latte	GK	RWE	34	34	3060	7.0		92	Dennis Junge	FWD	RWE	34	34	2744	25		92	Ime Reynders	DEF	GRU	32	32	2702	72
+93	Peter Schneiders	DEF	AKE	34	34	3060	1		93	Christoph Kasprzak	DEF	DSC	34	34	2974	2		93	Arjan Van Kan	DEF	RWE	34	34	2955	7.0		93	Felix Albrecht	FWD	MAI	34	34	1922	25		93	Georg Geisler	DEF	UKB	34	34	2996	72
+94	August Herberts	MID	AKE	34	34	2460	1		94	Finn Hartmann	DEF	FCZ	34	34	2910	2		94	Funske Fischer	DEF	RWE	34	34	2823	7.0		94	Justus Janz	MID	SFF	34	34	3020	24		94	Egon Hochberg	DEF	M95	31	0	1275	71
+95	Marco Von Ingersleben	DEF	BER	34	34	2978	1		95	Edgar Mueller	MID	FCZ	34	0	1403	2		95	Gebhard Fabel	GK	MAI	34	34	3060	7.0		95	Armin Weiner	MID	SAA	34	34	2612	24		95	Theophil Wild	MID	RBZ	34	34	2813	70
+96	Chris Mounce	MID	BER	34	34	2962	1		96	Karl Mann	MID	KOL	34	6	1481	2		96	Finn Hartmann	DEF	FCZ	34	34	2910	7.0		96	Patrick Königsmann	MID	RWE	34	34	2846	24		96	Ale Aukema	DEF	GRU	28	28	2472	70
+97	Hans-Günter Blumenthal	DEF	BER	34	34	2973	1		97	Edgar Gold	FWD	KOL	34	34	1898	2		97	Valentin Papp	DEF	FCZ	34	34	2855	7.0		97	Jörg Wörner	MID	RBZ	34	34	3009	23		97	Otto Baier	MID	TUS	31	31	2321	69
+98	John Marquering	DEF	EYN	34	34	2843	1		98	Herman Krusen	MID	KOL	34	34	2769	2		98	Hartwig Holland	DEF	SSC	34	34	2970	7.0		98	Marvin Simonis	MID	MAI	34	34	2678	23		98	Gabriel Siebert	MID	SAA	34	34	2928	69
+99	Kobus Van Rompaey	MID	EYN	34	34	3006	1		99	Uwe Böhmer	DEF	SSC	34	34	2985	2		99	Konrad Rosenfeld	MID	MAI	29	29	1967	6.9		99	Christof Dunst	FWD	RBZ	34	34	2305	23		99	Joord Koeman	MID	SSC	34	34	2842	69
+100	Kerneels Jansink	FWD	EYN	34	34	1733	1		100	Gottfried Pahlke	DEF	SSC	34	34	2976	2		100	Erik Haase	MID	KOL	29	29	1978	6.9		100	Burkhard Unruh	FWD	TUS	34	0	1455	23		100	Jules Wieck	DEF	SAA	31	31	2226	69
+101	Fredy Szwarc	DEF	UKB	34	34	2985	1		101	Bastian Reier	MID	AKE	7	0	316	1		101	Hans-Günter Schroeter	MID	AKE	30	30	2522	6.9		101	Gerhardt Schlender	FWD	MAI	34	34	1802	23		101	Faas Wouters	MID	EYN	32	0	1577	68
+102	Gustav Beyer	MID	RBZ	34	0	1620	1		102	Kaspar Weiner	MID	BER	11	0	334	1		102	Otto Baier	MID	TUS	31	31	2321	6.9		102	Konstanty Michael	MID	DSC	27	27	2170	22		102	Sieghard Schnoor	DEF	RWE	28	0	1095	67
+103	Korbinian Fürst	DEF	LSV	34	34	3060	1		103	Šimon Wirt	DEF	DSC	12	0	542	1		103	Dominik Spellmeyer	MID	DSC	31	31	2488	6.9		103	Ulrich Kranz	MID	SFF	34	34	2764	22		103	Ulli Lafrentz	DEF	RBZ	31	3	1567	67
+104	Finn Adenauer	MID	LSV	34	34	2977	1		104	Norbert Steinbrück	MID	MAI	18	0	793	1		104	Jonasz Rybář	MID	DSC	31	3	1453	6.9		104	Laurenz Franz	MID	TUS	34	34	3002	22		104	Hans-Günter Blumenthal	DEF	BER	34	34	2973	67
+105	Armin Weiner	MID	SAA	34	34	2612	1		105	Ivo De Brujin	MID	STP	22	0	576	1		105	Wit Szweda	FWD	DSC	33	0	1524	6.9		105	Karl Mann	MID	KOL	34	6	1481	22		105	Dennis Ohme	MID	TUS	34	34	3006	66
+106	Freddy Steuben	DEF	M95	34	34	2941	1		106	Tim Schuchard	DEF	MAI	26	3	1267	1		106	Gert Mendel	MID	KOL	33	33	2658	6.9		106	Dominik Spellmeyer	MID	DSC	31	31	2488	20		106	Ronald Werner	MID	FCZ	34	34	2745	66
+107	Stephan Shriver	MID	M95	34	4	1527	1		107	Silvester Gehring	MID	BER	28	28	2435	1		107	Wolfhard Rosenberger	FWD	AKE	34	0	1716	6.9		107	Baptist Baumer	MID	UKB	34	34	2875	20		107	Dominik Spellmeyer	MID	DSC	31	31	2488	65
+108	Wide Anjema	DEF	GRU	34	34	3060	1		108	Dick Heymans	DEF	EYN	28	0	1405	1		108	Klaas Vieth	FWD	AKE	34	34	1583	6.9		108	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	20		108	Laurenz Franz	MID	TUS	34	34	3002	65
+109	Dagobert Amsel	DEF	TUS	34	34	2689	1		109	Ulli Lafrentz	DEF	RBZ	31	3	1567	1		109	Malte Schroeder	FWD	BER	34	34	1903	6.9		109	Philipp Hoffmann	FWD	TUS	34	34	1795	20		109	Micha Siegert	MID	FCZ	34	34	2704	65
+110	Jörg Bachman	MID	TUS	34	3	1417	1		110	André Gensch	MID	LSV	31	31	2552	1		110	Günther Kron	FWD	SFF	34	34	2172	6.9		110	Hans-Günter Schroeter	MID	AKE	30	30	2522	19		110	Karl Schreier	DEF	LSV	34	34	3003	64
+111	Laurenz Franz	MID	TUS	34	34	3002	1		111	Egon Hochberg	DEF	M95	31	0	1275	1		111	Detlev Bachmann	FWD	LSV	34	34	2130	6.9		111	Frederick Schwarzenegger	MID	M95	34	34	3060	19		111	Dierk Achilles	MID	STP	34	34	2715	63
+112	Stefanus Van Hautum	MID	STP	34	34	2865	1		112	Siegbert Siemon	DEF	FCZ	31	31	2503	1		112	Siegbert Hahn	FWD	LSV	34	34	2135	6.9		112	Tjaard Hartman	MID	GRU	34	1	1514	19		112	Albert Daalman	DEF	STP	34	34	2661	63
+113	Dennis Junge	FWD	RWE	34	34	2744	1		113	Benedikt Scherer	FWD	BER	33	0	1290	1		113	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	6.9		113	Stefanus Van Hautum	MID	STP	34	34	2865	19		113	Hermann Raimund Behrends	DEF	SAA	34	3	1423	62
+114	Eckhart Schnyder	DEF	DSC	34	34	3004	1		114	Alwin Kunz	FWD	SFF	33	0	867	1		114	Jannis Leverenz	FWD	M95	34	34	1657	6.9		114	Dierk Achilles	MID	STP	34	34	2715	19		114	Jacob Dohman	MID	AKE	34	4	1661	61
+115	Konstanty Krall	MID	DSC	34	34	2885	1		115	Ties Meeuwsen	FWD	GRU	33	0	1553	1		115	Philipp Hoffmann	FWD	TUS	34	34	1795	6.9		115	Michi Messer	MID	MAI	34	34	2754	19		115	Jörg Wörner	MID	RBZ	34	34	3009	60
+116	Micha Siegert	MID	FCZ	34	34	2704	1		116	Zbyšek Löwe	MID	DSC	33	10	1901	1		116	Barend Andriessen	MID	AKE	34	34	3060	6.9		116	Jules Wieck	DEF	SAA	31	31	2226	18		116	Helmar Knepp	MID	M95	34	34	3008	60
+117	Jakob Brune	MID	FCZ	34	34	2658	1		117	Wit Szweda	FWD	DSC	33	0	1524	1		117	Chris Mounce	MID	BER	34	34	2962	6.9		117	Roan Habich	FWD	STP	30	0	1044	18		117	Wigbert Baanders	MID	KOL	34	34	2929	59
+118	Edgar Mueller	MID	FCZ	34	0	1403	1		118	Jannis Salzwedel	DEF	AKE	34	34	2957	1		118	Kobus Van Rompaey	MID	EYN	34	34	3006	6.9		118	Christoph GROß	FWD	M95	34	0	1556	18		118	Philipp Aleshire	DEF	TUS	30	6	1522	59
+119	Ottmar Fertig	MID	KOL	34	34	2700	1		119	August Herberts	MID	AKE	34	34	2460	1		119	Theophil Wild	MID	RBZ	34	34	2813	6.9		119	Baptist Gerber	FWD	RWE	34	0	1534	18		119	Helge Schwarz	MID	RWE	34	0	1241	58
+120	Karl Mann	MID	KOL	34	6	1481	1		120	Klaas Vieth	FWD	AKE	34	34	1583	1		120	Diedrich Wörner	MID	TUS	34	34	2857	6.9		120	André Gensch	MID	LSV	31	31	2552	17		120	Reinhard Walkenhorst	MID	SSC	34	34	2632	58
+									121	Michi Häusler	MID	BER	34	6	1491	1		121	Bastiaan Bachmann	MID	STP	34	34	2936	6.9		121	Micha Siegert	MID	FCZ	34	34	2704	17		121	Gert Mendel	MID	KOL	33	33	2658	57
+									122	Hans-Günter Blumenthal	DEF	BER	34	34	2973	1		122	Patrick Königsmann	MID	RWE	34	34	2846	6.9		122	Eberhard Mohren	MID	UKB	34	3	1409	16		122	Herman Krusen	MID	KOL	34	34	2769	57
+									123	Kobus Van Rompaey	MID	EYN	34	34	3006	1		123	Michi Messer	MID	MAI	34	34	2754	6.9		123	Gustav Beyer	MID	RBZ	34	0	1620	16		123	Dan Fiedler	DEF	KOL	34	34	2564	57
+									124	Joost Yonker	FWD	EYN	34	34	2279	1		124	Konstanty Krall	MID	DSC	34	34	2885	6.9		124	Herman Krusen	MID	KOL	34	34	2769	16		124	Korbinian Fürst	DEF	LSV	34	34	3060	56
+									125	Lorenz Reier	DEF	SFF	34	34	2919	1		125	Jakob Brune	MID	FCZ	34	34	2658	6.9		125	Günther Kron	FWD	SFF	34	34	2172	16		125	Wolf Claasen	DEF	KOL	34	34	2704	55
+									126	Joachim Giese	MID	SFF	34	34	2930	1		126	Ronald Werner	MID	FCZ	34	34	2745	6.9		126	Wide Anjema	DEF	GRU	34	34	3060	15		126	Chris Mounce	MID	BER	34	34	2962	51
+									127	Christof Dunst	FWD	RBZ	34	34	2305	1		127	Ale Aukema	DEF	GRU	28	28	2472	6.8		127	Karl Schreier	DEF	LSV	34	34	3003	14		127	Atse Antuma	MID	GRU	34	34	2813	51
+									128	Karl Schreier	DEF	LSV	34	34	3003	1		128	Dieter Wendel	DEF	TUS	28	28	2439	6.8		128	Finn Hartmann	DEF	FCZ	34	34	2910	14		128	Johann Baptist Kühn	MID	STP	34	34	2543	51
+									129	Gustav Freudenberger	DEF	LSV	34	34	2858	1		129	Ernst Oberst	DEF	AKE	31	0	1369	6.8		129	Fredy Szwarc	DEF	UKB	34	34	2985	14		129	Laurens Borchard	DEF	STP	34	34	2864	51
+									130	Detlev Bachmann	FWD	LSV	34	34	2130	1		130	Arno Janson	DEF	RBZ	31	31	2696	6.8		130	Lorenz Reier	DEF	SFF	34	34	2919	14		130	Klaus-Peter Denzel	MID	UKB	34	34	2704	50
+									131	Siegbert Hahn	FWD	LSV	34	34	2135	1		131	Ulli Lafrentz	DEF	RBZ	31	3	1567	6.8		131	Gustav Freudenberger	DEF	LSV	34	34	2858	14		131	Ulrich Kranz	MID	SFF	34	34	2764	50
+									132	Eugen Kurzmann	DEF	SAA	34	34	2985	1		132	Egon Hochberg	DEF	M95	31	0	1275	6.8		132	Frank GROßEL	FWD	MAI	33	0	1553	14		132	Paul Wanger	MID	FCZ	34	34	2772	50
+									133	Hermann Raimund Behrends	DEF	SAA	34	3	1423	1		133	Ties Meeuwsen	FWD	GRU	33	0	1553	6.8		133	Helge Schwarz	MID	RWE	34	0	1241	13		133	Bastiaan Bachmann	MID	STP	34	34	2936	49
+									134	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	1		134	Bart Carl	FWD	SSC	33	0	1494	6.8		134	Edgar Mueller	MID	FCZ	34	0	1403	13		134	Feliks Slezák	MID	DSC	34	34	1924	49
+									135	Émilien WEIß	MID	SAA	34	34	2736	1		135	Horst Fürst	FWD	AKE	34	34	1705	6.8		135	Wigbert Baanders	MID	KOL	34	34	2929	13		135	Alfons Assendorp	DEF	GRU	31	8	1684	47
+									136	Freddy Steuben	DEF	M95	34	34	2941	1		136	Jannis Derichs	FWD	UKB	34	34	2199	6.8		136	Maxi Ernst	FWD	LSV	34	0	1003	13		136	Ottmar Fertig	MID	KOL	34	34	2700	46
+									137	Frederick Schwarzenegger	MID	M95	34	34	3060	1		137	Edmund Melsbach	FWD	SAA	34	34	2144	6.8		137	Klaus Essert	DEF	UKB	34	34	2896	12		137	Lodewijk Swango	DEF	SSC	23	0	1011	46
+									138	Stephan Shriver	MID	M95	34	4	1527	1		138	Hans Günter Weiss	FWD	FCZ	34	34	1921	6.8		138	Achim Armbrüster	DEF	RBZ	34	34	2876	12		138	Silvester Gehring	MID	BER	28	28	2435	45
+									139	Wilhelm Teufel	DEF	M95	34	34	2920	1		139	Wouter De Veen	FWD	KOL	34	0	1415	6.8		139	Jens Aubert Habicht	DEF	SAA	34	34	3008	12		139	Hans Günther Dirks	MID	LSV	32	32	2553	45
+									140	Tjaard Hartman	MID	GRU	34	1	1514	1		140	Jannis Salzwedel	DEF	AKE	34	34	2957	6.8		140	Adriaan Romijn	MID	GRU	12	0	506	12		140	Dieter Saller	MID	RBZ	34	34	3060	45
+									141	Ernst Colijn	FWD	GRU	34	34	1889	1		141	Hans-Günter Blumenthal	DEF	BER	34	34	2973	6.8		141	Silvan Schuchard	DEF	FCZ	34	34	2931	11		141	Ottmar Van Bokhoven	MID	STP	34	34	2516	45
+									142	Georg Kron	DEF	TUS	34	34	2890	1		142	John Marquering	DEF	EYN	34	34	2843	6.8		142	Gerd Hoover	DEF	SSC	34	34	2941	11		142	Edgar Christian	DEF	UKB	28	0	1042	45
+									143	Dennis Ohme	MID	TUS	34	34	3006	1		143	Wieland Voll	DEF	UKB	34	34	2975	6.8		143	Hans-Günter Blumenthal	DEF	BER	34	34	2973	11		143	Adi Maurer	MID	BER	34	34	2432	43
+									144	Laurenz Franz	MID	TUS	34	34	3002	1		144	Georg Geisler	DEF	UKB	34	34	2996	6.8		144	Albert Daalman	DEF	STP	34	34	2661	11		144	Baptist Baumer	MID	UKB	34	34	2875	43
+									145	Burkhard Unruh	FWD	TUS	34	0	1455	1		145	Heinrich Eichel	DEF	SFF	34	34	3000	6.8		145	Laurens Borchard	DEF	STP	34	34	2864	11		145	Willibald Otto	MID	UKB	31	31	2499	43
+									146	Rudi Garber	FWD	TUS	34	34	1814	1		146	Gustav Freudenberger	DEF	LSV	34	34	2858	6.8		146	Michi Häusler	MID	BER	34	6	1491	11		146	Armin Weiner	MID	SAA	34	34	2612	43
+									147	Gregor Laurenz	DEF	TUS	34	34	2985	1		147	Heike Nagel	DEF	M95	34	34	3060	6.8		147	Stephan Shriver	MID	M95	34	4	1527	11		147	Wessel Achterkamp	MID	GRU	33	33	2835	42
+									148	Albert Daalman	DEF	STP	34	34	2661	1		148	Gregor Laurenz	DEF	TUS	34	34	2985	6.8		148	Korbinian Groot	DEF	RWE	34	34	3006	10		148	Stefanus Van Hautum	MID	STP	34	34	2865	42
+									149	Laurens Borchard	DEF	STP	34	34	2864	1		149	Korbinian Groot	DEF	RWE	34	34	3006	6.8		149	Christoph Kasprzak	DEF	DSC	34	34	2974	10		149	Roger Fried	FWD	RWE	34	34	2779	41
+									150	Gabriël Appelhof	MID	STP	34	0	1235	1		150	Knut Kruse	DEF	MAI	34	34	3006	6.8		150	John Marquering	DEF	EYN	34	34	2843	10		150	Leo Erkens	FWD	EYN	34	34	1765	41
+									151	Ottmar Van Bokhoven	MID	STP	34	34	2516	1		151	Eckhart Schnyder	DEF	DSC	34	34	3004	6.8		151	Jip Reijnders	DEF	GRU	34	34	2884	10		151	Niko Meyers	MID	MAI	34	6	1722	41
+									152	Youri Van Schoorl	FWD	STP	34	34	2115	1		152	Filip Jundt	DEF	DSC	34	34	3060	6.8		152	Dan Fiedler	DEF	KOL	34	34	2564	10		152	Elbert Asjes	MID	GRU	34	34	2684	40
+									153	Dierk Achilles	MID	STP	34	34	2715	1		153	Nico Krause	DEF	KOL	34	34	2937	6.8		153	Silas Nussbaum	MID	FCZ	13	0	461	10		153	Jörg Bachman	MID	TUS	34	3	1417	39
+									154	Arjan Van Kan	DEF	RWE	34	34	2955	1		154	Konstantin Rose	GK	M95	34	34	3060	6.8		154	Jacob Dohman	MID	AKE	34	4	1661	10		154	Veit Laurenz	MID	SSC	34	1	1678	39
+									155	Funske Fischer	DEF	RWE	34	34	2823	1		155	Benjamin Jöllenbeck	MID	SSC	13	0	555	6.7		155	Joachim Giese	MID	SFF	34	34	2930	10		155	Konstanty Michael	MID	DSC	27	27	2170	38
+									156	Patrick Königsmann	MID	RWE	34	34	2846	1		156	Timo Spitznagel	DEF	STP	16	0	630	6.7		156	Gabriël Appelhof	MID	STP	34	0	1235	10		156	André Gensch	MID	LSV	31	31	2552	38
+									157	Roger Fried	FWD	RWE	34	34	2779	1		157	Lodewijk Swango	DEF	SSC	23	0	1011	6.7		157	Ale Aukema	DEF	GRU	28	28	2472	9		157	Raimund Ebner	MID	BER	34	34	2770	38
+									158	Kay Sorge	FWD	RWE	34	34	1820	1		158	Franz Zimmermann	DEF	FCZ	25	3	1232	6.7		158	Peter Schneiders	DEF	AKE	34	34	3060	9		158	Wolfhard Rosenberger	FWD	AKE	34	0	1716	37
+									159	Dietrich Manz	DEF	MAI	34	34	2927	1		159	Konstanty Michael	MID	DSC	27	27	2170	6.7		159	Jo Teufel	DEF	LSV	34	34	3042	9		159	Jonasz Rybář	MID	DSC	31	3	1453	36
+									160	Knut Kruse	DEF	MAI	34	34	3006	1		160	Edgar Christian	DEF	UKB	28	0	1042	6.7		160	Korbinian Fürst	DEF	LSV	34	34	3060	9		160	Kay Sorge	FWD	RWE	34	34	1820	35
+									161	Marvin Simonis	MID	MAI	34	34	2678	1		161	Sieghard Schnoor	DEF	RWE	28	0	1095	6.7		161	Freddy Steuben	DEF	M95	34	34	2941	9		161	Gerhard Süss	FWD	RBZ	34	34	1432	35
+									162	Michi Messer	MID	MAI	34	34	2754	1		162	Philipp Aleshire	DEF	TUS	30	6	1522	6.7		162	Wolf Claasen	DEF	KOL	34	34	2704	9		162	Eberhard Mohren	MID	UKB	34	3	1409	35
+									163	Otokar Kunz	DEF	DSC	34	34	3000	1		163	Willibald Otto	MID	UKB	31	31	2499	6.7		163	Uwe Böhmer	DEF	SSC	34	34	2985	9		163	Stephan Shriver	MID	M95	34	4	1527	35
+									164	Micha Siegert	MID	FCZ	34	34	2704	1		164	Hans Günther Dirks	MID	LSV	32	32	2553	6.7		164	Ulli Lafrentz	DEF	RBZ	31	3	1567	9		164	Gerhardt Schlender	FWD	MAI	34	34	1802	34
+									165	Wolf Claasen	DEF	KOL	34	34	2704	1		165	Wessel Achterkamp	MID	GRU	33	33	2835	6.7		165	Marco Von Ingersleben	DEF	BER	34	34	2978	9		165	Zbyšek Löwe	MID	DSC	33	10	1901	34
+									166	Klaus Aldenkamp	DEF	KOL	34	34	3023	1		166	Baptist Baumer	MID	UKB	34	34	2875	6.7		166	Knut Schrum	DEF	EYN	34	34	3000	9		166	Gustav Beyer	MID	RBZ	34	0	1620	34
+									167	Wouter De Veen	FWD	KOL	34	0	1415	1		167	Justus Janz	MID	SFF	34	34	3020	6.7		167	Hannes Bauers	MID	M95	7	0	254	9		167	Finn Adenauer	MID	LSV	34	34	2977	33
+									168	Wigbert Baanders	MID	KOL	34	34	2929	1		168	Joachim Giese	MID	SFF	34	34	2930	6.7		168	Sjeng Wang	MID	KOL	21	0	707	9		168	Erik Haase	MID	KOL	29	29	1978	32
+									169	Veit Laurenz	MID	SSC	34	1	1678	1		169	Ulrich Kranz	MID	SFF	34	34	2764	6.7		169	Ivo De Brujin	MID	STP	22	0	576	9		169	Karl Mann	MID	KOL	34	6	1481	32
+									170	Sebastian Überseher	FWD	SSC	34	34	2159	1		170	Jörg Wörner	MID	RBZ	34	34	3009	6.7		170	Gregor Laurenz	DEF	TUS	34	34	2985	8		170	Klaas Vieth	FWD	AKE	34	34	1583	31
+																		171	Finn Adenauer	MID	LSV	34	34	2977	6.7		171	Dieter Wendel	DEF	TUS	28	28	2439	7		171	Frenske Van Agteren	FWD	RWE	34	34	1804	31
+																		172	Gabriel Siebert	MID	SAA	34	34	2928	6.7		172	Wieland Voll	DEF	UKB	34	34	2975	7		172	Franz Zimmermann	DEF	FCZ	25	3	1232	31
+																		173	Frederick Schwarzenegger	MID	M95	34	34	3060	6.7		173	Arjan Van Kan	DEF	RWE	34	34	2955	7		173	Horst Fürst	FWD	AKE	34	34	1705	30
+																		174	Dennis Ohme	MID	TUS	34	34	3006	6.7		174	Filip Jundt	DEF	DSC	34	34	3060	7		174	Edgar Mueller	MID	FCZ	34	0	1403	30
+																		175	Laurenz Franz	MID	TUS	34	34	3002	6.7		175	Jannis Salzwedel	DEF	AKE	34	34	2957	7		175	Jonatan Feld	FWD	DSC	34	34	1629	29
+																		176	Johann Baptist Kühn	MID	STP	34	34	2543	6.7		176	Mario Ahner	DEF	EYN	34	34	2905	7		176	Jannis Derichs	FWD	UKB	34	34	2199	29
+																		177	Ottmar Van Bokhoven	MID	STP	34	34	2516	6.7		177	Hermann Raimund Behrends	DEF	SAA	34	3	1423	7		177	Gunther Berg	DEF	SFF	32	0	894	29
+																		178	Dierk Achilles	MID	STP	34	34	2715	6.7		178	Nicolaus Unruh	DEF	STP	34	34	2947	7		178	Gero Wild	FWD	SFF	34	34	2309	28
+																		179	Marvin Simonis	MID	MAI	34	34	2678	6.7		179	Otokar Kunz	DEF	DSC	34	34	3000	7		179	Fabian Schüler	FWD	RBZ	34	34	1951	28
+																		180	Micha Siegert	MID	FCZ	34	34	2704	6.7		180	Klaus Aldenkamp	DEF	KOL	34	34	3023	7		180	Arjen Paulis	FWD	GRU	34	34	1876	27
+																		181	Ottmar Fertig	MID	KOL	34	34	2700	6.7		181	Bastian Reier	MID	AKE	7	0	316	7		181	Youri Van Schoorl	FWD	STP	34	34	2115	27
+																		182	Veit Laurenz	MID	SSC	34	1	1678	6.7		182	Raimund Ebner	MID	BER	34	34	2770	7		182	Gabriël Appelhof	MID	STP	34	0	1235	27
+																		183	Wolfgang Weimann	DEF	SFF	34	34	2872	6.7		183	Dieter Saller	MID	RBZ	34	34	3060	7		183	Henning Bischoffs	DEF	BER	30	0	1196	27
+																		184	Jo Teufel	DEF	LSV	34	34	3042	6.7		184	Hadrien Paul	MID	SAA	34	0	1137	7		184	Loup Gerd Burgstaller	FWD	SAA	34	34	2095	26
+																		185	Zacharie Gerst	DEF	SAA	34	34	2907	6.7		185	Helmar Knepp	MID	M95	34	34	3008	7		185	Hadrien Paul	MID	SAA	34	0	1137	26
+																		186	Hilaire Adam	DEF	SAA	34	34	2933	6.7		186	Jörg Bachman	MID	TUS	34	3	1417	7		186	Rudi Garber	FWD	TUS	34	34	1814	25
+																		187	Hermann Raimund Behrends	DEF	SAA	34	3	1423	6.7		187	Jürg Gottlieb	DEF	AKE	34	34	2557	6		187	Dennis Junge	FWD	RWE	34	34	2744	25
+																		188	Albert Daalman	DEF	STP	34	34	2661	6.7		188	Tjaard De Vos	DEF	STP	34	34	2953	6		188	Jannis Leverenz	FWD	M95	34	34	1657	25
+																		189	Otokar Kunz	DEF	DSC	34	34	3000	6.7		189	Lenz Schmidt	MID	TUS	10	0	380	6		189	Adrian Sorge	FWD	BER	34	34	2032	24
+																		190	Silvan Schuchard	DEF	FCZ	34	34	2931	6.7		190	Siegbert Siemon	DEF	FCZ	31	31	2503	5		190	Felix Albrecht	FWD	MAI	34	34	1922	24
+																		191	Wolf Claasen	DEF	KOL	34	34	2704	6.7		191	Ime Reynders	DEF	GRU	32	32	2702	5		191	Edgar Gold	FWD	KOL	34	34	1898	24
+																		192	Dan Fiedler	DEF	KOL	34	34	2564	6.7		192	Sören Kundert	DEF	SFF	34	34	2953	5		192	Baptist Gerber	FWD	RWE	34	0	1534	24
+																		193	Sjeng Wang	MID	KOL	21	0	707	6.6		193	Thorben Arbeit	DEF	RBZ	34	34	3012	5		193	Norbert Steinbrück	MID	MAI	18	0	793	24
+																		194	Roan Habich	FWD	STP	30	0	1044	6.6		194	Heike Nagel	DEF	M95	34	34	3060	5		194	Šimon Wirt	DEF	DSC	12	0	542	24
+																		195	Henning Bischoffs	DEF	BER	30	0	1196	6.6		195	Eckhart Schnyder	DEF	DSC	34	34	3004	5		195	Christoph GROß	FWD	M95	34	0	1556	23
+																		196	Stéphane Klassen	FWD	SAA	31	0	1183	6.6		196	Dick Heymans	DEF	EYN	28	0	1405	5		196	Tjaard Hartman	MID	GRU	34	1	1514	23
+																		197	Alfons Assendorp	DEF	GRU	31	8	1684	6.6		197	Alfons Haan	DEF	EYN	34	34	2793	5		197	Johannes Wolter	DEF	LSV	32	0	893	23
+																		198	Gunther Berg	DEF	SFF	32	0	894	6.6		198	Wolfgang Weimann	DEF	SFF	34	34	2872	5		198	David Zimmermann	FWD	M95	34	34	1619	22
+																		199	Johannes Wolter	DEF	LSV	32	0	893	6.6		199	Eugen Kurzmann	DEF	SAA	34	34	2985	5		199	Timo Spitznagel	DEF	STP	16	0	630	22
+																		200	Benedikt Scherer	FWD	BER	33	0	1290	6.6		200	Dagobert Amsel	DEF	TUS	34	34	2689	5		200	Roland Ziegler	FWD	UKB	34	34	2462	21
+																		201	Alwin Kunz	FWD	SFF	33	0	867	6.6		201	Dietrich Manz	DEF	MAI	34	34	2927	5		201	Sebastian Überseher	FWD	SSC	34	34	2159	21
+																		202	Frank GROßEL	FWD	MAI	33	0	1553	6.6		202	Knut Kruse	DEF	MAI	34	34	3006	5		202	Joost Yonker	FWD	EYN	34	34	2279	21
+																		203	Gregor Krämer	MID	MAI	33	33	2693	6.6		203	Nico Krause	DEF	KOL	34	34	2937	5		203	Ueli Garb	FWD	SSC	34	34	2057	21
+																		204	Zbyšek Löwe	MID	DSC	33	10	1901	6.6		204	Tim Schuchard	DEF	MAI	26	3	1267	4		204	Günther Kron	FWD	SFF	34	34	2172	20
+																		205	Roland Ziegler	FWD	UKB	34	34	2462	6.6		205	Ruben Hiedler	DEF	AKE	34	34	2930	4		205	Christof Dunst	FWD	RBZ	34	34	2305	20
+																		206	Ingolf Schnur	FWD	RBZ	34	0	1697	6.6		206	Hermann Sulzbach	DEF	BER	34	34	2847	4		206	Siegbert Hahn	FWD	LSV	34	34	2135	20
+																		207	Christof Dunst	FWD	RBZ	34	34	2305	6.6		207	Stephan Lewerenz	DEF	SFF	34	34	3044	4		207	Michi Häusler	MID	BER	34	6	1491	20
+																		208	Christoph GROß	FWD	M95	34	0	1556	6.6		208	Hilaire Adam	DEF	SAA	34	34	2933	4		208	Ingolf Schnur	FWD	RBZ	34	0	1697	19
+																		209	Ime Aartsen	FWD	GRU	34	34	2117	6.6		209	Gottfried Pahlke	DEF	SSC	34	34	2976	4		209	Izaäk Coenen	FWD	EYN	32	0	1639	19
+																		210	Arjen Paulis	FWD	GRU	34	34	1876	6.6		210	Theun Seelen	MID	EYN	4	0	200	4		210	Norbert Diefenbach	FWD	SSC	34	34	2059	19
+																		211	Burkhard Unruh	FWD	TUS	34	0	1455	6.6		211	Kaspar Weiner	MID	BER	11	0	334	4		211	Wit Szweda	FWD	DSC	33	0	1524	18
+																		212	Baptist Gerber	FWD	RWE	34	0	1534	6.6		212	Norbert Steinbrück	MID	MAI	18	0	793	4		212	Kerneels Jansink	FWD	EYN	34	34	1733	18
+																		213	Frenske Van Agteren	FWD	RWE	34	34	1804	6.6		213	Mathias Protz	MID	LSV	27	5	982	4		213	Malte Schroeder	FWD	BER	34	34	1903	17
+																		214	Felix Albrecht	FWD	MAI	34	34	1922	6.6		214	Niko Meyers	MID	MAI	34	6	1722	4		214	Knut Van Der Laan	DEF	KOL	19	0	700	17
+																		215	Gerhardt Schlender	FWD	MAI	34	34	1802	6.6		215	Alwin Kunz	FWD	SFF	33	0	867	4		215	Frank GROßEL	FWD	MAI	33	0	1553	16
+																		216	Rudolf Schmeling	FWD	FCZ	34	34	1997	6.6		216	Tilman Westenberg	GK	BER	34	34	3060	4		216	Philipp Hoffmann	FWD	TUS	34	34	1795	16
+																		217	Ueli Garb	FWD	SSC	34	34	2057	6.6		217	Ullrich Riecht	GK	GRU	34	34	3060	4		217	Gereon Hölzer	FWD	UKB	34	34	1940	16
+																		218	Jacob Dohman	MID	AKE	34	4	1661	6.6		218	Jan Itor	GK	STP	34	34	3060	4		218	Roan Habich	FWD	STP	30	0	1044	15
+																		219	Michi Häusler	MID	BER	34	6	1491	6.6		219	Lex Hofwegen	GK	KOL	34	34	3060	4		219	Rudolf Schmeling	FWD	FCZ	34	34	1997	15
+																		220	Raimund Ebner	MID	BER	34	34	2770	6.6		220	Henning Bischoffs	DEF	BER	30	0	1196	3		220	Wouter De Veen	FWD	KOL	34	0	1415	15
+																		221	Eberhard Mohren	MID	UKB	34	3	1409	6.6		221	Philipp Aleshire	DEF	TUS	30	6	1522	3		221	Ties Meeuwsen	FWD	GRU	33	0	1553	15
+																		222	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	6.6		222	Arno Janson	DEF	RBZ	31	31	2696	3		222	Ime Aartsen	FWD	GRU	34	34	2117	15
+																		223	Gustav Beyer	MID	RBZ	34	0	1620	6.6		223	Johannes Wolter	DEF	LSV	32	0	893	3		223	Bart Carl	FWD	SSC	33	0	1494	14
+																		224	Dieter Saller	MID	RBZ	34	34	3060	6.6		224	Zacharie Gerst	DEF	SAA	34	34	2907	3		224	Detlev Bachmann	FWD	LSV	34	34	2130	14
+																		225	Armin Weiner	MID	SAA	34	34	2612	6.6		225	Bertram Kiefer	DEF	M95	34	34	2740	3		225	Sjeng Wang	MID	KOL	21	0	707	14
+																		226	Émilien WEIß	MID	SAA	34	34	2736	6.6		226	Till Metz	DEF	RWE	34	34	2848	3		226	Mathias Protz	MID	LSV	27	5	982	14
+																		227	Helmar Knepp	MID	M95	34	34	3008	6.6		227	Valentin Papp	DEF	FCZ	34	34	2855	3		227	Ernst Colijn	FWD	GRU	34	34	1889	13
+																		228	Stephan Shriver	MID	M95	34	4	1527	6.6		228	Franz Zimmermann	DEF	FCZ	25	3	1232	3		228	Burkhard Unruh	FWD	TUS	34	0	1455	12
+																		229	Elbert Asjes	MID	GRU	34	34	2684	6.6		229	Ernst Oberst	DEF	AKE	31	0	1369	3		229	Lenz Schmidt	MID	TUS	10	0	380	12
+																		230	Jörg Bachman	MID	TUS	34	3	1417	6.6		230	Egon Hochberg	DEF	M95	31	0	1275	3		230	Ivo De Brujin	MID	STP	22	0	576	12
+																		231	Stefanus Van Hautum	MID	STP	34	34	2865	6.6		231	Alfons Assendorp	DEF	GRU	31	8	1684	3		231	Wolfhard Pfeiffer	FWD	UKB	34	0	1302	11
+																		232	Roger Fried	FWD	RWE	34	34	2779	6.6		232	Heinrich Eichel	DEF	SFF	34	34	3000	3		232	Edmund Melsbach	FWD	SAA	34	34	2144	11
+																		233	Helge Schwarz	MID	RWE	34	0	1241	6.6		233	Konstantin Pfaff	DEF	LSV	34	34	3021	3		233	Hans Günter Weiss	FWD	FCZ	34	34	1921	11
+																		234	Dennis Junge	FWD	RWE	34	34	2744	6.6		234	Georg Kron	DEF	TUS	34	34	2890	3		234	Tilo Hoedemaker	MID	RWE	6	0	215	11
+																		235	Edgar Mueller	MID	FCZ	34	0	1403	6.6		235	Funske Fischer	DEF	RWE	34	34	2823	3		235	Hannes Bauers	MID	M95	7	0	254	11
+																		236	Wigbert Baanders	MID	KOL	34	34	2929	6.6		236	Freddy Käufer	DEF	MAI	34	34	2739	3		236	Adriaan Romijn	MID	GRU	12	0	506	11
+																		237	Karl Mann	MID	KOL	34	6	1481	6.6		237	Guntram Wörnhör	MID	UKB	9	0	314	3		237	Jonathan Meier	MID	SFF	33	0	691	11
+																		238	Herman Krusen	MID	KOL	34	34	2769	6.6		238	Benjamin Jöllenbeck	MID	SSC	13	0	555	3		238	Benedikt Scherer	FWD	BER	33	0	1290	10
+																		239	Karl Schreier	DEF	LSV	34	34	3003	6.6		239	Lodewijk Swango	DEF	SSC	23	0	1011	2		239	Ronald Heinrich	FWD	FCZ	33	0	1487	10
+																		240	Korbinian Fürst	DEF	LSV	34	34	3060	6.6		240	Šimon Wirt	DEF	DSC	12	0	542	1		240	Benjamin Jöllenbeck	MID	SSC	13	0	555	10
+																		241	Jens Aubert Habicht	DEF	SAA	34	34	3008	6.6		241	Timo Spitznagel	DEF	STP	16	0	630	1		241	Stéphane Klassen	FWD	SAA	31	0	1183	9
+																		242	Laurens Borchard	DEF	STP	34	34	2864	6.6		242	Sieghard Schnoor	DEF	RWE	28	0	1095	1		242	Toussaint Jessy Guérin	MID	SAA	6	0	213	7
+																		243	Norbert Steinbrück	MID	MAI	18	0	793	6.5		243	Thaddäus Rothenberg	DEF	BER	34	34	2919	1		243	Bastian Reier	MID	AKE	7	0	316	7
+																		244	Knut Van Der Laan	DEF	KOL	19	0	700	6.5		244	Georg Geisler	DEF	UKB	34	34	2996	1		244	Guntram Wörnhör	MID	UKB	9	0	314	7
+																		245	Ivo De Brujin	MID	STP	22	0	576	6.5		245	Wilhelm Teufel	DEF	M95	34	34	2920	1		245	Eric Köhler	GK	AKE	34	34	3060	7
+																		246	Mathias Protz	MID	LSV	27	5	982	6.5		246	Hartwig Holland	DEF	SSC	34	34	2970	1		246	Andi Latte	GK	RWE	34	34	3060	7
+																		247	André Gensch	MID	LSV	31	31	2552	6.5		247	Dan Thälmann	MID	RBZ	6	0	260	1		247	Alwin Kunz	FWD	SFF	33	0	867	6
+																		248	Jonathan Meier	MID	SFF	33	0	691	6.5		248	Toussaint Jessy Guérin	MID	SAA	6	0	213	1		248	Kaspar Weiner	MID	BER	11	0	334	6
+																		249	Ronald Heinrich	FWD	FCZ	33	0	1487	6.5		249	Bertram Lehmann	MID	LSV	14	0	322	1		249	Silas Nussbaum	MID	FCZ	13	0	461	6
+																		250	Joost Yonker	FWD	EYN	34	34	2279	6.5		250	Knut Van Der Laan	DEF	KOL	19	0	700	1		250	Theun Seelen	MID	EYN	4	0	200	5
+																		251	Hadrien Paul	MID	SAA	34	0	1137	6.5		251	Edgar Christian	DEF	UKB	28	0	1042	1		251	Bertram Lehmann	MID	LSV	14	0	322	5
+																		252	Tjaard Hartman	MID	GRU	34	1	1514	6.5											252	Maxi Ernst	FWD	LSV	34	0	1003	4
+																		253	Gabriël Appelhof	MID	STP	34	0	1235	6.5											253	Johann Talon	GK	SSC	34	34	3060	4
+																		254	Niko Meyers	MID	MAI	34	6	1722	6.5											254	Dan Thälmann	MID	RBZ	6	0	260	3
+																		255	Sebastian Überseher	FWD	SSC	34	34	2159	6.5											255	Axel Schweiß	GK	EYN	34	34	3060	2
+																		256	Maxi Ernst	FWD	LSV	34	0	1003	6.5											256	Volker Racho	GK	UKB	34	34	3060	2
+																		257	Kerneels Jansink	FWD	EYN	34	34	1733	6.5											257	Artur KRAUß	GK	RBZ	34	34	3060	2
+																		258	Bastian Reier	MID	AKE	7	0	316	6.8											258	Reiner Schiss	GK	SAA	34	34	3060	2
+																		259	Kaspar Weiner	MID	BER	11	0	334	6.7											259	Ullrich Riecht	GK	GRU	34	34	3060	2
+																		260	Hannes Bauers	MID	M95	7	0	254	6.7											260	Gebhard Fabel	GK	MAI	34	34	3060	2
+																		261	Adriaan Romijn	MID	GRU	12	0	506	6.7
+																		262	Dan Thälmann	MID	RBZ	6	0	260	6.7
+																		263	Theun Seelen	MID	EYN	4	0	200	6.7
+																		264	Tilo Hoedemaker	MID	RWE	6	0	215	6.6
+																		265	Bertram Lehmann	MID	LSV	14	0	322	6.6
+																		266	Silas Nussbaum	MID	FCZ	13	0	461	6.6
+																		267	Lenz Schmidt	MID	TUS	10	0	380	6.6
+																		268	Guntram Wörnhör	MID	UKB	9	0	314	6.6
+																		269	Toussaint Jessy Guérin	MID	SAA	6	0	213	6.6
+																		270	Jens Beckers	MID	SFF	1	0	18	6.5

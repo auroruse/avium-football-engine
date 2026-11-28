@@ -222,6 +222,24 @@ one of forty. The spread of the qualified men's averages is fitted as `sd² = 0.
 total is the scaled total; a man who scales to nothing leaves the board. Boards are re-sorted and
 renumbered.
 
+## The 28 November 2026 ratings
+
+Every RTG board, 1936 included, was moved onto the rating model of 28 November 2026, which pays
+against expectation and no longer gives every position the same share of high marks. A linear change
+of units could not do it, because the new model moves positions against each other. Within each
+position (GK, DEF, MID, FWD) a man keeps his rank; the position takes the distribution the new engine
+gives a group of that size. It is a quantile map, taken separately for the qualified men and for the
+rest. The reference is three NL1 seasons played on the new engine: each man's season is re-drawn
+300 times from it, his starts taken from one of its regulars and his substitute appearances from its
+appearances at his minutes, so a cup of one-match men spreads like a cup and a forty-match league
+like a league. Boards are re-sorted and renumbered. Goals, assists and every other board are
+untouched.
+
+The man-of-the-match figures in the 1932 knockout reports were moved the same way, onto the new
+engine's man of the match, rank kept.
+
+Season MVPs are read off these boards, so 27 of them changed hands; no World Cup's did.
+
 ## changelog.tsv
 
 Every post-tournament rating adjustment, one row per player:
