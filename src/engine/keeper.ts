@@ -77,6 +77,7 @@ function planFor(s, dsd, t0) {
   const gkk = meGkSkill(ka), low = meGkLow(ka);
   const sg = Math.sign(gx - mp.bx) || 1;
   let tx = k.x, ty = k.y;
+  let tArr = null, zArr = null;                          // when the ball reaches where he meets it, and how high (the ratings: mg, zc)
   // WHERE IT WILL CROSS THE LINE HE IS STANDING ON. A struck ball flies straight in plan -- drag slows
   // it along its own line -- so this is exact. He dives ACROSS, holding his depth: the further out he
   // came, the less ground there is to cover, which is what coming out is for.
@@ -88,6 +89,7 @@ function planFor(s, dsd, t0) {
   if (between && mp.bvx * sg > 0.5) {
     const tC = (k.x - mp.bx) / mp.bvx;
     let yC = mp.by + mp.bvy * tC;
+    tArr = tC;
     // A BALL WITH SPIN ON IT DOES NOT FLY STRAIGHT (ball.ts). He sees the line it starts on and reads only part of the
     // swing as it is struck, more the better he is (CFG.gkCurlRead): the rest of the bend is what beats him.
     if (mp.bsp || mp.bdip) { const cr = meBallCrossX(mp, k.x);
@@ -105,10 +107,11 @@ function planFor(s, dsd, t0) {
     if (pr) for (let j = 1; j < pr.length; j++) {
       if ((pr[j][0] - k.x) * sg < 0 || (pr[j - 1][0] - k.x) * sg >= 0) continue;
       const f = (k.x - pr[j - 1][0]) / ((pr[j][0] - pr[j - 1][0]) || 1e-6);
-      if (pr[j - 1][2] + (pr[j][2] - pr[j - 1][2]) * f < CFG.gkReachZ - 0.1) break;
+      zArr = pr[j - 1][2] + (pr[j][2] - pr[j - 1][2]) * f;
+      if (zArr < CFG.gkReachZ - 0.1) break;
       for (let j2 = j; j2 < pr.length; j2++)
         if (pr[j2][2] < CFG.gkReachZ - 0.3 || (gx - pr[j2][0]) * sg <= 0) {
-          tx = pr[j2][0] - sg * Math.max(0, (pr[j2][0] - gx) * sg); ty = pr[j2][1]; break; }
+          tx = pr[j2][0] - sg * Math.max(0, (pr[j2][0] - gx) * sg); ty = pr[j2][1]; tArr = j2 * ME_DT; zArr = pr[j2][2]; break; }
       break;
     }
   }
@@ -128,7 +131,26 @@ function planFor(s, dsd, t0) {
   // man jogging back while a lob from twenty-five metres came down in his net.
   const vDive = meGkDiveV(ka);
   const back = (tx - k.x) * sg > CFG.gkBackRun;
+  // HOW SAVEABLE IT WAS, for the ratings and nothing else (match.ts meGkPs, CFG.gkPs): the save's own test (match.ts,
+  // THE PLANNED SAVE) asked of an ORDINARY keeper (CFG.gkRefK on the skill band, whoever this one is) at the moment the
+  // ball reaches where he meets it. He has reacted, gone across at his dive's pace and stretched as far as the time
+  // allowed; mg is how many metres his reach had in hand over the ball, less for a ball in the top corner or along the
+  // floor as the save charges it. Positive, an ordinary keeper has it; negative, it is past him by that much. It reads
+  // his own position, the one thing that is his before the strike. Nothing here moves him: the plan below is his own.
+  let mg = null, tmR = null;
+  const L0 = Math.hypot(tx - k.x, ty - k.y);
+  if (tArr != null) {
+    const kr = CFG.gkRefK, setR = CFG.gkSetReach * (CFG.gkSetLo + (1 - CFG.gkSetLo) * kr);
+    const grabR = Math.max(0.04, CFG.gkSaveReachLo + (CFG.gkSaveReachHi - CFG.gkSaveReachLo) * kr);
+    tmR = Math.max(0, tArr - (CFG.gkReactSlow + (CFG.gkReactFast - CFG.gkReactSlow) * kr) - Math.min(1, scr) * CFG.gkScreen);
+    const sm = Math.min(L0, (CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmin) * kr) * tmR);
+    const ext = tmR > 0 && L0 > CFG.gkSetStep ? CFG.gkSpan * Math.min(1, tmR / CFG.gkSpanT) : 0, st = ext / CFG.gkSpan;
+    const zz = zArr ?? 1, dzH = Math.max(0, zz - CFG.gkZHi) + Math.max(0, CFG.gkZLo - zz);
+    mg = setR + (grabR + CFG.bodyR - setR) * st - dzH * st * Math.min(1, L0 / CFG.gkFlatL) * CFG.gkZCost
+       - Math.max(0, L0 - sm - ext);
+  }
   return {
+    mg, zc: zArr, tmR,
     side: dsd, i: ki, x0: k.x, y0: k.y, tx, ty, t0, L: Math.hypot(tx - k.x, ty - k.y),
     react: meGkReact(ka) + Math.min(1, scr) * CFG.gkScreen,
     v: back ? Math.max(vDive, meSpeed(ka, k.stamina) * CFG.gkBackV) : vDive,

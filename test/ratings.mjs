@@ -25,11 +25,14 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const POSN = ["GK", "DEF", "MID", "FWD"];
+// The bands the shot after it is struck is read on (CFG.gkPs): the metres an ordinary keeper's reach had in hand, upper edges.
+const PS_EDGES = [-2.5, -1.8, -1.3, -1.0, -0.75, -0.55, -0.4, -0.28, -0.18, -0.1, -0.03, 0.05, 0.15, 0.3, 0.5, 99];
 // SOFASCORE'S RATINGS AS THEY ARE NOW (the algorithm it brought in for 2025/26, which leans on a bell curve and gives more
 // sevens and more nines than the old one did), read from 142 matches and 4,270 rated performances of its own match data on
 // 16 October 2026: the Premier League, a round of each of the other big four and the 2026 World Cup's first round. A full
-// match is 81 minutes or more, as here. The user (3 October 2026) wants it with no positional bias, so every position is
-// held to the full-match shape below, though SofaScore's forwards have the fatter tails and its defenders the lower end.
+// match is 81 minutes or more, as here. The user (3 October 2026) wanted it with no positional bias, so every position was
+// held to the full-match shape below; on 28 November 2026 he asked for the top ratings to go to decisive games instead,
+// so the shape is now held by all the full matches together and each position only to the mean (CFG.rateFin).
 const PAR = 6.95;                                     // the full-match mean, where par sits; see CFG.ratePar
 const SHAPE = { hi8: 0.077, hi9: 0.0141, lo6: 0.068, tens: 1 / 860 };
 const SOFA = {
@@ -55,23 +58,20 @@ if (process.argv[2] === "--worker") {
   const leagues = MIX ? [...new Set(eng.PRESET_CATALOG.map(t => t.league))].filter(l => l && !OUTS.has(l))
                       .map(l => eng.PRESET_CATALOG.filter(t => t.league === l)).filter(g => g.length >= 2)
                       : [eng.PRESET_CATALOG.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two")];
-  globalThis.__sv = []; globalThis.__gc = []; globalThis.__rv = []; globalThis.__pp = [];
+  globalThis.__pp = []; globalThis.__px = true;       // __px: every pass kept on its passer (match.ts mePassPay)
   const lines = [];
   for (let k = +start; k < +N; k += +step) {
     const pool = leagues[k % leagues.length], P = pool.length, kk = Math.floor(k / leagues.length);
     const a = pool[kk % P], b = pool[(kk * 7 + 3) % P];
     if (a === b) continue;
-    globalThis.__sv.length = 0; globalThis.__gc.length = 0; globalThis.__rv.length = 0; globalThis.__pp.length = 0;
+    globalThis.__pp.length = 0;
     const { s, out } = eng.runPositionalMatch(a, b, +seedBase + k * 7919);
     const total = s.mePos.tick || 1;
     const sideOf = (q) => s.players.home.includes(q) || (s.subbedOff?.home || []).includes(q) ? "home" : "away";
-    // Per shot on target: [xg, 1 = goal, 1 = penalty]. A revoked parry was not a save, so the
-    // keeper's most recent save entry comes off again before the goal is recorded.
-    const c01 = (x) => +(Math.max(0, Math.min(1, x || 0))).toFixed(3);
+    // Per shot on target, the keeper's own ledger (match.ts meGkFaced): [xg, 1 = goal, 1 = penalty, the metres an ordinary
+    // keeper's reach had in hand or null, how high it came, ...]. A parry that went in has already come off it.
     const sotLog = { home: [], away: [] };
-    for (const [xg, q, pen] of globalThis.__sv) sotLog[sideOf(q)].push([c01(xg), 0, pen ? 1 : 0]);
-    for (const [, q] of globalThis.__rv) { const L = sotLog[sideOf(q)]; for (let i = L.length - 1; i >= 0; i--) if (L[i][1] === 0) { L.splice(i, 1); break; } }
-    for (const [xg, q, pen] of globalThis.__gc) sotLog[sideOf(q)].push([c01(xg), 1, pen ? 1 : 0]);
+    for (const sd of ["home", "away"]) for (const q of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) if (q && q._sot) sotLog[sd].push(...q._sot);
     const team = {};
     for (const sd of ["home", "away"]) {
       const o = sd === "home" ? "away" : "home";
@@ -95,7 +95,11 @@ if (process.argv[2] === "--worker") {
           prog: p.prog || 0, cc: p.cc || 0, def: p.defActs || 0, sv: p.saves || 0,
           duelWon: p.duelWon || 0, duelLost: p.duelLost || 0, drib: p.dribbles || 0,
           beaten: p.beaten || 0, aer: p.aerials || 0, int: p.ints || 0, yc: p.yc || 0, rc: p.rc ? 1 : 0,
-          r0: p._r0, proj: p._proj, shrink: p._shrink });
+          r0: p._r0, proj: p._proj, shrink: p._shrink, spos: (p.spos || "").split("/")[0],
+          // what the rating was made of (match.ts meRate's tags, and the two full-time terms), the chance credit before
+          // its cap, and every pass [belief x100, arrived, ground aimed for x10, in behind]
+          pt: Object.fromEntries(Object.entries({ ...(p._rc || {}), ...(p._rcF || {}) }).filter(([, v]) => v).map(([k2, v]) => [k2, +v.toFixed(3)])),
+          cgU: +(p._cgU || 0).toFixed(3), cbU: +(p._cbU || 0).toFixed(3), px: p._pxl || [], sot: p._sot || undefined });
       }
     }
     // Per pass: passer's OVR against his XI, position, the decision's belief, outcome, length,
@@ -123,7 +127,7 @@ const fit = (xs, ys) => {
 const f2 = (v) => (v >= 0 ? "+" : "") + v.toFixed(2);
 
 function analyse(matches, CFG) {
-  const GK_W = CFG.rateSave, gkExp = (xg, pen) => { if (pen) return CFG.gkExpPen; for (const [hi, e] of CFG.gkExp) if (xg < hi) return e; return CFG.gkExp[CFG.gkExp.length - 1][1]; };
+  const GK_W = CFG.rateSave, gkExp = priceOf(CFG.gkPs, CFG.gkExp, CFG.gkExpPen);
   const rows = matches.flatMap(m => m.players.map(p => ({ ...p, xi: m.team[p.sd].xi })));
   const full = rows.filter(r => r.frac >= 0.9);
   const L = [], R = { means: {}, gkBal: 0, bands: [] };
@@ -193,7 +197,7 @@ function analyse(matches, CFG) {
     const p = m.players.find(p => p.sd === sd_ && p.pos === "GK" && p.frac >= 0.9);
     if (!p) continue;
     const t = m.team[sd_];
-    const c = t.sotLog.reduce((tot, [xg, g, pen]) => { const e = gkExp(xg, pen); return tot + GK_W * (g ? -(1 - e) : e); }, 0);
+    const c = t.sotLog.reduce((tot, sh) => { const e = gkExp(sh); return tot + GK_W * (sh[1] ? -(1 - e) : e); }, 0);
     gks.push({ ovr: p.ovr, r: p.r, sv: p.sv, ga: t.ga, xgA: t.xgA, sotA: t.sotA, c });
   }
   const allShots = matches.flatMap(m => [...m.team.home.sotLog, ...m.team.away.sotLog]);
@@ -206,6 +210,11 @@ function analyse(matches, CFG) {
     R.bands.push({ lo, hi, n: g.length, conv: g.length ? mean(g.map(s => s[1])) : NaN, e }); lo = hi;
   }
   L.push("  conversion on target by gkExp band (open play): " + R.bands.map(b => `[${b.lo},${b.hi >= 1 ? 1 : b.hi}) n=${b.n} ${isNaN(b.conv) ? "-" : (b.conv * 100).toFixed(0) + "%"} vs ${(b.e * 100).toFixed(0)}%`).join(" | "));
+  // ...and by the metres an ordinary keeper's reach had in hand, which is what gkPs encodes.
+  R.ps = []; lo = -99;
+  const timed = open.filter(s => s[3] != null);
+  for (const hi of PS_EDGES) { const g = timed.filter(s => s[3] >= lo && s[3] < hi); R.ps.push({ lo, hi, n: g.length, conv: g.length ? mean(g.map(s => s[1])) : NaN }); lo = hi; }
+  L.push(`  conversion on target by metres in hand (${timed.length} of ${open.length} open-play shots carry it): ` + R.ps.map(b => `<${b.hi >= 99 ? "inf" : b.hi} n=${b.n} ${isNaN(b.conv) ? "-" : (b.conv * 100).toFixed(0) + "%"}`).join(" | "));
   R.penConv = pens.length ? mean(pens.map(s => s[1])) : NaN; R.penN = pens.length;
   L.push(`  penalties on target ${pens.length}, conversion ${isNaN(R.penConv) ? "-" : (R.penConv * 100).toFixed(0) + "%"} vs gkExpPen ${(CFG.gkExpPen * 100).toFixed(0)}%`);
   R.gkBal = mean(gks.map(g => g.c));
@@ -239,12 +248,16 @@ function analyse(matches, CFG) {
 // A keeper's ledger can be re-priced on a new expectation table first: every shot on target he faced
 // moves his raw rating by rateSave x (new expectation - old), saved or not.
 function refinish(matches, CFG, F, gk, S = CFG.rateBend, par = CFG.ratePar) {
-  const ex = (T, pen, xg, pE) => { if (pen) return pE; for (const [hi, e] of T) if (xg < hi) return e; return T[T.length - 1][1]; };
+  const was = priceOf(CFG.gkPs, CFG.gkExp, CFG.gkExpPen), now = gk ? priceOf(gk.ps, gk.T, gk.pen) : null;
   const rows = [];
   for (const m of matches) for (const p of m.players) {
     if (p.r0 == null || p.frac * 90 < 10) continue;
     let r0 = p.r0;
-    if (gk && p.pos === "GK") for (const [xg, , pen] of m.team[p.sd].sotLog) r0 += CFG.rateSave * (ex(gk.T, pen, xg, gk.pen) - ex(CFG.gkExp, pen, xg, CFG.gkExpPen));
+    if (now && p.pos === "GK" && p.sot) {
+      for (const sh of p.sot) r0 += CFG.rateSave * (now(sh) - was(sh));
+      // ...and his clean sheet with them, which is paid on the same expectation.
+      if (m.team[p.sd].ga === 0) r0 += CFG.rateCleanXg * Math.min(CFG.rateCleanXgMax, p.sot.reduce((t, sh) => t + (sh[1] ? 0 : now(sh)), 0)) - (p.pt?.clean || 0);
+    }
     const f = F[p.pos], z = p.rc ? r0 - 6.5 - f.mid : (r0 - 6.5 - f.mid * p.frac) * p.proj * p.shrink;
     const top = 6.5 + z * (z >= 0 ? f.up : f.dn) + (par - 6.5) * p.shrink;
     const r = top > CFG.rateKnee ? CFG.rateKnee + f.tail * S * Math.log(1 + (top - CFG.rateKnee) / S) : top;
@@ -252,8 +265,14 @@ function refinish(matches, CFG, F, gk, S = CFG.rateBend, par = CFG.ratePar) {
   }
   return rows;
 }
-// Each position's four numbers by bisection, a few sweeps over all of them: mid sets the mean, up
-// the share at 8.0+, dn the share at 6.0-, tail the share at 9.0+. Each is monotone in its own, and
+// What an ordinary keeper concedes from one shot on target of the ledger: a penalty its own figure, a shot that carries
+// the metres he had in hand that band's (gkPs), anything else its chance's (gkExp). Mirrors match.ts meGkPs.
+function priceOf(ps, T, pen) {
+  const band = (B, v) => { for (const [hi, e] of B) if (v < hi) return e; return B[B.length - 1][1]; };
+  return ([xg, , isPen, sl]) => isPen ? pen : ps && sl != null ? band(ps, sl) : band(T, xg);
+}
+// By bisection, a few sweeps: each position's mid sets its own mean, and up, dn and tail, the same for every position,
+// set the share of ALL full matches at 8.0+, at 6.0- and at 9.0+. Each is monotone in its own, and
 // each f below rises with its parameter. The bend (CFG.rateBend) is NOT fitted: the tens it would be
 // fitted to are a dozen performances in twelve hundred matches, and three fits on as many runs came
 // back 3.5, 4.1 and 25. It is set by hand and the tens are reported.
@@ -261,15 +280,15 @@ function fitFinish(matches, CFG, gk) {
   const F = JSON.parse(JSON.stringify(CFG.rateFin));
   let S = CFG.rateBend;
   const bis = (set, f, lo, hi) => { for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; set(m); if (f() < 0) lo = m; else hi = m; } set((lo + hi) / 2); };
-  const get = (p) => refinish(matches, CFG, F, gk, S, PAR).filter(r => r.full && r.pos === p).map(r => r.r);
-  for (let it = 0; it < 3; it++) {
-    for (const p of POSN) for (let k = 0; k < 2; k++) {
-      bis(v => F[p].mid = v, () => PAR - mean(get(p)), -2, 3);
-      bis(v => F[p].up = v, () => share(get(p), r => r >= 8.0) - SHAPE.hi8, 0.2, 4);
-      bis(v => F[p].dn = v, () => share(get(p), r => r <= 6.0) - SHAPE.lo6, 0.2, 4);
-      bis(v => F[p].tail = v, () => share(get(p), r => r >= 9.0) - SHAPE.hi9, 0.2, 4);
-    }
+  const get = (p) => refinish(matches, CFG, F, gk, S, PAR).filter(r => r.full && (!p || r.pos === p)).map(r => r.r);
+  const all = (k) => (v) => { for (const p of POSN) F[p][k] = v; };
+  for (let it = 0; it < 4; it++) {
+    for (const p of POSN) bis(v => F[p].mid = v, () => PAR - mean(get(p)), -2, 3);
+    bis(all("up"), () => share(get(), r => r >= 8.0) - SHAPE.hi8, 0.2, 4);
+    bis(all("dn"), () => share(get(), r => r <= 6.0) - SHAPE.lo6, 0.2, 4);
+    bis(all("tail"), () => share(get(), r => r >= 9.0) - SHAPE.hi9, 0.2, 4);
   }
+  for (const p of POSN) bis(v => F[p].mid = v, () => PAR - mean(get(p)), -2, 3);
   return { F, S };
 }
 const share = (xs, f) => xs.filter(f).length / (xs.length || 1);
@@ -358,16 +377,8 @@ if (!fs.existsSync(src)) { console.log("no test/engine.mjs -- run: zsh test/rebu
 // anchor must be found exactly once, so a renamed variable fails loudly instead of recording nothing.
 let code = fs.readFileSync(src, "utf8");
 const sub = (from, to) => { const c = code.split(from).length - 1; if (c !== 1) throw new Error(`anchor x${c}, want x1: ${from}`); code = code.split(from).join(to); };
-// The bundler renames the keeper's variable between builds (q, q2, ...), so these four anchors match
-// it by pattern and write it back as found. Still exactly one match each, or it fails loudly.
-const subRe = (re, to) => { const m = code.match(new RegExp(re.source, "g")) || []; if (m.length !== 1) throw new Error(`anchor x${m.length}, want x1: ${re}`); code = code.replace(re, to); };
-subRe(/meRate\((q\d*), meSaveBonus\(shp\.xgN \?\? shp\.xg, shp\.pen\) \+ \(shp\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([shp.xgN ?? shp.xg, $1, !!shp.pen]), meSaveBonus(shp.xgN ?? shp.xg, shp.pen)) + (shp.pen ? CFG.ratePenSave : 0));");
-subRe(/meRate\((q\d*), meSaveBonus\(mp\.shot\.xgN \?\? mp\.shot\.xg, mp\.shot\.pen\) \+ \(mp\.shot\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([mp.shot.xgN ?? mp.shot.xg, $1, !!mp.shot.pen]), meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
-subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\? sh\.xg : xg, !!\(sh && sh\.pen\)\)\);/, "if ($1.pos === \"GK\") meRate($1, (globalThis.__gc.push([sh ? sh.xgN ?? sh.xg : xg, $1, !!(sh && sh.pen)]), -meConcedePen(sh ? sh.xgN ?? sh.xg : xg, !!(sh && sh.pen))));");
-sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
-// The rating before full time shapes it, so the finalisation can be re-fitted without replaying.
-sub("const z = p.rc ? rawR - 6.5 - f.mid", "p._r0 = rawR; p._proj = proj; p._shrink = shrink; const z = p.rc ? rawR - 6.5 - f.mid");
+// (The rating before full time shapes it, and what it was made of, the engine keeps itself: p._r0, p._rc.)
 // Indentation-free: the contest moved into its own function and the bundle re-indents it.
 sub("resolvePending(bs);", "mp._pickI = bi; resolvePending(bs); mp._pickI = -1;");
 const engPath = path.join(HERE, "engine-ratings.mjs");
@@ -392,19 +403,26 @@ if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, matches.map(m => JSON.s
 console.log(`${matches.length} matches in ${((Date.now() - t0) / 1000).toFixed(0)}s on ${W} workers${env.CFG ? "   CFG " + env.CFG : ""}\n`);
 const { text, R } = analyse(matches, CFG);
 console.log(text);
-console.log("\nTHE FINISH AS SHIPPED, per position against SofaScore's shape (8.0+ " + (SHAPE.hi8 * 100).toFixed(1) + "%, 9.0+ " + (SHAPE.hi9 * 100).toFixed(1) + "%, 6.0- " + (SHAPE.lo6 * 100).toFixed(1) + "%, a 10.0 in " + Math.round(1 / SHAPE.tens) + ")");
+console.log("\nTHE FINISH AS SHIPPED, all positions together against SofaScore's shape (8.0+ " + (SHAPE.hi8 * 100).toFixed(1) + "%, 9.0+ " + (SHAPE.hi9 * 100).toFixed(1) + "%, 6.0- " + (SHAPE.lo6 * 100).toFixed(1) + "%, a 10.0 in " + Math.round(1 / SHAPE.tens) + ")");
 const shipped = refinish(matches, CFG, CFG.rateFin, null);
 console.log(shapeTable(shipped));
 console.log(sofaTable(shipped));
 
 if (mode === "derive") {
   // Bands under 100 shots, and penalties under 50, keep the shipped figure.
-  const gk = { T: R.bands.map(b => [b.hi, b.n >= 100 ? +b.conv.toFixed(2) : b.e]), pen: R.penN >= 50 ? +R.penConv.toFixed(2) : CFG.gkExpPen };
+  // ...and the table by metres in hand: neighbouring bands are pooled until each holds 150 shots and the share conceded
+  // does not rise with what he had in hand (it cannot, and a rise is noise).
+  const ps = []; { let n = 0, g = 0;
+    for (const b of R.ps) { n += b.n; g += b.n ? b.conv * b.n : 0; if (n >= 150 || b.hi >= 99) { if (n) ps.push([b.hi, g / n, n]); n = 0; g = 0; } }
+    for (let i = 1; i < ps.length; i++) if (ps[i][1] > ps[i - 1][1]) { const n2 = ps[i][2] + ps[i - 1][2]; ps.splice(i - 1, 2, [ps[i][0], (ps[i][1] * ps[i][2] + ps[i - 1][1] * ps[i - 1][2]) / n2, n2]); i = Math.max(0, i - 2); } }
+  const gk = { T: R.bands.map(b => [b.hi, b.n >= 100 ? +b.conv.toFixed(2) : b.e]), pen: R.penN >= 50 ? +R.penConv.toFixed(2) : CFG.gkExpPen,
+               ps: ps.length >= 3 ? ps.map(([hi, e]) => [hi, +e.toFixed(2)]) : CFG.gkPs };
   const { F, S } = fitFinish(matches, CFG, gk);
   console.log("\nTO SHIP (par " + PAR + " for every position, full-match players):");
   console.log("  gkExp: [" + gk.T.map(([hi, e]) => `[${hi.toFixed(2)}, ${e.toFixed(2)}]`).join(", ") + "],   gkExpPen: " + gk.pen.toFixed(2));
+  if (gk.ps) console.log("  gkPs: [" + gk.ps.map(([hi, e]) => `[${hi}, ${e.toFixed(2)}]`).join(", ") + "],");
   console.log("  rateBend: " + S.toFixed(2) + ",");
-  console.log("  rateFin: {\n" + POSN.map(p => `    ${(p + ":").padEnd(4)} { mid: ${F[p].mid.toFixed(3)}, up: ${F[p].up.toFixed(3)}, dn: ${F[p].dn.toFixed(3)}, tail: ${F[p].tail.toFixed(3)} },`).join("\n") + "\n  },");
+  console.log("  rateFin: {\n" + POSN.map(p => `    ${(p + ":").padEnd(7)} { mid: ${F[p].mid.toFixed(3)}, up: ${F[p].up.toFixed(3)}, dn: ${F[p].dn.toFixed(3)}, tail: ${F[p].tail.toFixed(3)} },`).join("\n") + "\n  },");
   console.log("\nTHE FINISH TO SHIP, on these matches:");
   const toShip = refinish(matches, CFG, F, gk, S, PAR);
   console.log(shapeTable(toShip));
@@ -413,16 +431,17 @@ if (mode === "derive") {
 }
 if (mode === "check") {
   const bad = [];
-  // Every position on the same curve: the mean within 0.10 of par, and each tail share within three
-  // standard errors (plus half a point) of SofaScore's.
+  // Every position's mean within 0.10 of par, and all the full matches together within three standard errors (plus
+  // half a point) of SofaScore's share at each tail.
   for (const p of POSN) {
-    const g = shipped.filter(r => r.full && r.pos === p).map(r => r.r), n = g.length, m = mean(g);
+    const m = mean(shipped.filter(r => r.full && r.pos === p).map(r => r.r));
     if (Math.abs(m - PAR) > 0.10) bad.push(`${p} mean ${m.toFixed(3)} is off ${PAR} by more than 0.10 -- re-derive rateFin`);
+  }
+  { const g = shipped.filter(r => r.full).map(r => r.r), n = g.length;
     for (const [k, t, f] of [["8.0+", SHAPE.hi8, r => r >= 8.0], ["9.0+", SHAPE.hi9, r => r >= 9.0], ["6.0-", SHAPE.lo6, r => r <= 6.0]]) {
       const v = share(g, f), tol = 3 * Math.sqrt(t * (1 - t) / n) + 0.005;
-      if (Math.abs(v - t) > tol) bad.push(`${p} puts ${(v * 100).toFixed(1)}% of full matches at ${k} against ${(t * 100).toFixed(1)}% -- re-derive rateFin`);
-    }
-  }
+      if (Math.abs(v - t) > tol) bad.push(`${(v * 100).toFixed(1)}% of full matches are at ${k} against ${(t * 100).toFixed(1)}% -- re-derive rateFin`);
+    } }
   if (Math.abs(R.gkBal) > 0.08) bad.push(`keeper save/concede contribution averages ${R.gkBal.toFixed(3)}, not ~0 -- re-derive gkExp`);
   for (const b of R.bands) if (b.n >= 100 && Math.abs(b.conv - b.e) > 0.10) bad.push(`gkExp band [${b.lo},${b.hi}) converts ${(b.conv * 100).toFixed(0)}% against a shipped ${(b.e * 100).toFixed(0)}% -- re-derive gkExp`);
   // The belief is checked by band, not by coefficient: okLate's coefficient is set by the few
