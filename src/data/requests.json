@@ -1,1 +1,331 @@
-[]
+[
+ {
+  "by": "vlxq2",
+  "at": "2026-11-28T00:07:23.911Z",
+  "approved": [],
+  "id": "8f8705cf",
+  "kind": "new",
+  "what": "leagues",
+  "teamName": "Division d'Onor",
+  "rec": {
+   "what": "leagues",
+   "nation": "CRS",
+   "name": "Division d'Onor",
+   "tier": 1,
+   "cup": null,
+   "clubs": [
+    {
+     "id": "mwzmvjbgvnsq",
+     "name": "TOlosa FC",
+     "code": "TOL",
+     "home": "#3e2c56",
+     "away": "#ffffff",
+     "stadium": "Estadi del Ramièr (38,500)",
+     "location": "Tolosa",
+     "group": "Division d'Onor",
+     "formation": "3-4-3",
+     "timeWasting": "Never",
+     "manager": "m0170",
+     "squad": [
+      {
+       "name": "Andrieu Lacombe",
+       "nat": "CRS",
+       "born": "1907-06-24",
+       "pos": [
+        "GK"
+       ],
+       "ovr": 79,
+       "badges": [
+        "commanding",
+        "manon:1"
+       ],
+       "portrait": true
+      },
+      {
+       "name": "Jòrdi Cabrol",
+       "nat": "CRS",
+       "born": "1910-02-13",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 77,
+       "badges": [
+        "relentless:1",
+        "disciplined:1"
+       ]
+      },
+      {
+       "name": "Pèire-Joan Marty",
+       "nat": "CRS",
+       "born": "1904-07-04",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 81,
+       "badges": [
+        "aerial:1",
+        "disciplined:1",
+        "composed"
+       ]
+      },
+      {
+       "name": "Miquèl Soulié",
+       "nat": "CRS",
+       "born": "1911-05-28",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 76,
+       "badges": [
+        "quickstep:1",
+        "shouldercheck:1"
+       ]
+      },
+      {
+       "name": "Rachid Ben-Slimane",
+       "nat": "CRS",
+       "born": "1912-12-27",
+       "pos": [
+        "LM"
+       ],
+       "ovr": 84,
+       "badges": [
+        "firsttouch:1",
+        "shouldercheck:1",
+        "disguise:1"
+       ]
+      },
+      {
+       "name": "Léonard Peyre",
+       "nat": "CRS",
+       "born": "1908-07-26",
+       "pos": [
+        "CM",
+        "DM"
+       ],
+       "ovr": 78,
+       "badges": [
+        "relentless:1",
+        "closesdown:1"
+       ]
+      },
+      {
+       "name": "Gaston Bories",
+       "nat": "CRS",
+       "born": "1906-11-01",
+       "pos": [
+        "CM",
+        "DM"
+       ],
+       "ovr": 80,
+       "badges": [
+        "vision:1",
+        "longball",
+        "ontherun:1"
+       ]
+      },
+      {
+       "name": "Raimon Pujol",
+       "nat": "CRS",
+       "born": "1911-01-06",
+       "pos": [
+        "RM"
+       ],
+       "ovr": 82,
+       "badges": [
+        "rapid:1",
+        "tikitaka",
+        "pressresistant:1"
+       ]
+      },
+      {
+       "name": "Enric Estève",
+       "nat": "CRS",
+       "born": "1913-10-04",
+       "pos": [
+        "LW"
+       ],
+       "ovr": 75,
+       "badges": [
+        "quickstep:1",
+        "crosser"
+       ]
+      },
+      {
+       "name": "Bertrand Cayla",
+       "nat": "CRS",
+       "born": "1907-06-05",
+       "pos": [
+        "ST"
+       ],
+       "ovr": 83,
+       "badges": [
+        "finisher:1",
+        "aerial:1",
+        "poacher:1"
+       ]
+      },
+      {
+       "name": "Lucien-Marc Galtier",
+       "nat": "CRS",
+       "born": "1909-05-19",
+       "pos": [
+        "RW"
+       ],
+       "ovr": 78,
+       "badges": [
+        "rapid:1",
+        "crosser"
+       ]
+      },
+      {
+       "name": "Bernat Delpech",
+       "nat": "CRS",
+       "born": "1903-01-29",
+       "pos": [
+        "GK"
+       ],
+       "ovr": 75,
+       "badges": [
+        "shotstopper",
+        "safehands:1"
+       ]
+      },
+      {
+       "name": "Guilhèm Teissèire",
+       "nat": "CRS",
+       "born": "1906-11-07",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 76,
+       "badges": [
+        "strong:1",
+        "tightmarker:1"
+       ]
+      },
+      {
+       "name": "Arnaut Combes",
+       "nat": "CRS",
+       "born": "1910-04-01",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 76,
+       "badges": [
+        "aerial:1",
+        "strong:1"
+       ]
+      },
+      {
+       "name": "Yacine Mansouri",
+       "nat": "CRS",
+       "born": "1915-01-17",
+       "pos": [
+        "CB"
+       ],
+       "ovr": 73,
+       "badges": [
+        "relentless:1"
+       ]
+      },
+      {
+       "name": "Henri-Marc Viguier",
+       "nat": "CRS",
+       "born": "1908-07-24",
+       "pos": [
+        "CM"
+       ],
+       "ovr": 75,
+       "badges": [
+        "relentless:1",
+        "disguise:1"
+       ]
+      },
+      {
+       "name": "Loís Falguièras",
+       "nat": "CRS",
+       "born": "1905-08-04",
+       "pos": [
+        "CM",
+        "DM"
+       ],
+       "ovr": 77,
+       "badges": [
+        "tackler",
+        "closesdown:1"
+       ]
+      },
+      {
+       "name": "Fabian Castan",
+       "nat": "CRS",
+       "born": "1913-02-24",
+       "pos": [
+        "CM"
+       ],
+       "ovr": 74,
+       "badges": [
+        "tikitaka"
+       ]
+      },
+      {
+       "name": "Clamenç Roques",
+       "nat": "CRS",
+       "born": "1916-08-09",
+       "pos": [
+        "CM"
+       ],
+       "ovr": 68
+      },
+      {
+       "name": "Sébastien Auriol",
+       "nat": "CRS",
+       "born": "1910-08-21",
+       "pos": [
+        "ST"
+       ],
+       "ovr": 75,
+       "badges": [
+        "rapid:1",
+        "crosser"
+       ]
+      },
+      {
+       "name": "Kader Ziani",
+       "nat": "CRS",
+       "born": "1916-02-25",
+       "pos": [
+        "ST"
+       ],
+       "ovr": 72,
+       "badges": [
+        "quickstep:1"
+       ]
+      },
+      {
+       "name": "Hector Mallet",
+       "nat": "CRS",
+       "born": "1903-09-20",
+       "pos": [
+        "ST"
+       ],
+       "ovr": 76,
+       "badges": [
+        "finisher:1",
+        "aerial:1"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "needs": {
+   "@overseer": [
+    "auroruse"
+   ]
+  },
+  "locks": [
+   "m:m0170"
+  ]
+ }
+]
