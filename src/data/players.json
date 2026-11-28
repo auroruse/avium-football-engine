@@ -3209,7 +3209,7 @@
 {"id":"p3252","name":"Chris HADLEIGH","nat":"ELV","ovr":74,"born":"1907-02-19","pos":["CB"],"badges":["disciplined:1"]},
 {"id":"p3253","name":"Devante ROWLEY","nat":"ELV","ovr":78,"born":"1903-11-30","pos":["LW","ST"],"badges":["finisher:2","poacher:2","greedy"]},
 {"id":"p3254","name":"Keigo MACHIDA","nat":"NCH","ovr":76,"born":"1908-10-24","pos":["RB"],"badges":["passandmove:2"]},
-{"id":"p3255","name":"Serafim CORREIA","nat":"ASK","ovr":81,"born":"1914-03-07","pos":["DM"],"badges":["drives:2","closesdown:1"]},
+{"id":"p3255","name":"Serafim CORREIA","nat":"ASK","ovr":81,"born":"1914-03-07","pos":["DM","CM"],"badges":["drives:2","closesdown:1"]},
 {"id":"p3256","name":"Rhys WARWICK","nat":"ELV","ovr":76,"born":"1904-03-07","pos":["CM"],"badges":["composed:2","manon:1","givesaway:1"]},
 {"id":"p3257","name":"Keiran STANDISH","nat":"ELV","ovr":77,"born":"1906-04-02","pos":["AM","RW"],"badges":["composed","passandmove:1"]},
 {"id":"p3258","name":"Detlef LORENZ","nat":"ALE","ovr":75,"born":"1908-10-30","pos":["ST"],"badges":["firsttouch:1","ridestackles:1"]},
