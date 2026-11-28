@@ -1868,10 +1868,20 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   rateSave: 0.65, gkExpPen: 0.78, rateOwnGoal: 0.85, rateSaveVol: 0.13,
   // A goal against, to each man of the side on the pitch, by his line (raw): SofaScore's defenders lose 0.28 a goal, its
   // midfielders 0.08 and its forwards nothing. Was 0.06 to the defenders alone.
-  rateConcede: { DEF: 0.29, MID: 0.05, FWD: 0 },
+  // ...cut to a share the back line carries together (28 November 2026), DEF 0.29 -> 0.05: the rest of a goal is charged
+  // to the men in it (rateBlame*, below), so a good defender behind a poor side is no longer a poor defender.
+  rateConcede: { DEF: 0.05, MID: 0.05, FWD: 0 },
+  // THE MEN WHO LET IT IN (match.ts, the goal; meBlameAt reads them at the strike). The scorer's marker pays rateBlameMark
+  // scaled from rateBlameMarkMin of it when he was within rateBlameTight metres to all of it at rateBlameLoose or more;
+  // with nobody marking him, the nearest outfielder within rateBlameNearR pays rateBlameNear; every man beaten in the move
+  // within rateErrWin of the goal pays rateBlameBeat. Set by reasoning to replace the flat charge they share out of; the
+  // finish (rateFin) is refitted on top, so they move who pays, not what a defender averages.
+  rateBlameMark: 0.25, rateBlameMarkMin: 0.4, rateBlameTight: 1.5, rateBlameLoose: 5.0,
+  rateBlameNear: 0.15, rateBlameNearR: 10, rateBlameBeat: 0.12,
   // The result, to every man who played, by his share of the match (raw, [won, drawn]): SofaScore's keeper +0.16 / +0.09
   // over a defeat, defender +0.11 / +0.08, midfielder +0.09 / +0.06, forward +0.27 / +0.12, net of everything else.
-  rateResult: { GK: [0.17, 0.12], DEF: [0.07, 0.07], MID: [0.04, 0.01], FWD: [0.21, 0.06] },
+  // The keeper's is gone (28 November 2026, the user: rated on goals prevented only); a defeat behind a poor side is not his.
+  rateResult: { GK: [0, 0], DEF: [0.07, 0.07], MID: [0.04, 0.01], FWD: [0.21, 0.06] },
   // THE EVENT WEIGHTS, REBUILT FOR THE REBUILT GAME (user, 22 November 2026: "rebuild the rating system from a
   // SofaScore-inspired system again, taking into consideration everything we have available in our engine. I expect the
   // current one to be very attacker-biased"). The weights were fitted on 16 October to SofaScore's own, per event, for a
@@ -1891,7 +1901,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // mean, a clean sheet with nothing to do reads 7.0, one with five saves a little over 8.0. This is above SofaScore's
   // own keepers, whose clean sheets average 7.37 (ours will sit near 7.7): the user asked for it. SofaScore's breakdown
   // by saves could not be pulled (its API refused the request), so the split by workload is set by reasoning.
-  rateCleanGK: 0.20, rateCleanSave: 0.08, rateCleanSaveMax: 8, rateCleanFloor: 7.0,
+  // REBUILT 28 November 2026: a flat 0.20 and a floor of 7.0 rewarded a poor keeper behind a good defence for the nought
+  // the defence kept. Now rateCleanXg for each goal an ordinary keeper would have expected to concede from the shots on
+  // target he faced, to rateCleanXgMax of them: nothing to do reads par, five ordinary saves about what they did before.
+  rateCleanXg: 0.40, rateCleanXgMax: 2.5,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1990,6 +2003,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // routine positives are small and frequent, the routine punishments are smaller still, and only
   // goals, saves, errors and dismissals reach far from par.
   ratePass: 0.014, ratePassProg: 0.0009, ratePassProgCap: 26, ratePassFail: 0.054,
+  // A completed pass pays ratePassHalf / (ratePassHalf + those he has already completed) of the above (28 November 2026):
+  // the twenty-fifth pays half the first, so volume alone stops carrying a midfielder to the top of the season board.
+  ratePassHalf: 25,
   // A pass is PROGRESSIVE by the Wyscout rule: the gain toward the opponent's goal that counts
   // shrinks as play moves higher, so a defender lumping it forward from all that free grass does
   // not out-count a midfielder threading it in traffic. Both ends in own half: 28 m. Crossing

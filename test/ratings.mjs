@@ -363,7 +363,7 @@ const sub = (from, to) => { const c = code.split(from).length - 1; if (c !== 1) 
 const subRe = (re, to) => { const m = code.match(new RegExp(re.source, "g")) || []; if (m.length !== 1) throw new Error(`anchor x${m.length}, want x1: ${re}`); code = code.replace(re, to); };
 subRe(/meRate\((q\d*), meSaveBonus\(shp\.xgN \?\? shp\.xg, shp\.pen\) \+ \(shp\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([shp.xgN ?? shp.xg, $1, !!shp.pen]), meSaveBonus(shp.xgN ?? shp.xg, shp.pen)) + (shp.pen ? CFG.ratePenSave : 0));");
 subRe(/meRate\((q\d*), meSaveBonus\(mp\.shot\.xgN \?\? mp\.shot\.xg, mp\.shot\.pen\) \+ \(mp\.shot\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([mp.shot.xgN ?? mp.shot.xg, $1, !!mp.shot.pen]), meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
-subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\? sh\.xg : xg, !!\(sh && sh\.pen\)\)\);/, "if ($1.pos === \"GK\") meRate($1, (globalThis.__gc.push([sh ? sh.xgN ?? sh.xg : xg, $1, !!(sh && sh.pen)]), -meConcedePen(sh ? sh.xgN ?? sh.xg : xg, !!(sh && sh.pen))));");
+subRe(/meRate\((q\d*), -meConcedePen\((gxp\d*), (gpn\d*)\)\);/, "meRate($1, (globalThis.__gc.push([$2, $1, $3]), -meConcedePen($2, $3)));");
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
 // The rating before full time shapes it, so the finalisation can be re-fitted without replaying.
