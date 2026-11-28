@@ -1060,8 +1060,8 @@ export const meGkSoft = (e, rf) => Math.max(rf === 1 ? 1 : 0, clamp01((CFG.rateG
 //   for having nothing to do: both are rates, drawn toward an ordinary keeper's by rateGkLevel of an ordinary match
 //   (rateGkPar of pay, rateGkShots shots on target), and paid as that match's worth (rateSave, rateBigSave). A keeper
 //   with nothing to do reads par.
-//   AND BELOW AN ORDINARY KEEPER'S IT COUNTS FOR LITTLE (rateGkDamp): saving less than usual of what could have gone
-//   either way is not a mistake, and it is the mistakes that take him down.
+//   AND BELOW AN ORDINARY KEEPER'S IT COUNTS FOR NOTHING (rateGkDamp, 0): saving less than usual of what could have gone
+//   either way is not a mistake, and only the mistakes take him down.
 // Penalties are apart (ratePenSave), and a penalty scored is nobody's mistake. Measured where the weights are, in config.
 export const meGkScore = (L) => {
   let S = 0, ES = 0, n = 0, big = 0, mis = 0;

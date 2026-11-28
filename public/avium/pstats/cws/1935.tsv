@@ -1,365 +1,365 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
 1	Valery Polyakov	FWD	UKA	12	12	965	13		1	Yrjö Hietanen	DEF	XIV	13	13	1170	10		1	Ausiàs Campanar	MID	CA	8	7	511	8.1		1	Arcadio Villa	MID	MYH	13	13	1008	34		1	Simon Schulhof	DEF	MYH	13	12	1000	68		1	Ivan Dolgorukiy	GK	UKA	12	12	1080	59
 2	Homura Yagami	FWD	NSJ	12	11	769	9		2	Ausiàs Campanar	MID	CA	8	7	511	6		2	Jens Geirsson	FWD	HAV	8	8	545	8.0		2	Ferruccio Noseda	MID	PIS	10	10	900	31		2	Boris Vinogradov	MID	UKA	12	12	1080	55		2	Ryōichi Nakashima	GK	PIS	10	10	900	45
-3	Saleim Razhimi	FWD	XIV	13	13	915	9		3	Boris Vinogradov	MID	UKA	12	12	1080	6		3	Renzo Agbayani	GK	BNG	5	5	450	7.8		3	Ander Zubikarai	FWD	KAN	8	8	611	30		3	Meine Carlsen	DEF	SPA	10	10	808	49		3	Ludvig Laaksonen	GK	XIV	13	13	1168	44
-4	Ander Zubikarai	FWD	KAN	8	8	611	8		4	Ime Paulsen	MID	SPA	10	10	805	5		4	Ime Paulsen	MID	SPA	10	10	805	7.8		4	Gijs Dreesens	FWD	SPA	10	10	745	30		4	Fyodor Chistyakov	DEF	UKA	12	12	1051	49		4	Shūji Kannazuki	GK	KAN	8	8	719	42
-5	István Magvasi	FWD	TTK	6	6	540	7		5	Valery Polyakov	FWD	UKA	12	12	965	5		5	Sōta Wakatsuki	MID	PAS	10	10	699	7.8		5	Ashkan Mahdavi	FWD	PAS	10	9	820	30		5	Tilman Zartmann	DEF	PIS	10	10	882	48		5	Crispin Whitfield	GK	MYH	12	12	1080	41
-6	Osip Yudin	FWD	UKA	12	12	934	7		6	Daivid Fedoroff	MID	XIV	13	12	980	5		6	Lothar Höfler	MID	STU	6	6	411	7.7		6	Alimjan Turghun	FWD	KRK	7	6	439	29		6	Íñigo Basterretxea	DEF	MYH	13	12	1110	48		6	Vahid Lorestani	GK	PAS	9	9	810	40
-7	Jens Geirsson	FWD	HAV	8	8	545	6		7	Ander Zubikarai	FWD	KAN	8	8	611	4		7	Ander Zubikarai	FWD	KAN	8	8	611	7.7		7	Valery Polyakov	FWD	UKA	12	12	965	29		7	Aleix Benimaclet	DEF	CA	8	7	647	46		7	Renzo Agbayani	GK	BNG	5	5	450	37
-8	Ole Toft	FWD	SPA	10	10	704	6		8	Niccolò Donizetti	MID	KAN	8	7	473	4		8	Eskandar Dehghan	DEF	PAS	10	9	682	7.7		8	Boris Vinogradov	MID	UKA	12	12	1080	28		8	Ane Ludvigsen	DEF	SPA	10	10	815	45		8	Susumu Arakawa	GK	NSJ	12	12	1080	37
+3	Saleim Razhimi	FWD	XIV	13	13	915	9		3	Boris Vinogradov	MID	UKA	12	12	1080	6		3	Ime Paulsen	MID	SPA	10	10	805	7.8		3	Ander Zubikarai	FWD	KAN	8	8	611	30		3	Meine Carlsen	DEF	SPA	10	10	808	49		3	Ludvig Laaksonen	GK	XIV	13	13	1168	44
+4	Ander Zubikarai	FWD	KAN	8	8	611	8		4	Ime Paulsen	MID	SPA	10	10	805	5		4	Sōta Wakatsuki	MID	PAS	10	10	699	7.8		4	Gijs Dreesens	FWD	SPA	10	10	745	30		4	Fyodor Chistyakov	DEF	UKA	12	12	1051	49		4	Shūji Kannazuki	GK	KAN	8	8	719	42
+5	István Magvasi	FWD	TTK	6	6	540	7		5	Valery Polyakov	FWD	UKA	12	12	965	5		5	Lothar Höfler	MID	STU	6	6	411	7.7		5	Ashkan Mahdavi	FWD	PAS	10	9	820	30		5	Tilman Zartmann	DEF	PIS	10	10	882	48		5	Crispin Whitfield	GK	MYH	12	12	1080	41
+6	Osip Yudin	FWD	UKA	12	12	934	7		6	Daivid Fedoroff	MID	XIV	13	12	980	5		6	Ander Zubikarai	FWD	KAN	8	8	611	7.7		6	Alimjan Turghun	FWD	KRK	7	6	439	29		6	Íñigo Basterretxea	DEF	MYH	13	12	1110	48		6	Vahid Lorestani	GK	PAS	9	9	810	40
+7	Jens Geirsson	FWD	HAV	8	8	545	6		7	Ander Zubikarai	FWD	KAN	8	8	611	4		7	Eskandar Dehghan	DEF	PAS	10	9	682	7.7		7	Valery Polyakov	FWD	UKA	12	12	965	29		7	Aleix Benimaclet	DEF	CA	8	7	647	46		7	Renzo Agbayani	GK	BNG	5	5	450	37
+8	Ole Toft	FWD	SPA	10	10	704	6		8	Niccolò Donizetti	MID	KAN	8	7	473	4		8	Renzo Agbayani	GK	BNG	5	5	450	7.6		8	Boris Vinogradov	MID	UKA	12	12	1080	28		8	Ane Ludvigsen	DEF	SPA	10	10	815	45		8	Susumu Arakawa	GK	NSJ	12	12	1080	37
 9	Marcus Wright	MID	MYH	12	11	835	6		9	Fernand Mullenbach	MID	LUZ	8	8	577	4		9	Sergei Smirnov	DEF	OM	6	6	455	7.6		9	Ime Paulsen	MID	SPA	10	10	805	27		9	Hayato Kirino	DEF	NSJ	12	11	979	45		9	Nils Nyquist	GK	HAV	8	8	720	36
 10	Günther Rajala	FWD	XIV	13	13	849	6		10	Klim Zaytsev	MID	KRK	8	7	577	4		10	Bartosz Jastrzębski	MID	NSR	6	6	540	7.6		10	Osip Yudin	FWD	UKA	12	12	934	27		10	Eskandar Dehghan	DEF	PAS	10	9	682	44		10	Mathis Weiler	GK	LUZ	8	8	720	33
 11	Arcadio Villa	MID	MYH	13	13	1008	6		11	Pisenti Ramose	MID	LA	10	8	614	4		11	Ezequiel Mulholland	MID	RSR	8	8	481	7.6		11	Günther Rajala	FWD	XIV	13	13	849	27		11	Gaspard Reuter	DEF	LUZ	8	8	662	43		11	Kasperi Karinen	GK	RSR	8	8	720	33
 12	Zemin Mao	FWD	BNG	6	5	412	5		12	Sylvain Courvoisier	FWD	LA	10	9	611	4		12	Valery Polyakov	FWD	UKA	12	12	965	7.6		12	Roope Hietala	MID	XIV	13	12	900	26		12	Tomoyuki Akizuki	DEF	NSJ	12	12	963	43		12	Ferencz Tóth	GK	TTK	6	6	540	29
-13	Adalbert Brandhofer	FWD	YNC	8	8	720	5		13	Sōta Wakatsuki	MID	PAS	10	10	699	4		13	Ivan Dolgorukiy	GK	UKA	12	12	1080	7.6		13	Lavr Vronsky	MID	UKA	12	12	880	24		13	Godfrey Plantagenet	DEF	NSJ	12	11	941	43		13	Olav Jensen	GK	SPA	10	10	900	29
-14	Ferruccio Noseda	MID	PIS	10	10	900	5		14	Mattheus Brinkhof	MID	NSJ	12	11	933	4		14	Arcadio Villa	MID	MYH	13	13	1008	7.6		14	Cédric Serre	MID	MYH	13	12	844	24		14	Nicolau Ferrandis	DEF	RT	8	8	720	41		14	Igor Medvedev	GK	SKM	4	4	360	26
-15	Wendell Abernathy	FWD	LA	10	9	824	5		15	Tibor Horváth	MID	UKA	12	12	934	4		15	Alimjan Turghun	FWD	KRK	7	6	439	7.5		15	Wendell Abernathy	FWD	LA	10	9	824	23		15	Arcadio Villa	MID	MYH	13	13	1008	40		15	Anastasio Illescas	GK	RT	7	7	630	26
-16	Aaron Kumpula	DEF	XIV	13	13	1081	5		16	Lavr Vronsky	MID	UKA	12	12	880	4		16	Homura Yagami	FWD	NSJ	12	11	769	7.5		16	Thor Andresen	FWD	SPA	10	10	758	23		16	Feng Ji	DEF	BNG	6	6	512	40		16	Palmiro Contini	GK	LA	10	10	900	25
+13	Adalbert Brandhofer	FWD	YNC	8	8	720	5		13	Sōta Wakatsuki	MID	PAS	10	10	699	4		13	Arcadio Villa	MID	MYH	13	13	1008	7.6		13	Lavr Vronsky	MID	UKA	12	12	880	24		13	Godfrey Plantagenet	DEF	NSJ	12	11	941	43		13	Olav Jensen	GK	SPA	10	10	900	29
+14	Ferruccio Noseda	MID	PIS	10	10	900	5		14	Mattheus Brinkhof	MID	NSJ	12	11	933	4		14	Alimjan Turghun	FWD	KRK	7	6	439	7.5		14	Cédric Serre	MID	MYH	13	12	844	24		14	Nicolau Ferrandis	DEF	RT	8	8	720	41		14	Igor Medvedev	GK	SKM	4	4	360	26
+15	Wendell Abernathy	FWD	LA	10	9	824	5		15	Tibor Horváth	MID	UKA	12	12	934	4		15	Homura Yagami	FWD	NSJ	12	11	769	7.5		15	Wendell Abernathy	FWD	LA	10	9	824	23		15	Arcadio Villa	MID	MYH	13	13	1008	40		15	Anastasio Illescas	GK	RT	7	7	630	26
+16	Aaron Kumpula	DEF	XIV	13	13	1081	5		16	Lavr Vronsky	MID	UKA	12	12	880	4		16	Ivan Dolgorukiy	GK	UKA	12	12	1080	7.5		16	Thor Andresen	FWD	SPA	10	10	758	23		16	Feng Ji	DEF	BNG	6	6	512	40		16	Palmiro Contini	GK	LA	10	10	900	25
 17	Gotthilf Brinkerhoff	FWD	STU	6	6	540	4		17	Cédric Serre	MID	MYH	13	12	844	4		17	Günther Rajala	FWD	XIV	13	13	849	7.5		17	Sofiane Mansouri	MID	INT	6	6	427	22		17	Anton Westerberg	DEF	HAV	8	8	720	39		17	Anatoly Obolensky	GK	KRK	7	7	630	24
-18	Ilmar Saar	FWD	RIE	6	6	453	4		18	Beonetun Hocere	MID	SVP	5	4	364	3		18	Ehud Halevi	GK	HET	4	4	360	7.4		18	Niccolò Donizetti	MID	KAN	8	7	473	22		18	Niilo Virtanen	DEF	MYH	13	9	879	39		18	Jānis Vītols	GK	RIE	6	6	540	22
-19	Alimjan Turghun	FWD	KRK	7	6	439	4		19	Yanbo Ma	DEF	BNG	6	6	522	3		19	Werner Kahlert	GK	HAG	4	4	311	7.4		19	Nathan Bass	MID	PIS	10	10	666	22		19	Sergei Smirnov	DEF	OM	6	6	455	38		19	Adnan Tamimi	GK	AIS	5	5	450	21
-20	Jun Teshigawara	FWD	KAN	8	3	440	4		20	Humbert Baumann	MID	STU	6	6	431	3		20	Tadas Mockus	GK	HAG	5	2	229	7.4		20	Jens Geirsson	FWD	HAV	8	8	545	21		20	Marcel Metsa	DEF	RSR	8	8	662	38		20	Ehud Halevi	GK	HET	4	4	360	20
-21	Bruno Del Pino	FWD	RSR	8	8	720	4		21	Emmett Prendergast	MID	CSB	6	6	407	3		21	Gotthilf Brinkerhoff	FWD	STU	6	6	540	7.4		21	Homura Yagami	FWD	NSJ	12	11	769	21		21	Maniek Goj	DEF	UKA	12	12	948	38		21	Denis Lewerenz	GK	STU	6	6	540	20
-22	Matías Salcedo	FWD	CA	8	7	546	4		22	Esteban Palomer	MID	INT	6	6	453	3		22	Nabil Ouazzani	MID	OM	6	6	430	7.4		22	Lothar Höfler	MID	STU	6	6	411	20		22	Hietta Auvinen	DEF	XIV	13	12	1058	37		22	Evgeny Karpov	GK	CSB	6	6	540	18
-23	Fedor Frolov	FWD	KRK	8	8	620	4		23	Nabil Ouazzani	MID	OM	6	6	430	3		23	Victor Tvedt	MID	HAV	7	7	473	7.4		23	Bartosz Jastrzębski	MID	NSR	6	6	540	20		23	Iisakki Saarikoski	DEF	HAV	8	7	593	36		23	Raka Wijaya	GK	YNC	8	8	711	18
-24	Sadao Higuchi	FWD	NSJ	12	12	786	4		24	Lukács Rózsa	DEF	DTK	6	6	503	3		24	Nicolau Ferrandis	DEF	RT	8	8	720	7.4		24	Marcus Wright	MID	MYH	12	11	835	20		24	Motoharu Sasaoka	DEF	NSJ	12	11	986	36		24	Pyotor Kirilov	GK	SVP	4	4	360	16
-25	Freek Hendriks	FWD	MYH	12	12	1080	4		25	Alimjan Turghun	FWD	KRK	7	6	439	3		25	Aleix Benimaclet	DEF	CA	8	7	647	7.4		25	Dominic Winslow	FWD	INT	6	6	512	20		25	Bartosz Jastrzębski	MID	NSR	6	6	540	34		25	Ilan Gabay	GK	HET	2	2	180	15
-26	Karel Černý	FWD	CSB	6	6	418	3		26	Poul Brodersen	MID	HAV	8	7	549	3		26	Cesare Bottinelli	MID	KAN	8	7	506	7.4		26	Dietrich Kunze	FWD	PIS	10	10	700	20		26	Ime Paulsen	MID	SPA	10	10	805	34		26	Tadas Mockus	GK	HAG	5	2	229	15
-27	Dietrich Kunze	FWD	PIS	10	10	700	3		27	Heikki Kovalainen	DEF	KAN	8	7	519	3		27	Mathis Weiler	GK	LUZ	8	8	720	7.4		27	Victor Tvedt	MID	HAV	7	7	473	19		27	Tomás Uzcátegui	DEF	HAV	8	8	642	34		27	Ahmet Aydin	GK	OM	6	6	528	15
-28	Kannan Kurup	FWD	LA	10	2	365	3		28	Cyprian Regent	MID	YNC	8	7	659	2		28	Meine Carlsen	DEF	SPA	10	10	808	7.4		28	Fernand Mullenbach	MID	LUZ	8	8	577	19		28	Palle Alma	DEF	SPA	10	9	803	34		28	Werner Kahlert	GK	HAG	4	4	311	13
-29	Ane Ludvigsen	DEF	SPA	10	10	815	3		29	Aurélien Villefranche	MID	YNC	8	8	555	2		29	Susumu Arakawa	GK	NSJ	12	12	1080	7.4		29	Mattheus Brinkhof	MID	NSJ	12	11	933	19		29	Jaan Kuuskrand	DEF	XIV	13	13	1170	34		29	Anselmo Rebelo	GK	CA	8	8	720	13
-30	Hajime Morimoto	FWD	PAS	10	10	717	3		30	Eski Ruudanen	DEF	RSR	8	8	628	2		30	Crispin Whitfield	GK	MYH	12	12	1080	7.4		30	Robin Karlsson	MID	XIV	13	12	909	19		30	Vural Surlu	MID	PIS	10	9	838	33		30	Yerasimos Athanasiadis	GK	AGL	2	2	180	12
-31	Michiya Ōkubo	MID	NSJ	12	1	377	3		31	Matías Salcedo	FWD	CA	8	7	546	2		31	Simon Schulhof	DEF	MYH	13	12	1000	7.4		31	Gerhart Stromeyer	MID	AGL	6	6	472	18		31	Ryōhei Ikegaya	DEF	KAN	8	7	635	33		31	Grigori Sidorov	GK	SKM	2	2	180	12
-32	Roope Hietala	MID	XIV	13	12	900	3		32	Diethelm Weidenbach	MID	LA	9	9	746	2		32	Roope Hietala	MID	XIV	13	12	900	7.4		32	Idan Suissa	MID	HET	6	6	510	18		32	Cesare Castaldo	DEF	LA	10	9	810	32		32	Dávid Pataky	GK	DTK	4	4	327	12
-33	Lothar Höfler	MID	STU	6	6	411	2		33	Shun'ichi Tamba	FWD	NSJ	10	0	216	2		33	Xiang Qian	DEF	SVP	5	4	369	7.3		33	Ezequiel Mulholland	MID	RSR	8	8	481	18		33	Toby Redgrave	MID	PIS	10	10	815	31		33	Rikard Läck	GK	SDM	5	5	450	12
-34	Shigematsu Sato	FWD	KAN	6	5	382	2		34	Axel Anderson	MID	PIS	10	10	681	2		34	Feng Ji	DEF	BNG	6	6	512	7.3		34	Ausiàs Campanar	MID	CA	8	7	511	18		34	Norbert Schiltz	DEF	LUZ	8	8	664	31		34	Rafael Rosario	GK	INT	6	6	540	12
-35	Silas Davis	MID	NSR	6	6	463	2		35	Dietrich Kunze	FWD	PIS	10	10	700	2		35	Emmett Prendergast	MID	CSB	6	6	407	7.3		35	Sōta Wakatsuki	MID	PAS	10	10	699	18		35	Vasco Trindade	DEF	CA	8	8	720	31		35	Shadmehr Gharibian	GK	PAS	1	1	90	11
-36	Dominic Winslow	FWD	INT	6	6	512	2		36	Wendell Abernathy	FWD	LA	10	9	824	2		36	Adalbert Brandhofer	FWD	YNC	8	8	720	7.3		36	Sadao Higuchi	FWD	NSJ	12	12	786	18		36	Diethelm Weidenbach	MID	LA	9	9	746	30		36	Prasert Bùi	GK	AGL	4	4	360	11
-37	Emil Lehner	FWD	INT	6	6	415	2		37	Lakhdar Hamidi	MID	LA	10	9	590	2		37	Matías Salcedo	FWD	CA	8	7	546	7.3		37	Nabil Ouazzani	MID	OM	6	6	430	16		37	Isidoro Mocejón	DEF	RT	7	7	630	30		37	Konrád Nemes	GK	DTK	4	2	214	9
-38	Yuxuan Cui	FWD	SVP	6	2	266	2		38	Meine Carlsen	DEF	SPA	10	10	808	2		38	Anton Westerberg	DEF	HAV	8	8	720	7.3		38	Damien Scholtes	MID	LUZ	8	8	640	16		38	Cédric Serre	MID	MYH	13	12	844	30		38	Faisal Al-Dosari	GK	NSR	5	5	450	8
-39	Octave Étienne	FWD	OM	6	0	241	2		39	Ashkan Mahdavi	FWD	PAS	10	9	820	2		39	Ane Ludvigsen	DEF	SPA	10	10	815	7.3		39	Pisenti Ramose	MID	LA	10	8	614	16		39	Aurèle Montfaucon	DEF	CSB	6	6	518	30		39	Dumisani Sisoulou	GK	SVP	2	2	180	7
-40	Đại Đông Nguyễn	FWD	OM	6	6	299	2		40	Tomoyuki Akizuki	DEF	NSJ	12	12	963	2		40	Ole Toft	FWD	SPA	10	10	704	7.3		40	Ilmar Saar	FWD	RIE	6	6	453	16		40	Liam Bopp	DEF	KAN	8	7	658	30		40	Zixuan Wang	GK	BNG	1	1	90	5
-41	Arvid Wettergren	FWD	HAV	7	0	175	2		41	Homura Yagami	FWD	NSJ	12	11	769	2		41	Ferruccio Noseda	MID	PIS	10	10	900	7.3		41	Charle Valtterinen	FWD	RSR	8	7	558	16		41	Anatole Beauregard	DEF	LA	10	10	871	30		41	Torquil Blythe	GK	MYH	1	1	90	4
-42	Cesare Bottinelli	MID	KAN	8	7	506	2		42	Marcus Wright	MID	MYH	12	11	835	2		42	Boris Vinogradov	MID	UKA	12	12	1080	7.3		42	Hajime Morimoto	FWD	PAS	10	10	717	16		42	Aniceto Menasalbas	MID	RT	8	8	636	29		42	Kuzma Nagibin	GK	KRK	1	1	90	4
-43	Léo Origer	MID	LUZ	8	8	640	2		43	Hietta Auvinen	DEF	XIV	13	12	1058	2		43	Cédric Serre	MID	MYH	13	12	844	7.3		43	Zsombor Nyitráv	MID	DTK	5	4	347	15		43	Anselmo Carranza	DEF	LA	10	10	789	29		43	Waleed Al-Anazi	GK	NSR	1	1	90	4
-44	Damien Scholtes	MID	LUZ	8	8	640	2		44	Robin Karlsson	MID	XIV	13	12	909	2		44	Adnan Tamimi	GK	AIS	5	5	450	7.2		44	Humbert Baumann	MID	STU	6	6	431	15		44	Dmitry Belov	DEF	UKA	12	11	961	29		44	Gervasio Sonseca	GK	RT	1	1	90	4
-45	Lucio Mascaraque	FWD	RT	8	2	310	2		45	Roope Hietala	MID	XIV	13	12	900	2		45	Zemin Mao	FWD	BNG	6	5	412	7.2		45	Timur Iskanderov	MID	CSB	6	6	540	15		45	Jenaro Salamanca	DEF	INT	6	6	540	29		45	Gal Grinberg	GK	AIS	1	1	90	3
-46	Hiraya Halili	MID	YNC	8	8	639	2		46	Pirmin Hoffmeister	MID	MYH	13	12	996	2		46	Shigematsu Sato	FWD	KAN	6	5	382	7.2		46	Klim Zaytsev	MID	KRK	8	7	577	15		46	Pat Hassell	DEF	PIS	10	9	831	29
-47	Augustin Aragonés	MID	CA	8	8	678	2		47	Duarte Vasques	MID	MYH	13	11	907	2		47	István Magvasi	FWD	TTK	6	6	540	7.2		47	Lakhdar Hamidi	MID	LA	10	9	590	15		47	Imre Kárpáti	DEF	PIS	10	10	813	29
-48	Osman Mamut	DEF	KRK	8	7	614	2		48	Ermolai Kuzmin	DEF	SKM	2	2	171	1		48	Karel Černý	FWD	CSB	6	6	418	7.2		48	Beonetun Hocere	MID	SVP	5	4	364	14		48	Qiushi Zhang	DEF	PIS	10	9	713	29
-49	Nathan Bass	MID	PIS	10	10	666	2		49	Hans-Joachim Enns	MID	STU	5	5	386	1		49	Dominic Winslow	FWD	INT	6	6	512	7.2		49	Cesare Bottinelli	MID	KAN	8	7	506	14		49	Zdeno Medved	DEF	XIV	13	12	958	29
-50	Axel Anderson	MID	PIS	10	10	681	2		50	Ragnar Borgberg	MID	SDM	5	5	326	1		50	Gerhart Stromeyer	MID	AGL	6	6	472	7.2		50	Augustin Aragonés	MID	CA	8	8	678	14		50	Siegfried Fuhrmann	DEF	HAG	6	6	465	28
-51	Sylvain Courvoisier	FWD	LA	10	9	611	2		51	Voltaire Salonga	DEF	AGL	5	4	335	1		51	Malik Seddiki	DEF	OM	6	0	241	7.2		51	Axel Anderson	MID	PIS	10	10	681	14		51	Rachid Benyahia	DEF	OM	6	6	456	28
-52	Thor Andresen	FWD	SPA	10	10	758	2		52	Catmon Nacpil	FWD	BNG	6	6	392	1		52	Thibault Rochefort	DEF	AGL	6	4	396	7.2		52	Fricis Avotiņš	FWD	RIE	6	6	456	14		52	Olivier De Verley	DEF	OM	6	6	540	28
-53	Ashkan Mahdavi	FWD	PAS	10	9	820	2		53	Bo Yan	MID	BNG	6	5	368	1		53	Jaron Horn	DEF	STU	6	6	511	7.2		53	Sven Emilsson	FWD	HAV	8	8	593	14		53	Thibault Rochefort	DEF	AGL	6	4	396	28
-54	Taame Kankanpää	FWD	XIV	12	0	213	2		54	Jaron Horn	DEF	STU	6	6	511	1		54	Olivier De Verley	DEF	OM	6	6	540	7.2		54	Adalbert Brandhofer	FWD	YNC	8	8	720	14		54	Casimiro Nambroca	DEF	RT	8	7	649	28
-55	Colwyn Powell	MID	MYH	12	1	407	2		55	Shigematsu Sato	FWD	KAN	6	5	382	1		55	Miklós Szlitlán	DEF	DTK	6	6	467	7.2		55	Bruno Del Pino	FWD	RSR	8	8	720	14		55	Mohsen Tabrizi	DEF	PAS	9	9	692	28
-56	Cédric Serre	MID	MYH	13	12	844	2		56	Ernő Koncz	MID	TTK	6	6	465	1		56	Ferencz Tóth	GK	TTK	6	6	540	7.2		56	Sylvain Courvoisier	FWD	LA	10	9	611	14		56	Psote Neferhotep	MID	KAN	8	7	565	27
-57	Reinhard Van Astrea	FWD	HAG	5	4	258	1		57	Tibor Almási	FWD	TTK	6	6	455	1		57	Jānis Vītols	GK	RIE	6	6	540	7.2		57	Freek Hendriks	FWD	MYH	12	12	1080	14		57	Duarte Vasques	MID	MYH	13	11	907	27
-58	Catmon Nacpil	FWD	BNG	6	6	392	1		58	Árpád Gulyás	MID	TTK	6	6	424	1		58	Isidoro Mocejón	DEF	RT	7	7	630	7.2		58	Yrjö Hietanen	DEF	XIV	13	13	1170	12		58	Gerhart Stromeyer	MID	AGL	6	6	472	26
-59	Bernd Müller	MID	STU	6	6	520	1		59	Aurèle Montfaucon	DEF	CSB	6	6	518	1		59	Fernand Mullenbach	MID	LUZ	8	8	577	7.2		59	Volkmar Scherer	MID	CA	7	7	613	12		59	Miklós Szlitlán	DEF	DTK	6	6	467	26
-60	Lajos Nagy	MID	TTK	6	5	391	1		60	Timur Iskanderov	MID	CSB	6	6	540	1		60	Damien Scholtes	MID	LUZ	8	8	640	7.2		60	Marcelino Burguillos	MID	RT	8	7	512	12		60	Carl Mathiassen	DEF	RSR	8	7	659	26
-61	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	1		61	Gleb Vorontsov	MID	CSB	6	6	540	1		61	Aurélien Villefranche	MID	YNC	8	8	555	7.2		61	Diethelm Weidenbach	MID	LA	9	9	746	12		61	Duarte Magalhães	DEF	CA	8	7	574	26
-62	Emmett Prendergast	MID	CSB	6	6	407	1		62	Louay Abu-Sitta	FWD	AIS	6	5	391	1		62	Heikki Kovalainen	DEF	KAN	8	7	519	7.2		62	Tibor Horváth	MID	UKA	12	12	934	12		62	Ladislav Kučera	DEF	MYH	13	6	686	26
-63	Marwan Touma	FWD	AIS	6	6	454	1		63	Bartosz Jastrzębski	MID	NSR	6	6	540	1		63	Marcel Metsa	DEF	RSR	8	8	662	7.2		63	Daivid Fedoroff	MID	XIV	13	12	980	12		63	Dario Prado	DEF	MYH	13	13	1005	26
-64	Bartosz Jastrzębski	MID	NSR	6	6	540	1		64	Ziyad Subaie	MID	NSR	6	6	486	1		64	Iisakki Saarikoski	DEF	HAV	8	7	593	7.2		64	Catmon Nacpil	FWD	BNG	6	6	392	12		64	Clayton Langston	MID	AGL	6	6	490	25
-65	Raleigh Preston	FWD	NSR	6	5	419	1		65	Povilas Sabaliauskas	MID	HAG	6	6	473	1		65	Gaspard Reuter	DEF	LUZ	8	8	662	7.2		65	Ludvig Brantman	FWD	SDM	6	6	540	12		65	Nathan Bass	MID	PIS	10	10	666	25
-66	Kurt Wagner	MID	HAG	6	6	420	1		66	Zbigniew Wróblewski	MID	HAG	6	2	368	1		66	Duarte Magalhães	DEF	CA	8	7	574	7.2		66	Dwight Whitfield	FWD	RT	7	7	518	12		66	Sigfrid Filipsson	DEF	SDM	6	6	540	25
-67	Sigurd Shilov	FWD	SVP	6	2	263	1		67	Sofiane Mansouri	MID	INT	6	6	427	1		67	Osman Mamut	DEF	KRK	8	7	614	7.2		67	Saleim Razhimi	FWD	XIV	13	13	915	12		67	Harel Mamo	DEF	HET	6	6	491	25
-68	Beonetleah Heordewic	FWD	SVP	6	4	306	1		68	Dominic Winslow	FWD	INT	6	6	512	1		68	Diethelm Weidenbach	MID	LA	9	9	746	7.2		68	Emmett Prendergast	MID	CSB	6	6	407	11		68	Osman Mamut	DEF	KRK	8	7	614	25
-69	Anders Halfdansson	MID	SDM	6	6	448	1		69	Vilhelm Smed	MID	SDM	6	5	373	1		69	Vahid Lorestani	GK	PAS	9	9	810	7.2		69	Esteban Palomer	MID	INT	6	6	453	11		69	Yrjö Hietanen	DEF	XIV	13	13	1170	25
-70	Ludvig Brantman	FWD	SDM	6	6	540	1		70	Malik Seddiki	DEF	OM	6	0	241	1		70	Axel Anderson	MID	PIS	10	10	681	7.2		70	Poul Brodersen	MID	HAV	8	7	549	11		70	Vilhelm Smed	MID	SDM	6	5	373	24
-71	Roger Casadevall	MID	OM	6	6	412	1		71	Enzo Gorlomi	DEF	OM	6	6	468	1		71	Tilman Zartmann	DEF	PIS	10	10	882	7.2		71	Pirmin Hoffmeister	MID	MYH	13	12	996	11		71	Roger Casadevall	MID	OM	6	6	412	24
-72	Conan Neitzel	MID	OM	6	0	238	1		72	Roger Casadevall	MID	OM	6	6	412	1		72	Ryōichi Nakashima	GK	PIS	10	10	900	7.2		72	Duarte Vasques	MID	MYH	13	11	907	11		72	Eliezer Bansa	MID	KAN	8	7	639	24
-73	Nabil Ouazzani	MID	OM	6	6	430	1		73	Ettore Bianchi	MID	OM	6	6	540	1		73	Marcus Wright	MID	MYH	12	11	835	7.2		73	Zemin Mao	FWD	BNG	6	5	412	11		73	Léo Origer	MID	LUZ	8	8	640	24
-74	Gerhart Stromeyer	MID	AGL	6	6	472	1		74	Đại Đông Nguyễn	FWD	OM	6	6	299	1		74	Saleim Razhimi	FWD	XIV	13	13	915	7.2		74	Gotthilf Brinkerhoff	FWD	STU	6	6	540	11		74	Aurélien Villefranche	MID	YNC	8	8	555	24
-75	Milán Szentesy	MID	DTK	6	2	286	1		75	Zsolt Vadász	FWD	DTK	6	4	366	1		75	Aaron Kumpula	DEF	XIV	13	13	1081	7.2		75	István Magvasi	FWD	TTK	6	6	540	11		75	Lakhdar Hamidi	MID	LA	10	9	590	24
-76	Nimród Somogyi	FWD	DTK	6	6	475	1		76	Jānis Vītols	GK	RIE	6	6	540	1		76	Yrjö Hietanen	DEF	XIV	13	13	1170	7.2		76	Zsolt Vadász	FWD	DTK	6	4	366	11		76	Lavr Vronsky	MID	UKA	12	12	880	24
-77	Zsolt Vadász	FWD	DTK	6	4	366	1		77	Valdis Strazds	DEF	RIE	6	6	540	1		77	Íñigo Basterretxea	DEF	MYH	13	12	1110	7.2		77	Uwe Schneider	FWD	HAV	8	0	259	11		77	Roope Hietala	MID	XIV	13	12	900	24
-78	Ilianov Dimitriev	FWD	SKM	6	2	285	1		78	Ansis Dzenis	MID	RIE	6	6	512	1		78	Stav Wegener	DEF	STU	4	4	316	7.1		78	Jun Teshigawara	FWD	KAN	8	3	440	11		78	Hartmut Schachtner	DEF	YNC	8	8	657	24
-79	Visvaldis Zariņš	FWD	RIE	6	0	172	1		79	Fricis Avotiņš	FWD	RIE	6	6	456	1		79	Dávid Pataky	GK	DTK	4	4	327	7.1		79	Édouard Pescatore	FWD	LUZ	8	8	543	11		79	Nathanael Custer	DEF	LA	10	9	789	24
-80	Fricis Avotiņš	FWD	RIE	6	6	456	1		80	Ludwig Kymmel	MID	RIE	6	6	462	1		80	Beonetun Hocere	MID	SVP	5	4	364	7.1		80	Yoshinori Mizoguchi	FWD	YNC	8	8	720	11		80	Tadashi Unno	DEF	NSJ	12	12	1050	24
-81	Victor Tvedt	MID	HAV	7	7	473	1		81	Dwight Whitfield	FWD	RT	7	7	518	1		81	Voltaire Salonga	DEF	AGL	5	4	335	7.1		81	Alistair Fairweather	FWD	YNC	8	8	542	11		81	Adalbert Brandhofer	FWD	YNC	8	8	720	23
-82	Dwight Whitfield	FWD	RT	7	7	518	1		82	Terenty Batyushkov	MID	KRK	7	6	505	1		82	Humbert Baumann	MID	STU	6	6	431	7.1		82	Kannan Kurup	FWD	LA	10	2	365	11		82	Yanbo Ma	DEF	BNG	6	6	522	23
-83	Folke Lindros	MID	HAV	8	1	366	1		83	Tomás Uzcátegui	DEF	HAV	8	8	642	1		83	Pater Dyrda	MID	CSB	6	6	432	7.1		83	Ole Toft	FWD	SPA	10	10	704	11		83	Jaron Horn	DEF	STU	6	6	511	23
-84	Iisakki Saarikoski	DEF	HAV	8	7	593	1		84	Anton Westerberg	DEF	HAV	8	8	720	1		84	Sofiane Mansouri	MID	INT	6	6	427	7.1		84	Vito Moretti	MID	INT	6	6	512	10		84	Dean Boone	DEF	INT	6	6	540	23
-85	Niccolò Donizetti	MID	KAN	8	7	473	1		85	Ludvig Johansson	DEF	HAV	8	8	591	1		85	Vilhelm Smed	MID	SDM	6	5	373	7.1		85	Ludwig Kymmel	MID	RIE	6	6	462	9		85	Heikki Kovalainen	DEF	KAN	8	7	519	23
-86	Paul Scholer	FWD	LUZ	8	0	177	1		86	Kent Forsberg	MID	HAV	8	8	682	1		86	Esteban Palomer	MID	INT	6	6	453	7.1		86	Psote Neferhotep	MID	KAN	8	7	565	9		86	Gijs Dreesens	FWD	SPA	10	10	745	22
-87	Édouard Pescatore	FWD	LUZ	8	8	543	1		87	Sven Emilsson	FWD	HAV	8	8	593	1		87	János Juhász	DEF	TTK	6	6	540	7.1		87	Rémi Wagener	MID	LUZ	8	8	699	9		87	Pater Dyrda	MID	CSB	6	6	432	22
-88	Berat Çankaya	FWD	YNC	8	0	178	1		88	Ryōhei Ikegaya	DEF	KAN	8	7	635	1		88	Evgeny Karpov	GK	CSB	6	6	540	7.1		88	Modest Zhilin	MID	KRK	8	8	591	9		88	Théo Santini	MID	OM	6	6	514	22
-89	Alistair Fairweather	FWD	YNC	8	8	542	1		89	Eliezer Bansa	MID	KAN	8	7	639	1		89	Anastasio Illescas	GK	RT	7	7	630	7.1		89	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	9		89	Nabil Ouazzani	MID	OM	6	6	430	22
-90	Aurélien Villefranche	MID	YNC	8	8	555	1		90	Psote Neferhotep	MID	KAN	8	7	565	1		90	Niccolò Donizetti	MID	KAN	8	7	473	7.1		90	Fyodor Tarasov	FWD	SKM	6	4	290	9		90	Victor Tvedt	MID	HAV	7	7	473	22
-91	Zeki Nari̇n	MID	YNC	8	8	598	1		91	Jun Teshigawara	FWD	KAN	8	3	440	1		91	Léo Origer	MID	LUZ	8	8	640	7.1		91	Eetu Lehtinen	FWD	HAV	8	8	588	9		91	Cyprian Regent	MID	YNC	8	7	659	22
-92	Carl Mathiassen	DEF	RSR	8	7	659	1		92	Cesare Bottinelli	MID	KAN	8	7	506	1		92	Klim Zaytsev	MID	KRK	8	7	577	7.1		92	Fructuoso Navahermosa	FWD	RT	8	7	568	9		92	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	22
-93	Nikolai Tormotoff	FWD	RSR	8	8	720	1		93	Léo Origer	MID	LUZ	8	8	640	1		93	Ryōhei Ikegaya	DEF	KAN	8	7	635	7.1		93	Nader Daneshi	FWD	PAS	10	2	363	9		93	Daivid Fedoroff	MID	XIV	13	12	980	22
-94	Nemanja Petrovic	FWD	RSR	8	8	627	1		94	Ambrosio Polán	MID	RT	8	2	318	1		94	Eski Ruudanen	DEF	RSR	8	8	628	7.1		94	Julien Kirsch	MID	LUZ	8	7	571	8		94	Aristeidis Georgiou	DEF	AGL	5	4	317	22
-95	Ezequiel Mulholland	MID	RSR	8	8	481	1		95	Faustino Orgaz	MID	RT	8	7	557	1		95	Ibai Urrutia	DEF	CA	8	7	590	7.1		95	Léo Origer	MID	LUZ	8	8	640	8		95	Yakov Myshkin	DEF	KRK	8	7	659	22
-96	Albert Pottaslainen	MID	RSR	8	7	501	1		96	Onur Tekeli̇	MID	YNC	8	1	283	1		96	Mohsen Tabrizi	DEF	PAS	9	9	692	7.1		96	Ambrosio Polán	MID	RT	8	2	318	8		96	Sohrab Karimzadeh	DEF	PAS	10	10	873	22
-97	Aleix Benimaclet	DEF	CA	8	7	647	1		97	Alistair Fairweather	FWD	YNC	8	8	542	1		97	Lakhdar Hamidi	MID	LA	10	9	590	7.1		97	Aniceto Menasalbas	MID	RT	8	8	636	8		97	Aaron Kumpula	DEF	XIV	13	13	1081	22
-98	Damián Quevedo	MID	CA	8	2	351	1		98	Zeki Nari̇n	MID	YNC	8	8	598	1		98	Nathan Bass	MID	PIS	10	10	666	7.1		98	Aurélien Villefranche	MID	YNC	8	8	555	8		98	Jens Geirsson	FWD	HAV	8	8	545	21
-99	Joan Xirau	MID	CA	8	7	546	1		99	Orville Easterbrook	DEF	YNC	8	8	596	1		99	Palmiro Contini	GK	LA	10	10	900	7.1		99	Zeki Nari̇n	MID	YNC	8	8	598	8		99	Kent Forsberg	MID	HAV	8	8	682	21
-100	Ausiàs Campanar	MID	CA	8	7	511	1		100	Teemo Õunapuu	MID	RSR	8	1	281	1		100	Lavr Vronsky	MID	UKA	12	12	880	7.1		100	Evgeny Pletnev	MID	UKA	12	0	320	8		100	Klim Zaytsev	MID	KRK	8	7	577	21
-101	Rostislav Sukhanov	FWD	KRK	8	2	343	1		101	Bruno Del Pino	FWD	RSR	8	8	720	1		101	Tomoyuki Akizuki	DEF	NSJ	12	12	963	7.1		101	Hans-Joachim Enns	MID	STU	5	5	386	7		101	Axel Anderson	MID	PIS	10	10	681	21
-102	Diethelm Weidenbach	MID	LA	9	9	746	1		102	Ezequiel Mulholland	MID	RSR	8	8	481	1		102	Robin Karlsson	MID	XIV	13	12	909	7.1		102	Pater Dyrda	MID	CSB	6	6	432	7		102	Lorens Christensen	MID	SPA	10	10	883	21
-103	Mohsen Tabrizi	DEF	PAS	9	9	692	1		103	Pat Hassell	DEF	PIS	10	9	831	1		103	Hietta Auvinen	DEF	XIV	13	12	1058	7.1		103	Maoz Shaked	MID	AIS	6	6	445	7		103	Esteban Palomer	MID	INT	6	6	453	21
-104	Shun'ichi Tamba	FWD	NSJ	10	0	216	1		104	Ferruccio Noseda	MID	PIS	10	10	900	1		104	Zdeno Medved	DEF	XIV	13	12	958	7.1		104	Valentin Ruckdeschel	MID	HAG	6	6	479	7		104	Sōta Wakatsuki	MID	PAS	10	10	699	21
-105	Anatole Beauregard	DEF	LA	10	10	871	1		105	Miles Marsh	MID	PIS	10	1	329	1		105	Ludvig Laaksonen	GK	XIV	13	13	1168	7.1		105	Vilhelm Smed	MID	SDM	6	5	373	7		105	Marcus Wright	MID	MYH	12	11	835	21
-106	Anselmo Carranza	DEF	LA	10	10	789	1		106	Nathan Bass	MID	PIS	10	10	666	1		106	Igor Medvedev	GK	SKM	4	4	360	7.0		106	Roger Casadevall	MID	OM	6	6	412	7		106	Erni Bachmann	DEF	STU	6	6	520	20
-107	Amleto Bracciolini	MID	LA	10	3	444	1		107	Gaspare Torlonia	MID	LA	10	1	263	1		107	Konrád Nemes	GK	DTK	4	2	214	7.0		107	Ran Uzan	MID	HET	6	4	390	7		107	János Juhász	DEF	TTK	6	6	540	20
-108	Pisenti Ramose	MID	LA	10	8	614	1		108	Kannan Kurup	FWD	LA	10	2	365	1		108	Aristeidis Georgiou	DEF	AGL	5	4	317	7.0		108	Adi Madmoni	MID	HET	6	6	451	7		108	Lőrincz Orbán	MID	DTK	6	6	456	20
-109	Hauke Olesen	MID	SPA	10	10	786	1		109	Ane Ludvigsen	DEF	SPA	10	10	815	1		109	Sándor Teleki	DEF	DTK	5	5	319	7.0		109	Ansis Dzenis	MID	RIE	6	6	512	7		109	Alberts Kronbergs	DEF	RIE	6	6	511	20
-110	Gijs Dreesens	FWD	SPA	10	10	745	1		110	Thor Andresen	FWD	SPA	10	10	758	1		110	Ilmar Saar	FWD	RIE	6	6	453	7.0		110	Miķelis Lācis	MID	RIE	6	6	484	7		110	Cesare Bottinelli	MID	KAN	8	7	506	20
-111	Meine Carlsen	DEF	SPA	10	10	808	1		111	Gijs Dreesens	FWD	SPA	10	10	745	1		111	Fricis Avotiņš	FWD	RIE	6	6	456	7.0		111	Gunārs Briedis	MID	RIE	6	6	473	7		111	Camille Theisen	DEF	LUZ	8	8	720	20
-112	Nader Daneshi	FWD	PAS	10	2	363	1		112	Eskandar Dehghan	DEF	PAS	10	9	682	1		112	Ernő Koncz	MID	TTK	6	6	465	7.0		112	Terenty Batyushkov	MID	KRK	7	6	505	7		112	Julien Kirsch	MID	LUZ	8	7	571	20
-113	Sōta Wakatsuki	MID	PAS	10	10	699	1		113	Hajime Morimoto	FWD	PAS	10	10	717	1		113	Silas Davis	MID	NSR	6	6	463	7.0		113	Kanata Murakumo	MID	KAN	8	3	400	7		113	Killian Charpentier	DEF	LUZ	8	7	608	20
-114	Béla Vass	FWD	UKA	11	0	261	1		114	Béla Vass	FWD	UKA	11	0	261	1		114	Aurèle Montfaucon	DEF	CSB	6	6	518	7.0		114	Faustino Orgaz	MID	RT	8	7	557	7		114	Marcelino Burguillos	MID	RT	8	7	512	20
-115	Tomoyuki Akizuki	DEF	NSJ	12	12	963	1		115	Hayato Kirino	DEF	NSJ	12	11	979	1		115	Siegfried Fuhrmann	DEF	HAG	6	6	465	7.0		115	Cyprian Regent	MID	YNC	8	7	659	7		115	Tymon Dziedzic	MID	UKA	12	12	861	20
-116	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	1		116	Michiya Ōkubo	MID	NSJ	12	1	377	1		116	Jenaro Salamanca	DEF	INT	6	6	540	7.0		116	Hiraya Halili	MID	YNC	8	8	639	7		116	Péter Mákos	DEF	TTK	6	6	501	19
-117	Evgeny Pletnev	MID	UKA	12	0	320	1		117	Godfrey Plantagenet	DEF	NSJ	12	11	941	1		117	Stanleah Coc	DEF	SVP	6	4	345	7.0		117	Changming Zhao	MID	PIS	10	0	271	7		117	Spyridon Lykoudis	MID	AGL	6	2	241	19
-118	Boris Vinogradov	MID	UKA	12	12	1080	1		118	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	1		118	Csongor Pásztor	DEF	DTK	6	3	352	7.0		118	Hauke Olesen	MID	SPA	10	10	786	7		118	Áron Papp	DEF	DTK	6	4	436	19
-119	Yrjö Hietanen	DEF	XIV	13	13	1170	1		119	Freek Hendriks	FWD	MYH	12	12	1080	1		119	Dean Boone	DEF	INT	6	6	540	7.0		119	Akira Mitomo	MID	NSJ	12	11	858	7		119	Carlos López	DEF	HAV	8	2	424	19
-120	Edmund Grigas	FWD	XIV	13	0	364	1		120	Tymon Dziedzic	MID	UKA	12	12	861	1		120	Enzo Gorlomi	DEF	OM	6	6	468	7.0		120	Shigematsu Sato	FWD	KAN	6	5	382	7		120	Damien Scholtes	MID	LUZ	8	8	640	19
-121	Zdeno Medved	DEF	XIV	13	12	958	1		121	Günther Rajala	FWD	XIV	13	13	849	1		121	Áron Papp	DEF	DTK	6	4	436	7.0		121	Louay Abu-Sitta	FWD	AIS	6	5	391	7		121	Teodosio Ajofrín	MID	RT	8	8	649	19
-122	Pirmin Hoffmeister	MID	MYH	13	12	996	1		122	Zdeno Medved	DEF	XIV	13	12	958	1		122	Alberts Kronbergs	DEF	RIE	6	6	511	7.0		122	Max Schlüter	FWD	HAG	6	2	282	7		122	Ezequiel Mulholland	MID	RSR	8	8	481	19
-									123	Arcadio Villa	MID	MYH	13	13	1008	1		123	Anatoly Obolensky	GK	KRK	7	7	630	7.0		123	Nimród Somogyi	FWD	DTK	6	6	475	7		123	Hauke Olesen	MID	SPA	10	10	786	19
-									124	Simon Schulhof	DEF	MYH	13	12	1000	1		124	Bruno Del Pino	FWD	RSR	8	8	720	7.0		124	Boaz Ben-Ami	FWD	HET	6	4	282	7		124	Moritz Müller	DEF	HAG	6	4	400	18
-																		125	Psote Neferhotep	MID	KAN	8	7	565	7.0		125	Nemanja Petrovic	FWD	RSR	8	8	627	7		125	Stanleah Coc	DEF	SVP	6	4	345	18
-																		126	Julien Kirsch	MID	LUZ	8	7	571	7.0		126	Matías Salcedo	FWD	CA	8	7	546	7		126	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	18
-																		127	Zeki Nari̇n	MID	YNC	8	8	598	7.0		127	Shun'ichi Tamba	FWD	NSJ	10	0	216	7		127	Csongor Pásztor	DEF	DTK	6	3	352	18
-																		128	Tomás Uzcátegui	DEF	HAV	8	8	642	7.0		128	Scott Blackwood	FWD	PIS	10	0	200	7		128	Ludvig Johansson	DEF	HAV	8	8	591	18
-																		129	Liam Bopp	DEF	KAN	8	7	658	7.0		129	Béla Vass	FWD	UKA	11	0	261	7		129	Kutay Bulut	DEF	YNC	8	7	658	18
-																		130	Norbert Schiltz	DEF	LUZ	8	8	664	7.0		130	Godfrey Plantagenet	DEF	NSJ	12	11	941	6		130	Orville Easterbrook	DEF	YNC	8	8	596	18
-																		131	Hartmut Schachtner	DEF	YNC	8	8	657	7.0		131	Zdeno Medved	DEF	XIV	13	12	958	6		131	Samara Josefovic	DEF	RSR	8	8	640	18
-																		132	Orville Easterbrook	DEF	YNC	8	8	596	7.0		132	Dario Prado	DEF	MYH	13	13	1005	6		132	Eski Ruudanen	DEF	RSR	8	8	628	18
-																		133	Carl Mathiassen	DEF	RSR	8	7	659	7.0		133	Motoharu Sasaoka	DEF	NSJ	12	11	986	5		133	Ibai Urrutia	DEF	CA	8	7	590	18
-																		134	Shūji Kannazuki	GK	KAN	8	8	719	7.0		134	Eskandar Dehghan	DEF	PAS	10	9	682	5		134	Myron Tsosie	DEF	LA	10	9	805	18
-																		135	Erdem Polat	DEF	KAN	8	8	609	7.0		135	Íñigo Basterretxea	DEF	MYH	13	12	1110	5		135	Leif Abel	DEF	SPA	10	10	857	18
-																		136	Casimiro Nambroca	DEF	RT	8	7	649	7.0		136	Ragnar Borgberg	MID	SDM	5	5	326	5		136	Ivan Sitnikov	DEF	UKA	12	11	942	18
-																		137	Raka Wijaya	GK	YNC	8	8	711	7.0		137	Ernő Koncz	MID	TTK	6	6	465	5		137	Kenneth Haugland	DEF	NSR	6	5	418	18
-																		138	Anselmo Rebelo	GK	CA	8	8	720	7.0		138	Gleb Vorontsov	MID	CSB	6	6	540	5		138	Tatsuhiko Ōmagari	DEF	INT	6	6	540	18
-																		139	Vasco Trindade	DEF	CA	8	8	720	7.0		139	Silas Davis	MID	NSR	6	6	463	5		139	Anastasios Fotopoulos	DEF	AGL	6	6	512	18
-																		140	Dietrich Kunze	FWD	PIS	10	10	700	7.0		140	Mikhail Moiseev	MID	SKM	6	3	290	5		140	Sagip Gatmaitan	DEF	KAN	8	3	409	18
-																		141	Hajime Morimoto	FWD	PAS	10	10	717	7.0		141	Eliezer Bansa	MID	KAN	8	7	639	5		141	Volkmar Scherer	MID	CA	7	7	613	17
-																		142	Toby Redgrave	MID	PIS	10	10	815	7.0		142	Teemo Õunapuu	MID	RSR	8	1	281	5		142	Kanata Murakumo	MID	KAN	8	3	400	17
-																		143	Hauke Olesen	MID	SPA	10	10	786	7.0		143	Rodion Titov	MID	KRK	8	6	513	5		143	Zeki Nari̇n	MID	YNC	8	8	598	17
-																		144	Anselmo Carranza	DEF	LA	10	10	789	7.0		144	Vural Surlu	MID	PIS	10	9	838	5		144	Pirmin Hoffmeister	MID	MYH	13	12	996	17
-																		145	Pat Hassell	DEF	PIS	10	9	831	7.0		145	Toby Redgrave	MID	PIS	10	10	815	5		145	Xiang Qian	DEF	SVP	5	4	369	17
-																		146	Qiushi Zhang	DEF	PIS	10	9	713	7.0		146	Tibor Almási	FWD	TTK	6	6	455	5		146	Desmond Dorofeev	DEF	SKM	5	4	332	17
-																		147	Nathanael Custer	DEF	LA	10	9	789	7.0		147	Karel Černý	FWD	CSB	6	6	418	5		147	Bruno Dreyer	DEF	HAG	6	6	540	17
-																		148	Anatole Beauregard	DEF	LA	10	10	871	7.0		148	Iraklis Christodoulou	FWD	AGL	6	4	360	5		148	Ashkan Mahdavi	FWD	PAS	10	9	820	16
-																		149	Olav Jensen	GK	SPA	10	10	900	7.0		149	Berat Çankaya	FWD	YNC	8	0	178	5		149	Humbert Baumann	MID	STU	6	6	431	16
-																		150	Osip Yudin	FWD	UKA	12	12	934	7.0		150	Rostislav Sukhanov	FWD	KRK	8	2	343	5		150	Ernő Koncz	MID	TTK	6	6	465	16
-																		151	Hayato Kirino	DEF	NSJ	12	11	979	7.0		151	Fedor Frolov	FWD	KRK	8	8	620	5		151	Vito Moretti	MID	INT	6	6	512	16
-																		152	Godfrey Plantagenet	DEF	NSJ	12	11	941	7.0		152	Taame Kankanpää	FWD	XIV	12	0	213	5		152	Albert Pottaslainen	MID	RSR	8	7	501	16
-																		153	Fyodor Chistyakov	DEF	UKA	12	12	1051	7.0		153	Edmund Grigas	FWD	XIV	13	0	364	5		153	Robin Karlsson	MID	XIV	13	12	909	16
-																		154	Maniek Goj	DEF	UKA	12	12	948	7.0		154	Erdem Polat	DEF	KAN	8	8	609	4		154	Zhihao Tang	DEF	BNG	6	5	444	16
-																		155	Daivid Fedoroff	MID	XIV	13	12	980	7.0		155	Aleix Benimaclet	DEF	CA	8	7	647	4		155	Akiva Schumacher	DEF	STU	6	6	540	16
-																		156	Niilo Virtanen	DEF	MYH	13	9	879	7.0		156	Nathanael Custer	DEF	LA	10	9	789	4		156	Oswald Hanke	DEF	CSB	6	6	482	16
-																		157	Dario Prado	DEF	MYH	13	13	1005	7.0		157	Anselmo Carranza	DEF	LA	10	10	789	4		157	Lukács Rózsa	DEF	DTK	6	6	503	16
-																		158	Hans-Joachim Enns	MID	STU	5	5	386	6.9		158	Hayato Kirino	DEF	NSJ	12	11	979	4		158	Nikolai Orlov	DEF	RIE	6	6	510	16
-																		159	Ragnar Borgberg	MID	SDM	5	5	326	6.9		159	Edvardas Jankauskas	DEF	HAG	6	6	454	4		159	Erdem Polat	DEF	KAN	8	8	609	16
-																		160	Zsombor Nyitráv	MID	DTK	5	4	347	6.9		160	Tomás Uzcátegui	DEF	HAV	8	8	642	4		160	Ander Zubikarai	FWD	KAN	8	8	611	15
-																		161	Hisham Saleh	DEF	AIS	5	5	442	6.9		161	Ludvig Johansson	DEF	HAV	8	8	591	4		161	Homura Yagami	FWD	NSJ	12	11	769	15
-																		162	Desmond Dorofeev	DEF	SKM	5	4	332	6.9		162	Tomoyuki Akizuki	DEF	NSJ	12	12	963	4		162	Bernd Müller	MID	STU	6	6	520	15
-																		163	Tibor Almási	FWD	TTK	6	6	455	6.9		163	György Erdős	MID	DTK	4	3	197	4		163	Emmett Prendergast	MID	CSB	6	6	407	15
-																		164	Emil Lehner	FWD	INT	6	6	415	6.9		164	Konstantin Yashin	MID	SKM	5	4	322	4		164	Povilas Sabaliauskas	MID	HAG	6	6	473	15
-																		165	Timur Iskanderov	MID	CSB	6	6	540	6.9		165	Ziqiang Bao	MID	BNG	6	6	396	4		165	Aarne Peltoniemi	MID	OM	6	6	351	15
-																		166	Povilas Sabaliauskas	MID	HAG	6	6	473	6.9		166	Till Höffler	MID	STU	6	1	219	4		166	Ausiàs Campanar	MID	CA	8	7	511	15
-																		167	Roger Casadevall	MID	OM	6	6	412	6.9		167	Loïc Kervadec	MID	NSR	6	5	458	4		167	Rodion Titov	MID	KRK	8	6	513	15
-																		168	Ludwig Kymmel	MID	RIE	6	6	462	6.9		168	Povilas Sabaliauskas	MID	HAG	6	6	473	4		168	Mattheus Brinkhof	MID	NSJ	12	11	933	15
-																		169	Vito Moretti	MID	INT	6	6	512	6.9		169	Zbigniew Wróblewski	MID	HAG	6	2	368	4		169	Yegor Zaitsev	DEF	SKM	4	4	318	15
-																		170	Ansis Dzenis	MID	RIE	6	6	512	6.9		170	Kurt Wagner	MID	HAG	6	6	420	4		170	Hamza Al-Qadi	DEF	AIS	5	4	365	15
-																		171	Yanbo Ma	DEF	BNG	6	6	522	6.9		171	Traugott Reinhardt	MID	INT	6	6	501	4		171	Voltaire Salonga	DEF	AGL	5	4	335	15
-																		172	Péter Mákos	DEF	TTK	6	6	501	6.9		172	Ettore Bianchi	MID	OM	6	6	540	4		172	Sándor Teleki	DEF	DTK	5	5	319	15
-																		173	Kenneth Haugland	DEF	NSR	6	5	418	6.9		173	Lőrincz Orbán	MID	DTK	6	6	456	4		173	Firas Bishara	DEF	AIS	6	6	540	15
-																		174	Bruno Dreyer	DEF	HAG	6	6	540	6.9		174	Andrejs Celms	MID	RIE	6	6	478	4		174	Amichai Shtern	DEF	HET	6	6	540	15
-																		175	Sigfrid Filipsson	DEF	SDM	6	6	540	6.9		175	Albert Pottaslainen	MID	RSR	8	7	501	4		175	Dwight Whitfield	FWD	RT	7	7	518	14
-																		176	Lukács Rózsa	DEF	DTK	6	6	503	6.9		176	Miles Marsh	MID	PIS	10	1	329	4		176	Günther Rajala	FWD	XIV	13	13	849	14
-																		177	Vladislav Fomin	DEF	SKM	6	4	385	6.9		177	Gaspare Torlonia	MID	LA	10	1	263	4		177	Raleigh Preston	FWD	NSR	6	5	419	14
-																		178	Volkmar Scherer	MID	CA	7	7	613	6.9		178	Kazushige Nomoto	MID	NSJ	12	3	445	4		178	Sofiane Mansouri	MID	INT	6	6	427	14
-																		179	Fedor Frolov	FWD	KRK	8	8	620	6.9		179	Michiya Ōkubo	MID	NSJ	12	1	377	4		179	Adi Madmoni	MID	HET	6	6	451	14
-																		180	Eliezer Bansa	MID	KAN	8	7	639	6.9		180	Grigory Loginov	MID	UKA	12	0	248	4		180	Faustino Orgaz	MID	RT	8	7	557	14
-																		181	Aniceto Menasalbas	MID	RT	8	8	636	6.9		181	Tymon Dziedzic	MID	UKA	12	12	861	4		181	Pisenti Ramose	MID	LA	10	8	614	14
-																		182	Albert Pottaslainen	MID	RSR	8	7	501	6.9		182	Amos Donnelly	FWD	SVP	4	4	330	4		182	Haoyu Shi	DEF	BNG	5	5	382	14
-																		183	Poul Brodersen	MID	HAV	8	7	549	6.9		183	Flórián Losonczy	FWD	TTK	6	6	460	4		183	Miron Sviridov	DEF	KRK	8	7	652	14
-																		184	Kent Forsberg	MID	HAV	8	8	682	6.9		184	Emil Lehner	FWD	INT	6	6	415	4		184	Bætta Hyvärinen	DEF	XIV	12	2	402	14
-																		185	Faustino Orgaz	MID	RT	8	7	557	6.9		185	Đại Đông Nguyễn	FWD	OM	6	6	299	4		185	Anton Orlov	DEF	UKA	12	2	418	14
-																		186	Cyprian Regent	MID	YNC	8	7	659	6.9		186	Ilianov Dimitriev	FWD	SKM	6	2	285	4		186	Lothar Höfler	MID	STU	6	6	411	13
-																		187	Firmino Loureiro	MID	CA	8	7	580	6.9		187	Yuval Levkovich	FWD	HET	6	2	258	4		187	Vlasios Nikolaou	MID	AGL	6	2	286	13
-																		188	Kutay Bulut	DEF	YNC	8	7	658	6.9		188	Visvaldis Zariņš	FWD	RIE	6	0	172	4		188	Ansis Dzenis	MID	RIE	6	6	512	13
-																		189	Wendell Abernathy	FWD	LA	10	9	824	6.9		189	Paul Scholer	FWD	LUZ	8	0	177	4		189	Poul Brodersen	MID	HAV	8	7	549	13
-																		190	Sylvain Courvoisier	FWD	LA	10	9	611	6.9		190	Jaron Horn	DEF	STU	6	6	511	3		190	Fernand Mullenbach	MID	LUZ	8	8	577	13
-																		191	Thor Andresen	FWD	SPA	10	10	758	6.9		191	Eski Ruudanen	DEF	RSR	8	8	628	3		191	Hiraya Halili	MID	YNC	8	8	639	13
-																		192	Ashkan Mahdavi	FWD	PAS	10	9	820	6.9		192	Qiushi Zhang	DEF	PIS	10	9	713	3		192	Hans-Joachim Enns	MID	STU	5	5	386	13
-																		193	Kannan Kurup	FWD	LA	10	2	365	6.9		193	Anatole Beauregard	DEF	LA	10	10	871	3		193	Hisham Saleh	DEF	AIS	5	5	442	13
-																		194	Gijs Dreesens	FWD	SPA	10	10	745	6.9		194	Turki Ibn Shammari	DEF	NSR	5	5	376	3		194	Jianhong Lin	MID	BNG	6	1	198	13
-																		195	Vural Surlu	MID	PIS	10	9	838	6.9		195	Carlos López	DEF	HAV	8	2	424	3		195	Ziyad Subaie	MID	NSR	6	6	486	13
-																		196	Lorens Christensen	MID	SPA	10	10	883	6.9		196	Heikki Kovalainen	DEF	KAN	8	7	519	3		196	Prokopis Karagiannis	MID	AGL	6	6	503	13
-																		197	Pisenti Ramose	MID	LA	10	8	614	6.9		197	Samara Josefovic	DEF	RSR	8	8	640	3		197	Koppány Tálcásy	MID	DTK	6	6	484	13
-																		198	Myron Tsosie	DEF	LA	10	9	805	6.9		198	Meine Carlsen	DEF	SPA	10	10	808	3		198	Idan Suissa	MID	HET	6	6	510	13
-																		199	Leif Abel	DEF	SPA	10	10	857	6.9		199	Dmitry Belov	DEF	UKA	12	11	961	3		199	Callum Swift	DEF	PIS	10	2	361	13
-																		200	Sadao Higuchi	FWD	NSJ	12	12	786	6.9		200	Fyodor Chistyakov	DEF	UKA	12	12	1051	3		200	Reza Mozaffari	DEF	PAS	10	9	795	13
-																		201	Freek Hendriks	FWD	MYH	12	12	1080	6.9		201	Hietta Auvinen	DEF	XIV	13	12	1058	3		201	Toshirō Nagamine	DEF	NSJ	12	3	481	13
-																		202	Mattheus Brinkhof	MID	NSJ	12	11	933	6.9		202	Vitaly Zhukov	MID	SKM	4	4	302	3		202	Akira Mitomo	MID	NSJ	12	11	858	13
-																		203	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	6.9		203	Bo Yan	MID	BNG	6	5	368	3		203	Nimród Somogyi	FWD	DTK	6	6	475	12
-																		204	Motoharu Sasaoka	DEF	NSJ	12	11	986	6.9		204	Noga Bumgardner	MID	STU	6	6	438	3		204	Sylvain Courvoisier	FWD	LA	10	9	611	12
-																		205	Duarte Vasques	MID	MYH	13	11	907	6.9		205	Árpád Gulyás	MID	TTK	6	6	424	3		205	Stav Wegener	DEF	STU	4	4	316	12
-																		206	Jaan Kuuskrand	DEF	XIV	13	13	1170	6.9		206	Lajos Nagy	MID	TTK	6	5	391	3		206	Ragnar Borgberg	MID	SDM	5	5	326	12
-																		207	Pyotor Kirilov	GK	SVP	4	4	360	6.8		207	Ural Yusupov	MID	CSB	6	6	481	3		207	Shai Azoulay	MID	HET	5	4	390	12
-																		208	Igor Zhukov	DEF	SVP	4	4	330	6.8		208	Jamal Wahbeh	MID	AIS	6	6	453	3		208	Czesław Domagała	DEF	CSB	6	5	480	12
-																		209	Yegor Zaitsev	DEF	SKM	4	4	318	6.8		209	Nizar Farhat	MID	AIS	6	6	470	3		209	Timur Iskanderov	MID	CSB	6	6	540	12
-																		210	Shai Azoulay	MID	HET	5	4	390	6.8		210	Ziyad Subaie	MID	NSR	6	6	486	3		210	Loïc Kervadec	MID	NSR	6	5	458	12
-																		211	Hamza Al-Qadi	DEF	AIS	5	4	365	6.8		211	Rafferty Tinsley	MID	INT	6	0	133	3		211	Firmino Loureiro	MID	CA	8	7	580	12
-																		212	Anton Kravtsov	DEF	SKM	5	2	221	6.8		212	Kordian Wróblewski	MID	SVP	6	4	317	3		212	Ferruccio Noseda	MID	PIS	10	10	900	12
-																		213	Maksim Chernov	DEF	SKM	5	2	233	6.8		213	Anders Halfdansson	MID	SDM	6	6	448	3		213	Amleto Bracciolini	MID	LA	10	3	444	12
-																		214	Haoyu Shi	DEF	BNG	5	5	382	6.8		214	Lars Jørgensen	MID	SDM	6	6	423	3		214	Masaharu Onodera	FWD	AGL	6	6	453	11
-																		215	Firmino Varela	DEF	SVP	5	2	198	6.8		215	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	3		215	Yoshinori Mizoguchi	FWD	YNC	8	8	720	11
-																		216	Raleigh Preston	FWD	NSR	6	5	419	6.8		216	Koppány Tálcásy	MID	DTK	6	6	484	3		216	Kannan Kurup	FWD	LA	10	2	365	11
-																		217	Ludvig Brantman	FWD	SDM	6	6	540	6.8		217	Yonah Golan	MID	HET	6	6	431	3		217	Junjie Xu	MID	BNG	5	5	394	11
-																		218	Đại Đông Nguyễn	FWD	OM	6	6	299	6.8		218	Jūlijs Eglītis	MID	RIE	6	0	98	3		218	Zsombor Nyitráv	MID	DTK	5	4	347	11
-																		219	Nimród Somogyi	FWD	DTK	6	6	475	6.8		219	Folke Lindros	MID	HAV	8	1	366	3		219	Kai Vonnegut	DEF	STU	6	2	273	11
-																		220	Zsolt Vadász	FWD	DTK	6	4	366	6.8		220	Perfecto Ocaña	MID	RT	8	1	272	3		220	Attila Kovács	DEF	TTK	6	6	444	11
-																		221	Fyodor Tarasov	FWD	SKM	6	4	290	6.8		221	Zacarías Cebolla	MID	RT	8	1	207	3		221	Přemysl Kratochvíl	DEF	CSB	6	4	410	11
-																		222	Catmon Nacpil	FWD	BNG	6	6	392	6.8		222	Lucio Mascaraque	FWD	RT	8	2	310	3		222	Kurt Wagner	MID	HAG	6	6	420	11
-																		223	Octave Étienne	FWD	OM	6	0	241	6.8		223	Teodosio Ajofrín	MID	RT	8	8	649	3		223	Johan Bastlund	DEF	SDM	6	6	519	11
-																		224	Jianhong Lin	MID	BNG	6	1	198	6.8		224	Onur Tekeli̇	MID	YNC	8	1	283	3		224	Malik Seddiki	DEF	OM	6	0	241	11
-																		225	Denis Lewerenz	GK	STU	6	6	540	6.8		225	Emre Yildirim	MID	YNC	8	1	236	3		225	Ettore Bianchi	MID	OM	6	6	540	11
-																		226	Bernd Müller	MID	STU	6	6	520	6.8		226	Nikolai Tormotoff	FWD	RSR	8	8	720	3		226	Vladislav Fomin	DEF	SKM	6	4	385	11
-																		227	Lajos Nagy	MID	TTK	6	5	391	6.8		227	Joan Xirau	MID	CA	8	7	546	3		227	Maziar Sehat	MID	PAS	10	10	783	11
-																		228	Loïc Kervadec	MID	NSR	6	5	458	6.8		228	Firmino Loureiro	MID	CA	8	7	580	3		228	Ludvig Brantman	FWD	SDM	6	6	540	10
-																		229	Ziyad Subaie	MID	NSR	6	6	486	6.8		229	Prokhor Shatalov	MID	KRK	8	3	382	3		229	Nikolai Tormotoff	FWD	RSR	8	8	720	10
-																		230	Ahmet Aydin	GK	OM	6	6	528	6.8		230	Ilarion Trubetskoy	MID	KRK	8	8	621	3		230	Beonetun Hocere	MID	SVP	5	4	364	10
-																		231	Théo Santini	MID	OM	6	6	514	6.8		231	Maziar Sehat	MID	PAS	10	10	783	3		231	Anton Kravtsov	DEF	SKM	5	2	221	10
-																		232	Clayton Langston	MID	AGL	6	6	490	6.8		232	Folke Raudkalda	MID	XIV	13	2	419	3		232	Nissim Rubinstein	DEF	HET	5	4	369	10
-																		233	Lőrincz Orbán	MID	DTK	6	6	456	6.8		233	Yakov Sorokin	MID	MYH	13	3	487	3		233	Ettore Longobardi	MID	INT	6	3	353	10
-																		234	Idan Suissa	MID	HET	6	6	510	6.8		234	Stav Wegener	DEF	STU	4	4	316	2		234	Traugott Reinhardt	MID	INT	6	6	501	10
-																		235	Adi Madmoni	MID	HET	6	6	451	6.8		235	Csongor Pásztor	DEF	DTK	6	3	352	2		235	Oded Levi	DEF	HET	6	6	523	10
-																		236	Miķelis Lācis	MID	RIE	6	6	484	6.8		236	Lukács Rózsa	DEF	DTK	6	6	503	2		236	Rémi Wagener	MID	LUZ	8	8	699	10
-																		237	Erni Bachmann	DEF	STU	6	6	520	6.8		237	Harel Mamo	DEF	HET	6	6	491	2		237	Perfecto Ocaña	MID	RT	8	1	272	10
-																		238	Akiva Schumacher	DEF	STU	6	6	540	6.8		238	Nikolai Orlov	DEF	RIE	6	6	510	2		238	Onur Tekeli̇	MID	YNC	8	1	283	10
-																		239	Tatsuhiko Ōmagari	DEF	INT	6	6	540	6.8		239	Ivan Sitnikov	DEF	UKA	12	11	942	2		239	Thor Andresen	FWD	SPA	10	10	758	9
-																		240	Rachid Benyahia	DEF	OM	6	6	456	6.8		240	Haoyu Shi	DEF	BNG	5	5	382	2		240	Matías Salcedo	FWD	CA	8	7	546	9
-																		241	Anastasios Fotopoulos	DEF	AGL	6	6	512	6.8		241	Xiang Qian	DEF	SVP	5	4	369	2		241	Freek Hendriks	FWD	MYH	12	12	1080	9
-																		242	Nikolai Orlov	DEF	RIE	6	6	510	6.8		242	Zhihao Tang	DEF	BNG	6	5	444	2		242	Igor Zhukov	DEF	SVP	4	4	330	9
-																		243	Kai Vonnegut	DEF	STU	6	2	273	6.8		243	Attila Kovács	DEF	TTK	6	6	444	2		243	Noga Bumgardner	MID	STU	6	6	438	9
-																		244	Czesław Domagała	DEF	CSB	6	5	480	6.8		244	Aurèle Montfaucon	DEF	CSB	6	6	518	2		244	Ural Yusupov	MID	CSB	6	6	481	9
-																		245	Oswald Hanke	DEF	CSB	6	6	482	6.8		245	Alfred Siebert	DEF	HAG	6	2	301	2		245	Silas Davis	MID	NSR	6	6	463	9
-																		246	Firas Bishara	DEF	AIS	6	6	540	6.8		246	Tatsuhiko Ōmagari	DEF	INT	6	6	540	2		246	Kōhei Gushiken	DEF	NSR	6	6	474	9
-																		247	Alfred Siebert	DEF	HAG	6	2	301	6.8		247	Eugen Slägga	DEF	SDM	6	5	421	2		247	Jack Kershaw	MID	INT	6	0	152	9
-																		248	Edvardas Jankauskas	DEF	HAG	6	6	454	6.8		248	Mårten Skjöld	DEF	SDM	6	6	508	2		248	Mårten Skjöld	DEF	SDM	6	6	508	9
-																		249	Johan Bastlund	DEF	SDM	6	6	519	6.8		249	Enzo Gorlomi	DEF	OM	6	6	468	2		249	Enzo Gorlomi	DEF	OM	6	6	468	9
-																		250	Mårten Skjöld	DEF	SDM	6	6	508	6.8		250	Vladislav Fomin	DEF	SKM	6	4	385	2		250	Miķelis Lācis	MID	RIE	6	6	484	9
-																		251	Amichai Shtern	DEF	HET	6	6	540	6.8		251	Isidoro Mocejón	DEF	RT	7	7	630	2		251	Niccolò Donizetti	MID	KAN	8	7	473	9
-																		252	Édouard Pescatore	FWD	LUZ	8	8	543	6.8		252	Anton Westerberg	DEF	HAV	8	8	720	2		252	Olivier Zenner	DEF	LUZ	8	1	226	9
-																		253	Jun Teshigawara	FWD	KAN	8	3	440	6.8		253	Ryōhei Ikegaya	DEF	KAN	8	7	635	2		253	Rizgar Bozkurt	DEF	YNC	8	0	159	9
-																		254	Nils Nyquist	GK	HAV	8	8	720	6.8		254	Ibai Urrutia	DEF	CA	8	7	590	2		254	Rui Seabra	DEF	CA	8	3	349	9
-																		255	Teodosio Ajofrín	MID	RT	8	8	649	6.8		255	Osman Mamut	DEF	KRK	8	7	614	2		255	Miles Marsh	MID	PIS	10	1	329	9
-																		256	Hiraya Halili	MID	YNC	8	8	639	6.8		256	Pat Hassell	DEF	PIS	10	9	831	2		256	Ali Macalipay	DEF	LA	10	3	436	9
-																		257	Kasperi Karinen	GK	RSR	8	8	720	6.8		257	Myron Tsosie	DEF	LA	10	9	805	2		257	Yakov Sorokin	MID	MYH	13	3	487	9
-																		258	Damián Quevedo	MID	CA	8	2	351	6.8		258	Leif Abel	DEF	SPA	10	10	857	2		258	Dietrich Kunze	FWD	PIS	10	10	700	8
-																		259	Rodion Titov	MID	KRK	8	6	513	6.8		259	Tadashi Unno	DEF	NSJ	12	12	1050	2		259	Wendell Abernathy	FWD	LA	10	9	824	8
-																		260	Olivier Zenner	DEF	LUZ	8	1	226	6.8		260	Aaron Kumpula	DEF	XIV	13	13	1081	2		260	Osip Yudin	FWD	UKA	12	12	934	8
-																		261	Camille Theisen	DEF	LUZ	8	8	720	6.8		261	Ladislav Kučera	DEF	MYH	13	6	686	2		261	Saleim Razhimi	FWD	XIV	13	13	915	8
-																		262	Killian Charpentier	DEF	LUZ	8	7	608	6.8		262	Simon Schulhof	DEF	MYH	13	12	1000	2		262	Pavel Mukhin	MID	SVP	2	2	155	8
-																		263	Samara Josefovic	DEF	RSR	8	8	640	6.8		263	Dumisani Sisoulou	GK	SVP	2	2	180	2		263	Ákos Tanyasi	DEF	TTK	6	5	469	8
-																		264	Rui Seabra	DEF	CA	8	3	349	6.8		264	Yazeed Al-Braik	FWD	NSR	4	1	121	2		264	Árpád Gulyás	MID	TTK	6	6	424	8
-																		265	Carlos López	DEF	HAV	8	2	424	6.8		265	Konrád Nemes	GK	DTK	4	2	214	2		265	Badr Yami	DEF	NSR	6	6	495	8
-																		266	Ludvig Johansson	DEF	HAV	8	8	591	6.8		266	Ilya Belyaev	FWD	SKM	4	2	203	2		266	Ewald Lassmann	MID	HAG	6	4	368	8
-																		267	Sagip Gatmaitan	DEF	KAN	8	3	409	6.8		267	Reinhard Van Astrea	FWD	HAG	5	4	258	2		267	Leonidas Stamatiou	DEF	AGL	6	2	256	8
-																		268	Karin Tuomela	DEF	RSR	8	1	291	6.8		268	Anmin Pan	FWD	BNG	6	1	276	2		268	Valdis Strazds	DEF	RIE	6	6	540	8
-																		269	Miron Sviridov	DEF	KRK	8	7	652	6.8		269	Valter Fehér	FWD	TTK	6	0	165	2		269	Damián Quevedo	MID	CA	8	2	351	8
-																		270	Imre Kárpáti	DEF	PIS	10	10	813	6.8		270	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	2		270	Stig Van Wieren	DEF	SPA	10	1	317	8
-																		271	Ali Macalipay	DEF	LA	10	3	436	6.8		271	Qusai Rayyan	FWD	AIS	6	1	235	2		271	Tahmoures Ahshari	DEF	PAS	10	2	406	8
-																		272	Cesare Castaldo	DEF	LA	10	9	810	6.8		272	Marwan Touma	FWD	AIS	6	6	454	2		272	Tibor Horváth	MID	UKA	12	12	934	8
-																		273	Palle Alma	DEF	SPA	10	9	803	6.8		273	Raleigh Preston	FWD	NSR	6	5	419	2		273	Charle Valtterinen	FWD	RSR	8	7	558	7
-																		274	Callum Swift	DEF	PIS	10	2	361	6.8		274	Donovan Centurione	FWD	INT	6	0	153	2		274	István Magvasi	FWD	TTK	6	6	540	7
-																		275	Stig Van Wieren	DEF	SPA	10	1	317	6.8		275	Sigurd Shilov	FWD	SVP	6	2	263	2		275	Tibor Almási	FWD	TTK	6	6	455	7
-																		276	Tahmoures Ahshari	DEF	PAS	10	2	406	6.8		276	Beonetleah Heordewic	FWD	SVP	6	4	306	2		276	Édouard Pescatore	FWD	LUZ	8	8	543	7
-																		277	Reza Mozaffari	DEF	PAS	10	9	795	6.8		277	Octave Étienne	FWD	OM	6	0	241	2		277	Bruno Del Pino	FWD	RSR	8	8	720	7
-																		278	Sohrab Karimzadeh	DEF	PAS	10	10	873	6.8		278	Charalambos Angelopoulos	FWD	AGL	6	2	267	2		278	Hajime Morimoto	FWD	PAS	10	10	717	7
-																		279	Bætta Hyvärinen	DEF	XIV	12	2	402	6.8		279	Masaharu Onodera	FWD	AGL	6	6	453	2		279	Weilin Fu	MID	BNG	5	5	377	7
-																		280	Anton Orlov	DEF	UKA	12	2	418	6.8		280	Johannn Baumgartner	FWD	DTK	6	2	239	2		280	Chenglei Zhou	DEF	BNG	6	2	288	7
-																		281	Dmitry Belov	DEF	UKA	12	11	961	6.8		281	Arvid Wettergren	FWD	HAV	7	0	175	2		281	Charlie Kirin	MID	BNG	6	1	253	7
-																		282	Toshirō Nagamine	DEF	NSJ	12	3	481	6.8		282	Boris Lukyanovich	FWD	RSR	8	1	255	2		282	Lajos Nagy	MID	TTK	6	5	391	7
-																		283	Tadashi Unno	DEF	NSJ	12	12	1050	6.8		283	Aristides Pimentel	FWD	CA	8	2	290	2		283	Ihab Mikhail	MID	AIS	6	6	500	7
-																		284	Yakov Sorokin	MID	MYH	13	3	487	6.8		284	Vahram Nouri	FWD	PAS	9	9	695	2		284	Edvardas Jankauskas	DEF	HAG	6	6	454	7
-																		285	Ladislav Kučera	DEF	MYH	13	6	686	6.8		285	Oscar Carstensen	FWD	SPA	10	0	297	2		285	Eugen Slägga	DEF	SDM	6	5	421	7
-																		286	Prasert Bùi	GK	AGL	4	4	360	6.7		286	Ermolai Kuzmin	DEF	SKM	2	2	171	1		286	Bastien Cavaillès	MID	OM	6	0	215	7
-																		287	Petr Savin	MID	SKM	4	2	198	6.7		287	Hisham Saleh	DEF	AIS	5	5	442	1		287	Ran Uzan	MID	HET	6	4	390	7
-																		288	Rikard Läck	GK	SDM	5	5	450	6.7		288	Voltaire Salonga	DEF	AGL	5	4	335	1		288	Karin Tuomela	DEF	RSR	8	1	291	7
-																		289	Yuxuan Cui	FWD	SVP	6	2	266	6.7		289	Desmond Dorofeev	DEF	SKM	5	4	332	1		289	Teemo Õunapuu	MID	RSR	8	1	281	7
-																		290	Sigurd Shilov	FWD	SVP	6	2	263	6.7		290	Nissim Rubinstein	DEF	HET	5	4	369	1		290	Jamshid Razavi	MID	PAS	10	10	774	7
-																		291	Yuval Levkovich	FWD	HET	6	2	258	6.7		291	Feng Ji	DEF	BNG	6	6	512	1		291	Đại Đông Nguyễn	FWD	OM	6	6	299	6
-																		292	Boaz Ben-Ami	FWD	HET	6	4	282	6.7		292	Yanbo Ma	DEF	BNG	6	6	522	1		292	Fructuoso Navahermosa	FWD	RT	8	7	568	6
-																		293	Charlie Kirin	MID	BNG	6	1	253	6.7		293	Péter Mákos	DEF	TTK	6	6	501	1		293	Fedor Frolov	FWD	KRK	8	8	620	6
-																		294	Ewald Lassmann	MID	HAG	6	4	368	6.7		294	Majed Al-Otaibi	DEF	NSR	6	1	185	1		294	Eetu Lehtinen	FWD	HAV	8	8	588	6
-																		295	Rafael Rosario	GK	INT	6	6	540	6.7		295	Kenneth Haugland	DEF	NSR	6	5	418	1		295	Oscar Carstensen	FWD	SPA	10	0	297	6
-																		296	Traugott Reinhardt	MID	INT	6	6	501	6.7		296	Moritz Müller	DEF	HAG	6	4	400	1		296	Sadao Higuchi	FWD	NSJ	12	12	786	6
-																		297	Anders Halfdansson	MID	SDM	6	6	448	6.7		297	Bruno Dreyer	DEF	HAG	6	6	540	1		297	Valery Gerasimov	DEF	SVP	2	2	180	6
-																		298	Bastien Cavaillès	MID	OM	6	0	215	6.7		298	Siegfried Fuhrmann	DEF	HAG	6	6	465	1		298	Valentin Ruckdeschel	MID	HAG	6	6	479	6
-																		299	Aarne Peltoniemi	MID	OM	6	6	351	6.7		299	Malik Seddiki	DEF	OM	6	0	241	1		299	Anders Halfdansson	MID	SDM	6	6	448	6
-																		300	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	6.7		300	Valdis Strazds	DEF	RIE	6	6	540	1		300	Yonah Golan	MID	HET	6	6	431	6
-																		301	Milán Szentesy	MID	DTK	6	2	286	6.7		301	Camille Theisen	DEF	LUZ	8	8	720	1		301	Higinio Villaseca	MID	RT	8	8	610	6
-																		302	Mikhail Moiseev	MID	SKM	6	3	290	6.7		302	Orville Easterbrook	DEF	YNC	8	8	596	1		302	Ilarion Trubetskoy	MID	KRK	8	8	621	6
-																		303	Andrejs Celms	MID	RIE	6	6	478	6.7		303	Vasco Trindade	DEF	CA	8	8	720	1		303	Turki Ibn Shammari	DEF	NSR	5	5	376	6
-																		304	Till Höffler	MID	STU	6	1	219	6.7		304	Duarte Magalhães	DEF	CA	8	7	574	1		304	Maksim Chernov	DEF	SKM	5	2	233	6
-																		305	Árpád Gulyás	MID	TTK	6	6	424	6.7		305	Yakov Myshkin	DEF	KRK	8	7	659	1		305	Zemin Mao	FWD	BNG	6	5	412	5
-																		306	Ural Yusupov	MID	CSB	6	6	481	6.7		306	Mohsen Tabrizi	DEF	PAS	9	9	692	1		306	Catmon Nacpil	FWD	BNG	6	6	392	5
-																		307	Gleb Vorontsov	MID	CSB	6	6	540	6.7		307	Tilman Zartmann	DEF	PIS	10	10	882	1		307	Emil Lehner	FWD	INT	6	6	415	5
-																		308	Rashid Al-Attar	MID	AIS	6	2	277	6.7		308	Imre Kárpáti	DEF	PIS	10	10	813	1		308	Fricis Avotiņš	FWD	RIE	6	6	456	5
-																		309	Maoz Shaked	MID	AIS	6	6	445	6.7		309	Ali Macalipay	DEF	LA	10	3	436	1		309	Alistair Fairweather	FWD	YNC	8	8	542	5
-																		310	Zbigniew Wróblewski	MID	HAG	6	2	368	6.7		310	Ane Ludvigsen	DEF	SPA	10	10	815	1		310	Nemanja Petrovic	FWD	RSR	8	8	627	5
-																		311	Valentin Ruckdeschel	MID	HAG	6	6	479	6.7		311	Toshirō Nagamine	DEF	NSJ	12	3	481	1		311	Valery Polyakov	FWD	UKA	12	12	965	5
-																		312	Kurt Wagner	MID	HAG	6	6	420	6.7		312	Anton Orlov	DEF	UKA	12	2	418	1		312	Emiliano Luna	MID	INT	3	3	169	5
-																		313	Karl Tångberg	MID	SDM	6	1	200	6.7		313	Maniek Goj	DEF	UKA	12	12	948	1		313	Arnold Kessler	MID	HAG	5	4	294	5
-																		314	Vilgot Renner	MID	SDM	6	1	273	6.7		314	Valery Gerasimov	DEF	SVP	2	2	180	1		314	Bo Yan	MID	BNG	6	5	368	5
-																		315	Conan Neitzel	MID	OM	6	0	238	6.7		315	Pavel Mukhin	MID	SVP	2	2	155	1		315	Shaul Damari	MID	HET	6	2	251	5
-																		316	Ettore Bianchi	MID	OM	6	6	540	6.7		316	Emiliano Luna	MID	INT	3	3	169	1		316	Gunārs Briedis	MID	RIE	6	6	473	5
-																		317	Spyridon Lykoudis	MID	AGL	6	2	241	6.7		317	Valery Kulagin	MID	SVP	3	2	158	1		317	Ludwig Kymmel	MID	RIE	6	6	462	5
-																		318	Koppány Tálcásy	MID	DTK	6	6	484	6.7		318	Igor Zhukov	DEF	SVP	4	4	330	1		318	Andrejs Celms	MID	RIE	6	6	478	5
-																		319	Ruslan Makarov	MID	SKM	6	4	368	6.7		319	Tadas Mockus	GK	HAG	5	2	229	1		319	Folke Lindros	MID	HAV	8	1	366	5
-																		320	Shaul Damari	MID	HET	6	2	251	6.7		320	Firmino Varela	DEF	SVP	5	2	198	1		320	Sadao Garabin	MID	KAN	8	1	297	5
-																		321	Dwight Whitfield	FWD	RT	7	7	518	6.7		321	Aristeidis Georgiou	DEF	AGL	5	4	317	1		321	Anton Lehtoranten	MID	RSR	8	0	177	5
-																		322	Terenty Batyushkov	MID	KRK	7	6	505	6.7		322	Sándor Teleki	DEF	DTK	5	5	319	1		322	Nazar Volkonsky	MID	KRK	8	3	357	5
-																		323	Alistair Fairweather	FWD	YNC	8	8	542	6.7		323	Nikita Krylov	MID	SKM	5	3	250	1		323	Matvei Zubkov	DEF	SKM	4	4	349	5
-																		324	Nikolai Tormotoff	FWD	RSR	8	8	720	6.7		324	Shai Azoulay	MID	HET	5	4	390	1		324	Márton Mészáros	DEF	TTK	6	1	206	5
-																		325	Sven Emilsson	FWD	HAV	8	8	593	6.7		325	Chenglei Zhou	DEF	BNG	6	2	288	1		325	Majed Al-Otaibi	DEF	NSR	6	1	185	5
-																		326	Fructuoso Navahermosa	FWD	RT	8	7	568	6.7		326	Charlie Kirin	MID	BNG	6	1	253	1		326	Alfred Siebert	DEF	HAG	6	2	301	5
-																		327	Aristides Pimentel	FWD	CA	8	2	290	6.7		327	Kai Vonnegut	DEF	STU	6	2	273	1		327	Yuxuan Cui	FWD	SVP	6	2	266	4
-																		328	Folke Lindros	MID	HAV	8	1	366	6.7		328	Erni Bachmann	DEF	STU	6	6	520	1		328	Alimjan Turghun	FWD	KRK	7	6	439	4
-																		329	Kanata Murakumo	MID	KAN	8	3	400	6.7		329	Bernd Müller	MID	STU	6	6	520	1		329	Sven Emilsson	FWD	HAV	8	8	593	4
-																		330	Rémi Wagener	MID	LUZ	8	8	699	6.7		330	Guntram Jung	MID	STU	6	0	166	1		330	Shigematsu Sato	FWD	KAN	6	5	382	4
-																		331	Joan Xirau	MID	CA	8	7	546	6.7		331	János Juhász	DEF	TTK	6	6	540	1		331	Louay Abu-Sitta	FWD	AIS	6	5	391	4
-																		332	Augustin Aragonés	MID	CA	8	8	678	6.7		332	Márk Tapolczai	MID	TTK	6	0	116	1		332	Octave Étienne	FWD	OM	6	0	241	4
-																		333	Prokhor Shatalov	MID	KRK	8	3	382	6.7		333	Evgeny Karpov	GK	CSB	6	6	540	1		333	Yuval Levkovich	FWD	HET	6	2	258	4
-																		334	Ambrosio Polán	MID	RT	8	2	318	6.7		334	Oswald Hanke	DEF	CSB	6	6	482	1		334	Ilmar Saar	FWD	RIE	6	6	453	4
-																		335	Perfecto Ocaña	MID	RT	8	1	272	6.7		335	Firas Bishara	DEF	AIS	6	6	540	1		335	Berat Çankaya	FWD	YNC	8	0	178	4
-																		336	Zacarías Cebolla	MID	RT	8	1	207	6.7		336	Jaber Al-Zoubi	MID	AIS	6	5	419	1		336	Ole Toft	FWD	SPA	10	10	704	4
-																		337	Marcelino Burguillos	MID	RT	8	7	512	6.7		337	Ihab Mikhail	MID	AIS	6	6	500	1		337	Nikita Krylov	MID	SKM	5	3	250	4
-																		338	Onur Tekeli̇	MID	YNC	8	1	283	6.7		338	Nabil Kurdi	MID	AIS	6	1	188	1		338	Konstantin Yashin	MID	SKM	5	4	322	4
-																		339	Emre Yildirim	MID	YNC	8	1	236	6.7		339	Rashid Al-Attar	MID	AIS	6	2	277	1		339	Gleb Vorontsov	MID	CSB	6	6	540	4
-																		340	Teemo Õunapuu	MID	RSR	8	1	281	6.7		340	Badr Yami	DEF	NSR	6	6	495	1		340	Nabil Kurdi	MID	AIS	6	1	188	4
-																		341	Yefim Artamonov	MID	KRK	8	2	289	6.7		341	Mishal Malki	MID	NSR	6	1	221	1		341	Jamal Wahbeh	MID	AIS	6	6	453	4
-																		342	Nazar Volkonsky	MID	KRK	8	3	357	6.7		342	Jenaro Salamanca	DEF	INT	6	6	540	1		342	Vilgot Renner	MID	SDM	6	1	273	4
-																		343	Miles Marsh	MID	PIS	10	1	329	6.7		343	Dean Boone	DEF	INT	6	6	540	1		343	Ambrosio Polán	MID	RT	8	2	318	4
-																		344	Amleto Bracciolini	MID	LA	10	3	444	6.7		344	Pitso Modisé	MID	SVP	6	2	248	1		344	Emre Yildirim	MID	YNC	8	1	236	4
-																		345	Maziar Sehat	MID	PAS	10	10	783	6.7		345	Stanleah Coc	DEF	SVP	6	4	345	1		345	Joan Xirau	MID	CA	8	7	546	4
-																		346	Frej Alserda	MID	SPA	10	0	226	6.7		346	Jakub Modelski	MID	SDM	6	4	389	1		346	Augustin Aragonés	MID	CA	8	8	678	4
-																		347	Michiya Ōkubo	MID	NSJ	12	1	377	6.7		347	Théo Santini	MID	OM	6	6	514	1		347	Michiya Ōkubo	MID	NSJ	12	1	377	4
-																		348	Evgeny Pletnev	MID	UKA	12	0	320	6.7		348	Vlasios Nikolaou	MID	AGL	6	2	286	1		348	Grigory Loginov	MID	UKA	12	0	248	4
-																		349	Tibor Horváth	MID	UKA	12	12	934	6.7		349	Milán Szentesy	MID	DTK	6	2	286	1		349	Evgeny Pletnev	MID	UKA	12	0	320	4
-																		350	Kazushige Nomoto	MID	NSJ	12	3	445	6.7		350	Ádám Kiss	MID	DTK	6	3	353	1		350	Folke Raudkalda	MID	XIV	13	2	419	4
-																		351	Colwyn Powell	MID	MYH	12	1	407	6.7		351	Denis Karpov	MID	SKM	6	4	372	1		351	Ludovico Riggio	MID	MYH	13	3	456	4
-																		352	Grigory Loginov	MID	UKA	12	0	248	6.7		352	Ruslan Makarov	MID	SKM	6	4	368	1		352	György Erdős	MID	DTK	4	3	197	4
-																		353	Folke Raudkalda	MID	XIV	13	2	419	6.7		353	Roee Yehezkel	MID	HET	6	2	277	1		353	Petr Savin	MID	SKM	4	2	198	4
-																		354	Kaake Räsänainen	MID	XIV	13	1	303	6.7		354	Jānis Vītols	GK	RIE	6	6	540	1		354	Firmino Varela	DEF	SVP	5	2	198	4
-																		355	Ludovico Riggio	MID	MYH	13	3	456	6.7		355	Jēkabs Vanags	MID	RIE	6	0	98	1		355	Ruifeng Huang	MID	BNG	5	1	174	4
-																		356	Pirmin Hoffmeister	MID	MYH	13	12	996	6.7		356	Kent Forsberg	MID	HAV	8	8	682	1		356	Aleš Nejezchleb	MID	CSB	6	0	137	4
-																		357	Amos Donnelly	FWD	SVP	4	4	330	6.6		357	Nicolas Glesener	MID	LUZ	8	1	284	1		357	Radim Vohánka	MID	CSB	6	0	163	4
-																		358	Nikolai Lebedev	FWD	SVP	4	4	263	6.6		358	Higinio Villaseca	MID	RT	8	8	610	1		358	Maoz Shaked	MID	AIS	6	6	445	4
-																		359	Reinhard Van Astrea	FWD	HAG	5	4	258	6.6		359	Anton Lehtoranten	MID	RSR	8	0	177	1		359	Zbigniew Wróblewski	MID	HAG	6	2	368	4
-																		360	Konstantin Yashin	MID	SKM	5	4	322	6.6		360	Yefim Artamonov	MID	KRK	8	2	289	1		360	Kordian Wróblewski	MID	SVP	6	4	317	4
-																		361	Nissim Rubinstein	DEF	HET	5	4	369	6.6		361	Nazar Volkonsky	MID	KRK	8	3	357	1		361	Kanë Dabá	DEF	SVP	6	4	367	4
+18	Ilmar Saar	FWD	RIE	6	6	453	4		18	Beonetun Hocere	MID	SVP	5	4	364	3		18	Gotthilf Brinkerhoff	FWD	STU	6	6	540	7.4		18	Niccolò Donizetti	MID	KAN	8	7	473	22		18	Niilo Virtanen	DEF	MYH	13	9	879	39		18	Jānis Vītols	GK	RIE	6	6	540	22
+19	Alimjan Turghun	FWD	KRK	7	6	439	4		19	Yanbo Ma	DEF	BNG	6	6	522	3		19	Nabil Ouazzani	MID	OM	6	6	430	7.4		19	Nathan Bass	MID	PIS	10	10	666	22		19	Sergei Smirnov	DEF	OM	6	6	455	38		19	Adnan Tamimi	GK	AIS	5	5	450	21
+20	Jun Teshigawara	FWD	KAN	8	3	440	4		20	Humbert Baumann	MID	STU	6	6	431	3		20	Victor Tvedt	MID	HAV	7	7	473	7.4		20	Jens Geirsson	FWD	HAV	8	8	545	21		20	Marcel Metsa	DEF	RSR	8	8	662	38		20	Ehud Halevi	GK	HET	4	4	360	20
+21	Bruno Del Pino	FWD	RSR	8	8	720	4		21	Emmett Prendergast	MID	CSB	6	6	407	3		21	Nicolau Ferrandis	DEF	RT	8	8	720	7.4		21	Homura Yagami	FWD	NSJ	12	11	769	21		21	Maniek Goj	DEF	UKA	12	12	948	38		21	Denis Lewerenz	GK	STU	6	6	540	20
+22	Matías Salcedo	FWD	CA	8	7	546	4		22	Esteban Palomer	MID	INT	6	6	453	3		22	Aleix Benimaclet	DEF	CA	8	7	647	7.4		22	Lothar Höfler	MID	STU	6	6	411	20		22	Hietta Auvinen	DEF	XIV	13	12	1058	37		22	Evgeny Karpov	GK	CSB	6	6	540	18
+23	Fedor Frolov	FWD	KRK	8	8	620	4		23	Nabil Ouazzani	MID	OM	6	6	430	3		23	Cesare Bottinelli	MID	KAN	8	7	506	7.4		23	Bartosz Jastrzębski	MID	NSR	6	6	540	20		23	Iisakki Saarikoski	DEF	HAV	8	7	593	36		23	Raka Wijaya	GK	YNC	8	8	711	18
+24	Sadao Higuchi	FWD	NSJ	12	12	786	4		24	Lukács Rózsa	DEF	DTK	6	6	503	3		24	Meine Carlsen	DEF	SPA	10	10	808	7.4		24	Marcus Wright	MID	MYH	12	11	835	20		24	Motoharu Sasaoka	DEF	NSJ	12	11	986	36		24	Pyotor Kirilov	GK	SVP	4	4	360	16
+25	Freek Hendriks	FWD	MYH	12	12	1080	4		25	Alimjan Turghun	FWD	KRK	7	6	439	3		25	Simon Schulhof	DEF	MYH	13	12	1000	7.4		25	Dominic Winslow	FWD	INT	6	6	512	20		25	Bartosz Jastrzębski	MID	NSR	6	6	540	34		25	Ilan Gabay	GK	HET	2	2	180	15
+26	Karel Černý	FWD	CSB	6	6	418	3		26	Poul Brodersen	MID	HAV	8	7	549	3		26	Roope Hietala	MID	XIV	13	12	900	7.4		26	Dietrich Kunze	FWD	PIS	10	10	700	20		26	Ime Paulsen	MID	SPA	10	10	805	34		26	Tadas Mockus	GK	HAG	5	2	229	15
+27	Dietrich Kunze	FWD	PIS	10	10	700	3		27	Heikki Kovalainen	DEF	KAN	8	7	519	3		27	Xiang Qian	DEF	SVP	5	4	369	7.3		27	Victor Tvedt	MID	HAV	7	7	473	19		27	Tomás Uzcátegui	DEF	HAV	8	8	642	34		27	Ahmet Aydin	GK	OM	6	6	528	15
+28	Kannan Kurup	FWD	LA	10	2	365	3		28	Cyprian Regent	MID	YNC	8	7	659	2		28	Feng Ji	DEF	BNG	6	6	512	7.3		28	Fernand Mullenbach	MID	LUZ	8	8	577	19		28	Palle Alma	DEF	SPA	10	9	803	34		28	Werner Kahlert	GK	HAG	4	4	311	13
+29	Ane Ludvigsen	DEF	SPA	10	10	815	3		29	Aurélien Villefranche	MID	YNC	8	8	555	2		29	Emmett Prendergast	MID	CSB	6	6	407	7.3		29	Mattheus Brinkhof	MID	NSJ	12	11	933	19		29	Jaan Kuuskrand	DEF	XIV	13	13	1170	34		29	Anselmo Rebelo	GK	CA	8	8	720	13
+30	Hajime Morimoto	FWD	PAS	10	10	717	3		30	Eski Ruudanen	DEF	RSR	8	8	628	2		30	Adalbert Brandhofer	FWD	YNC	8	8	720	7.3		30	Robin Karlsson	MID	XIV	13	12	909	19		30	Vural Surlu	MID	PIS	10	9	838	33		30	Yerasimos Athanasiadis	GK	AGL	2	2	180	12
+31	Michiya Ōkubo	MID	NSJ	12	1	377	3		31	Matías Salcedo	FWD	CA	8	7	546	2		31	Matías Salcedo	FWD	CA	8	7	546	7.3		31	Gerhart Stromeyer	MID	AGL	6	6	472	18		31	Ryōhei Ikegaya	DEF	KAN	8	7	635	33		31	Grigori Sidorov	GK	SKM	2	2	180	12
+32	Roope Hietala	MID	XIV	13	12	900	3		32	Diethelm Weidenbach	MID	LA	9	9	746	2		32	Anton Westerberg	DEF	HAV	8	8	720	7.3		32	Idan Suissa	MID	HET	6	6	510	18		32	Cesare Castaldo	DEF	LA	10	9	810	32		32	Dávid Pataky	GK	DTK	4	4	327	12
+33	Lothar Höfler	MID	STU	6	6	411	2		33	Shun'ichi Tamba	FWD	NSJ	10	0	216	2		33	Ane Ludvigsen	DEF	SPA	10	10	815	7.3		33	Ezequiel Mulholland	MID	RSR	8	8	481	18		33	Toby Redgrave	MID	PIS	10	10	815	31		33	Rikard Läck	GK	SDM	5	5	450	12
+34	Shigematsu Sato	FWD	KAN	6	5	382	2		34	Axel Anderson	MID	PIS	10	10	681	2		34	Ole Toft	FWD	SPA	10	10	704	7.3		34	Ausiàs Campanar	MID	CA	8	7	511	18		34	Norbert Schiltz	DEF	LUZ	8	8	664	31		34	Rafael Rosario	GK	INT	6	6	540	12
+35	Silas Davis	MID	NSR	6	6	463	2		35	Dietrich Kunze	FWD	PIS	10	10	700	2		35	Ferruccio Noseda	MID	PIS	10	10	900	7.3		35	Sōta Wakatsuki	MID	PAS	10	10	699	18		35	Vasco Trindade	DEF	CA	8	8	720	31		35	Shadmehr Gharibian	GK	PAS	1	1	90	11
+36	Dominic Winslow	FWD	INT	6	6	512	2		36	Wendell Abernathy	FWD	LA	10	9	824	2		36	Boris Vinogradov	MID	UKA	12	12	1080	7.3		36	Sadao Higuchi	FWD	NSJ	12	12	786	18		36	Diethelm Weidenbach	MID	LA	9	9	746	30		36	Prasert Bùi	GK	AGL	4	4	360	11
+37	Emil Lehner	FWD	INT	6	6	415	2		37	Lakhdar Hamidi	MID	LA	10	9	590	2		37	Cédric Serre	MID	MYH	13	12	844	7.3		37	Nabil Ouazzani	MID	OM	6	6	430	16		37	Isidoro Mocejón	DEF	RT	7	7	630	30		37	Konrád Nemes	GK	DTK	4	2	214	9
+38	Yuxuan Cui	FWD	SVP	6	2	266	2		38	Meine Carlsen	DEF	SPA	10	10	808	2		38	Ehud Halevi	GK	HET	4	4	360	7.2		38	Damien Scholtes	MID	LUZ	8	8	640	16		38	Cédric Serre	MID	MYH	13	12	844	30		38	Faisal Al-Dosari	GK	NSR	5	5	450	8
+39	Octave Étienne	FWD	OM	6	0	241	2		39	Ashkan Mahdavi	FWD	PAS	10	9	820	2		39	Werner Kahlert	GK	HAG	4	4	311	7.2		39	Pisenti Ramose	MID	LA	10	8	614	16		39	Aurèle Montfaucon	DEF	CSB	6	6	518	30		39	Dumisani Sisoulou	GK	SVP	2	2	180	7
+40	Đại Đông Nguyễn	FWD	OM	6	6	299	2		40	Tomoyuki Akizuki	DEF	NSJ	12	12	963	2		40	Tadas Mockus	GK	HAG	5	2	229	7.2		40	Ilmar Saar	FWD	RIE	6	6	453	16		40	Liam Bopp	DEF	KAN	8	7	658	30		40	Zixuan Wang	GK	BNG	1	1	90	5
+41	Arvid Wettergren	FWD	HAV	7	0	175	2		41	Homura Yagami	FWD	NSJ	12	11	769	2		41	Zemin Mao	FWD	BNG	6	5	412	7.2		41	Charle Valtterinen	FWD	RSR	8	7	558	16		41	Anatole Beauregard	DEF	LA	10	10	871	30		41	Torquil Blythe	GK	MYH	1	1	90	4
+42	Cesare Bottinelli	MID	KAN	8	7	506	2		42	Marcus Wright	MID	MYH	12	11	835	2		42	Shigematsu Sato	FWD	KAN	6	5	382	7.2		42	Hajime Morimoto	FWD	PAS	10	10	717	16		42	Aniceto Menasalbas	MID	RT	8	8	636	29		42	Kuzma Nagibin	GK	KRK	1	1	90	4
+43	Léo Origer	MID	LUZ	8	8	640	2		43	Hietta Auvinen	DEF	XIV	13	12	1058	2		43	István Magvasi	FWD	TTK	6	6	540	7.2		43	Zsombor Nyitráv	MID	DTK	5	4	347	15		43	Anselmo Carranza	DEF	LA	10	10	789	29		43	Waleed Al-Anazi	GK	NSR	1	1	90	4
+44	Damien Scholtes	MID	LUZ	8	8	640	2		44	Robin Karlsson	MID	XIV	13	12	909	2		44	Karel Černý	FWD	CSB	6	6	418	7.2		44	Humbert Baumann	MID	STU	6	6	431	15		44	Dmitry Belov	DEF	UKA	12	11	961	29		44	Gervasio Sonseca	GK	RT	1	1	90	4
+45	Lucio Mascaraque	FWD	RT	8	2	310	2		45	Roope Hietala	MID	XIV	13	12	900	2		45	Dominic Winslow	FWD	INT	6	6	512	7.2		45	Timur Iskanderov	MID	CSB	6	6	540	15		45	Jenaro Salamanca	DEF	INT	6	6	540	29		45	Gal Grinberg	GK	AIS	1	1	90	3
+46	Hiraya Halili	MID	YNC	8	8	639	2		46	Pirmin Hoffmeister	MID	MYH	13	12	996	2		46	Gerhart Stromeyer	MID	AGL	6	6	472	7.2		46	Klim Zaytsev	MID	KRK	8	7	577	15		46	Pat Hassell	DEF	PIS	10	9	831	29
+47	Augustin Aragonés	MID	CA	8	8	678	2		47	Duarte Vasques	MID	MYH	13	11	907	2		47	Malik Seddiki	DEF	OM	6	0	241	7.2		47	Lakhdar Hamidi	MID	LA	10	9	590	15		47	Imre Kárpáti	DEF	PIS	10	10	813	29
+48	Osman Mamut	DEF	KRK	8	7	614	2		48	Ermolai Kuzmin	DEF	SKM	2	2	171	1		48	Thibault Rochefort	DEF	AGL	6	4	396	7.2		48	Beonetun Hocere	MID	SVP	5	4	364	14		48	Qiushi Zhang	DEF	PIS	10	9	713	29
+49	Nathan Bass	MID	PIS	10	10	666	2		49	Hans-Joachim Enns	MID	STU	5	5	386	1		49	Jaron Horn	DEF	STU	6	6	511	7.2		49	Cesare Bottinelli	MID	KAN	8	7	506	14		49	Zdeno Medved	DEF	XIV	13	12	958	29
+50	Axel Anderson	MID	PIS	10	10	681	2		50	Ragnar Borgberg	MID	SDM	5	5	326	1		50	Olivier De Verley	DEF	OM	6	6	540	7.2		50	Augustin Aragonés	MID	CA	8	8	678	14		50	Siegfried Fuhrmann	DEF	HAG	6	6	465	28
+51	Sylvain Courvoisier	FWD	LA	10	9	611	2		51	Voltaire Salonga	DEF	AGL	5	4	335	1		51	Miklós Szlitlán	DEF	DTK	6	6	467	7.2		51	Axel Anderson	MID	PIS	10	10	681	14		51	Rachid Benyahia	DEF	OM	6	6	456	28
+52	Thor Andresen	FWD	SPA	10	10	758	2		52	Catmon Nacpil	FWD	BNG	6	6	392	1		52	Isidoro Mocejón	DEF	RT	7	7	630	7.2		52	Fricis Avotiņš	FWD	RIE	6	6	456	14		52	Olivier De Verley	DEF	OM	6	6	540	28
+53	Ashkan Mahdavi	FWD	PAS	10	9	820	2		53	Bo Yan	MID	BNG	6	5	368	1		53	Fernand Mullenbach	MID	LUZ	8	8	577	7.2		53	Sven Emilsson	FWD	HAV	8	8	593	14		53	Thibault Rochefort	DEF	AGL	6	4	396	28
+54	Taame Kankanpää	FWD	XIV	12	0	213	2		54	Jaron Horn	DEF	STU	6	6	511	1		54	Damien Scholtes	MID	LUZ	8	8	640	7.2		54	Adalbert Brandhofer	FWD	YNC	8	8	720	14		54	Casimiro Nambroca	DEF	RT	8	7	649	28
+55	Colwyn Powell	MID	MYH	12	1	407	2		55	Shigematsu Sato	FWD	KAN	6	5	382	1		55	Aurélien Villefranche	MID	YNC	8	8	555	7.2		55	Bruno Del Pino	FWD	RSR	8	8	720	14		55	Mohsen Tabrizi	DEF	PAS	9	9	692	28
+56	Cédric Serre	MID	MYH	13	12	844	2		56	Ernő Koncz	MID	TTK	6	6	465	1		56	Heikki Kovalainen	DEF	KAN	8	7	519	7.2		56	Sylvain Courvoisier	FWD	LA	10	9	611	14		56	Psote Neferhotep	MID	KAN	8	7	565	27
+57	Reinhard Van Astrea	FWD	HAG	5	4	258	1		57	Tibor Almási	FWD	TTK	6	6	455	1		57	Marcel Metsa	DEF	RSR	8	8	662	7.2		57	Freek Hendriks	FWD	MYH	12	12	1080	14		57	Duarte Vasques	MID	MYH	13	11	907	27
+58	Catmon Nacpil	FWD	BNG	6	6	392	1		58	Árpád Gulyás	MID	TTK	6	6	424	1		58	Iisakki Saarikoski	DEF	HAV	8	7	593	7.2		58	Yrjö Hietanen	DEF	XIV	13	13	1170	12		58	Gerhart Stromeyer	MID	AGL	6	6	472	26
+59	Bernd Müller	MID	STU	6	6	520	1		59	Aurèle Montfaucon	DEF	CSB	6	6	518	1		59	Mathis Weiler	GK	LUZ	8	8	720	7.2		59	Volkmar Scherer	MID	CA	7	7	613	12		59	Miklós Szlitlán	DEF	DTK	6	6	467	26
+60	Lajos Nagy	MID	TTK	6	5	391	1		60	Timur Iskanderov	MID	CSB	6	6	540	1		60	Gaspard Reuter	DEF	LUZ	8	8	662	7.2		60	Marcelino Burguillos	MID	RT	8	7	512	12		60	Carl Mathiassen	DEF	RSR	8	7	659	26
+61	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	1		61	Gleb Vorontsov	MID	CSB	6	6	540	1		61	Duarte Magalhães	DEF	CA	8	7	574	7.2		61	Diethelm Weidenbach	MID	LA	9	9	746	12		61	Duarte Magalhães	DEF	CA	8	7	574	26
+62	Emmett Prendergast	MID	CSB	6	6	407	1		62	Louay Abu-Sitta	FWD	AIS	6	5	391	1		62	Osman Mamut	DEF	KRK	8	7	614	7.2		62	Tibor Horváth	MID	UKA	12	12	934	12		62	Ladislav Kučera	DEF	MYH	13	6	686	26
+63	Marwan Touma	FWD	AIS	6	6	454	1		63	Bartosz Jastrzębski	MID	NSR	6	6	540	1		63	Diethelm Weidenbach	MID	LA	9	9	746	7.2		63	Daivid Fedoroff	MID	XIV	13	12	980	12		63	Dario Prado	DEF	MYH	13	13	1005	26
+64	Bartosz Jastrzębski	MID	NSR	6	6	540	1		64	Ziyad Subaie	MID	NSR	6	6	486	1		64	Axel Anderson	MID	PIS	10	10	681	7.2		64	Catmon Nacpil	FWD	BNG	6	6	392	12		64	Clayton Langston	MID	AGL	6	6	490	25
+65	Raleigh Preston	FWD	NSR	6	5	419	1		65	Povilas Sabaliauskas	MID	HAG	6	6	473	1		65	Tilman Zartmann	DEF	PIS	10	10	882	7.2		65	Ludvig Brantman	FWD	SDM	6	6	540	12		65	Nathan Bass	MID	PIS	10	10	666	25
+66	Kurt Wagner	MID	HAG	6	6	420	1		66	Zbigniew Wróblewski	MID	HAG	6	2	368	1		66	Marcus Wright	MID	MYH	12	11	835	7.2		66	Dwight Whitfield	FWD	RT	7	7	518	12		66	Sigfrid Filipsson	DEF	SDM	6	6	540	25
+67	Sigurd Shilov	FWD	SVP	6	2	263	1		67	Sofiane Mansouri	MID	INT	6	6	427	1		67	Susumu Arakawa	GK	NSJ	12	12	1080	7.2		67	Saleim Razhimi	FWD	XIV	13	13	915	12		67	Harel Mamo	DEF	HET	6	6	491	25
+68	Beonetleah Heordewic	FWD	SVP	6	4	306	1		68	Dominic Winslow	FWD	INT	6	6	512	1		68	Crispin Whitfield	GK	MYH	12	12	1080	7.2		68	Emmett Prendergast	MID	CSB	6	6	407	11		68	Osman Mamut	DEF	KRK	8	7	614	25
+69	Anders Halfdansson	MID	SDM	6	6	448	1		69	Vilhelm Smed	MID	SDM	6	5	373	1		69	Saleim Razhimi	FWD	XIV	13	13	915	7.2		69	Esteban Palomer	MID	INT	6	6	453	11		69	Yrjö Hietanen	DEF	XIV	13	13	1170	25
+70	Ludvig Brantman	FWD	SDM	6	6	540	1		70	Malik Seddiki	DEF	OM	6	0	241	1		70	Aaron Kumpula	DEF	XIV	13	13	1081	7.2		70	Poul Brodersen	MID	HAV	8	7	549	11		70	Vilhelm Smed	MID	SDM	6	5	373	24
+71	Roger Casadevall	MID	OM	6	6	412	1		71	Enzo Gorlomi	DEF	OM	6	6	468	1		71	Yrjö Hietanen	DEF	XIV	13	13	1170	7.2		71	Pirmin Hoffmeister	MID	MYH	13	12	996	11		71	Roger Casadevall	MID	OM	6	6	412	24
+72	Conan Neitzel	MID	OM	6	0	238	1		72	Roger Casadevall	MID	OM	6	6	412	1		72	Íñigo Basterretxea	DEF	MYH	13	12	1110	7.2		72	Duarte Vasques	MID	MYH	13	11	907	11		72	Eliezer Bansa	MID	KAN	8	7	639	24
+73	Nabil Ouazzani	MID	OM	6	6	430	1		73	Ettore Bianchi	MID	OM	6	6	540	1		73	Stav Wegener	DEF	STU	4	4	316	7.1		73	Zemin Mao	FWD	BNG	6	5	412	11		73	Léo Origer	MID	LUZ	8	8	640	24
+74	Gerhart Stromeyer	MID	AGL	6	6	472	1		74	Đại Đông Nguyễn	FWD	OM	6	6	299	1		74	Beonetun Hocere	MID	SVP	5	4	364	7.1		74	Gotthilf Brinkerhoff	FWD	STU	6	6	540	11		74	Aurélien Villefranche	MID	YNC	8	8	555	24
+75	Milán Szentesy	MID	DTK	6	2	286	1		75	Zsolt Vadász	FWD	DTK	6	4	366	1		75	Adnan Tamimi	GK	AIS	5	5	450	7.1		75	István Magvasi	FWD	TTK	6	6	540	11		75	Lakhdar Hamidi	MID	LA	10	9	590	24
+76	Nimród Somogyi	FWD	DTK	6	6	475	1		76	Jānis Vītols	GK	RIE	6	6	540	1		76	Voltaire Salonga	DEF	AGL	5	4	335	7.1		76	Zsolt Vadász	FWD	DTK	6	4	366	11		76	Lavr Vronsky	MID	UKA	12	12	880	24
+77	Zsolt Vadász	FWD	DTK	6	4	366	1		77	Valdis Strazds	DEF	RIE	6	6	540	1		77	Humbert Baumann	MID	STU	6	6	431	7.1		77	Uwe Schneider	FWD	HAV	8	0	259	11		77	Roope Hietala	MID	XIV	13	12	900	24
+78	Ilianov Dimitriev	FWD	SKM	6	2	285	1		78	Ansis Dzenis	MID	RIE	6	6	512	1		78	Pater Dyrda	MID	CSB	6	6	432	7.1		78	Jun Teshigawara	FWD	KAN	8	3	440	11		78	Hartmut Schachtner	DEF	YNC	8	8	657	24
+79	Visvaldis Zariņš	FWD	RIE	6	0	172	1		79	Fricis Avotiņš	FWD	RIE	6	6	456	1		79	Sofiane Mansouri	MID	INT	6	6	427	7.1		79	Édouard Pescatore	FWD	LUZ	8	8	543	11		79	Nathanael Custer	DEF	LA	10	9	789	24
+80	Fricis Avotiņš	FWD	RIE	6	6	456	1		80	Ludwig Kymmel	MID	RIE	6	6	462	1		80	Vilhelm Smed	MID	SDM	6	5	373	7.1		80	Yoshinori Mizoguchi	FWD	YNC	8	8	720	11		80	Tadashi Unno	DEF	NSJ	12	12	1050	24
+81	Victor Tvedt	MID	HAV	7	7	473	1		81	Dwight Whitfield	FWD	RT	7	7	518	1		81	Esteban Palomer	MID	INT	6	6	453	7.1		81	Alistair Fairweather	FWD	YNC	8	8	542	11		81	Adalbert Brandhofer	FWD	YNC	8	8	720	23
+82	Dwight Whitfield	FWD	RT	7	7	518	1		82	Terenty Batyushkov	MID	KRK	7	6	505	1		82	Ferencz Tóth	GK	TTK	6	6	540	7.1		82	Kannan Kurup	FWD	LA	10	2	365	11		82	Yanbo Ma	DEF	BNG	6	6	522	23
+83	Folke Lindros	MID	HAV	8	1	366	1		83	Tomás Uzcátegui	DEF	HAV	8	8	642	1		83	János Juhász	DEF	TTK	6	6	540	7.1		83	Ole Toft	FWD	SPA	10	10	704	11		83	Jaron Horn	DEF	STU	6	6	511	23
+84	Iisakki Saarikoski	DEF	HAV	8	7	593	1		84	Anton Westerberg	DEF	HAV	8	8	720	1		84	Jānis Vītols	GK	RIE	6	6	540	7.1		84	Vito Moretti	MID	INT	6	6	512	10		84	Dean Boone	DEF	INT	6	6	540	23
+85	Niccolò Donizetti	MID	KAN	8	7	473	1		85	Ludvig Johansson	DEF	HAV	8	8	591	1		85	Niccolò Donizetti	MID	KAN	8	7	473	7.1		85	Ludwig Kymmel	MID	RIE	6	6	462	9		85	Heikki Kovalainen	DEF	KAN	8	7	519	23
+86	Paul Scholer	FWD	LUZ	8	0	177	1		86	Kent Forsberg	MID	HAV	8	8	682	1		86	Léo Origer	MID	LUZ	8	8	640	7.1		86	Psote Neferhotep	MID	KAN	8	7	565	9		86	Gijs Dreesens	FWD	SPA	10	10	745	22
+87	Édouard Pescatore	FWD	LUZ	8	8	543	1		87	Sven Emilsson	FWD	HAV	8	8	593	1		87	Klim Zaytsev	MID	KRK	8	7	577	7.1		87	Rémi Wagener	MID	LUZ	8	8	699	9		87	Pater Dyrda	MID	CSB	6	6	432	22
+88	Berat Çankaya	FWD	YNC	8	0	178	1		88	Ryōhei Ikegaya	DEF	KAN	8	7	635	1		88	Ryōhei Ikegaya	DEF	KAN	8	7	635	7.1		88	Modest Zhilin	MID	KRK	8	8	591	9		88	Théo Santini	MID	OM	6	6	514	22
+89	Alistair Fairweather	FWD	YNC	8	8	542	1		89	Eliezer Bansa	MID	KAN	8	7	639	1		89	Eski Ruudanen	DEF	RSR	8	8	628	7.1		89	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	9		89	Nabil Ouazzani	MID	OM	6	6	430	22
+90	Aurélien Villefranche	MID	YNC	8	8	555	1		90	Psote Neferhotep	MID	KAN	8	7	565	1		90	Ibai Urrutia	DEF	CA	8	7	590	7.1		90	Fyodor Tarasov	FWD	SKM	6	4	290	9		90	Victor Tvedt	MID	HAV	7	7	473	22
+91	Zeki Nari̇n	MID	YNC	8	8	598	1		91	Jun Teshigawara	FWD	KAN	8	3	440	1		91	Vahid Lorestani	GK	PAS	9	9	810	7.1		91	Eetu Lehtinen	FWD	HAV	8	8	588	9		91	Cyprian Regent	MID	YNC	8	7	659	22
+92	Carl Mathiassen	DEF	RSR	8	7	659	1		92	Cesare Bottinelli	MID	KAN	8	7	506	1		92	Mohsen Tabrizi	DEF	PAS	9	9	692	7.1		92	Fructuoso Navahermosa	FWD	RT	8	7	568	9		92	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	22
+93	Nikolai Tormotoff	FWD	RSR	8	8	720	1		93	Léo Origer	MID	LUZ	8	8	640	1		93	Lakhdar Hamidi	MID	LA	10	9	590	7.1		93	Nader Daneshi	FWD	PAS	10	2	363	9		93	Daivid Fedoroff	MID	XIV	13	12	980	22
+94	Nemanja Petrovic	FWD	RSR	8	8	627	1		94	Ambrosio Polán	MID	RT	8	2	318	1		94	Nathan Bass	MID	PIS	10	10	666	7.1		94	Julien Kirsch	MID	LUZ	8	7	571	8		94	Aristeidis Georgiou	DEF	AGL	5	4	317	22
+95	Ezequiel Mulholland	MID	RSR	8	8	481	1		95	Faustino Orgaz	MID	RT	8	7	557	1		95	Ryōichi Nakashima	GK	PIS	10	10	900	7.1		95	Léo Origer	MID	LUZ	8	8	640	8		95	Yakov Myshkin	DEF	KRK	8	7	659	22
+96	Albert Pottaslainen	MID	RSR	8	7	501	1		96	Onur Tekeli̇	MID	YNC	8	1	283	1		96	Lavr Vronsky	MID	UKA	12	12	880	7.1		96	Ambrosio Polán	MID	RT	8	2	318	8		96	Sohrab Karimzadeh	DEF	PAS	10	10	873	22
+97	Aleix Benimaclet	DEF	CA	8	7	647	1		97	Alistair Fairweather	FWD	YNC	8	8	542	1		97	Tomoyuki Akizuki	DEF	NSJ	12	12	963	7.1		97	Aniceto Menasalbas	MID	RT	8	8	636	8		97	Aaron Kumpula	DEF	XIV	13	13	1081	22
+98	Damián Quevedo	MID	CA	8	2	351	1		98	Zeki Nari̇n	MID	YNC	8	8	598	1		98	Robin Karlsson	MID	XIV	13	12	909	7.1		98	Aurélien Villefranche	MID	YNC	8	8	555	8		98	Jens Geirsson	FWD	HAV	8	8	545	21
+99	Joan Xirau	MID	CA	8	7	546	1		99	Orville Easterbrook	DEF	YNC	8	8	596	1		99	Hietta Auvinen	DEF	XIV	13	12	1058	7.1		99	Zeki Nari̇n	MID	YNC	8	8	598	8		99	Kent Forsberg	MID	HAV	8	8	682	21
+100	Ausiàs Campanar	MID	CA	8	7	511	1		100	Teemo Õunapuu	MID	RSR	8	1	281	1		100	Zdeno Medved	DEF	XIV	13	12	958	7.1		100	Evgeny Pletnev	MID	UKA	12	0	320	8		100	Klim Zaytsev	MID	KRK	8	7	577	21
+101	Rostislav Sukhanov	FWD	KRK	8	2	343	1		101	Bruno Del Pino	FWD	RSR	8	8	720	1		101	Dávid Pataky	GK	DTK	4	4	327	7.0		101	Hans-Joachim Enns	MID	STU	5	5	386	7		101	Axel Anderson	MID	PIS	10	10	681	21
+102	Diethelm Weidenbach	MID	LA	9	9	746	1		102	Ezequiel Mulholland	MID	RSR	8	8	481	1		102	Aristeidis Georgiou	DEF	AGL	5	4	317	7.0		102	Pater Dyrda	MID	CSB	6	6	432	7		102	Lorens Christensen	MID	SPA	10	10	883	21
+103	Mohsen Tabrizi	DEF	PAS	9	9	692	1		103	Pat Hassell	DEF	PIS	10	9	831	1		103	Sándor Teleki	DEF	DTK	5	5	319	7.0		103	Maoz Shaked	MID	AIS	6	6	445	7		103	Esteban Palomer	MID	INT	6	6	453	21
+104	Shun'ichi Tamba	FWD	NSJ	10	0	216	1		104	Ferruccio Noseda	MID	PIS	10	10	900	1		104	Ilmar Saar	FWD	RIE	6	6	453	7.0		104	Valentin Ruckdeschel	MID	HAG	6	6	479	7		104	Sōta Wakatsuki	MID	PAS	10	10	699	21
+105	Anatole Beauregard	DEF	LA	10	10	871	1		105	Miles Marsh	MID	PIS	10	1	329	1		105	Fricis Avotiņš	FWD	RIE	6	6	456	7.0		105	Vilhelm Smed	MID	SDM	6	5	373	7		105	Marcus Wright	MID	MYH	12	11	835	21
+106	Anselmo Carranza	DEF	LA	10	10	789	1		106	Nathan Bass	MID	PIS	10	10	666	1		106	Ernő Koncz	MID	TTK	6	6	465	7.0		106	Roger Casadevall	MID	OM	6	6	412	7		106	Erni Bachmann	DEF	STU	6	6	520	20
+107	Amleto Bracciolini	MID	LA	10	3	444	1		107	Gaspare Torlonia	MID	LA	10	1	263	1		107	Silas Davis	MID	NSR	6	6	463	7.0		107	Ran Uzan	MID	HET	6	4	390	7		107	János Juhász	DEF	TTK	6	6	540	20
+108	Pisenti Ramose	MID	LA	10	8	614	1		108	Kannan Kurup	FWD	LA	10	2	365	1		108	Evgeny Karpov	GK	CSB	6	6	540	7.0		108	Adi Madmoni	MID	HET	6	6	451	7		108	Lőrincz Orbán	MID	DTK	6	6	456	20
+109	Hauke Olesen	MID	SPA	10	10	786	1		109	Ane Ludvigsen	DEF	SPA	10	10	815	1		109	Aurèle Montfaucon	DEF	CSB	6	6	518	7.0		109	Ansis Dzenis	MID	RIE	6	6	512	7		109	Alberts Kronbergs	DEF	RIE	6	6	511	20
+110	Gijs Dreesens	FWD	SPA	10	10	745	1		110	Thor Andresen	FWD	SPA	10	10	758	1		110	Siegfried Fuhrmann	DEF	HAG	6	6	465	7.0		110	Miķelis Lācis	MID	RIE	6	6	484	7		110	Cesare Bottinelli	MID	KAN	8	7	506	20
+111	Meine Carlsen	DEF	SPA	10	10	808	1		111	Gijs Dreesens	FWD	SPA	10	10	745	1		111	Jenaro Salamanca	DEF	INT	6	6	540	7.0		111	Gunārs Briedis	MID	RIE	6	6	473	7		111	Camille Theisen	DEF	LUZ	8	8	720	20
+112	Nader Daneshi	FWD	PAS	10	2	363	1		112	Eskandar Dehghan	DEF	PAS	10	9	682	1		112	Stanleah Coc	DEF	SVP	6	4	345	7.0		112	Terenty Batyushkov	MID	KRK	7	6	505	7		112	Julien Kirsch	MID	LUZ	8	7	571	20
+113	Sōta Wakatsuki	MID	PAS	10	10	699	1		113	Hajime Morimoto	FWD	PAS	10	10	717	1		113	Csongor Pásztor	DEF	DTK	6	3	352	7.0		113	Kanata Murakumo	MID	KAN	8	3	400	7		113	Killian Charpentier	DEF	LUZ	8	7	608	20
+114	Béla Vass	FWD	UKA	11	0	261	1		114	Béla Vass	FWD	UKA	11	0	261	1		114	Dean Boone	DEF	INT	6	6	540	7.0		114	Faustino Orgaz	MID	RT	8	7	557	7		114	Marcelino Burguillos	MID	RT	8	7	512	20
+115	Tomoyuki Akizuki	DEF	NSJ	12	12	963	1		115	Hayato Kirino	DEF	NSJ	12	11	979	1		115	Enzo Gorlomi	DEF	OM	6	6	468	7.0		115	Cyprian Regent	MID	YNC	8	7	659	7		115	Tymon Dziedzic	MID	UKA	12	12	861	20
+116	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	1		116	Michiya Ōkubo	MID	NSJ	12	1	377	1		116	Áron Papp	DEF	DTK	6	4	436	7.0		116	Hiraya Halili	MID	YNC	8	8	639	7		116	Péter Mákos	DEF	TTK	6	6	501	19
+117	Evgeny Pletnev	MID	UKA	12	0	320	1		117	Godfrey Plantagenet	DEF	NSJ	12	11	941	1		117	Alberts Kronbergs	DEF	RIE	6	6	511	7.0		117	Changming Zhao	MID	PIS	10	0	271	7		117	Spyridon Lykoudis	MID	AGL	6	2	241	19
+118	Boris Vinogradov	MID	UKA	12	12	1080	1		118	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	1		118	Anastasio Illescas	GK	RT	7	7	630	7.0		118	Hauke Olesen	MID	SPA	10	10	786	7		118	Áron Papp	DEF	DTK	6	4	436	19
+119	Yrjö Hietanen	DEF	XIV	13	13	1170	1		119	Freek Hendriks	FWD	MYH	12	12	1080	1		119	Bruno Del Pino	FWD	RSR	8	8	720	7.0		119	Akira Mitomo	MID	NSJ	12	11	858	7		119	Carlos López	DEF	HAV	8	2	424	19
+120	Edmund Grigas	FWD	XIV	13	0	364	1		120	Tymon Dziedzic	MID	UKA	12	12	861	1		120	Psote Neferhotep	MID	KAN	8	7	565	7.0		120	Shigematsu Sato	FWD	KAN	6	5	382	7		120	Damien Scholtes	MID	LUZ	8	8	640	19
+121	Zdeno Medved	DEF	XIV	13	12	958	1		121	Günther Rajala	FWD	XIV	13	13	849	1		121	Julien Kirsch	MID	LUZ	8	7	571	7.0		121	Louay Abu-Sitta	FWD	AIS	6	5	391	7		121	Teodosio Ajofrín	MID	RT	8	8	649	19
+122	Pirmin Hoffmeister	MID	MYH	13	12	996	1		122	Zdeno Medved	DEF	XIV	13	12	958	1		122	Zeki Nari̇n	MID	YNC	8	8	598	7.0		122	Max Schlüter	FWD	HAG	6	2	282	7		122	Ezequiel Mulholland	MID	RSR	8	8	481	19
+									123	Arcadio Villa	MID	MYH	13	13	1008	1		123	Tomás Uzcátegui	DEF	HAV	8	8	642	7.0		123	Nimród Somogyi	FWD	DTK	6	6	475	7		123	Hauke Olesen	MID	SPA	10	10	786	19
+									124	Simon Schulhof	DEF	MYH	13	12	1000	1		124	Liam Bopp	DEF	KAN	8	7	658	7.0		124	Boaz Ben-Ami	FWD	HET	6	4	282	7		124	Moritz Müller	DEF	HAG	6	4	400	18
+																		125	Norbert Schiltz	DEF	LUZ	8	8	664	7.0		125	Nemanja Petrovic	FWD	RSR	8	8	627	7		125	Stanleah Coc	DEF	SVP	6	4	345	18
+																		126	Hartmut Schachtner	DEF	YNC	8	8	657	7.0		126	Matías Salcedo	FWD	CA	8	7	546	7		126	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	18
+																		127	Orville Easterbrook	DEF	YNC	8	8	596	7.0		127	Shun'ichi Tamba	FWD	NSJ	10	0	216	7		127	Csongor Pásztor	DEF	DTK	6	3	352	18
+																		128	Carl Mathiassen	DEF	RSR	8	7	659	7.0		128	Scott Blackwood	FWD	PIS	10	0	200	7		128	Ludvig Johansson	DEF	HAV	8	8	591	18
+																		129	Erdem Polat	DEF	KAN	8	8	609	7.0		129	Béla Vass	FWD	UKA	11	0	261	7		129	Kutay Bulut	DEF	YNC	8	7	658	18
+																		130	Casimiro Nambroca	DEF	RT	8	7	649	7.0		130	Godfrey Plantagenet	DEF	NSJ	12	11	941	6		130	Orville Easterbrook	DEF	YNC	8	8	596	18
+																		131	Vasco Trindade	DEF	CA	8	8	720	7.0		131	Zdeno Medved	DEF	XIV	13	12	958	6		131	Samara Josefovic	DEF	RSR	8	8	640	18
+																		132	Dietrich Kunze	FWD	PIS	10	10	700	7.0		132	Dario Prado	DEF	MYH	13	13	1005	6		132	Eski Ruudanen	DEF	RSR	8	8	628	18
+																		133	Hajime Morimoto	FWD	PAS	10	10	717	7.0		133	Motoharu Sasaoka	DEF	NSJ	12	11	986	5		133	Ibai Urrutia	DEF	CA	8	7	590	18
+																		134	Toby Redgrave	MID	PIS	10	10	815	7.0		134	Eskandar Dehghan	DEF	PAS	10	9	682	5		134	Myron Tsosie	DEF	LA	10	9	805	18
+																		135	Hauke Olesen	MID	SPA	10	10	786	7.0		135	Íñigo Basterretxea	DEF	MYH	13	12	1110	5		135	Leif Abel	DEF	SPA	10	10	857	18
+																		136	Palmiro Contini	GK	LA	10	10	900	7.0		136	Ragnar Borgberg	MID	SDM	5	5	326	5		136	Ivan Sitnikov	DEF	UKA	12	11	942	18
+																		137	Anselmo Carranza	DEF	LA	10	10	789	7.0		137	Ernő Koncz	MID	TTK	6	6	465	5		137	Kenneth Haugland	DEF	NSR	6	5	418	18
+																		138	Pat Hassell	DEF	PIS	10	9	831	7.0		138	Gleb Vorontsov	MID	CSB	6	6	540	5		138	Tatsuhiko Ōmagari	DEF	INT	6	6	540	18
+																		139	Qiushi Zhang	DEF	PIS	10	9	713	7.0		139	Silas Davis	MID	NSR	6	6	463	5		139	Anastasios Fotopoulos	DEF	AGL	6	6	512	18
+																		140	Nathanael Custer	DEF	LA	10	9	789	7.0		140	Mikhail Moiseev	MID	SKM	6	3	290	5		140	Sagip Gatmaitan	DEF	KAN	8	3	409	18
+																		141	Anatole Beauregard	DEF	LA	10	10	871	7.0		141	Eliezer Bansa	MID	KAN	8	7	639	5		141	Volkmar Scherer	MID	CA	7	7	613	17
+																		142	Osip Yudin	FWD	UKA	12	12	934	7.0		142	Teemo Õunapuu	MID	RSR	8	1	281	5		142	Kanata Murakumo	MID	KAN	8	3	400	17
+																		143	Hayato Kirino	DEF	NSJ	12	11	979	7.0		143	Rodion Titov	MID	KRK	8	6	513	5		143	Zeki Nari̇n	MID	YNC	8	8	598	17
+																		144	Godfrey Plantagenet	DEF	NSJ	12	11	941	7.0		144	Vural Surlu	MID	PIS	10	9	838	5		144	Pirmin Hoffmeister	MID	MYH	13	12	996	17
+																		145	Fyodor Chistyakov	DEF	UKA	12	12	1051	7.0		145	Toby Redgrave	MID	PIS	10	10	815	5		145	Xiang Qian	DEF	SVP	5	4	369	17
+																		146	Maniek Goj	DEF	UKA	12	12	948	7.0		146	Tibor Almási	FWD	TTK	6	6	455	5		146	Desmond Dorofeev	DEF	SKM	5	4	332	17
+																		147	Daivid Fedoroff	MID	XIV	13	12	980	7.0		147	Karel Černý	FWD	CSB	6	6	418	5		147	Bruno Dreyer	DEF	HAG	6	6	540	17
+																		148	Ludvig Laaksonen	GK	XIV	13	13	1168	7.0		148	Iraklis Christodoulou	FWD	AGL	6	4	360	5		148	Ashkan Mahdavi	FWD	PAS	10	9	820	16
+																		149	Niilo Virtanen	DEF	MYH	13	9	879	7.0		149	Berat Çankaya	FWD	YNC	8	0	178	5		149	Humbert Baumann	MID	STU	6	6	431	16
+																		150	Dario Prado	DEF	MYH	13	13	1005	7.0		150	Rostislav Sukhanov	FWD	KRK	8	2	343	5		150	Ernő Koncz	MID	TTK	6	6	465	16
+																		151	Hans-Joachim Enns	MID	STU	5	5	386	6.9		151	Fedor Frolov	FWD	KRK	8	8	620	5		151	Vito Moretti	MID	INT	6	6	512	16
+																		152	Ragnar Borgberg	MID	SDM	5	5	326	6.9		152	Taame Kankanpää	FWD	XIV	12	0	213	5		152	Albert Pottaslainen	MID	RSR	8	7	501	16
+																		153	Zsombor Nyitráv	MID	DTK	5	4	347	6.9		153	Edmund Grigas	FWD	XIV	13	0	364	5		153	Robin Karlsson	MID	XIV	13	12	909	16
+																		154	Hisham Saleh	DEF	AIS	5	5	442	6.9		154	Erdem Polat	DEF	KAN	8	8	609	4		154	Zhihao Tang	DEF	BNG	6	5	444	16
+																		155	Desmond Dorofeev	DEF	SKM	5	4	332	6.9		155	Aleix Benimaclet	DEF	CA	8	7	647	4		155	Akiva Schumacher	DEF	STU	6	6	540	16
+																		156	Tibor Almási	FWD	TTK	6	6	455	6.9		156	Nathanael Custer	DEF	LA	10	9	789	4		156	Oswald Hanke	DEF	CSB	6	6	482	16
+																		157	Emil Lehner	FWD	INT	6	6	415	6.9		157	Anselmo Carranza	DEF	LA	10	10	789	4		157	Lukács Rózsa	DEF	DTK	6	6	503	16
+																		158	Timur Iskanderov	MID	CSB	6	6	540	6.9		158	Hayato Kirino	DEF	NSJ	12	11	979	4		158	Nikolai Orlov	DEF	RIE	6	6	510	16
+																		159	Povilas Sabaliauskas	MID	HAG	6	6	473	6.9		159	Edvardas Jankauskas	DEF	HAG	6	6	454	4		159	Erdem Polat	DEF	KAN	8	8	609	16
+																		160	Roger Casadevall	MID	OM	6	6	412	6.9		160	Tomás Uzcátegui	DEF	HAV	8	8	642	4		160	Ander Zubikarai	FWD	KAN	8	8	611	15
+																		161	Ludwig Kymmel	MID	RIE	6	6	462	6.9		161	Ludvig Johansson	DEF	HAV	8	8	591	4		161	Homura Yagami	FWD	NSJ	12	11	769	15
+																		162	Vito Moretti	MID	INT	6	6	512	6.9		162	Tomoyuki Akizuki	DEF	NSJ	12	12	963	4		162	Bernd Müller	MID	STU	6	6	520	15
+																		163	Ansis Dzenis	MID	RIE	6	6	512	6.9		163	György Erdős	MID	DTK	4	3	197	4		163	Emmett Prendergast	MID	CSB	6	6	407	15
+																		164	Yanbo Ma	DEF	BNG	6	6	522	6.9		164	Konstantin Yashin	MID	SKM	5	4	322	4		164	Povilas Sabaliauskas	MID	HAG	6	6	473	15
+																		165	Péter Mákos	DEF	TTK	6	6	501	6.9		165	Ziqiang Bao	MID	BNG	6	6	396	4		165	Aarne Peltoniemi	MID	OM	6	6	351	15
+																		166	Kenneth Haugland	DEF	NSR	6	5	418	6.9		166	Till Höffler	MID	STU	6	1	219	4		166	Ausiàs Campanar	MID	CA	8	7	511	15
+																		167	Bruno Dreyer	DEF	HAG	6	6	540	6.9		167	Loïc Kervadec	MID	NSR	6	5	458	4		167	Rodion Titov	MID	KRK	8	6	513	15
+																		168	Sigfrid Filipsson	DEF	SDM	6	6	540	6.9		168	Povilas Sabaliauskas	MID	HAG	6	6	473	4		168	Mattheus Brinkhof	MID	NSJ	12	11	933	15
+																		169	Lukács Rózsa	DEF	DTK	6	6	503	6.9		169	Zbigniew Wróblewski	MID	HAG	6	2	368	4		169	Yegor Zaitsev	DEF	SKM	4	4	318	15
+																		170	Vladislav Fomin	DEF	SKM	6	4	385	6.9		170	Kurt Wagner	MID	HAG	6	6	420	4		170	Hamza Al-Qadi	DEF	AIS	5	4	365	15
+																		171	Volkmar Scherer	MID	CA	7	7	613	6.9		171	Traugott Reinhardt	MID	INT	6	6	501	4		171	Voltaire Salonga	DEF	AGL	5	4	335	15
+																		172	Fedor Frolov	FWD	KRK	8	8	620	6.9		172	Ettore Bianchi	MID	OM	6	6	540	4		172	Sándor Teleki	DEF	DTK	5	5	319	15
+																		173	Eliezer Bansa	MID	KAN	8	7	639	6.9		173	Lőrincz Orbán	MID	DTK	6	6	456	4		173	Firas Bishara	DEF	AIS	6	6	540	15
+																		174	Aniceto Menasalbas	MID	RT	8	8	636	6.9		174	Andrejs Celms	MID	RIE	6	6	478	4		174	Amichai Shtern	DEF	HET	6	6	540	15
+																		175	Albert Pottaslainen	MID	RSR	8	7	501	6.9		175	Albert Pottaslainen	MID	RSR	8	7	501	4		175	Dwight Whitfield	FWD	RT	7	7	518	14
+																		176	Poul Brodersen	MID	HAV	8	7	549	6.9		176	Miles Marsh	MID	PIS	10	1	329	4		176	Günther Rajala	FWD	XIV	13	13	849	14
+																		177	Kent Forsberg	MID	HAV	8	8	682	6.9		177	Gaspare Torlonia	MID	LA	10	1	263	4		177	Raleigh Preston	FWD	NSR	6	5	419	14
+																		178	Faustino Orgaz	MID	RT	8	7	557	6.9		178	Kazushige Nomoto	MID	NSJ	12	3	445	4		178	Sofiane Mansouri	MID	INT	6	6	427	14
+																		179	Cyprian Regent	MID	YNC	8	7	659	6.9		179	Michiya Ōkubo	MID	NSJ	12	1	377	4		179	Adi Madmoni	MID	HET	6	6	451	14
+																		180	Firmino Loureiro	MID	CA	8	7	580	6.9		180	Grigory Loginov	MID	UKA	12	0	248	4		180	Faustino Orgaz	MID	RT	8	7	557	14
+																		181	Kutay Bulut	DEF	YNC	8	7	658	6.9		181	Tymon Dziedzic	MID	UKA	12	12	861	4		181	Pisenti Ramose	MID	LA	10	8	614	14
+																		182	Wendell Abernathy	FWD	LA	10	9	824	6.9		182	Amos Donnelly	FWD	SVP	4	4	330	4		182	Haoyu Shi	DEF	BNG	5	5	382	14
+																		183	Sylvain Courvoisier	FWD	LA	10	9	611	6.9		183	Flórián Losonczy	FWD	TTK	6	6	460	4		183	Miron Sviridov	DEF	KRK	8	7	652	14
+																		184	Thor Andresen	FWD	SPA	10	10	758	6.9		184	Emil Lehner	FWD	INT	6	6	415	4		184	Bætta Hyvärinen	DEF	XIV	12	2	402	14
+																		185	Ashkan Mahdavi	FWD	PAS	10	9	820	6.9		185	Đại Đông Nguyễn	FWD	OM	6	6	299	4		185	Anton Orlov	DEF	UKA	12	2	418	14
+																		186	Kannan Kurup	FWD	LA	10	2	365	6.9		186	Ilianov Dimitriev	FWD	SKM	6	2	285	4		186	Lothar Höfler	MID	STU	6	6	411	13
+																		187	Gijs Dreesens	FWD	SPA	10	10	745	6.9		187	Yuval Levkovich	FWD	HET	6	2	258	4		187	Vlasios Nikolaou	MID	AGL	6	2	286	13
+																		188	Vural Surlu	MID	PIS	10	9	838	6.9		188	Visvaldis Zariņš	FWD	RIE	6	0	172	4		188	Ansis Dzenis	MID	RIE	6	6	512	13
+																		189	Lorens Christensen	MID	SPA	10	10	883	6.9		189	Paul Scholer	FWD	LUZ	8	0	177	4		189	Poul Brodersen	MID	HAV	8	7	549	13
+																		190	Pisenti Ramose	MID	LA	10	8	614	6.9		190	Jaron Horn	DEF	STU	6	6	511	3		190	Fernand Mullenbach	MID	LUZ	8	8	577	13
+																		191	Myron Tsosie	DEF	LA	10	9	805	6.9		191	Eski Ruudanen	DEF	RSR	8	8	628	3		191	Hiraya Halili	MID	YNC	8	8	639	13
+																		192	Leif Abel	DEF	SPA	10	10	857	6.9		192	Qiushi Zhang	DEF	PIS	10	9	713	3		192	Hans-Joachim Enns	MID	STU	5	5	386	13
+																		193	Sadao Higuchi	FWD	NSJ	12	12	786	6.9		193	Anatole Beauregard	DEF	LA	10	10	871	3		193	Hisham Saleh	DEF	AIS	5	5	442	13
+																		194	Freek Hendriks	FWD	MYH	12	12	1080	6.9		194	Turki Ibn Shammari	DEF	NSR	5	5	376	3		194	Jianhong Lin	MID	BNG	6	1	198	13
+																		195	Mattheus Brinkhof	MID	NSJ	12	11	933	6.9		195	Carlos López	DEF	HAV	8	2	424	3		195	Ziyad Subaie	MID	NSR	6	6	486	13
+																		196	Kiyoshi Wadatsumi	MID	NSJ	12	11	860	6.9		196	Heikki Kovalainen	DEF	KAN	8	7	519	3		196	Prokopis Karagiannis	MID	AGL	6	6	503	13
+																		197	Motoharu Sasaoka	DEF	NSJ	12	11	986	6.9		197	Samara Josefovic	DEF	RSR	8	8	640	3		197	Koppány Tálcásy	MID	DTK	6	6	484	13
+																		198	Duarte Vasques	MID	MYH	13	11	907	6.9		198	Meine Carlsen	DEF	SPA	10	10	808	3		198	Idan Suissa	MID	HET	6	6	510	13
+																		199	Jaan Kuuskrand	DEF	XIV	13	13	1170	6.9		199	Dmitry Belov	DEF	UKA	12	11	961	3		199	Callum Swift	DEF	PIS	10	2	361	13
+																		200	Igor Medvedev	GK	SKM	4	4	360	6.8		200	Fyodor Chistyakov	DEF	UKA	12	12	1051	3		200	Reza Mozaffari	DEF	PAS	10	9	795	13
+																		201	Konrád Nemes	GK	DTK	4	2	214	6.8		201	Hietta Auvinen	DEF	XIV	13	12	1058	3		201	Toshirō Nagamine	DEF	NSJ	12	3	481	13
+																		202	Igor Zhukov	DEF	SVP	4	4	330	6.8		202	Vitaly Zhukov	MID	SKM	4	4	302	3		202	Akira Mitomo	MID	NSJ	12	11	858	13
+																		203	Yegor Zaitsev	DEF	SKM	4	4	318	6.8		203	Bo Yan	MID	BNG	6	5	368	3		203	Nimród Somogyi	FWD	DTK	6	6	475	12
+																		204	Shai Azoulay	MID	HET	5	4	390	6.8		204	Noga Bumgardner	MID	STU	6	6	438	3		204	Sylvain Courvoisier	FWD	LA	10	9	611	12
+																		205	Hamza Al-Qadi	DEF	AIS	5	4	365	6.8		205	Árpád Gulyás	MID	TTK	6	6	424	3		205	Stav Wegener	DEF	STU	4	4	316	12
+																		206	Anton Kravtsov	DEF	SKM	5	2	221	6.8		206	Lajos Nagy	MID	TTK	6	5	391	3		206	Ragnar Borgberg	MID	SDM	5	5	326	12
+																		207	Maksim Chernov	DEF	SKM	5	2	233	6.8		207	Ural Yusupov	MID	CSB	6	6	481	3		207	Shai Azoulay	MID	HET	5	4	390	12
+																		208	Haoyu Shi	DEF	BNG	5	5	382	6.8		208	Jamal Wahbeh	MID	AIS	6	6	453	3		208	Czesław Domagała	DEF	CSB	6	5	480	12
+																		209	Firmino Varela	DEF	SVP	5	2	198	6.8		209	Nizar Farhat	MID	AIS	6	6	470	3		209	Timur Iskanderov	MID	CSB	6	6	540	12
+																		210	Raleigh Preston	FWD	NSR	6	5	419	6.8		210	Ziyad Subaie	MID	NSR	6	6	486	3		210	Loïc Kervadec	MID	NSR	6	5	458	12
+																		211	Ludvig Brantman	FWD	SDM	6	6	540	6.8		211	Rafferty Tinsley	MID	INT	6	0	133	3		211	Firmino Loureiro	MID	CA	8	7	580	12
+																		212	Đại Đông Nguyễn	FWD	OM	6	6	299	6.8		212	Kordian Wróblewski	MID	SVP	6	4	317	3		212	Ferruccio Noseda	MID	PIS	10	10	900	12
+																		213	Nimród Somogyi	FWD	DTK	6	6	475	6.8		213	Anders Halfdansson	MID	SDM	6	6	448	3		213	Amleto Bracciolini	MID	LA	10	3	444	12
+																		214	Zsolt Vadász	FWD	DTK	6	4	366	6.8		214	Lars Jørgensen	MID	SDM	6	6	423	3		214	Masaharu Onodera	FWD	AGL	6	6	453	11
+																		215	Fyodor Tarasov	FWD	SKM	6	4	290	6.8		215	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	3		215	Yoshinori Mizoguchi	FWD	YNC	8	8	720	11
+																		216	Catmon Nacpil	FWD	BNG	6	6	392	6.8		216	Koppány Tálcásy	MID	DTK	6	6	484	3		216	Kannan Kurup	FWD	LA	10	2	365	11
+																		217	Octave Étienne	FWD	OM	6	0	241	6.8		217	Yonah Golan	MID	HET	6	6	431	3		217	Junjie Xu	MID	BNG	5	5	394	11
+																		218	Jianhong Lin	MID	BNG	6	1	198	6.8		218	Jūlijs Eglītis	MID	RIE	6	0	98	3		218	Zsombor Nyitráv	MID	DTK	5	4	347	11
+																		219	Bernd Müller	MID	STU	6	6	520	6.8		219	Folke Lindros	MID	HAV	8	1	366	3		219	Kai Vonnegut	DEF	STU	6	2	273	11
+																		220	Lajos Nagy	MID	TTK	6	5	391	6.8		220	Perfecto Ocaña	MID	RT	8	1	272	3		220	Attila Kovács	DEF	TTK	6	6	444	11
+																		221	Loïc Kervadec	MID	NSR	6	5	458	6.8		221	Zacarías Cebolla	MID	RT	8	1	207	3		221	Přemysl Kratochvíl	DEF	CSB	6	4	410	11
+																		222	Ziyad Subaie	MID	NSR	6	6	486	6.8		222	Lucio Mascaraque	FWD	RT	8	2	310	3		222	Kurt Wagner	MID	HAG	6	6	420	11
+																		223	Théo Santini	MID	OM	6	6	514	6.8		223	Teodosio Ajofrín	MID	RT	8	8	649	3		223	Johan Bastlund	DEF	SDM	6	6	519	11
+																		224	Clayton Langston	MID	AGL	6	6	490	6.8		224	Onur Tekeli̇	MID	YNC	8	1	283	3		224	Malik Seddiki	DEF	OM	6	0	241	11
+																		225	Lőrincz Orbán	MID	DTK	6	6	456	6.8		225	Emre Yildirim	MID	YNC	8	1	236	3		225	Ettore Bianchi	MID	OM	6	6	540	11
+																		226	Idan Suissa	MID	HET	6	6	510	6.8		226	Nikolai Tormotoff	FWD	RSR	8	8	720	3		226	Vladislav Fomin	DEF	SKM	6	4	385	11
+																		227	Adi Madmoni	MID	HET	6	6	451	6.8		227	Joan Xirau	MID	CA	8	7	546	3		227	Maziar Sehat	MID	PAS	10	10	783	11
+																		228	Miķelis Lācis	MID	RIE	6	6	484	6.8		228	Firmino Loureiro	MID	CA	8	7	580	3		228	Ludvig Brantman	FWD	SDM	6	6	540	10
+																		229	Erni Bachmann	DEF	STU	6	6	520	6.8		229	Prokhor Shatalov	MID	KRK	8	3	382	3		229	Nikolai Tormotoff	FWD	RSR	8	8	720	10
+																		230	Akiva Schumacher	DEF	STU	6	6	540	6.8		230	Ilarion Trubetskoy	MID	KRK	8	8	621	3		230	Beonetun Hocere	MID	SVP	5	4	364	10
+																		231	Tatsuhiko Ōmagari	DEF	INT	6	6	540	6.8		231	Maziar Sehat	MID	PAS	10	10	783	3		231	Anton Kravtsov	DEF	SKM	5	2	221	10
+																		232	Rachid Benyahia	DEF	OM	6	6	456	6.8		232	Folke Raudkalda	MID	XIV	13	2	419	3		232	Nissim Rubinstein	DEF	HET	5	4	369	10
+																		233	Anastasios Fotopoulos	DEF	AGL	6	6	512	6.8		233	Yakov Sorokin	MID	MYH	13	3	487	3		233	Ettore Longobardi	MID	INT	6	3	353	10
+																		234	Nikolai Orlov	DEF	RIE	6	6	510	6.8		234	Stav Wegener	DEF	STU	4	4	316	2		234	Traugott Reinhardt	MID	INT	6	6	501	10
+																		235	Kai Vonnegut	DEF	STU	6	2	273	6.8		235	Csongor Pásztor	DEF	DTK	6	3	352	2		235	Oded Levi	DEF	HET	6	6	523	10
+																		236	Czesław Domagała	DEF	CSB	6	5	480	6.8		236	Lukács Rózsa	DEF	DTK	6	6	503	2		236	Rémi Wagener	MID	LUZ	8	8	699	10
+																		237	Oswald Hanke	DEF	CSB	6	6	482	6.8		237	Harel Mamo	DEF	HET	6	6	491	2		237	Perfecto Ocaña	MID	RT	8	1	272	10
+																		238	Firas Bishara	DEF	AIS	6	6	540	6.8		238	Nikolai Orlov	DEF	RIE	6	6	510	2		238	Onur Tekeli̇	MID	YNC	8	1	283	10
+																		239	Alfred Siebert	DEF	HAG	6	2	301	6.8		239	Ivan Sitnikov	DEF	UKA	12	11	942	2		239	Thor Andresen	FWD	SPA	10	10	758	9
+																		240	Edvardas Jankauskas	DEF	HAG	6	6	454	6.8		240	Haoyu Shi	DEF	BNG	5	5	382	2		240	Matías Salcedo	FWD	CA	8	7	546	9
+																		241	Johan Bastlund	DEF	SDM	6	6	519	6.8		241	Xiang Qian	DEF	SVP	5	4	369	2		241	Freek Hendriks	FWD	MYH	12	12	1080	9
+																		242	Mårten Skjöld	DEF	SDM	6	6	508	6.8		242	Zhihao Tang	DEF	BNG	6	5	444	2		242	Igor Zhukov	DEF	SVP	4	4	330	9
+																		243	Amichai Shtern	DEF	HET	6	6	540	6.8		243	Attila Kovács	DEF	TTK	6	6	444	2		243	Noga Bumgardner	MID	STU	6	6	438	9
+																		244	Anatoly Obolensky	GK	KRK	7	7	630	6.8		244	Aurèle Montfaucon	DEF	CSB	6	6	518	2		244	Ural Yusupov	MID	CSB	6	6	481	9
+																		245	Édouard Pescatore	FWD	LUZ	8	8	543	6.8		245	Alfred Siebert	DEF	HAG	6	2	301	2		245	Silas Davis	MID	NSR	6	6	463	9
+																		246	Jun Teshigawara	FWD	KAN	8	3	440	6.8		246	Tatsuhiko Ōmagari	DEF	INT	6	6	540	2		246	Kōhei Gushiken	DEF	NSR	6	6	474	9
+																		247	Shūji Kannazuki	GK	KAN	8	8	719	6.8		247	Eugen Slägga	DEF	SDM	6	5	421	2		247	Jack Kershaw	MID	INT	6	0	152	9
+																		248	Raka Wijaya	GK	YNC	8	8	711	6.8		248	Mårten Skjöld	DEF	SDM	6	6	508	2		248	Mårten Skjöld	DEF	SDM	6	6	508	9
+																		249	Anselmo Rebelo	GK	CA	8	8	720	6.8		249	Enzo Gorlomi	DEF	OM	6	6	468	2		249	Enzo Gorlomi	DEF	OM	6	6	468	9
+																		250	Teodosio Ajofrín	MID	RT	8	8	649	6.8		250	Vladislav Fomin	DEF	SKM	6	4	385	2		250	Miķelis Lācis	MID	RIE	6	6	484	9
+																		251	Hiraya Halili	MID	YNC	8	8	639	6.8		251	Isidoro Mocejón	DEF	RT	7	7	630	2		251	Niccolò Donizetti	MID	KAN	8	7	473	9
+																		252	Damián Quevedo	MID	CA	8	2	351	6.8		252	Anton Westerberg	DEF	HAV	8	8	720	2		252	Olivier Zenner	DEF	LUZ	8	1	226	9
+																		253	Rodion Titov	MID	KRK	8	6	513	6.8		253	Ryōhei Ikegaya	DEF	KAN	8	7	635	2		253	Rizgar Bozkurt	DEF	YNC	8	0	159	9
+																		254	Olivier Zenner	DEF	LUZ	8	1	226	6.8		254	Ibai Urrutia	DEF	CA	8	7	590	2		254	Rui Seabra	DEF	CA	8	3	349	9
+																		255	Camille Theisen	DEF	LUZ	8	8	720	6.8		255	Osman Mamut	DEF	KRK	8	7	614	2		255	Miles Marsh	MID	PIS	10	1	329	9
+																		256	Killian Charpentier	DEF	LUZ	8	7	608	6.8		256	Pat Hassell	DEF	PIS	10	9	831	2		256	Ali Macalipay	DEF	LA	10	3	436	9
+																		257	Samara Josefovic	DEF	RSR	8	8	640	6.8		257	Myron Tsosie	DEF	LA	10	9	805	2		257	Yakov Sorokin	MID	MYH	13	3	487	9
+																		258	Rui Seabra	DEF	CA	8	3	349	6.8		258	Leif Abel	DEF	SPA	10	10	857	2		258	Dietrich Kunze	FWD	PIS	10	10	700	8
+																		259	Carlos López	DEF	HAV	8	2	424	6.8		259	Tadashi Unno	DEF	NSJ	12	12	1050	2		259	Wendell Abernathy	FWD	LA	10	9	824	8
+																		260	Ludvig Johansson	DEF	HAV	8	8	591	6.8		260	Aaron Kumpula	DEF	XIV	13	13	1081	2		260	Osip Yudin	FWD	UKA	12	12	934	8
+																		261	Sagip Gatmaitan	DEF	KAN	8	3	409	6.8		261	Ladislav Kučera	DEF	MYH	13	6	686	2		261	Saleim Razhimi	FWD	XIV	13	13	915	8
+																		262	Karin Tuomela	DEF	RSR	8	1	291	6.8		262	Simon Schulhof	DEF	MYH	13	12	1000	2		262	Pavel Mukhin	MID	SVP	2	2	155	8
+																		263	Miron Sviridov	DEF	KRK	8	7	652	6.8		263	Dumisani Sisoulou	GK	SVP	2	2	180	2		263	Ákos Tanyasi	DEF	TTK	6	5	469	8
+																		264	Olav Jensen	GK	SPA	10	10	900	6.8		264	Yazeed Al-Braik	FWD	NSR	4	1	121	2		264	Árpád Gulyás	MID	TTK	6	6	424	8
+																		265	Imre Kárpáti	DEF	PIS	10	10	813	6.8		265	Konrád Nemes	GK	DTK	4	2	214	2		265	Badr Yami	DEF	NSR	6	6	495	8
+																		266	Ali Macalipay	DEF	LA	10	3	436	6.8		266	Ilya Belyaev	FWD	SKM	4	2	203	2		266	Ewald Lassmann	MID	HAG	6	4	368	8
+																		267	Cesare Castaldo	DEF	LA	10	9	810	6.8		267	Reinhard Van Astrea	FWD	HAG	5	4	258	2		267	Leonidas Stamatiou	DEF	AGL	6	2	256	8
+																		268	Palle Alma	DEF	SPA	10	9	803	6.8		268	Anmin Pan	FWD	BNG	6	1	276	2		268	Valdis Strazds	DEF	RIE	6	6	540	8
+																		269	Callum Swift	DEF	PIS	10	2	361	6.8		269	Valter Fehér	FWD	TTK	6	0	165	2		269	Damián Quevedo	MID	CA	8	2	351	8
+																		270	Stig Van Wieren	DEF	SPA	10	1	317	6.8		270	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	2		270	Stig Van Wieren	DEF	SPA	10	1	317	8
+																		271	Tahmoures Ahshari	DEF	PAS	10	2	406	6.8		271	Qusai Rayyan	FWD	AIS	6	1	235	2		271	Tahmoures Ahshari	DEF	PAS	10	2	406	8
+																		272	Reza Mozaffari	DEF	PAS	10	9	795	6.8		272	Marwan Touma	FWD	AIS	6	6	454	2		272	Tibor Horváth	MID	UKA	12	12	934	8
+																		273	Sohrab Karimzadeh	DEF	PAS	10	10	873	6.8		273	Raleigh Preston	FWD	NSR	6	5	419	2		273	Charle Valtterinen	FWD	RSR	8	7	558	7
+																		274	Bætta Hyvärinen	DEF	XIV	12	2	402	6.8		274	Donovan Centurione	FWD	INT	6	0	153	2		274	István Magvasi	FWD	TTK	6	6	540	7
+																		275	Anton Orlov	DEF	UKA	12	2	418	6.8		275	Sigurd Shilov	FWD	SVP	6	2	263	2		275	Tibor Almási	FWD	TTK	6	6	455	7
+																		276	Dmitry Belov	DEF	UKA	12	11	961	6.8		276	Beonetleah Heordewic	FWD	SVP	6	4	306	2		276	Édouard Pescatore	FWD	LUZ	8	8	543	7
+																		277	Toshirō Nagamine	DEF	NSJ	12	3	481	6.8		277	Octave Étienne	FWD	OM	6	0	241	2		277	Bruno Del Pino	FWD	RSR	8	8	720	7
+																		278	Tadashi Unno	DEF	NSJ	12	12	1050	6.8		278	Charalambos Angelopoulos	FWD	AGL	6	2	267	2		278	Hajime Morimoto	FWD	PAS	10	10	717	7
+																		279	Yakov Sorokin	MID	MYH	13	3	487	6.8		279	Masaharu Onodera	FWD	AGL	6	6	453	2		279	Weilin Fu	MID	BNG	5	5	377	7
+																		280	Ladislav Kučera	DEF	MYH	13	6	686	6.8		280	Johannn Baumgartner	FWD	DTK	6	2	239	2		280	Chenglei Zhou	DEF	BNG	6	2	288	7
+																		281	Pyotor Kirilov	GK	SVP	4	4	360	6.7		281	Arvid Wettergren	FWD	HAV	7	0	175	2		281	Charlie Kirin	MID	BNG	6	1	253	7
+																		282	Petr Savin	MID	SKM	4	2	198	6.7		282	Boris Lukyanovich	FWD	RSR	8	1	255	2		282	Lajos Nagy	MID	TTK	6	5	391	7
+																		283	Denis Lewerenz	GK	STU	6	6	540	6.7		283	Aristides Pimentel	FWD	CA	8	2	290	2		283	Ihab Mikhail	MID	AIS	6	6	500	7
+																		284	Yuxuan Cui	FWD	SVP	6	2	266	6.7		284	Vahram Nouri	FWD	PAS	9	9	695	2		284	Edvardas Jankauskas	DEF	HAG	6	6	454	7
+																		285	Sigurd Shilov	FWD	SVP	6	2	263	6.7		285	Oscar Carstensen	FWD	SPA	10	0	297	2		285	Eugen Slägga	DEF	SDM	6	5	421	7
+																		286	Ahmet Aydin	GK	OM	6	6	528	6.7		286	Ermolai Kuzmin	DEF	SKM	2	2	171	1		286	Bastien Cavaillès	MID	OM	6	0	215	7
+																		287	Yuval Levkovich	FWD	HET	6	2	258	6.7		287	Hisham Saleh	DEF	AIS	5	5	442	1		287	Ran Uzan	MID	HET	6	4	390	7
+																		288	Boaz Ben-Ami	FWD	HET	6	4	282	6.7		288	Voltaire Salonga	DEF	AGL	5	4	335	1		288	Karin Tuomela	DEF	RSR	8	1	291	7
+																		289	Charlie Kirin	MID	BNG	6	1	253	6.7		289	Desmond Dorofeev	DEF	SKM	5	4	332	1		289	Teemo Õunapuu	MID	RSR	8	1	281	7
+																		290	Ewald Lassmann	MID	HAG	6	4	368	6.7		290	Nissim Rubinstein	DEF	HET	5	4	369	1		290	Jamshid Razavi	MID	PAS	10	10	774	7
+																		291	Traugott Reinhardt	MID	INT	6	6	501	6.7		291	Feng Ji	DEF	BNG	6	6	512	1		291	Đại Đông Nguyễn	FWD	OM	6	6	299	6
+																		292	Anders Halfdansson	MID	SDM	6	6	448	6.7		292	Yanbo Ma	DEF	BNG	6	6	522	1		292	Fructuoso Navahermosa	FWD	RT	8	7	568	6
+																		293	Bastien Cavaillès	MID	OM	6	0	215	6.7		293	Péter Mákos	DEF	TTK	6	6	501	1		293	Fedor Frolov	FWD	KRK	8	8	620	6
+																		294	Aarne Peltoniemi	MID	OM	6	6	351	6.7		294	Majed Al-Otaibi	DEF	NSR	6	1	185	1		294	Eetu Lehtinen	FWD	HAV	8	8	588	6
+																		295	Pyrros Dimitrakopoulos	MID	AGL	6	6	512	6.7		295	Kenneth Haugland	DEF	NSR	6	5	418	1		295	Oscar Carstensen	FWD	SPA	10	0	297	6
+																		296	Milán Szentesy	MID	DTK	6	2	286	6.7		296	Moritz Müller	DEF	HAG	6	4	400	1		296	Sadao Higuchi	FWD	NSJ	12	12	786	6
+																		297	Mikhail Moiseev	MID	SKM	6	3	290	6.7		297	Bruno Dreyer	DEF	HAG	6	6	540	1		297	Valery Gerasimov	DEF	SVP	2	2	180	6
+																		298	Andrejs Celms	MID	RIE	6	6	478	6.7		298	Siegfried Fuhrmann	DEF	HAG	6	6	465	1		298	Valentin Ruckdeschel	MID	HAG	6	6	479	6
+																		299	Till Höffler	MID	STU	6	1	219	6.7		299	Malik Seddiki	DEF	OM	6	0	241	1		299	Anders Halfdansson	MID	SDM	6	6	448	6
+																		300	Árpád Gulyás	MID	TTK	6	6	424	6.7		300	Valdis Strazds	DEF	RIE	6	6	540	1		300	Yonah Golan	MID	HET	6	6	431	6
+																		301	Ural Yusupov	MID	CSB	6	6	481	6.7		301	Camille Theisen	DEF	LUZ	8	8	720	1		301	Higinio Villaseca	MID	RT	8	8	610	6
+																		302	Gleb Vorontsov	MID	CSB	6	6	540	6.7		302	Orville Easterbrook	DEF	YNC	8	8	596	1		302	Ilarion Trubetskoy	MID	KRK	8	8	621	6
+																		303	Rashid Al-Attar	MID	AIS	6	2	277	6.7		303	Vasco Trindade	DEF	CA	8	8	720	1		303	Turki Ibn Shammari	DEF	NSR	5	5	376	6
+																		304	Maoz Shaked	MID	AIS	6	6	445	6.7		304	Duarte Magalhães	DEF	CA	8	7	574	1		304	Maksim Chernov	DEF	SKM	5	2	233	6
+																		305	Zbigniew Wróblewski	MID	HAG	6	2	368	6.7		305	Yakov Myshkin	DEF	KRK	8	7	659	1		305	Zemin Mao	FWD	BNG	6	5	412	5
+																		306	Valentin Ruckdeschel	MID	HAG	6	6	479	6.7		306	Mohsen Tabrizi	DEF	PAS	9	9	692	1		306	Catmon Nacpil	FWD	BNG	6	6	392	5
+																		307	Kurt Wagner	MID	HAG	6	6	420	6.7		307	Tilman Zartmann	DEF	PIS	10	10	882	1		307	Emil Lehner	FWD	INT	6	6	415	5
+																		308	Karl Tångberg	MID	SDM	6	1	200	6.7		308	Imre Kárpáti	DEF	PIS	10	10	813	1		308	Fricis Avotiņš	FWD	RIE	6	6	456	5
+																		309	Vilgot Renner	MID	SDM	6	1	273	6.7		309	Ali Macalipay	DEF	LA	10	3	436	1		309	Alistair Fairweather	FWD	YNC	8	8	542	5
+																		310	Conan Neitzel	MID	OM	6	0	238	6.7		310	Ane Ludvigsen	DEF	SPA	10	10	815	1		310	Nemanja Petrovic	FWD	RSR	8	8	627	5
+																		311	Ettore Bianchi	MID	OM	6	6	540	6.7		311	Toshirō Nagamine	DEF	NSJ	12	3	481	1		311	Valery Polyakov	FWD	UKA	12	12	965	5
+																		312	Spyridon Lykoudis	MID	AGL	6	2	241	6.7		312	Anton Orlov	DEF	UKA	12	2	418	1		312	Emiliano Luna	MID	INT	3	3	169	5
+																		313	Koppány Tálcásy	MID	DTK	6	6	484	6.7		313	Maniek Goj	DEF	UKA	12	12	948	1		313	Arnold Kessler	MID	HAG	5	4	294	5
+																		314	Ruslan Makarov	MID	SKM	6	4	368	6.7		314	Valery Gerasimov	DEF	SVP	2	2	180	1		314	Bo Yan	MID	BNG	6	5	368	5
+																		315	Shaul Damari	MID	HET	6	2	251	6.7		315	Pavel Mukhin	MID	SVP	2	2	155	1		315	Shaul Damari	MID	HET	6	2	251	5
+																		316	Dwight Whitfield	FWD	RT	7	7	518	6.7		316	Emiliano Luna	MID	INT	3	3	169	1		316	Gunārs Briedis	MID	RIE	6	6	473	5
+																		317	Terenty Batyushkov	MID	KRK	7	6	505	6.7		317	Valery Kulagin	MID	SVP	3	2	158	1		317	Ludwig Kymmel	MID	RIE	6	6	462	5
+																		318	Alistair Fairweather	FWD	YNC	8	8	542	6.7		318	Igor Zhukov	DEF	SVP	4	4	330	1		318	Andrejs Celms	MID	RIE	6	6	478	5
+																		319	Nikolai Tormotoff	FWD	RSR	8	8	720	6.7		319	Tadas Mockus	GK	HAG	5	2	229	1		319	Folke Lindros	MID	HAV	8	1	366	5
+																		320	Nils Nyquist	GK	HAV	8	8	720	6.7		320	Firmino Varela	DEF	SVP	5	2	198	1		320	Sadao Garabin	MID	KAN	8	1	297	5
+																		321	Sven Emilsson	FWD	HAV	8	8	593	6.7		321	Aristeidis Georgiou	DEF	AGL	5	4	317	1		321	Anton Lehtoranten	MID	RSR	8	0	177	5
+																		322	Fructuoso Navahermosa	FWD	RT	8	7	568	6.7		322	Sándor Teleki	DEF	DTK	5	5	319	1		322	Nazar Volkonsky	MID	KRK	8	3	357	5
+																		323	Kasperi Karinen	GK	RSR	8	8	720	6.7		323	Nikita Krylov	MID	SKM	5	3	250	1		323	Matvei Zubkov	DEF	SKM	4	4	349	5
+																		324	Aristides Pimentel	FWD	CA	8	2	290	6.7		324	Shai Azoulay	MID	HET	5	4	390	1		324	Márton Mészáros	DEF	TTK	6	1	206	5
+																		325	Folke Lindros	MID	HAV	8	1	366	6.7		325	Chenglei Zhou	DEF	BNG	6	2	288	1		325	Majed Al-Otaibi	DEF	NSR	6	1	185	5
+																		326	Kanata Murakumo	MID	KAN	8	3	400	6.7		326	Charlie Kirin	MID	BNG	6	1	253	1		326	Alfred Siebert	DEF	HAG	6	2	301	5
+																		327	Rémi Wagener	MID	LUZ	8	8	699	6.7		327	Kai Vonnegut	DEF	STU	6	2	273	1		327	Yuxuan Cui	FWD	SVP	6	2	266	4
+																		328	Joan Xirau	MID	CA	8	7	546	6.7		328	Erni Bachmann	DEF	STU	6	6	520	1		328	Alimjan Turghun	FWD	KRK	7	6	439	4
+																		329	Augustin Aragonés	MID	CA	8	8	678	6.7		329	Bernd Müller	MID	STU	6	6	520	1		329	Sven Emilsson	FWD	HAV	8	8	593	4
+																		330	Prokhor Shatalov	MID	KRK	8	3	382	6.7		330	Guntram Jung	MID	STU	6	0	166	1		330	Shigematsu Sato	FWD	KAN	6	5	382	4
+																		331	Ambrosio Polán	MID	RT	8	2	318	6.7		331	János Juhász	DEF	TTK	6	6	540	1		331	Louay Abu-Sitta	FWD	AIS	6	5	391	4
+																		332	Perfecto Ocaña	MID	RT	8	1	272	6.7		332	Márk Tapolczai	MID	TTK	6	0	116	1		332	Octave Étienne	FWD	OM	6	0	241	4
+																		333	Zacarías Cebolla	MID	RT	8	1	207	6.7		333	Evgeny Karpov	GK	CSB	6	6	540	1		333	Yuval Levkovich	FWD	HET	6	2	258	4
+																		334	Marcelino Burguillos	MID	RT	8	7	512	6.7		334	Oswald Hanke	DEF	CSB	6	6	482	1		334	Ilmar Saar	FWD	RIE	6	6	453	4
+																		335	Onur Tekeli̇	MID	YNC	8	1	283	6.7		335	Firas Bishara	DEF	AIS	6	6	540	1		335	Berat Çankaya	FWD	YNC	8	0	178	4
+																		336	Emre Yildirim	MID	YNC	8	1	236	6.7		336	Jaber Al-Zoubi	MID	AIS	6	5	419	1		336	Ole Toft	FWD	SPA	10	10	704	4
+																		337	Teemo Õunapuu	MID	RSR	8	1	281	6.7		337	Ihab Mikhail	MID	AIS	6	6	500	1		337	Nikita Krylov	MID	SKM	5	3	250	4
+																		338	Yefim Artamonov	MID	KRK	8	2	289	6.7		338	Nabil Kurdi	MID	AIS	6	1	188	1		338	Konstantin Yashin	MID	SKM	5	4	322	4
+																		339	Nazar Volkonsky	MID	KRK	8	3	357	6.7		339	Rashid Al-Attar	MID	AIS	6	2	277	1		339	Gleb Vorontsov	MID	CSB	6	6	540	4
+																		340	Miles Marsh	MID	PIS	10	1	329	6.7		340	Badr Yami	DEF	NSR	6	6	495	1		340	Nabil Kurdi	MID	AIS	6	1	188	4
+																		341	Amleto Bracciolini	MID	LA	10	3	444	6.7		341	Mishal Malki	MID	NSR	6	1	221	1		341	Jamal Wahbeh	MID	AIS	6	6	453	4
+																		342	Maziar Sehat	MID	PAS	10	10	783	6.7		342	Jenaro Salamanca	DEF	INT	6	6	540	1		342	Vilgot Renner	MID	SDM	6	1	273	4
+																		343	Frej Alserda	MID	SPA	10	0	226	6.7		343	Dean Boone	DEF	INT	6	6	540	1		343	Ambrosio Polán	MID	RT	8	2	318	4
+																		344	Michiya Ōkubo	MID	NSJ	12	1	377	6.7		344	Pitso Modisé	MID	SVP	6	2	248	1		344	Emre Yildirim	MID	YNC	8	1	236	4
+																		345	Evgeny Pletnev	MID	UKA	12	0	320	6.7		345	Stanleah Coc	DEF	SVP	6	4	345	1		345	Joan Xirau	MID	CA	8	7	546	4
+																		346	Tibor Horváth	MID	UKA	12	12	934	6.7		346	Jakub Modelski	MID	SDM	6	4	389	1		346	Augustin Aragonés	MID	CA	8	8	678	4
+																		347	Kazushige Nomoto	MID	NSJ	12	3	445	6.7		347	Théo Santini	MID	OM	6	6	514	1		347	Michiya Ōkubo	MID	NSJ	12	1	377	4
+																		348	Colwyn Powell	MID	MYH	12	1	407	6.7		348	Vlasios Nikolaou	MID	AGL	6	2	286	1		348	Grigory Loginov	MID	UKA	12	0	248	4
+																		349	Grigory Loginov	MID	UKA	12	0	248	6.7		349	Milán Szentesy	MID	DTK	6	2	286	1		349	Evgeny Pletnev	MID	UKA	12	0	320	4
+																		350	Folke Raudkalda	MID	XIV	13	2	419	6.7		350	Ádám Kiss	MID	DTK	6	3	353	1		350	Folke Raudkalda	MID	XIV	13	2	419	4
+																		351	Kaake Räsänainen	MID	XIV	13	1	303	6.7		351	Denis Karpov	MID	SKM	6	4	372	1		351	Ludovico Riggio	MID	MYH	13	3	456	4
+																		352	Ludovico Riggio	MID	MYH	13	3	456	6.7		352	Ruslan Makarov	MID	SKM	6	4	368	1		352	György Erdős	MID	DTK	4	3	197	4
+																		353	Pirmin Hoffmeister	MID	MYH	13	12	996	6.7		353	Roee Yehezkel	MID	HET	6	2	277	1		353	Petr Savin	MID	SKM	4	2	198	4
+																		354	Amos Donnelly	FWD	SVP	4	4	330	6.6		354	Jānis Vītols	GK	RIE	6	6	540	1		354	Firmino Varela	DEF	SVP	5	2	198	4
+																		355	Prasert Bùi	GK	AGL	4	4	360	6.6		355	Jēkabs Vanags	MID	RIE	6	0	98	1		355	Ruifeng Huang	MID	BNG	5	1	174	4
+																		356	Nikolai Lebedev	FWD	SVP	4	4	263	6.6		356	Kent Forsberg	MID	HAV	8	8	682	1		356	Aleš Nejezchleb	MID	CSB	6	0	137	4
+																		357	Reinhard Van Astrea	FWD	HAG	5	4	258	6.6		357	Nicolas Glesener	MID	LUZ	8	1	284	1		357	Radim Vohánka	MID	CSB	6	0	163	4
+																		358	Rikard Läck	GK	SDM	5	5	450	6.6		358	Higinio Villaseca	MID	RT	8	8	610	1		358	Maoz Shaked	MID	AIS	6	6	445	4
+																		359	Konstantin Yashin	MID	SKM	5	4	322	6.6		359	Anton Lehtoranten	MID	RSR	8	0	177	1		359	Zbigniew Wróblewski	MID	HAG	6	2	368	4
+																		360	Nissim Rubinstein	DEF	HET	5	4	369	6.6		360	Yefim Artamonov	MID	KRK	8	2	289	1		360	Kordian Wróblewski	MID	SVP	6	4	317	4
+																		361	Rafael Rosario	GK	INT	6	6	540	6.6		361	Nazar Volkonsky	MID	KRK	8	3	357	1		361	Kanë Dabá	DEF	SVP	6	4	367	4
 																		362	Masaharu Onodera	FWD	AGL	6	6	453	6.6		362	Hormoz Ershadi	MID	PAS	9	1	341	1		362	Conan Neitzel	MID	OM	6	0	238	4
 																		363	Ilianov Dimitriev	FWD	SKM	6	2	285	6.6		363	Amleto Bracciolini	MID	LA	10	3	444	1		363	Milán Szentesy	MID	DTK	6	2	286	4
 																		364	Anmin Pan	FWD	BNG	6	1	276	6.6		364	Frej Alserda	MID	SPA	10	0	226	1		364	Ádám Kiss	MID	DTK	6	3	353	4
@@ -416,22 +416,22 @@
 																		415	Edmund Grigas	FWD	XIV	13	0	364	6.6											415	Mark Ignatyev	MID	SVP	2	2	176	2
 																		416	György Erdős	MID	DTK	4	3	197	6.5											416	Timur Gusev	MID	SKM	3	2	158	2
 																		417	Matvei Zubkov	DEF	SKM	4	4	349	6.5											417	Valery Kulagin	MID	SVP	3	2	158	2
-																		418	Faisal Al-Dosari	GK	NSR	5	5	450	6.5											418	Ziqiang Bao	MID	BNG	6	6	396	2
-																		419	Nikita Krylov	MID	SKM	5	3	250	6.5											419	Deror Friedrich	MID	STU	6	0	129	2
-																		420	Ákos Tanyasi	DEF	TTK	6	5	469	6.5											420	Guntram Jung	MID	STU	6	0	166	2
-																		421	Mishal Malki	MID	NSR	6	1	221	6.5											421	Jaber Al-Zoubi	MID	AIS	6	5	419	2
-																		422	Pitso Modisé	MID	SVP	6	2	248	6.5											422	Rashid Al-Attar	MID	AIS	6	2	277	2
-																		423	Prokopis Karagiannis	MID	AGL	6	6	503	6.5											423	Jakub Modelski	MID	SDM	6	4	389	2
-																		424	Harel Mamo	DEF	HET	6	6	491	6.5											424	Lars Jørgensen	MID	SDM	6	6	423	2
-																		425	Ran Uzan	MID	HET	6	4	390	6.5											425	Ruslan Makarov	MID	SKM	6	4	368	2
-																		426	Přemysl Kratochvíl	DEF	CSB	6	4	410	6.5											426	Roee Yehezkel	MID	HET	6	2	277	2
-																		427	Kōhei Gushiken	DEF	NSR	6	6	474	6.5											427	Rihards Skuja	MID	RIE	6	0	154	2
-																		428	Moritz Müller	DEF	HAG	6	4	400	6.5											428	Terenty Batyushkov	MID	KRK	7	6	505	2
-																		429	Modest Zhilin	MID	KRK	8	8	591	6.5											429	Rodrigo Benavente	MID	CA	8	1	205	2
-																		430	Jamshid Razavi	MID	PAS	10	10	774	6.5											430	Hormoz Ershadi	MID	PAS	9	1	341	2
-																		431	Ivan Sitnikov	DEF	UKA	12	11	942	6.5											431	Nikolai Lebedev	FWD	SVP	4	4	263	1
-																		432	Ilya Belyaev	FWD	SKM	4	2	203	6.4											432	Ragnvald Gillisson	FWD	SDM	5	2	268	1
-																		433	Vitaly Zhukov	MID	SKM	4	4	302	6.4											433	Beonetleah Heordewic	FWD	SVP	6	4	306	1
+																		418	Nikita Krylov	MID	SKM	5	3	250	6.5											418	Ziqiang Bao	MID	BNG	6	6	396	2
+																		419	Ákos Tanyasi	DEF	TTK	6	5	469	6.5											419	Deror Friedrich	MID	STU	6	0	129	2
+																		420	Mishal Malki	MID	NSR	6	1	221	6.5											420	Guntram Jung	MID	STU	6	0	166	2
+																		421	Pitso Modisé	MID	SVP	6	2	248	6.5											421	Jaber Al-Zoubi	MID	AIS	6	5	419	2
+																		422	Prokopis Karagiannis	MID	AGL	6	6	503	6.5											422	Rashid Al-Attar	MID	AIS	6	2	277	2
+																		423	Harel Mamo	DEF	HET	6	6	491	6.5											423	Jakub Modelski	MID	SDM	6	4	389	2
+																		424	Ran Uzan	MID	HET	6	4	390	6.5											424	Lars Jørgensen	MID	SDM	6	6	423	2
+																		425	Přemysl Kratochvíl	DEF	CSB	6	4	410	6.5											425	Ruslan Makarov	MID	SKM	6	4	368	2
+																		426	Kōhei Gushiken	DEF	NSR	6	6	474	6.5											426	Roee Yehezkel	MID	HET	6	2	277	2
+																		427	Moritz Müller	DEF	HAG	6	4	400	6.5											427	Rihards Skuja	MID	RIE	6	0	154	2
+																		428	Modest Zhilin	MID	KRK	8	8	591	6.5											428	Terenty Batyushkov	MID	KRK	7	6	505	2
+																		429	Jamshid Razavi	MID	PAS	10	10	774	6.5											429	Rodrigo Benavente	MID	CA	8	1	205	2
+																		430	Ivan Sitnikov	DEF	UKA	12	11	942	6.5											430	Hormoz Ershadi	MID	PAS	9	1	341	2
+																		431	Ilya Belyaev	FWD	SKM	4	2	203	6.4											431	Nikolai Lebedev	FWD	SVP	4	4	263	1
+																		432	Vitaly Zhukov	MID	SKM	4	4	302	6.4											432	Ragnvald Gillisson	FWD	SDM	5	2	268	1
+																		433	Faisal Al-Dosari	GK	NSR	5	5	450	6.4											433	Beonetleah Heordewic	FWD	SVP	6	4	306	1
 																		434	Ragnvald Gillisson	FWD	SDM	5	2	268	6.4											434	Iraklis Christodoulou	FWD	AGL	6	4	360	1
 																		435	Weilin Fu	MID	BNG	5	5	377	6.4											435	Ilianov Dimitriev	FWD	SKM	6	2	285	1
 																		436	Turki Ibn Shammari	DEF	NSR	5	5	376	6.4											436	Visvaldis Zariņš	FWD	RIE	6	0	172	1
@@ -460,21 +460,21 @@
 																		459	Lars Jørgensen	MID	SDM	6	6	423	6.3											459	Zacarías Cebolla	MID	RT	8	1	207	1
 																		460	Oded Levi	DEF	HET	6	6	523	6.3											460	Lucio Mascaraque	FWD	RT	8	2	310	1
 																		461	Vahram Nouri	FWD	PAS	9	9	695	6.2											461	Ryōichi Nakashima	GK	PIS	10	10	900	1
-																		462	Shadmehr Gharibian	GK	PAS	1	1	90	8.6											462	Palmiro Contini	GK	LA	10	10	900	1
-																		463	Grigori Sidorov	GK	SKM	2	2	180	8.0											463	Gaspare Torlonia	MID	LA	10	1	263	1
-																		464	Torquil Blythe	GK	MYH	1	1	90	7.7
+																		462	Shadmehr Gharibian	GK	PAS	1	1	90	8.4											462	Palmiro Contini	GK	LA	10	10	900	1
+																		463	Grigori Sidorov	GK	SKM	2	2	180	7.8											463	Gaspare Torlonia	MID	LA	10	1	263	1
+																		464	Torquil Blythe	GK	MYH	1	1	90	7.5
 																		465	Pavel Mukhin	MID	SVP	2	2	155	7.5
-																		466	Gal Grinberg	GK	AIS	1	1	90	7.5
-																		467	Ermolai Kuzmin	DEF	SKM	2	2	171	7.4
-																		468	Zixuan Wang	GK	BNG	1	1	90	7.3
+																		466	Ermolai Kuzmin	DEF	SKM	2	2	171	7.4
+																		467	Gal Grinberg	GK	AIS	1	1	90	7.3
+																		468	Zixuan Wang	GK	BNG	1	1	90	7.2
 																		469	Igor Rozhkov	DEF	SKM	2	2	151	7.1
-																		470	Loïc Ferrandis	GK	OM	1	0	12	6.9
-																		471	Yerasimos Athanasiadis	GK	AGL	2	2	180	6.9
-																		472	Yang Chen	GK	YNC	1	0	9	6.9
-																		473	Shin Ebihara	GK	KAN	1	0	1	6.9
-																		474	Tazta Daryaei	GK	XIV	1	0	2	6.9
-																		475	Rizgar Bozkurt	DEF	YNC	8	0	159	6.9
-																		476	Arvid Wettergren	FWD	HAV	7	0	175	6.8
+																		470	Rizgar Bozkurt	DEF	YNC	8	0	159	6.9
+																		471	Arvid Wettergren	FWD	HAV	7	0	175	6.8
+																		472	Loïc Ferrandis	GK	OM	1	0	12	6.8
+																		473	Yerasimos Athanasiadis	GK	AGL	2	2	180	6.8
+																		474	Yang Chen	GK	YNC	1	0	9	6.8
+																		475	Shin Ebihara	GK	KAN	1	0	1	6.8
+																		476	Tazta Daryaei	GK	XIV	1	0	2	6.8
 																		477	Jack Kershaw	MID	INT	6	0	152	6.7
 																		478	Emiliano Luna	MID	INT	3	3	169	6.7
 																		479	Jūlijs Eglītis	MID	RIE	6	0	98	6.7
@@ -490,25 +490,25 @@
 																		489	Rihards Skuja	MID	RIE	6	0	154	6.7
 																		490	Jēkabs Vanags	MID	RIE	6	0	98	6.7
 																		491	Majed Al-Otaibi	DEF	NSR	6	1	185	6.7
-																		492	Kuzma Nagibin	GK	KRK	1	1	90	6.7
-																		493	Ilan Gabay	GK	HET	2	2	180	6.7
-																		494	Hugo Korp	DEF	SDM	6	1	172	6.7
-																		495	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	6.6
-																		496	Paul Scholer	FWD	LUZ	8	0	177	6.6
-																		497	Visvaldis Zariņš	FWD	RIE	6	0	172	6.6
-																		498	Berat Çankaya	FWD	YNC	8	0	178	6.6
-																		499	Donovan Centurione	FWD	INT	6	0	153	6.6
-																		500	Dumisani Sisoulou	GK	SVP	2	2	180	6.6
-																		501	Bror Lejden	GK	SDM	1	1	90	6.6
-																		502	Valery Gerasimov	DEF	SVP	2	2	180	6.6
-																		503	Valter Fehér	FWD	TTK	6	0	165	6.5
-																		504	Aleš Nejezchleb	MID	CSB	6	0	137	6.5
-																		505	Ruifeng Huang	MID	BNG	5	1	174	6.5
-																		506	Yazeed Al-Braik	FWD	NSR	4	1	121	6.5
-																		507	Mark Ignatyev	MID	SVP	2	2	176	6.5
-																		508	Sergei Vorobyov	MID	SKM	2	2	151	6.5
-																		509	Waleed Al-Anazi	GK	NSR	1	1	90	6.5
-																		510	Timur Gusev	MID	SKM	3	2	158	6.5
+																		492	Hugo Korp	DEF	SDM	6	1	172	6.7
+																		493	Zbigniew Mazurkiewicz	FWD	CSB	6	0	122	6.6
+																		494	Paul Scholer	FWD	LUZ	8	0	177	6.6
+																		495	Visvaldis Zariņš	FWD	RIE	6	0	172	6.6
+																		496	Berat Çankaya	FWD	YNC	8	0	178	6.6
+																		497	Donovan Centurione	FWD	INT	6	0	153	6.6
+																		498	Kuzma Nagibin	GK	KRK	1	1	90	6.6
+																		499	Ilan Gabay	GK	HET	2	2	180	6.6
+																		500	Valery Gerasimov	DEF	SVP	2	2	180	6.6
+																		501	Valter Fehér	FWD	TTK	6	0	165	6.5
+																		502	Aleš Nejezchleb	MID	CSB	6	0	137	6.5
+																		503	Ruifeng Huang	MID	BNG	5	1	174	6.5
+																		504	Yazeed Al-Braik	FWD	NSR	4	1	121	6.5
+																		505	Mark Ignatyev	MID	SVP	2	2	176	6.5
+																		506	Sergei Vorobyov	MID	SKM	2	2	151	6.5
+																		507	Dumisani Sisoulou	GK	SVP	2	2	180	6.5
+																		508	Bror Lejden	GK	SDM	1	1	90	6.5
+																		509	Timur Gusev	MID	SKM	3	2	158	6.5
+																		510	Waleed Al-Anazi	GK	NSR	1	1	90	6.4
 																		511	Bronislav Aleksandrov	DEF	SVP	2	2	180	6.4
 																		512	Valery Kulagin	MID	SVP	3	2	158	6.3
-																		513	Gervasio Sonseca	GK	RT	1	1	90	6.2
+																		513	Gervasio Sonseca	GK	RT	1	1	90	6.1

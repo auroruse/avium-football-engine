@@ -1,204 +1,204 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
 1	István Magvasi	FWD	TTK	26	26	2311	24		1	László Molnár	MID	SBE	29	23	2239	12		1	Elemér Lakóczy	MID	KDH	30	28	2565	7.7		1	Elemér Lakóczy	MID	KDH	30	28	2565	76		1	Vilmos Paraszt	DEF	SZV	30	28	2577	160		1	Benjámin Dreimann	GK	DBZ	24	24	2160	132
-2	Nimród Szegvári	FWD	SZT	30	30	2565	24		2	Lajos Nagy	MID	TTK	30	25	2395	12		2	Iván Petrovics	GK	SZV	11	9	860	7.6		2	Francisco Juárez	FWD	MTZ	29	29	2610	76		2	Ödön Kolostoros	DEF	SBE	28	28	2444	152		2	Gergő Harcsásy	GK	VTC	28	28	2520	119
-3	Péter Lipót	FWD	UKH	28	26	2362	23		3	Márk Vígh	MID	SZT	26	25	2101	11		3	István Magvasi	FWD	TTK	26	26	2311	7.6		3	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	72		3	Mátyás Havasy	DEF	SZV	30	28	2568	137		3	Árvin Kodály	GK	SZT	30	30	2700	117
-4	Rudolf Szimondy	FWD	VTC	28	26	2138	22		4	Balázs Baráth	MID	UKH	29	26	1888	9		4	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	7.5		4	Nimród Szegvári	FWD	SZT	30	30	2565	71		4	Móricz Tóth	DEF	STE	30	29	2640	133		4	Dániel Kormányos	GK	VII	24	24	2160	108
-5	Dezső Balogh	FWD	SBE	29	29	2608	18		5	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	8		5	Kornél Sós	MID	UKH	29	27	2405	7.5		5	László Molnár	MID	SBE	29	23	2239	67		5	Ernő Erdős	DEF	MTZ	30	30	2700	133		5	Kelemen Társas	GK	SBE	22	22	1952	107
-6	Ervin Csikós	FWD	MBT	26	24	2155	17		6	Nimród Somogyi	FWD	DTK	27	24	2111	8		6	Kelemen Társas	GK	SBE	22	22	1952	7.3		6	Viktor Hentes	FWD	SZV	23	22	1986	67		6	Mór Utcai	DEF	SBE	29	29	2610	131		6	Rajmond Kondács	GK	UKH	28	28	2520	107
-7	John Poacher	MID	DBZ	29	29	2610	16		7	Elemér Lakóczy	MID	KDH	30	28	2565	8		7	Mártin Tóth	GK	MTZ	22	22	1980	7.3		7	Csongor Szekeres	FWD	STE	28	28	2435	67		7	István Vakond	DEF	PSK	29	25	2316	131		7	Árvin Keldházi	GK	MBT	23	23	2070	105
-8	Gergely Farkas	FWD	SZV	27	27	2309	15		8	Rajmond Bácszegi	MID	SZT	28	27	2412	7		8	Benjámin Dreimann	GK	DBZ	24	24	2160	7.3		8	Péter Lipót	FWD	UKH	28	26	2362	66		8	János Juhász	DEF	TTK	30	29	2660	128		8	Mártin Tóth	GK	MTZ	22	22	1980	104
-9	Csongor Szekeres	FWD	STE	28	28	2435	15		9	Zsombor Nyitráv	MID	DTK	29	28	2549	7		9	Rudolf Szimondy	FWD	VTC	28	26	2138	7.3		9	Tibor Almási	MID	TTK	24	24	2150	64		9	Barna Tölgyessy	DEF	DBZ	30	28	2577	128		9	Ákos Tolmács	GK	TSE	22	22	1980	99
-10	Elemér Lakóczy	MID	KDH	30	28	2565	14		10	Attila Kovács	DEF	TTK	29	28	2499	7		10	Sándor Veres	DEF	VTC	29	27	2484	7.3		10	Gergely Farkas	FWD	SZV	27	27	2309	64		10	Károly Nedváry	DEF	PSK	29	27	2488	126		10	Zsombor Tanyasi	GK	CNV	22	22	1980	94
-11	Zsolt Vadász	FWD	DTK	28	25	1825	13		11	Kornél Sós	MID	UKH	29	27	2405	7		11	Zoltán Nagyfalvi	MID	UKH	29	26	2404	7.3		11	Zoltán Nagyfalvi	MID	UKH	29	26	2404	63		11	Miklós Szlitlán	DEF	DTK	30	29	2642	126		11	Ferencz Tóth	GK	TTK	30	30	2700	94
-12	László Molnár	MID	SBE	29	23	2239	13		12	Zoltán Nagyfalvi	MID	UKH	29	26	2404	7		12	Nimród Szegvári	FWD	SZT	30	30	2565	7.3		12	János Dzsenósza	FWD	TSE	26	25	2064	62		12	Sándor Veres	DEF	VTC	29	27	2484	125		12	László Báthory	GK	PSK	23	23	2070	86
-13	Francisco Juárez	FWD	MTZ	29	29	2610	13		13	Jarno Casteglio	DEF	STE	30	29	2638	7		13	Vilmos Paraszt	DEF	SZV	30	28	2577	7.3		13	Nimród Somogyi	FWD	DTK	27	24	2111	62		13	Balázs Halász	DEF	PSK	29	28	2473	118		13	Dávid Pataky	GK	DTK	29	29	2610	79
-14	Nimród Somogyi	FWD	DTK	27	24	2111	11		14	Viktor Hentes	FWD	SZV	23	22	1986	5		14	Csanád Vinposzics	MID	MBT	8	8	513	7.2		14	Rudolf Szimondy	FWD	VTC	28	26	2138	62		14	Valter Kádár	DEF	TSE	28	28	2504	117		14	Viktor Tresznyák	GK	STE	25	25	2250	66
-15	Géza Szakács	FWD	VTC	28	28	2292	11		15	Radovan Dobrovodsky	FWD	CNV	26	19	1835	5		15	Zsombor Tanyasi	GK	CNV	22	22	1980	7.2		15	Joonas Nevalainen	FWD	STE	30	29	2638	62		15	Gáspár Holtági	DEF	VII	29	29	2599	116		15	Máté Szalka	GK	SZV	21	21	1837	61
-16	Kristóf Talajos	FWD	KDH	30	29	2639	11		16	Kornél Úrhegyi	MID	MBT	27	22	2109	5		16	Ervin Csikós	FWD	MBT	26	24	2155	7.2		16	Kristóf Talajos	FWD	KDH	30	29	2639	62		16	Benedek Détáry	DEF	STE	29	27	2467	114		16	Zsigmond Fekete	GK	KDH	29	29	2610	61
-17	Yriö Pohjolainen	FWD	SZT	30	25	2242	10		17	Ervin Kolostoros	MID	TSE	28	28	2520	5		17	Ödön Kolostoros	DEF	SBE	28	28	2444	7.2		17	Kornél Sós	MID	UKH	29	27	2405	60		17	Zsombor Nyitráv	MID	DTK	29	28	2549	114		17	Iván Petrovics	GK	SZV	11	9	860	43
-18	Imre Nagyváradi	FWD	PSK	25	25	2170	9		18	Domonkos Kovács	MID	VTC	28	25	2327	5		18	Gergő Harcsásy	GK	VTC	28	28	2520	7.2		18	Lajos Nagy	MID	TTK	30	25	2395	60		18	Sándor Teleki	DEF	DTK	29	28	2528	111		18	Vilmos Herczeg	GK	TSE	8	8	720	38
-19	Radovan Dobrovodsky	FWD	CNV	26	19	1835	9		19	Géza Szakács	FWD	VTC	28	28	2292	5		19	László Molnár	MID	SBE	29	23	2239	7.2		19	Zsolt Vadász	FWD	DTK	28	25	1825	60		19	Botond Livón	DEF	MTZ	29	29	2571	111		19	Zoltán Ezüst	GK	CNV	8	8	720	33
-20	Johannn Baumgartner	FWD	DTK	30	11	1378	9		20	Simon Gabonás	MID	VTC	28	26	1986	5		20	Zsombor Nyitráv	MID	DTK	29	28	2549	7.2		20	Zsombor Nyitráv	MID	DTK	29	28	2549	56		20	Árpád Papucs	DEF	MBT	26	26	2305	110		20	Alpár Zakosdy	GK	MTZ	8	8	720	26
-21	Robert Gruszka	FWD	VII	29	28	2102	8		21	Ádám Rácsos	DEF	CNV	29	19	1832	5		21	John Poacher	MID	DBZ	29	29	2610	7.2		21	Imre Nagyváradi	FWD	PSK	25	25	2170	53		21	Dávid Veréb	DEF	MBT	30	28	2577	110		21	János Vadász	GK	DBZ	6	6	540	25
-22	Botond Szarvasy	FWD	DBZ	29	23	2229	8		22	Rezső Balázs	DEF	SBE	29	17	1613	5		22	Mátyás Havasy	DEF	SZV	30	28	2568	7.2		22	Ervin Csikós	FWD	MBT	26	24	2155	52		22	Norbert Petrezselyem	DEF	CNV	29	29	2610	108		22	Matúš Cízik	GK	PSK	7	7	630	24
-23	Botond Oláh	FWD	PSK	30	16	1621	8		23	Botond Livón	DEF	MTZ	29	29	2571	5		23	János Juhász	DEF	TTK	30	29	2660	7.2		23	István Magvasi	FWD	TTK	26	26	2311	52		23	Erling Lindsson	DEF	MBT	30	30	2700	108		23	Péter Takács	GK	SBE	9	8	747	24
-24	Dominik Kőműves	FWD	TSE	28	23	1727	7		24	Árpád Gulyás	MID	TTK	29	25	1877	5		24	Lajos Nagy	MID	TTK	30	25	2395	7.2		24	John Poacher	MID	DBZ	29	29	2610	51		24	Pál Gerendásy	DEF	DBZ	29	29	2584	107		24	Mátyás Varjas	GK	VII	7	7	630	22
-25	Lajos Nagy	MID	TTK	30	25	2395	7		25	Robert Gruszka	FWD	VII	29	28	2102	5		25	Martin Arvinson	GK	STE	5	5	450	7.1		25	György Erdős	MID	DTK	30	27	2502	51		25	Mihály Cipész	DEF	VTC	27	26	2254	106		25	Gergő Bálvány	GK	MBT	7	7	630	18
-26	Carlós Torres	FWD	UKH	30	9	1135	7		26	Ferencz Ács	MID	CNV	30	21	2102	5		26	János Vadász	GK	DBZ	6	6	540	7.1		26	Dezső Balogh	FWD	SBE	29	29	2608	50		26	Marczell Szatmári	DEF	UKH	29	28	2549	105		26	Martin Arvinson	GK	STE	5	5	450	10
-27	Viktor Hentes	FWD	SZV	23	22	1986	6		27	György Erdős	MID	DTK	30	27	2502	5		27	Vilmos Herczeg	GK	TSE	8	8	720	7.1		27	Robert Gruszka	FWD	VII	29	28	2102	50		27	Olivér Selymes	DEF	SZV	30	24	2284	104		27	Barnabás Labancz	GK	VTC	2	2	180	4
-28	Alvin Búzás	MID	MTZ	26	19	1606	6		28	Róbert Szivacsos	MID	VTC	30	25	2383	5		28	Zoltán Ezüst	GK	CNV	8	8	720	7.1		28	Benedek Arany	MID	KDH	28	24	2183	49		28	Ármin Gyenes	DEF	KDH	30	28	2567	104		28	Márton Herczeg	GK	UKH	2	2	180	4
-29	Csaba Balla	FWD	VII	28	27	2456	6		29	Nimród Szegvári	FWD	SZT	30	30	2565	5		29	Ákos Tolmács	GK	TSE	22	22	1980	7.1		29	Dominik Kőműves	FWD	TSE	28	23	1727	47		29	Kornél Sós	MID	UKH	29	27	2405	104		29	Konrád Nemes	GK	DTK	1	1	90	1
-30	Valter Fehér	FWD	TTK	30	28	2094	6		30	Tibor Almási	MID	TTK	24	24	2150	4		30	Dániel Kormányos	GK	VII	24	24	2160	7.1		30	Márk Vígh	MID	SZT	26	25	2101	46		30	Ernő Deák	DEF	TSE	27	24	2193	100		30	Miklós Tóth	GK	KDH	1	1	90	1
-31	Béla Kun	FWD	UKH	30	25	1866	6		31	János Dzsenósza	FWD	TSE	26	25	2064	4		31	Gergely Farkas	FWD	SZV	27	27	2309	7.1		31	Gergely Vándor	FWD	KDH	25	25	2179	45		31	Rezső Szalkay	DEF	SBE	30	27	2516	100
-32	Nimród Asztalos	FWD	MBT	19	16	1373	5		32	István Magvasi	FWD	TTK	26	26	2311	4		32	Mihály Cipész	DEF	VTC	27	26	2254	7.1		32	Géza Szakács	FWD	VTC	28	28	2292	43		32	Dénes Kender	DEF	SZT	29	28	2548	99
-33	Kálmán Poczkay	FWD	PSK	26	26	2218	5		33	Kálmán Poczkay	FWD	PSK	26	26	2218	4		33	Zsolt Vadász	FWD	DTK	28	25	1825	7.1		33	Árpád Gulyás	MID	TTK	29	25	1877	42		33	Yuki Hayashima	DEF	TSE	29	29	2597	99
-34	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	5		34	René Arnoux	FWD	STE	28	22	2075	4		34	Péter Lipót	FWD	UKH	28	26	2362	7.1		34	Ervin Kolostoros	MID	TSE	28	28	2520	39		34	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	97
-35	Joonas Nevalainen	FWD	STE	30	29	2638	5		35	Csongor Szekeres	FWD	STE	28	28	2435	4		35	Dezső Balogh	FWD	SBE	29	29	2608	7.1		35	Tamás Indásy	MID	UKH	30	26	2177	39		35	Péter Mákos	DEF	TTK	30	30	2700	96
-36	Gyula Papp	MID	CNV	30	30	2700	5		36	Rudolf Szimondy	FWD	VTC	28	26	2138	4		36	Attila Kovács	DEF	TTK	29	28	2499	7.1		36	Alvin Búzás	MID	MTZ	26	19	1606	38		36	György Erdős	MID	DTK	30	27	2502	96
-37	Ernő Bádogos	FWD	VII	30	14	1462	5		37	Benedek Arany	MID	KDH	28	24	2183	4		37	Marczell Szatmári	DEF	UKH	29	28	2549	7.1		37	Zsolt Orosz	MID	STE	28	23	2159	36		37	Kornél Úrhegyi	MID	MBT	27	22	2109	94
-38	Walter Katona	MID	SZT	30	26	2375	5		38	Dezső Balogh	FWD	SBE	29	29	2608	4		38	Dénes Kender	DEF	SZT	29	28	2548	7.1		38	István Tóth	MID	DBZ	28	23	2101	36		38	Attila Kovács	DEF	TTK	29	28	2499	91
-39	Károly Szidány	DEF	CNV	12	11	813	4		39	János Vitéz	MID	SBE	29	26	2016	4		39	Miklós Szlitlán	DEF	DTK	30	29	2642	7.1		39	Attila Gyöngy	FWD	VII	30	26	2443	36		39	István Barta	DEF	SZT	25	25	2110	89
-40	Tibor Almási	MID	TTK	24	24	2150	4		40	Csaba Dobozos	MID	MTZ	29	10	1220	4		40	Péter Mákos	DEF	TTK	30	30	2700	7.1		40	Előd Bocskor	MID	STE	30	25	2393	35		40	Ernő Koncz	MID	TTK	30	27	2511	87
-41	János Dzsenósza	FWD	TSE	26	25	2064	4		41	Francisco Juárez	FWD	MTZ	29	29	2610	4		41	Norbert Fejes	DEF	KDH	30	28	2557	7.1		41	Róbert Szivacsos	MID	VTC	30	25	2383	35		41	Hunor Balacsik	DEF	SBE	28	24	2165	85
-42	Ajnár Szilaj	FWD	MTZ	26	13	1274	4		42	Pista Orbán	MID	MBT	29	20	1929	4		42	Ferencz Tóth	GK	TTK	30	30	2700	7.1		42	Ernő Koncz	MID	TTK	30	27	2511	35		42	Jarno Casteglio	DEF	STE	30	29	2638	84
-43	Zsolt Orosz	MID	STE	28	23	2159	4		43	John Poacher	MID	DBZ	29	29	2610	4		43	Ernő Koncz	MID	TTK	30	27	2511	7.1		43	Nimród Asztalos	FWD	MBT	19	16	1373	34		43	Nándor Telekes	DEF	CNV	30	29	2616	83
-44	Krisztián Bárkásy	MID	CNV	28	26	2135	4		44	Antall Kerekes	MID	VTC	30	15	1445	4		44	Árvin Kodály	GK	SZT	30	30	2700	7.1		44	Endre Thébai	FWD	TSE	28	11	1314	34		44	Jóska Nádas	DEF	VII	29	23	1956	82
-45	Endre Thébai	FWD	TSE	28	11	1314	4		45	Elek Árpás	MID	MTZ	30	13	1459	4		45	Matúš Cízik	GK	PSK	7	7	630	7.0		45	Bencze Rudán	FWD	PSK	28	22	1694	33		45	Tibor Benkő	MID	MBT	27	27	2421	82
-46	Zsombor Nyitráv	MID	DTK	29	28	2549	4		46	Flórián Losonczy	MID	TTK	30	12	1506	4		46	Péter Takács	GK	SBE	9	8	747	7.0		46	Valter Fehér	FWD	TTK	30	28	2094	33		46	Áron Papp	DEF	DTK	30	28	2580	81
-47	Gergely Vándor	FWD	KDH	25	25	2179	3		47	Béla Kun	FWD	UKH	30	25	1866	4		47	Viktor Hentes	FWD	SZV	23	22	1986	7.0		47	Gáspár Slattics	MID	KDH	30	26	1944	32		47	Ervin Kolostoros	MID	TSE	28	28	2520	81
-48	Balázs Cseke	MID	TSE	27	25	1839	3		48	Kristóf Talajos	FWD	KDH	30	29	2639	4		48	Árvin Keldházi	GK	MBT	23	23	2070	7.0		48	Kornél Úrhegyi	MID	MBT	27	22	2109	31		48	Elemér Lakóczy	MID	KDH	30	28	2565	80
-49	Hans Tenburger	MID	CNV	28	27	2192	3		49	Leó Császár	DEF	SZT	30	26	2091	4		49	László Báthory	GK	PSK	23	23	2070	7.0		49	Rajmond Bácszegi	MID	SZT	28	27	2412	31		49	Elemér Bács	DEF	MBT	30	22	2155	79
-50	Domonkos Kovács	MID	VTC	28	25	2327	3		50	Róbert Kővágó	FWD	STE	22	12	1044	3		50	Tibor Almási	MID	TTK	24	24	2150	7.0		50	Balázs Baráth	MID	UKH	29	26	1888	31		50	Norbert Fejes	DEF	KDH	30	28	2557	79
-51	Szilárd Sertés	FWD	VTC	29	5	811	3		51	Nándor Virág	DEF	STE	27	22	1724	3		51	István Barta	DEF	SZT	25	25	2110	7.0		51	Ferenc Bodza	MID	VII	30	30	2700	31		51	Rajmond Bácszegi	MID	SZT	28	27	2412	78
-52	Árpád Gulyás	MID	TTK	29	25	1877	3		52	Gergely Farkas	FWD	SZV	27	27	2309	3		52	Márk Vígh	MID	SZT	26	25	2101	7.0		52	Botond Szarvasy	FWD	DBZ	29	23	2229	31		52	Gáspár Győző	MID	TSE	28	21	2046	76
-53	Zoltán Nagyfalvi	MID	UKH	29	26	2404	3		53	Csanád Apáca	MID	DBZ	27	22	1841	3		53	Nimród Somogyi	FWD	DTK	27	24	2111	7.0		53	Kálmán Poczkay	FWD	PSK	26	26	2218	29		53	Albert Orvos	DEF	VTC	30	26	2458	75
-54	Attila Gyöngy	FWD	VII	30	26	2443	3		54	Zsolt Orosz	MID	STE	28	23	2159	3		54	Ernő Deák	DEF	TSE	27	24	2193	7.0		54	Johannn Baumgartner	FWD	DTK	30	11	1378	29		54	Árpád Halasdy	DEF	SZT	30	25	2361	74
-55	Gáspár Slattics	MID	KDH	30	26	1944	3		55	Luca Bareghi	DEF	SZV	28	27	1983	3		55	Kornél Úrhegyi	MID	MBT	27	22	2109	7.0		55	Yriö Pohjolainen	FWD	SZT	30	25	2242	29		55	Zoltán Nagyfalvi	MID	UKH	29	26	2404	74
-56	Ignácz Pék	FWD	DBZ	8	8	556	2		56	Hunor Balacsik	DEF	SBE	28	24	2165	3		56	Csongor Szekeres	FWD	STE	28	28	2435	7.0		56	Titusz Poracsek	MID	SBE	27	20	1881	28		56	Luca Bareghi	DEF	SZV	28	27	1983	72
-57	Csanád Vinposzics	MID	MBT	8	8	513	2		57	Endre Thébai	FWD	TSE	28	11	1314	3		57	Géza Szakács	FWD	VTC	28	28	2292	7.0		57	Ábel Kerepes	MID	STE	29	27	2488	28		57	János Kurucz	DEF	TSE	29	20	1691	72
-58	József Gál	FWD	SBE	9	8	553	2		58	Dominik Kőműves	FWD	TSE	28	23	1727	3		58	Valter Kádár	DEF	TSE	28	28	2504	7.0		58	Gyula Papp	MID	CNV	30	30	2700	28		58	Boldizsár Gelegonya	DEF	MBT	30	30	2700	72
-59	Gergő Király	DEF	STE	26	13	1270	2		59	Bencze Rudán	FWD	PSK	28	22	1694	3		59	Simon Gabonás	MID	VTC	28	26	1986	7.0		59	Csaba Balla	FWD	VII	28	27	2456	28		59	Előd Bocskor	MID	STE	30	25	2393	72
-60	Boldizsár Mátrai	FWD	SZV	26	13	1212	2		60	István Tóth	MID	DBZ	28	23	2101	3		60	Rajmond Kondács	GK	UKH	28	28	2520	7.0		60	Balázs Cseke	MID	TSE	27	25	1839	26		60	Titusz Fellegvár	DEF	TSE	30	18	1658	70
-61	Márk Vígh	MID	SZT	26	25	2101	2		61	Péter Lipót	FWD	UKH	28	26	2362	3		61	Benedek Arany	MID	KDH	28	24	2183	7.0		61	Miklós Cár	MID	VII	27	26	2261	26		61	Dénes Pákozdy	DEF	KDH	30	26	2085	69
-62	Ervin Kolostoros	MID	TSE	28	28	2520	2		62	Ábel Kerepes	MID	STE	29	27	2488	3		62	Norbert Petrezselyem	DEF	CNV	29	29	2610	7.0		62	Domonkos Kovács	MID	VTC	28	25	2327	26		62	Nándor Bölcs	DEF	PSK	29	28	2062	68
-63	Bencze Rudán	FWD	PSK	28	22	1694	2		63	Róbert Barcsay	DEF	CNV	29	27	2060	3		63	Sándor Teleki	DEF	DTK	29	28	2528	7.0		63	Simon Gabonás	MID	VTC	28	26	1986	26		63	Bertalan Kormos	DEF	MTZ	30	23	2250	68
-64	István Tóth	MID	DBZ	28	23	2101	2		64	Richárd Mezei	DEF	VII	29	29	2610	3		64	Gáspár Holtági	DEF	VII	29	29	2599	7.0		64	Koppány Tálcásy	MID	DTK	30	24	1733	26		64	Balázs Cseke	MID	TSE	27	25	1839	67
-65	Ferenc Keresztes	FWD	SZV	29	26	1824	2		65	István Vakond	DEF	PSK	29	25	2316	3		65	Károly Nedváry	DEF	PSK	29	27	2488	7.0		65	René Arnoux	FWD	STE	28	22	2075	26		65	Lajos Nagy	MID	TTK	30	25	2395	66
-66	Yuki Hayashima	DEF	TSE	29	29	2597	2		66	Pál Gerendásy	DEF	DBZ	29	29	2584	3		66	Balázs Halász	DEF	PSK	29	28	2473	7.0		66	Ferenc Keresztes	FWD	SZV	29	26	1824	26		66	Walter Katona	MID	SZT	30	26	2375	66
-67	Pista Orbán	MID	MBT	29	20	1929	2		67	László Móricz	DEF	KDH	29	25	2352	3		67	László Móricz	DEF	KDH	29	25	2352	7.0		67	Botond Oláh	FWD	PSK	30	16	1621	26		67	Simon Gabonás	MID	VTC	28	26	1986	65
-68	Balázs Baráth	MID	UKH	29	26	1888	2		68	Roland Demjén	FWD	KDH	29	25	1747	3		68	Benedek Détáry	DEF	STE	29	27	2467	7.0		68	Tibor Benkő	MID	MBT	27	27	2421	25		68	Lőrincz Orbán	MID	DTK	30	25	1980	65
-69	László Móricz	DEF	KDH	29	25	2352	2		69	Joonas Nevalainen	FWD	STE	30	29	2638	3		69	Yuki Hayashima	DEF	TSE	29	29	2597	7.0		69	Ferencz Ács	MID	CNV	30	21	2102	25		69	Richárd Mezei	DEF	VII	29	29	2610	63
-70	Roland Demjén	FWD	KDH	29	25	1747	2		70	Olivér Selymes	DEF	SZV	30	24	2284	3		70	Balázs Baráth	MID	UKH	29	26	1888	7.0		70	Lőrincz Orbán	MID	DTK	30	25	1980	25		70	István Tóth	MID	DBZ	28	23	2101	63
-71	Jakab Kürtös	MID	SZV	30	14	1512	2		71	Áron Papp	DEF	DTK	30	28	2580	3		71	Kristóf Talajos	FWD	KDH	30	29	2639	7.0		71	Hans Tenburger	MID	CNV	28	27	2192	24		71	László Móricz	DEF	KDH	29	25	2352	60
-72	Roland Kermesdy	MID	TSE	30	17	1542	2		72	Johannn Baumgartner	FWD	DTK	30	11	1378	3		72	Móricz Tóth	DEF	STE	30	29	2640	7.0		72	Bálint Sándor	MID	SZV	29	21	2086	24		72	Patrik Csillag	DEF	VTC	30	25	1874	60
-73	Albert Orvos	DEF	VTC	30	26	2458	2		73	Koppány Tálcásy	MID	DTK	30	24	1733	3		73	Ernő Erdős	DEF	MTZ	30	30	2700	7.0		73	Roland Kermesdy	MID	TSE	30	17	1542	24		73	Péter Márványos	DEF	MTZ	30	13	1551	58
-74	Antall Kerekes	MID	VTC	30	15	1445	2		74	Lukács Rózsa	DEF	DTK	30	25	1985	3		74	Barna Tölgyessy	DEF	DBZ	30	28	2577	7.0		74	Frigyes Kenyeres	MID	DBZ	30	28	2098	24		74	Domonkos Kovács	MID	VTC	28	25	2327	56
-75	Ernő Koncz	MID	TTK	30	27	2511	2		75	Géza Dártády	MID	TSE	30	20	2041	3		75	Előd Bocskor	MID	STE	30	25	2393	7.0		75	Csanád Apáca	MID	DBZ	27	22	1841	22		75	Bertód Lakatos	MID	SZV	30	21	1796	56
-76	Dominik Délvölgyi	MID	TTK	30	13	1233	2		76	Albert Orvos	DEF	VTC	30	26	2458	3		76	Patrik Csillag	DEF	VTC	30	25	1874	7.0		76	János Vitéz	MID	SBE	29	26	2016	22		76	Márk Vígh	MID	SZT	26	25	2101	55
-77	Flórián Losonczy	MID	TTK	30	12	1506	2		77	Bertalan Kormos	DEF	MTZ	30	23	2250	3		77	Tamás Indásy	MID	UKH	30	26	2177	7.0		77	Radovan Dobrovodsky	FWD	CNV	26	19	1835	22		77	Ferencz Ács	MID	CNV	30	21	2102	55
-78	Alexander Vésztői	MID	DBZ	30	12	1405	2		78	Dávid Veréb	DEF	MBT	30	28	2577	3		78	Ármin Gyenes	DEF	KDH	30	28	2567	7.0		78	Endre Szent	MID	SZV	29	26	1961	21		78	Ferenc Bodza	MID	VII	30	30	2700	55
-79	Frigyes Kenyeres	MID	DBZ	30	28	2098	2		79	Valter Fehér	FWD	TTK	30	28	2094	3		79	Gáspár Slattics	MID	KDH	30	26	1944	7.0		79	Ádám Kiss	MID	DTK	29	10	1146	21		79	Dániel Almády	DEF	UKH	29	24	2292	54
-80	László Csikós	FWD	KDH	30	11	1188	2		80	Dezső Makkos	MID	PSK	30	15	1541	3		80	Dénes Pákozdy	DEF	KDH	30	26	2085	7.0		80	Flórián Losonczy	MID	TTK	30	12	1506	21		80	Ármin Rácz	DEF	SZV	30	16	1510	54
-81	Dezső Nagy	MID	STE	10	9	642	1		81	Botond Oláh	FWD	PSK	30	16	1621	3		81	Walter Katona	MID	SZT	30	26	2375	7.0		81	Dezső Makkos	MID	PSK	30	15	1541	21		81	Miklós Cár	MID	VII	27	26	2261	54
-82	Dömötör Pácz	MID	TSE	18	11	871	1		82	Dömötör Borostyán	FWD	PSK	30	29	2612	3		82	Gergő Bálvány	GK	MBT	7	7	630	6.9		82	József Gál	FWD	SBE	9	8	553	21		82	Zsigmond Zászlós	MID	PSK	29	20	1982	54
-83	Zalán Tresznyik	MID	PSK	19	8	790	1		83	Barna Tölgyessy	DEF	DBZ	30	28	2577	3		83	Károly Szidány	DEF	CNV	12	11	813	6.9		83	Roland Demjén	FWD	KDH	29	25	1747	21		83	Ferenc Lisztes	DEF	UKH	29	19	1790	53
-84	Csaba Békés	MID	KDH	20	2	447	1		84	Ernő Nemecsek	DEF	DBZ	30	13	1159	3		84	Vilmos Kovácsevics	DEF	SZT	19	6	660	6.9		84	Béla Kun	FWD	UKH	30	25	1866	21		84	Zsigmond Mórócz	MID	VII	29	8	1046	53
-85	Róbert Kővágó	FWD	STE	22	12	1044	1		85	Aladár Mézga	MID	DBZ	30	11	1328	3		85	Imre Nagyváradi	FWD	PSK	25	25	2170	6.9		85	Ezrael Vízszegi	MID	MTZ	28	28	2344	19		85	Balázs Baráth	MID	UKH	29	26	1888	53
-86	Gyula Almán	MID	PSK	26	20	1480	1		86	Tamás Indásy	MID	UKH	30	26	2177	3		86	Árpád Papucs	DEF	MBT	26	26	2305	6.9		86	Pista Orbán	MID	MBT	29	20	1929	19		86	Frigyes Kenyeres	MID	DBZ	30	28	2098	53
-87	Titusz Poracsek	MID	SBE	27	20	1881	1		87	Norbert Fejes	DEF	KDH	30	28	2557	3		87	Dominik Kőműves	FWD	TSE	28	23	1727	6.9		87	Zsigmond Zászlós	MID	PSK	29	20	1982	19		87	Rezső Balázs	DEF	SBE	29	17	1613	52
-88	Kornél Úrhegyi	MID	MBT	27	22	2109	1		88	Walter Katona	MID	SZT	30	26	2375	3		88	Krisztián Bárkásy	MID	CNV	28	26	2135	6.9		88	Géza Dártády	MID	TSE	30	20	2041	19		88	Bendegúz Nagy	DEF	DBZ	30	28	2270	52
-89	Tibor Benkő	MID	MBT	27	27	2421	1		89	Gergő Bálvány	GK	MBT	7	7	630	2		89	István Tóth	MID	DBZ	28	23	2101	6.9		89	Szabolcs Mezei	MID	DBZ	26	25	2016	18		89	Ezrael Vízszegi	MID	MTZ	28	28	2344	51
-90	Gábor Szelíd	MID	UKH	27	10	993	1		90	Ignácz Pék	FWD	DBZ	8	8	556	2		90	Francisco Juárez	FWD	MTZ	29	29	2610	6.9		90	Krisztián Bárkásy	MID	CNV	28	26	2135	18		90	Nándor Virág	DEF	STE	27	22	1724	50
-91	René Arnoux	FWD	STE	28	22	2075	1		91	Dezső Nagy	MID	STE	10	9	642	2		91	Robert Gruszka	FWD	VII	29	28	2102	6.9		91	Koppány Gulyás	MID	VII	29	24	1693	18		91	Henrik Szűcs	DEF	UKH	29	26	2368	50
-92	Hunor Balacsik	DEF	SBE	28	24	2165	1		92	Zoltán Koncz	DEF	MBT	11	10	703	1		92	Ádám Rácsos	DEF	CNV	29	19	1832	6.9		92	Walter Katona	MID	SZT	30	26	2375	18		92	Huba Tornácz	DEF	MTZ	30	28	2437	50
-93	Szilveszter Nádor	MID	VTC	28	7	907	1		93	Ernő Szalagos	MID	SZT	12	8	624	1		93	Róbert Barcsay	DEF	CNV	29	27	2060	6.9		93	Gábor Szelíd	MID	UKH	27	10	993	17		93	Ádám Rácsos	DEF	CNV	29	19	1832	49
-94	Simon Gabonás	MID	VTC	28	26	1986	1		94	Zalán Tresznyik	MID	PSK	19	8	790	1		94	Mór Utcai	DEF	SBE	29	29	2610	6.9		94	Farkas Vadász	MID	MTZ	28	19	1549	17		94	Szabolcs Mezei	MID	DBZ	26	25	2016	49
-95	Ábel Kerepes	MID	STE	29	27	2488	1		95	Kelemen Társas	GK	SBE	22	22	1952	1		95	Botond Livón	DEF	MTZ	29	29	2571	6.9		95	Korvin Pásztor	MID	MBT	29	26	1950	17		95	Ábel Kerepes	MID	STE	29	27	2488	49
-96	Oszkár Kisfaludy	MID	CNV	29	11	1159	1		96	Árvin Keldházi	GK	MBT	23	23	2070	1		96	Árpád Gulyás	MID	TTK	29	25	1877	6.9		96	Boldizsár Mátrai	FWD	SZV	26	13	1212	17		96	Géza Dártády	MID	TSE	30	20	2041	49
-97	Endre Szent	MID	SZV	29	26	1961	1		97	Tivadar Szercseny	MID	SBE	25	20	1534	1		97	Jóska Nádas	DEF	VII	29	23	1956	6.9		97	Ernő Bádogos	FWD	VII	30	14	1462	17		97	Attila Gyöngy	FWD	VII	30	26	2443	48
-98	Ádám Kiss	MID	DTK	29	10	1146	1		98	Imre Nagyváradi	FWD	PSK	25	25	2170	1		98	István Vakond	DEF	PSK	29	25	2316	6.9		98	László Csikós	FWD	KDH	30	11	1188	17		98	Noel Karácsony	DEF	VTC	30	16	1614	48
-99	Koppány Gulyás	MID	VII	29	24	1693	1		99	Gergely Vándor	FWD	KDH	25	25	2179	1		99	Pál Gerendásy	DEF	DBZ	29	29	2584	6.9		99	Jarno Casteglio	DEF	STE	30	29	2638	16		99	Dominik Tóth	DEF	PSK	30	11	1275	48
-100	Marczell Szatmári	DEF	UKH	29	28	2549	1		100	István Barta	DEF	SZT	25	25	2110	1		100	Dávid Pataky	GK	DTK	29	29	2610	6.9		100	Ajnár Szilaj	FWD	MTZ	26	13	1274	16		100	Erik Baltás	DEF	DBZ	30	21	2124	48
-101	Kornél Sós	MID	UKH	29	27	2405	1		101	Szabolcs Mezei	MID	DBZ	26	25	2016	1		101	Zsigmond Fekete	GK	KDH	29	29	2610	6.9		101	Dömötör Borostyán	FWD	PSK	30	29	2612	16		101	Titusz Poracsek	MID	SBE	27	20	1881	48
-102	Móricz Tóth	DEF	STE	30	29	2640	1		102	Ajnár Szilaj	FWD	MTZ	26	13	1274	1		102	Johannn Baumgartner	FWD	DTK	30	11	1378	6.9		102	Boldizsár Gelegonya	DEF	MBT	30	30	2700	15		102	Joonas Nevalainen	FWD	STE	30	29	2638	47
-103	Rezső Szalkay	DEF	SBE	30	27	2516	1		103	Titusz Poracsek	MID	SBE	27	20	1881	1		103	Yriö Pohjolainen	FWD	SZT	30	25	2242	6.9		103	Ernő Szalagos	MID	SZT	12	8	624	15		103	Ákos Tanyasi	DEF	TTK	29	24	1752	47
-104	Milán Szentesy	MID	DTK	30	6	901	1		104	Mihály Cipész	DEF	VTC	27	26	2254	1		104	Jarno Casteglio	DEF	STE	30	29	2638	6.9		104	Gyula Almán	MID	PSK	26	20	1480	15		104	Tamás Indásy	MID	UKH	30	26	2177	47
-105	Lukács Rózsa	DEF	DTK	30	25	1985	1		105	Tibor Benkő	MID	MBT	27	27	2421	1		105	Nándor Telekes	DEF	CNV	30	29	2616	6.9		105	Gáspár Győző	MID	TSE	28	21	2046	15		105	Sebestyén Fábián	DEF	SBE	30	27	2199	46
-106	Géza Dártády	MID	TSE	30	20	2041	1		106	Miklós Cár	MID	VII	27	26	2261	1		106	Olivér Selymes	DEF	SZV	30	24	2284	6.9		106	Bence Tászvári	MID	VII	28	22	2160	15		106	Leó Császár	DEF	SZT	30	26	2091	46
-107	Kevin Szalonnás	MID	VTC	30	23	1765	1		107	Gábor Szelíd	MID	UKH	27	10	993	1		107	György Erdős	MID	DTK	30	27	2502	6.9		107	Alexander Vésztői	MID	DBZ	30	12	1405	15		107	Benedek Arany	MID	KDH	28	24	2183	46
-108	Bertalan Kormos	DEF	MTZ	30	23	2250	1		108	Hans Tenburger	MID	CNV	28	27	2192	1		108	Albert Orvos	DEF	VTC	30	26	2458	6.9		108	Norbert Fejes	DEF	KDH	30	28	2557	14		108	Gyula Papp	MID	CNV	30	30	2700	46
-109	Elek Árpás	MID	MTZ	30	13	1459	1		109	Krisztián Bárkásy	MID	CNV	28	26	2135	1		109	Elemér Bács	DEF	MBT	30	22	2155	6.9		109	Bertód Lakatos	MID	SZV	30	21	1796	14		109	Nimród Somogyi	FWD	DTK	27	24	2111	45
-110	Boldizsár Gelegonya	DEF	MBT	30	30	2700	1		110	Ferenc Szabó	MID	SBE	28	11	1244	1		110	Dávid Veréb	DEF	MBT	30	28	2577	6.9		110	Róbert Kővágó	FWD	STE	22	12	1044	14		110	Róbert Barcsay	DEF	CNV	29	27	2060	45
-111	Erik Baltás	DEF	DBZ	30	21	2124	1		111	Zsolt Vadász	FWD	DTK	28	25	1825	1		111	Erling Lindsson	DEF	MBT	30	30	2700	6.9		111	Rómeó Szűcs	MID	CNV	29	16	1638	13		111	Hans Tenburger	MID	CNV	28	27	2192	45
-112	Norbert Fejes	DEF	KDH	30	28	2557	1		112	Valter Kádár	DEF	TSE	28	28	2504	1		112	Árpád Halasdy	DEF	SZT	30	25	2361	6.9		112	Yuki Hayashima	DEF	TSE	29	29	2597	12		112	Bálint Sándor	MID	SZV	29	21	2086	45
-113	Ottó Tavasy	MID	KDH	30	10	1250	1		113	Roland Kardos	DEF	MTZ	28	26	1831	1		113	Leó Császár	DEF	SZT	30	26	2091	6.9		113	Milán Szentesy	MID	DTK	30	6	901	12		113	Jakab Kürtös	MID	SZV	30	14	1512	45
-114	Leó Császár	DEF	SZT	30	26	2091	1		114	Farkas Vadász	MID	MTZ	28	19	1549	1		114	Alpár Zakosdy	GK	MTZ	8	8	720	6.8		114	Aladár Mézga	MID	DBZ	30	11	1328	12		114	Zsolt Orosz	MID	STE	28	23	2159	44
-									115	Csaba Balla	FWD	VII	28	27	2456	1		115	Ernő Szalagos	MID	SZT	12	8	624	6.8		115	Ottó Tavasy	MID	KDH	30	10	1250	12		115	István Magvasi	FWD	TTK	26	26	2311	43
-									116	Rómeó Szűcs	MID	CNV	29	16	1638	1		116	Nimród Asztalos	FWD	MBT	19	16	1373	6.8		116	Carlós Torres	FWD	UKH	30	9	1135	12		116	Gyula Almán	MID	PSK	26	20	1480	43
-									117	Bálint Sándor	MID	SZV	29	21	2086	1		117	Zalán Tresznyik	MID	PSK	19	8	790	6.8		117	Elemér Bács	DEF	MBT	30	22	2155	11		117	Bence Tászvári	MID	VII	28	22	2160	43
-									118	Endre Szent	MID	SZV	29	26	1961	1		118	Máté Szalka	GK	SZV	21	21	1837	6.8		118	Albert Orvos	DEF	VTC	30	26	2458	11		118	Viktor Hentes	FWD	SZV	23	22	1986	42
-									119	Yuki Hayashima	DEF	TSE	29	29	2597	1		119	Viktor Tresznyák	GK	STE	25	25	2250	6.8		119	Zalán Tresznyik	MID	PSK	19	8	790	11		119	Koppány Tálcásy	MID	DTK	30	24	1733	42
-									120	Gáspár Holtági	DEF	VII	29	29	2599	1		120	Gergő Király	DEF	STE	26	13	1270	6.8		120	Ferenc Szabó	MID	SBE	28	11	1244	11		120	Roland Kermesdy	MID	TSE	30	17	1542	42
-									121	Zsigmond Mórócz	MID	VII	29	8	1046	1		121	Alvin Búzás	MID	MTZ	26	19	1606	6.8		121	Elemér Balázs	MID	SBE	30	11	1181	11		121	Róbert Szivacsos	MID	VTC	30	25	2383	42
-									122	Dániel Almády	DEF	UKH	29	24	2292	1		122	Nándor Virág	DEF	STE	27	22	1724	6.8		122	Antall Kerekes	MID	VTC	30	15	1445	11		122	Gergő Király	DEF	STE	26	13	1270	41
-									123	Marczell Szatmári	DEF	UKH	29	28	2549	1		123	Balázs Cseke	MID	TSE	27	25	1839	6.8		123	Kevin Szalonnás	MID	VTC	30	23	1765	11		123	József Kőszegi	MID	CNV	25	22	1697	41
-									124	Dénes Kender	DEF	SZT	29	28	2548	1		124	Zsolt Orosz	MID	STE	28	23	2159	6.8		124	Dominik Délvölgyi	MID	TTK	30	13	1233	11		124	Gáspár Slattics	MID	KDH	30	26	1944	41
-									125	Móricz Tóth	DEF	STE	30	29	2640	1		125	Hans Tenburger	MID	CNV	28	27	2192	6.8		125	Ádám Rácsos	DEF	CNV	29	19	1832	10		125	Péter Karaj	DEF	CNV	29	13	1373	40
-									126	Előd Bocskor	MID	STE	30	25	2393	1		126	Hunor Balacsik	DEF	SBE	28	24	2165	6.8		126	László Móricz	DEF	KDH	29	25	2352	10		126	Tibor Almási	MID	TTK	24	24	2150	39
-									127	Gyula Papp	MID	CNV	30	30	2700	1		127	Rajmond Bácszegi	MID	SZT	28	27	2412	6.8		127	Olivér Selymes	DEF	SZV	30	24	2284	10		127	Tivadar Szercseny	MID	SBE	25	20	1534	39
-									128	Vilmos Paraszt	DEF	SZV	30	28	2577	1		128	Rezső Balázs	DEF	SBE	29	17	1613	6.8		128	Oszkár Kisfaludy	MID	CNV	29	11	1159	10		128	János Vitéz	MID	SBE	29	26	2016	39
-									129	Bertód Lakatos	MID	SZV	30	21	1796	1		129	János Kurucz	DEF	TSE	29	20	1691	6.8		129	Csaba Dobozos	MID	MTZ	29	10	1220	10		129	Lukács Rózsa	DEF	DTK	30	25	1985	38
-									130	Rezső Szalkay	DEF	SBE	30	27	2516	1		130	Ákos Tanyasi	DEF	TTK	29	24	1752	6.8		130	Jakab Kürtös	MID	SZV	30	14	1512	10		130	Pista Orbán	MID	MBT	29	20	1929	38
-									131	Sebestyén Fábián	DEF	SBE	30	27	2199	1		131	Richárd Mezei	DEF	VII	29	29	2610	6.8		131	Elek Árpás	MID	MTZ	30	13	1459	10		131	Kristóf Talajos	FWD	KDH	30	29	2639	37
-									132	Miklós Szlitlán	DEF	DTK	30	29	2642	1		132	Dániel Almády	DEF	UKH	29	24	2292	6.8		132	Szilárd Sertés	FWD	VTC	29	5	811	10		132	Vilmos Kovácsevics	DEF	SZT	19	6	660	36
-									133	Milán Szentesy	MID	DTK	30	6	901	1		133	Joonas Nevalainen	FWD	STE	30	29	2638	6.8		133	István Vakond	DEF	PSK	29	25	2316	9		133	Alex Sárkánydi	DEF	KDH	30	13	1229	36
-									134	Lőrincz Orbán	MID	DTK	30	25	1980	1		134	Botond Oláh	FWD	PSK	30	16	1621	6.8		134	Vilmos Paraszt	DEF	SZV	30	28	2577	9		134	Koppány Gulyás	MID	VII	29	24	1693	36
-									135	Titusz Fellegvár	DEF	TSE	30	18	1658	1		135	Carlós Torres	FWD	UKH	30	9	1135	6.8		135	Attila Kovács	DEF	TTK	29	28	2499	9		135	Csongor Szekeres	FWD	STE	28	28	2435	35
-									136	Kevin Szalonnás	MID	VTC	30	23	1765	1		136	Béla Kun	FWD	UKH	30	25	1866	6.8		136	Richárd Mezei	DEF	VII	29	29	2610	9		136	Csongor Pásztor	DEF	DTK	30	10	1044	35
-									137	Huba Tornácz	DEF	MTZ	30	28	2437	1		137	Ferencz Ács	MID	CNV	30	21	2102	6.8		137	Erik Baltás	DEF	DBZ	30	21	2124	9		137	Márton Szénás	MID	MTZ	24	20	1451	35
-									138	Erling Lindsson	DEF	MBT	30	30	2700	1		138	Gyula Papp	MID	CNV	30	30	2700	6.8		138	Leó Császár	DEF	SZT	30	26	2091	9		138	Rómeó Szűcs	MID	CNV	29	16	1638	35
-									139	Péter Mákos	DEF	TTK	30	30	2700	1		139	Ármin Rácz	DEF	SZV	30	16	1510	6.8		139	Hunor Balacsik	DEF	SBE	28	24	2165	8		139	János Dzsenósza	FWD	TSE	26	25	2064	34
-									140	Ferenc Bodza	MID	VII	30	30	2700	1		140	Rezső Szalkay	DEF	SBE	30	27	2516	6.8		140	Róbert Barcsay	DEF	CNV	29	27	2060	8		140	Francisco Juárez	FWD	MTZ	29	29	2610	34
-									141	Attila Gyöngy	FWD	VII	30	26	2443	1		141	Áron Papp	DEF	DTK	30	28	2580	6.8		141	János Juhász	DEF	TTK	30	29	2660	8		141	Márton Mészáros	DEF	TTK	30	7	1046	33
-									142	Erik Baltás	DEF	DBZ	30	21	2124	1		142	Csongor Pásztor	DEF	DTK	30	10	1044	6.8		142	Botond Livón	DEF	MTZ	29	29	2571	8		142	Árpád Gulyás	MID	TTK	29	25	1877	33
-									143	Alexander Vésztői	MID	DBZ	30	12	1405	1		143	Lukács Rózsa	DEF	DTK	30	25	1985	6.8		143	Áron Papp	DEF	DTK	30	28	2580	8		143	Elemér Balázs	MID	SBE	30	11	1181	33
-									144	Bendegúz Nagy	DEF	DBZ	30	28	2270	1		144	Lőrincz Orbán	MID	DTK	30	25	1980	6.8		144	Bertalan Kormos	DEF	MTZ	30	23	2250	8		144	Zsolt Vadász	FWD	DTK	28	25	1825	32
-									145	Alex Sárkánydi	DEF	KDH	30	13	1229	1		145	Titusz Fellegvár	DEF	TSE	30	18	1658	6.8		145	Csanád Vinposzics	MID	MBT	8	8	513	8		145	Ernő Nemecsek	DEF	DBZ	30	13	1159	32
-									146	László Csikós	FWD	KDH	30	11	1188	1		146	Roland Kermesdy	MID	TSE	30	17	1542	6.8		146	Tivadar Szercseny	MID	SBE	25	20	1534	8		146	Kálmán Poczkay	FWD	PSK	26	26	2218	31
-									147	Gáspár Slattics	MID	KDH	30	26	1944	1		147	Noel Karácsony	DEF	VTC	30	16	1614	6.8		147	Attila Sluszter	MID	UKH	28	5	842	8		147	Roland Kardos	DEF	MTZ	28	26	1831	31
-									148	Dénes Pákozdy	DEF	KDH	30	26	2085	1		148	Boldizsár Gelegonya	DEF	MBT	30	30	2700	6.8		148	Mihály Cipész	DEF	VTC	27	26	2254	7		148	Lajos Szalay	DEF	UKH	30	23	1777	31
-																		149	Márton Mészáros	DEF	TTK	30	7	1046	6.8		149	Valter Kádár	DEF	TSE	28	28	2504	7		149	Farkas Vadász	MID	MTZ	28	19	1549	31
-																		150	Dominik Délvölgyi	MID	TTK	30	13	1233	6.8		150	Jóska Nádas	DEF	VII	29	23	1956	7		150	John Poacher	MID	DBZ	29	29	2610	31
-																		151	Dominik Tóth	DEF	PSK	30	11	1275	6.8		151	Móricz Tóth	DEF	STE	30	29	2640	7		151	Ottó Tavasy	MID	KDH	30	10	1250	31
-																		152	Ernő Nemecsek	DEF	DBZ	30	13	1159	6.8		152	Dezső Nagy	MID	STE	10	9	642	7		152	Csanád Apáca	MID	DBZ	27	22	1841	30
-																		153	Alex Sárkánydi	DEF	KDH	30	13	1229	6.8		153	Szilveszter Nádor	MID	VTC	28	7	907	7		153	Krisztián Bárkásy	MID	CNV	28	26	2135	30
-																		154	Ottó Tavasy	MID	KDH	30	10	1250	6.8		154	Damján Bíboros	MID	MBT	28	11	1292	7		154	Nimród Szegvári	FWD	SZT	30	30	2565	29
-																		155	Mátyás Varjas	GK	VII	7	7	630	6.7		155	Ignácz Pék	FWD	DBZ	8	8	556	7		155	Gergely Farkas	FWD	SZV	27	27	2309	29
-																		156	Ignácz Pék	FWD	DBZ	8	8	556	6.7		156	Dániel Almády	DEF	UKH	29	24	2292	6		156	Korvin Pásztor	MID	MBT	29	26	1950	29
-																		157	József Gál	FWD	SBE	9	8	553	6.7		157	Dénes Kender	DEF	SZT	29	28	2548	6		157	Dominik Délvölgyi	MID	TTK	30	13	1233	29
-																		158	Zoltán Koncz	DEF	MBT	11	10	703	6.7		158	Sebestyén Fábián	DEF	SBE	30	27	2199	6		158	Flórián Losonczy	MID	TTK	30	12	1506	29
-																		159	Róbert Kővágó	FWD	STE	22	12	1044	6.7		159	Lukács Rózsa	DEF	DTK	30	25	1985	6		159	Gergely Vándor	FWD	KDH	25	25	2179	28
-																		160	József Kőszegi	MID	CNV	25	22	1697	6.7		160	Ernő Erdős	DEF	MTZ	30	30	2700	6		160	Zoltán Koncz	DEF	MBT	11	10	703	28
-																		161	Gergely Vándor	FWD	KDH	25	25	2179	6.7		161	Roland Kardos	DEF	MTZ	28	26	1831	6		161	Robert Gruszka	FWD	VII	29	28	2102	27
-																		162	Radovan Dobrovodsky	FWD	CNV	26	19	1835	6.7		162	Norbert Petrezselyem	DEF	CNV	29	29	2610	6		162	Roland Demjén	FWD	KDH	29	25	1747	27
-																		163	Boldizsár Mátrai	FWD	SZV	26	13	1212	6.7		163	Péter Mákos	DEF	TTK	30	30	2700	6		163	Endre Szent	MID	SZV	29	26	1961	27
-																		164	János Dzsenósza	FWD	TSE	26	25	2064	6.7		164	Miklós Mocsaras	DEF	SZT	30	11	1451	6		164	Aladár Mézga	MID	DBZ	30	11	1328	27
-																		165	Gyula Almán	MID	PSK	26	20	1480	6.7		165	Balázs Givrocsics	MID	SZT	18	10	748	6		165	René Arnoux	FWD	STE	28	22	2075	26
-																		166	Titusz Poracsek	MID	SBE	27	20	1881	6.7		166	Márton Szénás	MID	MTZ	24	20	1451	6		166	Johannn Baumgartner	FWD	DTK	30	11	1378	26
-																		167	Tibor Benkő	MID	MBT	27	27	2421	6.7		167	József Kőszegi	MID	CNV	25	22	1697	6		167	Ferenc Szabó	MID	SBE	28	11	1244	26
-																		168	Gábor Szelíd	MID	UKH	27	10	993	6.7		168	Tibor Pintér	MID	SZV	30	7	1041	6		168	Oszkár Kisfaludy	MID	CNV	29	11	1159	26
-																		169	Luca Bareghi	DEF	SZV	28	27	1983	6.7		169	Rezső Balázs	DEF	SBE	29	17	1613	5		169	Csaba Dobozos	MID	MTZ	29	10	1220	26
-																		170	Ervin Kolostoros	MID	TSE	28	28	2520	6.7		170	Ákos Tanyasi	DEF	TTK	29	24	1752	5		170	Csaba Balla	FWD	VII	28	27	2456	25
-																		171	Endre Thébai	FWD	TSE	28	11	1314	6.7		171	Patrik Csillag	DEF	VTC	30	25	1874	5		171	Dömötör Borostyán	FWD	PSK	30	29	2612	25
-																		172	Domonkos Kovács	MID	VTC	28	25	2327	6.7		172	Huba Tornácz	DEF	MTZ	30	28	2437	5		172	Dezső Makkos	MID	PSK	30	15	1541	25
-																		173	Szilveszter Nádor	MID	VTC	28	7	907	6.7		173	Erling Lindsson	DEF	MBT	30	30	2700	5		173	Dominik Kőműves	FWD	TSE	28	23	1727	24
-																		174	Csaba Balla	FWD	VII	28	27	2456	6.7		174	Bendegúz Nagy	DEF	DBZ	30	28	2270	5		174	Miklós Mocsaras	DEF	SZT	30	11	1451	24
-																		175	Bencze Rudán	FWD	PSK	28	22	1694	6.7		175	János Kurucz	DEF	TSE	29	20	1691	5		175	Zalán Tresznyik	MID	PSK	19	8	790	24
-																		176	Botond Szarvasy	FWD	DBZ	29	23	2229	6.7		176	Pál Gerendásy	DEF	DBZ	29	29	2584	5		176	Milán Szentesy	MID	DTK	30	6	901	24
-																		177	Ábel Kerepes	MID	STE	29	27	2488	6.7		177	Árpád Halasdy	DEF	SZT	30	25	2361	5		177	Kevin Szalonnás	MID	VTC	30	23	1765	24
-																		178	Péter Karaj	DEF	CNV	29	13	1373	6.7		178	Károly Szidány	DEF	CNV	12	11	813	4		178	Gábor Szelíd	MID	UKH	27	10	993	23
-																		179	Bálint Sándor	MID	SZV	29	21	2086	6.7		179	Ernő Deák	DEF	TSE	27	24	2193	4		179	Damján Bíboros	MID	MBT	28	11	1292	23
-																		180	Ádám Kiss	MID	DTK	29	10	1146	6.7		180	Luca Bareghi	DEF	SZV	28	27	1983	4		180	László Molnár	MID	SBE	29	23	2239	23
-																		181	Szilárd Sertés	FWD	VTC	29	5	811	6.7		181	Ödön Kolostoros	DEF	SBE	28	28	2444	4		181	Alexander Vésztői	MID	DBZ	30	12	1405	23
-																		182	Zsigmond Mórócz	MID	VII	29	8	1046	6.7		182	Károly Nedváry	DEF	PSK	29	27	2488	4		182	Valter Fehér	FWD	TTK	30	28	2094	22
-																		183	Nándor Bölcs	DEF	PSK	29	28	2062	6.7		183	Nándor Telekes	DEF	CNV	30	29	2616	4		183	Rudolf Szimondy	FWD	VTC	28	26	2138	21
-																		184	Henrik Szűcs	DEF	UKH	29	26	2368	6.7		184	Lajos Szalay	DEF	UKH	30	23	1777	4		184	Csanád Vinposzics	MID	MBT	8	8	513	21
-																		185	Ferenc Lisztes	DEF	UKH	29	19	1790	6.7		185	Nándor Virág	DEF	STE	27	22	1724	4		185	Botond Szarvasy	FWD	DBZ	29	23	2229	20
-																		186	Valter Fehér	FWD	TTK	30	28	2094	6.7		186	Benedek Détáry	DEF	STE	29	27	2467	4		186	Yriö Pohjolainen	FWD	SZT	30	25	2242	20
-																		187	Attila Gyöngy	FWD	VII	30	26	2443	6.7		187	Sándor Veres	DEF	VTC	29	27	2484	4		187	Endre Thébai	FWD	TSE	28	11	1314	20
-																		188	Jakab Kürtös	MID	SZV	30	14	1512	6.7		188	Gáspár Holtági	DEF	VII	29	29	2599	4		188	Géza Szakács	FWD	VTC	28	28	2292	20
-																		189	Elemér Balázs	MID	SBE	30	11	1181	6.7		189	Marczell Szatmári	DEF	UKH	29	28	2549	4		189	Péter Lipót	FWD	UKH	28	26	2362	19
-																		190	Milán Szentesy	MID	DTK	30	6	901	6.7		190	Mátyás Havasy	DEF	SZV	30	28	2568	4		190	Dömötör Pácz	MID	TSE	18	11	871	19
-																		191	Koppány Tálcásy	MID	DTK	30	24	1733	6.7		191	Noel Karácsony	DEF	VTC	30	16	1614	4		191	Gábor Gyalogos	MID	VII	26	10	1120	19
-																		192	Róbert Szivacsos	MID	VTC	30	25	2383	6.7		192	Ármin Gyenes	DEF	KDH	30	28	2567	4		192	Elek Árpás	MID	MTZ	30	13	1459	19
-																		193	Bertalan Kormos	DEF	MTZ	30	23	2250	6.7		193	Vilmos Ács	MID	SZT	6	3	319	4		193	Antall Kerekes	MID	VTC	30	15	1445	18
-																		194	Huba Tornácz	DEF	MTZ	30	28	2437	6.7		194	Gábor Gyalogos	MID	VII	26	10	1120	4		194	Ferenc Keresztes	FWD	SZV	29	26	1824	17
-																		195	Flórián Losonczy	MID	TTK	30	12	1506	6.7		195	Sándor Teleki	DEF	DTK	29	28	2528	3		195	Ádám Kiss	MID	DTK	29	10	1146	17
-																		196	Ferenc Bodza	MID	VII	30	30	2700	6.7		196	Márton Mészáros	DEF	TTK	30	7	1046	3		196	Tibor Pintér	MID	SZV	30	7	1041	17
-																		197	Dezső Makkos	MID	PSK	30	15	1541	6.7		197	Barna Tölgyessy	DEF	DBZ	30	28	2577	3		197	Dezső Balogh	FWD	SBE	29	29	2608	16
-																		198	Erik Baltás	DEF	DBZ	30	21	2124	6.7		198	Sámuel Rétfalvi	MID	STE	6	5	333	3		198	Carlós Torres	FWD	UKH	30	9	1135	16
-																		199	Alexander Vésztői	MID	DBZ	30	12	1405	6.7		199	Dömötör Pácz	MID	TSE	18	11	871	3		199	Ernő Szalagos	MID	SZT	12	8	624	16
-																		200	Miklós Mocsaras	DEF	SZT	30	11	1451	6.7		200	Csaba Békés	MID	KDH	20	2	447	3		200	Alvin Búzás	MID	MTZ	26	19	1606	16
+2	Nimród Szegvári	FWD	SZT	30	30	2565	24		2	Lajos Nagy	MID	TTK	30	25	2395	12		2	István Magvasi	FWD	TTK	26	26	2311	7.6		2	Francisco Juárez	FWD	MTZ	29	29	2610	76		2	Ödön Kolostoros	DEF	SBE	28	28	2444	152		2	Gergő Harcsásy	GK	VTC	28	28	2520	119
+3	Péter Lipót	FWD	UKH	28	26	2362	23		3	Márk Vígh	MID	SZT	26	25	2101	11		3	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	7.5		3	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	72		3	Mátyás Havasy	DEF	SZV	30	28	2568	137		3	Árvin Kodály	GK	SZT	30	30	2700	117
+4	Rudolf Szimondy	FWD	VTC	28	26	2138	22		4	Balázs Baráth	MID	UKH	29	26	1888	9		4	Kornél Sós	MID	UKH	29	27	2405	7.5		4	Nimród Szegvári	FWD	SZT	30	30	2565	71		4	Móricz Tóth	DEF	STE	30	29	2640	133		4	Dániel Kormányos	GK	VII	24	24	2160	108
+5	Dezső Balogh	FWD	SBE	29	29	2608	18		5	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	8		5	Iván Petrovics	GK	SZV	11	9	860	7.4		5	László Molnár	MID	SBE	29	23	2239	67		5	Ernő Erdős	DEF	MTZ	30	30	2700	133		5	Kelemen Társas	GK	SBE	22	22	1952	107
+6	Ervin Csikós	FWD	MBT	26	24	2155	17		6	Nimród Somogyi	FWD	DTK	27	24	2111	8		6	Rudolf Szimondy	FWD	VTC	28	26	2138	7.3		6	Viktor Hentes	FWD	SZV	23	22	1986	67		6	Mór Utcai	DEF	SBE	29	29	2610	131		6	Rajmond Kondács	GK	UKH	28	28	2520	107
+7	John Poacher	MID	DBZ	29	29	2610	16		7	Elemér Lakóczy	MID	KDH	30	28	2565	8		7	Sándor Veres	DEF	VTC	29	27	2484	7.3		7	Csongor Szekeres	FWD	STE	28	28	2435	67		7	István Vakond	DEF	PSK	29	25	2316	131		7	Árvin Keldházi	GK	MBT	23	23	2070	105
+8	Gergely Farkas	FWD	SZV	27	27	2309	15		8	Rajmond Bácszegi	MID	SZT	28	27	2412	7		8	Zoltán Nagyfalvi	MID	UKH	29	26	2404	7.3		8	Péter Lipót	FWD	UKH	28	26	2362	66		8	János Juhász	DEF	TTK	30	29	2660	128		8	Mártin Tóth	GK	MTZ	22	22	1980	104
+9	Csongor Szekeres	FWD	STE	28	28	2435	15		9	Zsombor Nyitráv	MID	DTK	29	28	2549	7		9	Nimród Szegvári	FWD	SZT	30	30	2565	7.3		9	Tibor Almási	MID	TTK	24	24	2150	64		9	Barna Tölgyessy	DEF	DBZ	30	28	2577	128		9	Ákos Tolmács	GK	TSE	22	22	1980	99
+10	Elemér Lakóczy	MID	KDH	30	28	2565	14		10	Attila Kovács	DEF	TTK	29	28	2499	7		10	Vilmos Paraszt	DEF	SZV	30	28	2577	7.3		10	Gergely Farkas	FWD	SZV	27	27	2309	64		10	Károly Nedváry	DEF	PSK	29	27	2488	126		10	Zsombor Tanyasi	GK	CNV	22	22	1980	94
+11	Zsolt Vadász	FWD	DTK	28	25	1825	13		11	Kornél Sós	MID	UKH	29	27	2405	7		11	Csanád Vinposzics	MID	MBT	8	8	513	7.2		11	Zoltán Nagyfalvi	MID	UKH	29	26	2404	63		11	Miklós Szlitlán	DEF	DTK	30	29	2642	126		11	Ferencz Tóth	GK	TTK	30	30	2700	94
+12	László Molnár	MID	SBE	29	23	2239	13		12	Zoltán Nagyfalvi	MID	UKH	29	26	2404	7		12	Kelemen Társas	GK	SBE	22	22	1952	7.2		12	János Dzsenósza	FWD	TSE	26	25	2064	62		12	Sándor Veres	DEF	VTC	29	27	2484	125		12	László Báthory	GK	PSK	23	23	2070	86
+13	Francisco Juárez	FWD	MTZ	29	29	2610	13		13	Jarno Casteglio	DEF	STE	30	29	2638	7		13	Mártin Tóth	GK	MTZ	22	22	1980	7.2		13	Nimród Somogyi	FWD	DTK	27	24	2111	62		13	Balázs Halász	DEF	PSK	29	28	2473	118		13	Dávid Pataky	GK	DTK	29	29	2610	79
+14	Nimród Somogyi	FWD	DTK	27	24	2111	11		14	Viktor Hentes	FWD	SZV	23	22	1986	5		14	Benjámin Dreimann	GK	DBZ	24	24	2160	7.2		14	Rudolf Szimondy	FWD	VTC	28	26	2138	62		14	Valter Kádár	DEF	TSE	28	28	2504	117		14	Viktor Tresznyák	GK	STE	25	25	2250	66
+15	Géza Szakács	FWD	VTC	28	28	2292	11		15	Radovan Dobrovodsky	FWD	CNV	26	19	1835	5		15	Ervin Csikós	FWD	MBT	26	24	2155	7.2		15	Joonas Nevalainen	FWD	STE	30	29	2638	62		15	Gáspár Holtági	DEF	VII	29	29	2599	116		15	Máté Szalka	GK	SZV	21	21	1837	61
+16	Kristóf Talajos	FWD	KDH	30	29	2639	11		16	Kornél Úrhegyi	MID	MBT	27	22	2109	5		16	Ödön Kolostoros	DEF	SBE	28	28	2444	7.2		16	Kristóf Talajos	FWD	KDH	30	29	2639	62		16	Benedek Détáry	DEF	STE	29	27	2467	114		16	Zsigmond Fekete	GK	KDH	29	29	2610	61
+17	Yriö Pohjolainen	FWD	SZT	30	25	2242	10		17	Ervin Kolostoros	MID	TSE	28	28	2520	5		17	László Molnár	MID	SBE	29	23	2239	7.2		17	Kornél Sós	MID	UKH	29	27	2405	60		17	Zsombor Nyitráv	MID	DTK	29	28	2549	114		17	Iván Petrovics	GK	SZV	11	9	860	43
+18	Imre Nagyváradi	FWD	PSK	25	25	2170	9		18	Domonkos Kovács	MID	VTC	28	25	2327	5		18	Zsombor Nyitráv	MID	DTK	29	28	2549	7.2		18	Lajos Nagy	MID	TTK	30	25	2395	60		18	Sándor Teleki	DEF	DTK	29	28	2528	111		18	Vilmos Herczeg	GK	TSE	8	8	720	38
+19	Radovan Dobrovodsky	FWD	CNV	26	19	1835	9		19	Géza Szakács	FWD	VTC	28	28	2292	5		19	John Poacher	MID	DBZ	29	29	2610	7.2		19	Zsolt Vadász	FWD	DTK	28	25	1825	60		19	Botond Livón	DEF	MTZ	29	29	2571	111		19	Zoltán Ezüst	GK	CNV	8	8	720	33
+20	Johannn Baumgartner	FWD	DTK	30	11	1378	9		20	Simon Gabonás	MID	VTC	28	26	1986	5		20	Mátyás Havasy	DEF	SZV	30	28	2568	7.2		20	Zsombor Nyitráv	MID	DTK	29	28	2549	56		20	Árpád Papucs	DEF	MBT	26	26	2305	110		20	Alpár Zakosdy	GK	MTZ	8	8	720	26
+21	Robert Gruszka	FWD	VII	29	28	2102	8		21	Ádám Rácsos	DEF	CNV	29	19	1832	5		21	János Juhász	DEF	TTK	30	29	2660	7.2		21	Imre Nagyváradi	FWD	PSK	25	25	2170	53		21	Dávid Veréb	DEF	MBT	30	28	2577	110		21	János Vadász	GK	DBZ	6	6	540	25
+22	Botond Szarvasy	FWD	DBZ	29	23	2229	8		22	Rezső Balázs	DEF	SBE	29	17	1613	5		22	Lajos Nagy	MID	TTK	30	25	2395	7.2		22	Ervin Csikós	FWD	MBT	26	24	2155	52		22	Norbert Petrezselyem	DEF	CNV	29	29	2610	108		22	Matúš Cízik	GK	PSK	7	7	630	24
+23	Botond Oláh	FWD	PSK	30	16	1621	8		23	Botond Livón	DEF	MTZ	29	29	2571	5		23	Zsombor Tanyasi	GK	CNV	22	22	1980	7.1		23	István Magvasi	FWD	TTK	26	26	2311	52		23	Erling Lindsson	DEF	MBT	30	30	2700	108		23	Péter Takács	GK	SBE	9	8	747	24
+24	Dominik Kőműves	FWD	TSE	28	23	1727	7		24	Árpád Gulyás	MID	TTK	29	25	1877	5		24	Gergely Farkas	FWD	SZV	27	27	2309	7.1		24	John Poacher	MID	DBZ	29	29	2610	51		24	Pál Gerendásy	DEF	DBZ	29	29	2584	107		24	Mátyás Varjas	GK	VII	7	7	630	22
+25	Lajos Nagy	MID	TTK	30	25	2395	7		25	Robert Gruszka	FWD	VII	29	28	2102	5		25	Mihály Cipész	DEF	VTC	27	26	2254	7.1		25	György Erdős	MID	DTK	30	27	2502	51		25	Mihály Cipész	DEF	VTC	27	26	2254	106		25	Gergő Bálvány	GK	MBT	7	7	630	18
+26	Carlós Torres	FWD	UKH	30	9	1135	7		26	Ferencz Ács	MID	CNV	30	21	2102	5		26	Zsolt Vadász	FWD	DTK	28	25	1825	7.1		26	Dezső Balogh	FWD	SBE	29	29	2608	50		26	Marczell Szatmári	DEF	UKH	29	28	2549	105		26	Martin Arvinson	GK	STE	5	5	450	10
+27	Viktor Hentes	FWD	SZV	23	22	1986	6		27	György Erdős	MID	DTK	30	27	2502	5		27	Péter Lipót	FWD	UKH	28	26	2362	7.1		27	Robert Gruszka	FWD	VII	29	28	2102	50		27	Olivér Selymes	DEF	SZV	30	24	2284	104		27	Barnabás Labancz	GK	VTC	2	2	180	4
+28	Alvin Búzás	MID	MTZ	26	19	1606	6		28	Róbert Szivacsos	MID	VTC	30	25	2383	5		28	Gergő Harcsásy	GK	VTC	28	28	2520	7.1		28	Benedek Arany	MID	KDH	28	24	2183	49		28	Ármin Gyenes	DEF	KDH	30	28	2567	104		28	Márton Herczeg	GK	UKH	2	2	180	4
+29	Csaba Balla	FWD	VII	28	27	2456	6		29	Nimród Szegvári	FWD	SZT	30	30	2565	5		29	Dezső Balogh	FWD	SBE	29	29	2608	7.1		29	Dominik Kőműves	FWD	TSE	28	23	1727	47		29	Kornél Sós	MID	UKH	29	27	2405	104		29	Konrád Nemes	GK	DTK	1	1	90	1
+30	Valter Fehér	FWD	TTK	30	28	2094	6		30	Tibor Almási	MID	TTK	24	24	2150	4		30	Attila Kovács	DEF	TTK	29	28	2499	7.1		30	Márk Vígh	MID	SZT	26	25	2101	46		30	Ernő Deák	DEF	TSE	27	24	2193	100		30	Miklós Tóth	GK	KDH	1	1	90	1
+31	Béla Kun	FWD	UKH	30	25	1866	6		31	János Dzsenósza	FWD	TSE	26	25	2064	4		31	Marczell Szatmári	DEF	UKH	29	28	2549	7.1		31	Gergely Vándor	FWD	KDH	25	25	2179	45		31	Rezső Szalkay	DEF	SBE	30	27	2516	100
+32	Nimród Asztalos	FWD	MBT	19	16	1373	5		32	István Magvasi	FWD	TTK	26	26	2311	4		32	Dénes Kender	DEF	SZT	29	28	2548	7.1		32	Géza Szakács	FWD	VTC	28	28	2292	43		32	Dénes Kender	DEF	SZT	29	28	2548	99
+33	Kálmán Poczkay	FWD	PSK	26	26	2218	5		33	Kálmán Poczkay	FWD	PSK	26	26	2218	4		33	Miklós Szlitlán	DEF	DTK	30	29	2642	7.1		33	Árpád Gulyás	MID	TTK	29	25	1877	42		33	Yuki Hayashima	DEF	TSE	29	29	2597	99
+34	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	5		34	René Arnoux	FWD	STE	28	22	2075	4		34	Péter Mákos	DEF	TTK	30	30	2700	7.1		34	Ervin Kolostoros	MID	TSE	28	28	2520	39		34	Cuauhtémoc Moctezuma	MID	SZT	26	25	2206	97
+35	Joonas Nevalainen	FWD	STE	30	29	2638	5		35	Csongor Szekeres	FWD	STE	28	28	2435	4		35	Norbert Fejes	DEF	KDH	30	28	2557	7.1		35	Tamás Indásy	MID	UKH	30	26	2177	39		35	Péter Mákos	DEF	TTK	30	30	2700	96
+36	Gyula Papp	MID	CNV	30	30	2700	5		36	Rudolf Szimondy	FWD	VTC	28	26	2138	4		36	Ernő Koncz	MID	TTK	30	27	2511	7.1		36	Alvin Búzás	MID	MTZ	26	19	1606	38		36	György Erdős	MID	DTK	30	27	2502	96
+37	Ernő Bádogos	FWD	VII	30	14	1462	5		37	Benedek Arany	MID	KDH	28	24	2183	4		37	Martin Arvinson	GK	STE	5	5	450	7.0		37	Zsolt Orosz	MID	STE	28	23	2159	36		37	Kornél Úrhegyi	MID	MBT	27	22	2109	94
+38	Walter Katona	MID	SZT	30	26	2375	5		38	Dezső Balogh	FWD	SBE	29	29	2608	4		38	János Vadász	GK	DBZ	6	6	540	7.0		38	István Tóth	MID	DBZ	28	23	2101	36		38	Attila Kovács	DEF	TTK	29	28	2499	91
+39	Károly Szidány	DEF	CNV	12	11	813	4		39	János Vitéz	MID	SBE	29	26	2016	4		39	Vilmos Herczeg	GK	TSE	8	8	720	7.0		39	Attila Gyöngy	FWD	VII	30	26	2443	36		39	István Barta	DEF	SZT	25	25	2110	89
+40	Tibor Almási	MID	TTK	24	24	2150	4		40	Csaba Dobozos	MID	MTZ	29	10	1220	4		40	Zoltán Ezüst	GK	CNV	8	8	720	7.0		40	Előd Bocskor	MID	STE	30	25	2393	35		40	Ernő Koncz	MID	TTK	30	27	2511	87
+41	János Dzsenósza	FWD	TSE	26	25	2064	4		41	Francisco Juárez	FWD	MTZ	29	29	2610	4		41	Ákos Tolmács	GK	TSE	22	22	1980	7.0		41	Róbert Szivacsos	MID	VTC	30	25	2383	35		41	Hunor Balacsik	DEF	SBE	28	24	2165	85
+42	Ajnár Szilaj	FWD	MTZ	26	13	1274	4		42	Pista Orbán	MID	MBT	29	20	1929	4		42	Viktor Hentes	FWD	SZV	23	22	1986	7.0		42	Ernő Koncz	MID	TTK	30	27	2511	35		42	Jarno Casteglio	DEF	STE	30	29	2638	84
+43	Zsolt Orosz	MID	STE	28	23	2159	4		43	John Poacher	MID	DBZ	29	29	2610	4		43	Dániel Kormányos	GK	VII	24	24	2160	7.0		43	Nimród Asztalos	FWD	MBT	19	16	1373	34		43	Nándor Telekes	DEF	CNV	30	29	2616	83
+44	Krisztián Bárkásy	MID	CNV	28	26	2135	4		44	Antall Kerekes	MID	VTC	30	15	1445	4		44	Tibor Almási	MID	TTK	24	24	2150	7.0		44	Endre Thébai	FWD	TSE	28	11	1314	34		44	Jóska Nádas	DEF	VII	29	23	1956	82
+45	Endre Thébai	FWD	TSE	28	11	1314	4		45	Elek Árpás	MID	MTZ	30	13	1459	4		45	István Barta	DEF	SZT	25	25	2110	7.0		45	Bencze Rudán	FWD	PSK	28	22	1694	33		45	Tibor Benkő	MID	MBT	27	27	2421	82
+46	Zsombor Nyitráv	MID	DTK	29	28	2549	4		46	Flórián Losonczy	MID	TTK	30	12	1506	4		46	Márk Vígh	MID	SZT	26	25	2101	7.0		46	Valter Fehér	FWD	TTK	30	28	2094	33		46	Áron Papp	DEF	DTK	30	28	2580	81
+47	Gergely Vándor	FWD	KDH	25	25	2179	3		47	Béla Kun	FWD	UKH	30	25	1866	4		47	Nimród Somogyi	FWD	DTK	27	24	2111	7.0		47	Gáspár Slattics	MID	KDH	30	26	1944	32		47	Ervin Kolostoros	MID	TSE	28	28	2520	81
+48	Balázs Cseke	MID	TSE	27	25	1839	3		48	Kristóf Talajos	FWD	KDH	30	29	2639	4		48	Ernő Deák	DEF	TSE	27	24	2193	7.0		48	Kornél Úrhegyi	MID	MBT	27	22	2109	31		48	Elemér Lakóczy	MID	KDH	30	28	2565	80
+49	Hans Tenburger	MID	CNV	28	27	2192	3		49	Leó Császár	DEF	SZT	30	26	2091	4		49	Kornél Úrhegyi	MID	MBT	27	22	2109	7.0		49	Rajmond Bácszegi	MID	SZT	28	27	2412	31		49	Elemér Bács	DEF	MBT	30	22	2155	79
+50	Domonkos Kovács	MID	VTC	28	25	2327	3		50	Róbert Kővágó	FWD	STE	22	12	1044	3		50	Csongor Szekeres	FWD	STE	28	28	2435	7.0		50	Balázs Baráth	MID	UKH	29	26	1888	31		50	Norbert Fejes	DEF	KDH	30	28	2557	79
+51	Szilárd Sertés	FWD	VTC	29	5	811	3		51	Nándor Virág	DEF	STE	27	22	1724	3		51	Géza Szakács	FWD	VTC	28	28	2292	7.0		51	Ferenc Bodza	MID	VII	30	30	2700	31		51	Rajmond Bácszegi	MID	SZT	28	27	2412	78
+52	Árpád Gulyás	MID	TTK	29	25	1877	3		52	Gergely Farkas	FWD	SZV	27	27	2309	3		52	Valter Kádár	DEF	TSE	28	28	2504	7.0		52	Botond Szarvasy	FWD	DBZ	29	23	2229	31		52	Gáspár Győző	MID	TSE	28	21	2046	76
+53	Zoltán Nagyfalvi	MID	UKH	29	26	2404	3		53	Csanád Apáca	MID	DBZ	27	22	1841	3		53	Simon Gabonás	MID	VTC	28	26	1986	7.0		53	Kálmán Poczkay	FWD	PSK	26	26	2218	29		53	Albert Orvos	DEF	VTC	30	26	2458	75
+54	Attila Gyöngy	FWD	VII	30	26	2443	3		54	Zsolt Orosz	MID	STE	28	23	2159	3		54	Benedek Arany	MID	KDH	28	24	2183	7.0		54	Johannn Baumgartner	FWD	DTK	30	11	1378	29		54	Árpád Halasdy	DEF	SZT	30	25	2361	74
+55	Gáspár Slattics	MID	KDH	30	26	1944	3		55	Luca Bareghi	DEF	SZV	28	27	1983	3		55	Norbert Petrezselyem	DEF	CNV	29	29	2610	7.0		55	Yriö Pohjolainen	FWD	SZT	30	25	2242	29		55	Zoltán Nagyfalvi	MID	UKH	29	26	2404	74
+56	Ignácz Pék	FWD	DBZ	8	8	556	2		56	Hunor Balacsik	DEF	SBE	28	24	2165	3		56	Sándor Teleki	DEF	DTK	29	28	2528	7.0		56	Titusz Poracsek	MID	SBE	27	20	1881	28		56	Luca Bareghi	DEF	SZV	28	27	1983	72
+57	Csanád Vinposzics	MID	MBT	8	8	513	2		57	Endre Thébai	FWD	TSE	28	11	1314	3		57	Gáspár Holtági	DEF	VII	29	29	2599	7.0		57	Ábel Kerepes	MID	STE	29	27	2488	28		57	János Kurucz	DEF	TSE	29	20	1691	72
+58	József Gál	FWD	SBE	9	8	553	2		58	Dominik Kőműves	FWD	TSE	28	23	1727	3		58	Károly Nedváry	DEF	PSK	29	27	2488	7.0		58	Gyula Papp	MID	CNV	30	30	2700	28		58	Boldizsár Gelegonya	DEF	MBT	30	30	2700	72
+59	Gergő Király	DEF	STE	26	13	1270	2		59	Bencze Rudán	FWD	PSK	28	22	1694	3		59	Balázs Halász	DEF	PSK	29	28	2473	7.0		59	Csaba Balla	FWD	VII	28	27	2456	28		59	Előd Bocskor	MID	STE	30	25	2393	72
+60	Boldizsár Mátrai	FWD	SZV	26	13	1212	2		60	István Tóth	MID	DBZ	28	23	2101	3		60	László Móricz	DEF	KDH	29	25	2352	7.0		60	Balázs Cseke	MID	TSE	27	25	1839	26		60	Titusz Fellegvár	DEF	TSE	30	18	1658	70
+61	Márk Vígh	MID	SZT	26	25	2101	2		61	Péter Lipót	FWD	UKH	28	26	2362	3		61	Benedek Détáry	DEF	STE	29	27	2467	7.0		61	Miklós Cár	MID	VII	27	26	2261	26		61	Dénes Pákozdy	DEF	KDH	30	26	2085	69
+62	Ervin Kolostoros	MID	TSE	28	28	2520	2		62	Ábel Kerepes	MID	STE	29	27	2488	3		62	Yuki Hayashima	DEF	TSE	29	29	2597	7.0		62	Domonkos Kovács	MID	VTC	28	25	2327	26		62	Nándor Bölcs	DEF	PSK	29	28	2062	68
+63	Bencze Rudán	FWD	PSK	28	22	1694	2		63	Róbert Barcsay	DEF	CNV	29	27	2060	3		63	Balázs Baráth	MID	UKH	29	26	1888	7.0		63	Simon Gabonás	MID	VTC	28	26	1986	26		63	Bertalan Kormos	DEF	MTZ	30	23	2250	68
+64	István Tóth	MID	DBZ	28	23	2101	2		64	Richárd Mezei	DEF	VII	29	29	2610	3		64	Kristóf Talajos	FWD	KDH	30	29	2639	7.0		64	Koppány Tálcásy	MID	DTK	30	24	1733	26		64	Balázs Cseke	MID	TSE	27	25	1839	67
+65	Ferenc Keresztes	FWD	SZV	29	26	1824	2		65	István Vakond	DEF	PSK	29	25	2316	3		65	Móricz Tóth	DEF	STE	30	29	2640	7.0		65	René Arnoux	FWD	STE	28	22	2075	26		65	Lajos Nagy	MID	TTK	30	25	2395	66
+66	Yuki Hayashima	DEF	TSE	29	29	2597	2		66	Pál Gerendásy	DEF	DBZ	29	29	2584	3		66	Ernő Erdős	DEF	MTZ	30	30	2700	7.0		66	Ferenc Keresztes	FWD	SZV	29	26	1824	26		66	Walter Katona	MID	SZT	30	26	2375	66
+67	Pista Orbán	MID	MBT	29	20	1929	2		67	László Móricz	DEF	KDH	29	25	2352	3		67	Ferencz Tóth	GK	TTK	30	30	2700	7.0		67	Botond Oláh	FWD	PSK	30	16	1621	26		67	Simon Gabonás	MID	VTC	28	26	1986	65
+68	Balázs Baráth	MID	UKH	29	26	1888	2		68	Roland Demjén	FWD	KDH	29	25	1747	3		68	Barna Tölgyessy	DEF	DBZ	30	28	2577	7.0		68	Tibor Benkő	MID	MBT	27	27	2421	25		68	Lőrincz Orbán	MID	DTK	30	25	1980	65
+69	László Móricz	DEF	KDH	29	25	2352	2		69	Joonas Nevalainen	FWD	STE	30	29	2638	3		69	Árvin Kodály	GK	SZT	30	30	2700	7.0		69	Ferencz Ács	MID	CNV	30	21	2102	25		69	Richárd Mezei	DEF	VII	29	29	2610	63
+70	Roland Demjén	FWD	KDH	29	25	1747	2		70	Olivér Selymes	DEF	SZV	30	24	2284	3		70	Előd Bocskor	MID	STE	30	25	2393	7.0		70	Lőrincz Orbán	MID	DTK	30	25	1980	25		70	István Tóth	MID	DBZ	28	23	2101	63
+71	Jakab Kürtös	MID	SZV	30	14	1512	2		71	Áron Papp	DEF	DTK	30	28	2580	3		71	Patrik Csillag	DEF	VTC	30	25	1874	7.0		71	Hans Tenburger	MID	CNV	28	27	2192	24		71	László Móricz	DEF	KDH	29	25	2352	60
+72	Roland Kermesdy	MID	TSE	30	17	1542	2		72	Johannn Baumgartner	FWD	DTK	30	11	1378	3		72	Tamás Indásy	MID	UKH	30	26	2177	7.0		72	Bálint Sándor	MID	SZV	29	21	2086	24		72	Patrik Csillag	DEF	VTC	30	25	1874	60
+73	Albert Orvos	DEF	VTC	30	26	2458	2		73	Koppány Tálcásy	MID	DTK	30	24	1733	3		73	Ármin Gyenes	DEF	KDH	30	28	2567	7.0		73	Roland Kermesdy	MID	TSE	30	17	1542	24		73	Péter Márványos	DEF	MTZ	30	13	1551	58
+74	Antall Kerekes	MID	VTC	30	15	1445	2		74	Lukács Rózsa	DEF	DTK	30	25	1985	3		74	Gáspár Slattics	MID	KDH	30	26	1944	7.0		74	Frigyes Kenyeres	MID	DBZ	30	28	2098	24		74	Domonkos Kovács	MID	VTC	28	25	2327	56
+75	Ernő Koncz	MID	TTK	30	27	2511	2		75	Géza Dártády	MID	TSE	30	20	2041	3		75	Dénes Pákozdy	DEF	KDH	30	26	2085	7.0		75	Csanád Apáca	MID	DBZ	27	22	1841	22		75	Bertód Lakatos	MID	SZV	30	21	1796	56
+76	Dominik Délvölgyi	MID	TTK	30	13	1233	2		76	Albert Orvos	DEF	VTC	30	26	2458	3		76	Walter Katona	MID	SZT	30	26	2375	7.0		76	János Vitéz	MID	SBE	29	26	2016	22		76	Márk Vígh	MID	SZT	26	25	2101	55
+77	Flórián Losonczy	MID	TTK	30	12	1506	2		77	Bertalan Kormos	DEF	MTZ	30	23	2250	3		77	Matúš Cízik	GK	PSK	7	7	630	6.9		77	Radovan Dobrovodsky	FWD	CNV	26	19	1835	22		77	Ferencz Ács	MID	CNV	30	21	2102	55
+78	Alexander Vésztői	MID	DBZ	30	12	1405	2		78	Dávid Veréb	DEF	MBT	30	28	2577	3		78	Péter Takács	GK	SBE	9	8	747	6.9		78	Endre Szent	MID	SZV	29	26	1961	21		78	Ferenc Bodza	MID	VII	30	30	2700	55
+79	Frigyes Kenyeres	MID	DBZ	30	28	2098	2		79	Valter Fehér	FWD	TTK	30	28	2094	3		79	Károly Szidány	DEF	CNV	12	11	813	6.9		79	Ádám Kiss	MID	DTK	29	10	1146	21		79	Dániel Almády	DEF	UKH	29	24	2292	54
+80	László Csikós	FWD	KDH	30	11	1188	2		80	Dezső Makkos	MID	PSK	30	15	1541	3		80	Vilmos Kovácsevics	DEF	SZT	19	6	660	6.9		80	Flórián Losonczy	MID	TTK	30	12	1506	21		80	Ármin Rácz	DEF	SZV	30	16	1510	54
+81	Dezső Nagy	MID	STE	10	9	642	1		81	Botond Oláh	FWD	PSK	30	16	1621	3		81	Árvin Keldházi	GK	MBT	23	23	2070	6.9		81	Dezső Makkos	MID	PSK	30	15	1541	21		81	Miklós Cár	MID	VII	27	26	2261	54
+82	Dömötör Pácz	MID	TSE	18	11	871	1		82	Dömötör Borostyán	FWD	PSK	30	29	2612	3		82	László Báthory	GK	PSK	23	23	2070	6.9		82	József Gál	FWD	SBE	9	8	553	21		82	Zsigmond Zászlós	MID	PSK	29	20	1982	54
+83	Zalán Tresznyik	MID	PSK	19	8	790	1		83	Barna Tölgyessy	DEF	DBZ	30	28	2577	3		83	Imre Nagyváradi	FWD	PSK	25	25	2170	6.9		83	Roland Demjén	FWD	KDH	29	25	1747	21		83	Ferenc Lisztes	DEF	UKH	29	19	1790	53
+84	Csaba Békés	MID	KDH	20	2	447	1		84	Ernő Nemecsek	DEF	DBZ	30	13	1159	3		84	Árpád Papucs	DEF	MBT	26	26	2305	6.9		84	Béla Kun	FWD	UKH	30	25	1866	21		84	Zsigmond Mórócz	MID	VII	29	8	1046	53
+85	Róbert Kővágó	FWD	STE	22	12	1044	1		85	Aladár Mézga	MID	DBZ	30	11	1328	3		85	Dominik Kőműves	FWD	TSE	28	23	1727	6.9		85	Ezrael Vízszegi	MID	MTZ	28	28	2344	19		85	Balázs Baráth	MID	UKH	29	26	1888	53
+86	Gyula Almán	MID	PSK	26	20	1480	1		86	Tamás Indásy	MID	UKH	30	26	2177	3		86	Rajmond Kondács	GK	UKH	28	28	2520	6.9		86	Pista Orbán	MID	MBT	29	20	1929	19		86	Frigyes Kenyeres	MID	DBZ	30	28	2098	53
+87	Titusz Poracsek	MID	SBE	27	20	1881	1		87	Norbert Fejes	DEF	KDH	30	28	2557	3		87	Krisztián Bárkásy	MID	CNV	28	26	2135	6.9		87	Zsigmond Zászlós	MID	PSK	29	20	1982	19		87	Rezső Balázs	DEF	SBE	29	17	1613	52
+88	Kornél Úrhegyi	MID	MBT	27	22	2109	1		88	Walter Katona	MID	SZT	30	26	2375	3		88	István Tóth	MID	DBZ	28	23	2101	6.9		88	Géza Dártády	MID	TSE	30	20	2041	19		88	Bendegúz Nagy	DEF	DBZ	30	28	2270	52
+89	Tibor Benkő	MID	MBT	27	27	2421	1		89	Gergő Bálvány	GK	MBT	7	7	630	2		89	Francisco Juárez	FWD	MTZ	29	29	2610	6.9		89	Szabolcs Mezei	MID	DBZ	26	25	2016	18		89	Ezrael Vízszegi	MID	MTZ	28	28	2344	51
+90	Gábor Szelíd	MID	UKH	27	10	993	1		90	Ignácz Pék	FWD	DBZ	8	8	556	2		90	Robert Gruszka	FWD	VII	29	28	2102	6.9		90	Krisztián Bárkásy	MID	CNV	28	26	2135	18		90	Nándor Virág	DEF	STE	27	22	1724	50
+91	René Arnoux	FWD	STE	28	22	2075	1		91	Dezső Nagy	MID	STE	10	9	642	2		91	Ádám Rácsos	DEF	CNV	29	19	1832	6.9		91	Koppány Gulyás	MID	VII	29	24	1693	18		91	Henrik Szűcs	DEF	UKH	29	26	2368	50
+92	Hunor Balacsik	DEF	SBE	28	24	2165	1		92	Zoltán Koncz	DEF	MBT	11	10	703	1		92	Róbert Barcsay	DEF	CNV	29	27	2060	6.9		92	Walter Katona	MID	SZT	30	26	2375	18		92	Huba Tornácz	DEF	MTZ	30	28	2437	50
+93	Szilveszter Nádor	MID	VTC	28	7	907	1		93	Ernő Szalagos	MID	SZT	12	8	624	1		93	Mór Utcai	DEF	SBE	29	29	2610	6.9		93	Gábor Szelíd	MID	UKH	27	10	993	17		93	Ádám Rácsos	DEF	CNV	29	19	1832	49
+94	Simon Gabonás	MID	VTC	28	26	1986	1		94	Zalán Tresznyik	MID	PSK	19	8	790	1		94	Botond Livón	DEF	MTZ	29	29	2571	6.9		94	Farkas Vadász	MID	MTZ	28	19	1549	17		94	Szabolcs Mezei	MID	DBZ	26	25	2016	49
+95	Ábel Kerepes	MID	STE	29	27	2488	1		95	Kelemen Társas	GK	SBE	22	22	1952	1		95	Árpád Gulyás	MID	TTK	29	25	1877	6.9		95	Korvin Pásztor	MID	MBT	29	26	1950	17		95	Ábel Kerepes	MID	STE	29	27	2488	49
+96	Oszkár Kisfaludy	MID	CNV	29	11	1159	1		96	Árvin Keldházi	GK	MBT	23	23	2070	1		96	Jóska Nádas	DEF	VII	29	23	1956	6.9		96	Boldizsár Mátrai	FWD	SZV	26	13	1212	17		96	Géza Dártády	MID	TSE	30	20	2041	49
+97	Endre Szent	MID	SZV	29	26	1961	1		97	Tivadar Szercseny	MID	SBE	25	20	1534	1		97	István Vakond	DEF	PSK	29	25	2316	6.9		97	Ernő Bádogos	FWD	VII	30	14	1462	17		97	Attila Gyöngy	FWD	VII	30	26	2443	48
+98	Ádám Kiss	MID	DTK	29	10	1146	1		98	Imre Nagyváradi	FWD	PSK	25	25	2170	1		98	Pál Gerendásy	DEF	DBZ	29	29	2584	6.9		98	László Csikós	FWD	KDH	30	11	1188	17		98	Noel Karácsony	DEF	VTC	30	16	1614	48
+99	Koppány Gulyás	MID	VII	29	24	1693	1		99	Gergely Vándor	FWD	KDH	25	25	2179	1		99	Johannn Baumgartner	FWD	DTK	30	11	1378	6.9		99	Jarno Casteglio	DEF	STE	30	29	2638	16		99	Dominik Tóth	DEF	PSK	30	11	1275	48
+100	Marczell Szatmári	DEF	UKH	29	28	2549	1		100	István Barta	DEF	SZT	25	25	2110	1		100	Yriö Pohjolainen	FWD	SZT	30	25	2242	6.9		100	Ajnár Szilaj	FWD	MTZ	26	13	1274	16		100	Erik Baltás	DEF	DBZ	30	21	2124	48
+101	Kornél Sós	MID	UKH	29	27	2405	1		101	Szabolcs Mezei	MID	DBZ	26	25	2016	1		101	Jarno Casteglio	DEF	STE	30	29	2638	6.9		101	Dömötör Borostyán	FWD	PSK	30	29	2612	16		101	Titusz Poracsek	MID	SBE	27	20	1881	48
+102	Móricz Tóth	DEF	STE	30	29	2640	1		102	Ajnár Szilaj	FWD	MTZ	26	13	1274	1		102	Nándor Telekes	DEF	CNV	30	29	2616	6.9		102	Boldizsár Gelegonya	DEF	MBT	30	30	2700	15		102	Joonas Nevalainen	FWD	STE	30	29	2638	47
+103	Rezső Szalkay	DEF	SBE	30	27	2516	1		103	Titusz Poracsek	MID	SBE	27	20	1881	1		103	Olivér Selymes	DEF	SZV	30	24	2284	6.9		103	Ernő Szalagos	MID	SZT	12	8	624	15		103	Ákos Tanyasi	DEF	TTK	29	24	1752	47
+104	Milán Szentesy	MID	DTK	30	6	901	1		104	Mihály Cipész	DEF	VTC	27	26	2254	1		104	György Erdős	MID	DTK	30	27	2502	6.9		104	Gyula Almán	MID	PSK	26	20	1480	15		104	Tamás Indásy	MID	UKH	30	26	2177	47
+105	Lukács Rózsa	DEF	DTK	30	25	1985	1		105	Tibor Benkő	MID	MBT	27	27	2421	1		105	Albert Orvos	DEF	VTC	30	26	2458	6.9		105	Gáspár Győző	MID	TSE	28	21	2046	15		105	Sebestyén Fábián	DEF	SBE	30	27	2199	46
+106	Géza Dártády	MID	TSE	30	20	2041	1		106	Miklós Cár	MID	VII	27	26	2261	1		106	Elemér Bács	DEF	MBT	30	22	2155	6.9		106	Bence Tászvári	MID	VII	28	22	2160	15		106	Leó Császár	DEF	SZT	30	26	2091	46
+107	Kevin Szalonnás	MID	VTC	30	23	1765	1		107	Gábor Szelíd	MID	UKH	27	10	993	1		107	Dávid Veréb	DEF	MBT	30	28	2577	6.9		107	Alexander Vésztői	MID	DBZ	30	12	1405	15		107	Benedek Arany	MID	KDH	28	24	2183	46
+108	Bertalan Kormos	DEF	MTZ	30	23	2250	1		108	Hans Tenburger	MID	CNV	28	27	2192	1		108	Erling Lindsson	DEF	MBT	30	30	2700	6.9		108	Norbert Fejes	DEF	KDH	30	28	2557	14		108	Gyula Papp	MID	CNV	30	30	2700	46
+109	Elek Árpás	MID	MTZ	30	13	1459	1		109	Krisztián Bárkásy	MID	CNV	28	26	2135	1		109	Árpád Halasdy	DEF	SZT	30	25	2361	6.9		109	Bertód Lakatos	MID	SZV	30	21	1796	14		109	Nimród Somogyi	FWD	DTK	27	24	2111	45
+110	Boldizsár Gelegonya	DEF	MBT	30	30	2700	1		110	Ferenc Szabó	MID	SBE	28	11	1244	1		110	Leó Császár	DEF	SZT	30	26	2091	6.9		110	Róbert Kővágó	FWD	STE	22	12	1044	14		110	Róbert Barcsay	DEF	CNV	29	27	2060	45
+111	Erik Baltás	DEF	DBZ	30	21	2124	1		111	Zsolt Vadász	FWD	DTK	28	25	1825	1		111	Gergő Bálvány	GK	MBT	7	7	630	6.8		111	Rómeó Szűcs	MID	CNV	29	16	1638	13		111	Hans Tenburger	MID	CNV	28	27	2192	45
+112	Norbert Fejes	DEF	KDH	30	28	2557	1		112	Valter Kádár	DEF	TSE	28	28	2504	1		112	Ernő Szalagos	MID	SZT	12	8	624	6.8		112	Yuki Hayashima	DEF	TSE	29	29	2597	12		112	Bálint Sándor	MID	SZV	29	21	2086	45
+113	Ottó Tavasy	MID	KDH	30	10	1250	1		113	Roland Kardos	DEF	MTZ	28	26	1831	1		113	Nimród Asztalos	FWD	MBT	19	16	1373	6.8		113	Milán Szentesy	MID	DTK	30	6	901	12		113	Jakab Kürtös	MID	SZV	30	14	1512	45
+114	Leó Császár	DEF	SZT	30	26	2091	1		114	Farkas Vadász	MID	MTZ	28	19	1549	1		114	Zalán Tresznyik	MID	PSK	19	8	790	6.8		114	Aladár Mézga	MID	DBZ	30	11	1328	12		114	Zsolt Orosz	MID	STE	28	23	2159	44
+									115	Csaba Balla	FWD	VII	28	27	2456	1		115	Gergő Király	DEF	STE	26	13	1270	6.8		115	Ottó Tavasy	MID	KDH	30	10	1250	12		115	István Magvasi	FWD	TTK	26	26	2311	43
+									116	Rómeó Szűcs	MID	CNV	29	16	1638	1		116	Alvin Búzás	MID	MTZ	26	19	1606	6.8		116	Carlós Torres	FWD	UKH	30	9	1135	12		116	Gyula Almán	MID	PSK	26	20	1480	43
+									117	Bálint Sándor	MID	SZV	29	21	2086	1		117	Nándor Virág	DEF	STE	27	22	1724	6.8		117	Elemér Bács	DEF	MBT	30	22	2155	11		117	Bence Tászvári	MID	VII	28	22	2160	43
+									118	Endre Szent	MID	SZV	29	26	1961	1		118	Balázs Cseke	MID	TSE	27	25	1839	6.8		118	Albert Orvos	DEF	VTC	30	26	2458	11		118	Viktor Hentes	FWD	SZV	23	22	1986	42
+									119	Yuki Hayashima	DEF	TSE	29	29	2597	1		119	Zsolt Orosz	MID	STE	28	23	2159	6.8		119	Zalán Tresznyik	MID	PSK	19	8	790	11		119	Koppány Tálcásy	MID	DTK	30	24	1733	42
+									120	Gáspár Holtági	DEF	VII	29	29	2599	1		120	Hans Tenburger	MID	CNV	28	27	2192	6.8		120	Ferenc Szabó	MID	SBE	28	11	1244	11		120	Roland Kermesdy	MID	TSE	30	17	1542	42
+									121	Zsigmond Mórócz	MID	VII	29	8	1046	1		121	Hunor Balacsik	DEF	SBE	28	24	2165	6.8		121	Elemér Balázs	MID	SBE	30	11	1181	11		121	Róbert Szivacsos	MID	VTC	30	25	2383	42
+									122	Dániel Almády	DEF	UKH	29	24	2292	1		122	Rajmond Bácszegi	MID	SZT	28	27	2412	6.8		122	Antall Kerekes	MID	VTC	30	15	1445	11		122	Gergő Király	DEF	STE	26	13	1270	41
+									123	Marczell Szatmári	DEF	UKH	29	28	2549	1		123	Rezső Balázs	DEF	SBE	29	17	1613	6.8		123	Kevin Szalonnás	MID	VTC	30	23	1765	11		123	József Kőszegi	MID	CNV	25	22	1697	41
+									124	Dénes Kender	DEF	SZT	29	28	2548	1		124	Dávid Pataky	GK	DTK	29	29	2610	6.8		124	Dominik Délvölgyi	MID	TTK	30	13	1233	11		124	Gáspár Slattics	MID	KDH	30	26	1944	41
+									125	Móricz Tóth	DEF	STE	30	29	2640	1		125	János Kurucz	DEF	TSE	29	20	1691	6.8		125	Ádám Rácsos	DEF	CNV	29	19	1832	10		125	Péter Karaj	DEF	CNV	29	13	1373	40
+									126	Előd Bocskor	MID	STE	30	25	2393	1		126	Ákos Tanyasi	DEF	TTK	29	24	1752	6.8		126	László Móricz	DEF	KDH	29	25	2352	10		126	Tibor Almási	MID	TTK	24	24	2150	39
+									127	Gyula Papp	MID	CNV	30	30	2700	1		127	Richárd Mezei	DEF	VII	29	29	2610	6.8		127	Olivér Selymes	DEF	SZV	30	24	2284	10		127	Tivadar Szercseny	MID	SBE	25	20	1534	39
+									128	Vilmos Paraszt	DEF	SZV	30	28	2577	1		128	Dániel Almády	DEF	UKH	29	24	2292	6.8		128	Oszkár Kisfaludy	MID	CNV	29	11	1159	10		128	János Vitéz	MID	SBE	29	26	2016	39
+									129	Bertód Lakatos	MID	SZV	30	21	1796	1		129	Zsigmond Fekete	GK	KDH	29	29	2610	6.8		129	Csaba Dobozos	MID	MTZ	29	10	1220	10		129	Lukács Rózsa	DEF	DTK	30	25	1985	38
+									130	Rezső Szalkay	DEF	SBE	30	27	2516	1		130	Joonas Nevalainen	FWD	STE	30	29	2638	6.8		130	Jakab Kürtös	MID	SZV	30	14	1512	10		130	Pista Orbán	MID	MBT	29	20	1929	38
+									131	Sebestyén Fábián	DEF	SBE	30	27	2199	1		131	Botond Oláh	FWD	PSK	30	16	1621	6.8		131	Elek Árpás	MID	MTZ	30	13	1459	10		131	Kristóf Talajos	FWD	KDH	30	29	2639	37
+									132	Miklós Szlitlán	DEF	DTK	30	29	2642	1		132	Carlós Torres	FWD	UKH	30	9	1135	6.8		132	Szilárd Sertés	FWD	VTC	29	5	811	10		132	Vilmos Kovácsevics	DEF	SZT	19	6	660	36
+									133	Milán Szentesy	MID	DTK	30	6	901	1		133	Béla Kun	FWD	UKH	30	25	1866	6.8		133	István Vakond	DEF	PSK	29	25	2316	9		133	Alex Sárkánydi	DEF	KDH	30	13	1229	36
+									134	Lőrincz Orbán	MID	DTK	30	25	1980	1		134	Ferencz Ács	MID	CNV	30	21	2102	6.8		134	Vilmos Paraszt	DEF	SZV	30	28	2577	9		134	Koppány Gulyás	MID	VII	29	24	1693	36
+									135	Titusz Fellegvár	DEF	TSE	30	18	1658	1		135	Gyula Papp	MID	CNV	30	30	2700	6.8		135	Attila Kovács	DEF	TTK	29	28	2499	9		135	Csongor Szekeres	FWD	STE	28	28	2435	35
+									136	Kevin Szalonnás	MID	VTC	30	23	1765	1		136	Ármin Rácz	DEF	SZV	30	16	1510	6.8		136	Richárd Mezei	DEF	VII	29	29	2610	9		136	Csongor Pásztor	DEF	DTK	30	10	1044	35
+									137	Huba Tornácz	DEF	MTZ	30	28	2437	1		137	Rezső Szalkay	DEF	SBE	30	27	2516	6.8		137	Erik Baltás	DEF	DBZ	30	21	2124	9		137	Márton Szénás	MID	MTZ	24	20	1451	35
+									138	Erling Lindsson	DEF	MBT	30	30	2700	1		138	Áron Papp	DEF	DTK	30	28	2580	6.8		138	Leó Császár	DEF	SZT	30	26	2091	9		138	Rómeó Szűcs	MID	CNV	29	16	1638	35
+									139	Péter Mákos	DEF	TTK	30	30	2700	1		139	Csongor Pásztor	DEF	DTK	30	10	1044	6.8		139	Hunor Balacsik	DEF	SBE	28	24	2165	8		139	János Dzsenósza	FWD	TSE	26	25	2064	34
+									140	Ferenc Bodza	MID	VII	30	30	2700	1		140	Lukács Rózsa	DEF	DTK	30	25	1985	6.8		140	Róbert Barcsay	DEF	CNV	29	27	2060	8		140	Francisco Juárez	FWD	MTZ	29	29	2610	34
+									141	Attila Gyöngy	FWD	VII	30	26	2443	1		141	Lőrincz Orbán	MID	DTK	30	25	1980	6.8		141	János Juhász	DEF	TTK	30	29	2660	8		141	Márton Mészáros	DEF	TTK	30	7	1046	33
+									142	Erik Baltás	DEF	DBZ	30	21	2124	1		142	Titusz Fellegvár	DEF	TSE	30	18	1658	6.8		142	Botond Livón	DEF	MTZ	29	29	2571	8		142	Árpád Gulyás	MID	TTK	29	25	1877	33
+									143	Alexander Vésztői	MID	DBZ	30	12	1405	1		143	Roland Kermesdy	MID	TSE	30	17	1542	6.8		143	Áron Papp	DEF	DTK	30	28	2580	8		143	Elemér Balázs	MID	SBE	30	11	1181	33
+									144	Bendegúz Nagy	DEF	DBZ	30	28	2270	1		144	Noel Karácsony	DEF	VTC	30	16	1614	6.8		144	Bertalan Kormos	DEF	MTZ	30	23	2250	8		144	Zsolt Vadász	FWD	DTK	28	25	1825	32
+									145	Alex Sárkánydi	DEF	KDH	30	13	1229	1		145	Boldizsár Gelegonya	DEF	MBT	30	30	2700	6.8		145	Csanád Vinposzics	MID	MBT	8	8	513	8		145	Ernő Nemecsek	DEF	DBZ	30	13	1159	32
+									146	László Csikós	FWD	KDH	30	11	1188	1		146	Márton Mészáros	DEF	TTK	30	7	1046	6.8		146	Tivadar Szercseny	MID	SBE	25	20	1534	8		146	Kálmán Poczkay	FWD	PSK	26	26	2218	31
+									147	Gáspár Slattics	MID	KDH	30	26	1944	1		147	Dominik Délvölgyi	MID	TTK	30	13	1233	6.8		147	Attila Sluszter	MID	UKH	28	5	842	8		147	Roland Kardos	DEF	MTZ	28	26	1831	31
+									148	Dénes Pákozdy	DEF	KDH	30	26	2085	1		148	Dominik Tóth	DEF	PSK	30	11	1275	6.8		148	Mihály Cipész	DEF	VTC	27	26	2254	7		148	Lajos Szalay	DEF	UKH	30	23	1777	31
+																		149	Ernő Nemecsek	DEF	DBZ	30	13	1159	6.8		149	Valter Kádár	DEF	TSE	28	28	2504	7		149	Farkas Vadász	MID	MTZ	28	19	1549	31
+																		150	Alex Sárkánydi	DEF	KDH	30	13	1229	6.8		150	Jóska Nádas	DEF	VII	29	23	1956	7		150	John Poacher	MID	DBZ	29	29	2610	31
+																		151	Ottó Tavasy	MID	KDH	30	10	1250	6.8		151	Móricz Tóth	DEF	STE	30	29	2640	7		151	Ottó Tavasy	MID	KDH	30	10	1250	31
+																		152	Ignácz Pék	FWD	DBZ	8	8	556	6.7		152	Dezső Nagy	MID	STE	10	9	642	7		152	Csanád Apáca	MID	DBZ	27	22	1841	30
+																		153	Alpár Zakosdy	GK	MTZ	8	8	720	6.7		153	Szilveszter Nádor	MID	VTC	28	7	907	7		153	Krisztián Bárkásy	MID	CNV	28	26	2135	30
+																		154	József Gál	FWD	SBE	9	8	553	6.7		154	Damján Bíboros	MID	MBT	28	11	1292	7		154	Nimród Szegvári	FWD	SZT	30	30	2565	29
+																		155	Zoltán Koncz	DEF	MBT	11	10	703	6.7		155	Ignácz Pék	FWD	DBZ	8	8	556	7		155	Gergely Farkas	FWD	SZV	27	27	2309	29
+																		156	Máté Szalka	GK	SZV	21	21	1837	6.7		156	Dániel Almády	DEF	UKH	29	24	2292	6		156	Korvin Pásztor	MID	MBT	29	26	1950	29
+																		157	Róbert Kővágó	FWD	STE	22	12	1044	6.7		157	Dénes Kender	DEF	SZT	29	28	2548	6		157	Dominik Délvölgyi	MID	TTK	30	13	1233	29
+																		158	Viktor Tresznyák	GK	STE	25	25	2250	6.7		158	Sebestyén Fábián	DEF	SBE	30	27	2199	6		158	Flórián Losonczy	MID	TTK	30	12	1506	29
+																		159	József Kőszegi	MID	CNV	25	22	1697	6.7		159	Lukács Rózsa	DEF	DTK	30	25	1985	6		159	Gergely Vándor	FWD	KDH	25	25	2179	28
+																		160	Gergely Vándor	FWD	KDH	25	25	2179	6.7		160	Ernő Erdős	DEF	MTZ	30	30	2700	6		160	Zoltán Koncz	DEF	MBT	11	10	703	28
+																		161	Radovan Dobrovodsky	FWD	CNV	26	19	1835	6.7		161	Roland Kardos	DEF	MTZ	28	26	1831	6		161	Robert Gruszka	FWD	VII	29	28	2102	27
+																		162	Boldizsár Mátrai	FWD	SZV	26	13	1212	6.7		162	Norbert Petrezselyem	DEF	CNV	29	29	2610	6		162	Roland Demjén	FWD	KDH	29	25	1747	27
+																		163	János Dzsenósza	FWD	TSE	26	25	2064	6.7		163	Péter Mákos	DEF	TTK	30	30	2700	6		163	Endre Szent	MID	SZV	29	26	1961	27
+																		164	Gyula Almán	MID	PSK	26	20	1480	6.7		164	Miklós Mocsaras	DEF	SZT	30	11	1451	6		164	Aladár Mézga	MID	DBZ	30	11	1328	27
+																		165	Titusz Poracsek	MID	SBE	27	20	1881	6.7		165	Balázs Givrocsics	MID	SZT	18	10	748	6		165	René Arnoux	FWD	STE	28	22	2075	26
+																		166	Tibor Benkő	MID	MBT	27	27	2421	6.7		166	Márton Szénás	MID	MTZ	24	20	1451	6		166	Johannn Baumgartner	FWD	DTK	30	11	1378	26
+																		167	Gábor Szelíd	MID	UKH	27	10	993	6.7		167	József Kőszegi	MID	CNV	25	22	1697	6		167	Ferenc Szabó	MID	SBE	28	11	1244	26
+																		168	Luca Bareghi	DEF	SZV	28	27	1983	6.7		168	Tibor Pintér	MID	SZV	30	7	1041	6		168	Oszkár Kisfaludy	MID	CNV	29	11	1159	26
+																		169	Ervin Kolostoros	MID	TSE	28	28	2520	6.7		169	Rezső Balázs	DEF	SBE	29	17	1613	5		169	Csaba Dobozos	MID	MTZ	29	10	1220	26
+																		170	Endre Thébai	FWD	TSE	28	11	1314	6.7		170	Ákos Tanyasi	DEF	TTK	29	24	1752	5		170	Csaba Balla	FWD	VII	28	27	2456	25
+																		171	Domonkos Kovács	MID	VTC	28	25	2327	6.7		171	Patrik Csillag	DEF	VTC	30	25	1874	5		171	Dömötör Borostyán	FWD	PSK	30	29	2612	25
+																		172	Szilveszter Nádor	MID	VTC	28	7	907	6.7		172	Huba Tornácz	DEF	MTZ	30	28	2437	5		172	Dezső Makkos	MID	PSK	30	15	1541	25
+																		173	Csaba Balla	FWD	VII	28	27	2456	6.7		173	Erling Lindsson	DEF	MBT	30	30	2700	5		173	Dominik Kőműves	FWD	TSE	28	23	1727	24
+																		174	Bencze Rudán	FWD	PSK	28	22	1694	6.7		174	Bendegúz Nagy	DEF	DBZ	30	28	2270	5		174	Miklós Mocsaras	DEF	SZT	30	11	1451	24
+																		175	Botond Szarvasy	FWD	DBZ	29	23	2229	6.7		175	János Kurucz	DEF	TSE	29	20	1691	5		175	Zalán Tresznyik	MID	PSK	19	8	790	24
+																		176	Ábel Kerepes	MID	STE	29	27	2488	6.7		176	Pál Gerendásy	DEF	DBZ	29	29	2584	5		176	Milán Szentesy	MID	DTK	30	6	901	24
+																		177	Péter Karaj	DEF	CNV	29	13	1373	6.7		177	Árpád Halasdy	DEF	SZT	30	25	2361	5		177	Kevin Szalonnás	MID	VTC	30	23	1765	24
+																		178	Bálint Sándor	MID	SZV	29	21	2086	6.7		178	Károly Szidány	DEF	CNV	12	11	813	4		178	Gábor Szelíd	MID	UKH	27	10	993	23
+																		179	Ádám Kiss	MID	DTK	29	10	1146	6.7		179	Ernő Deák	DEF	TSE	27	24	2193	4		179	Damján Bíboros	MID	MBT	28	11	1292	23
+																		180	Szilárd Sertés	FWD	VTC	29	5	811	6.7		180	Luca Bareghi	DEF	SZV	28	27	1983	4		180	László Molnár	MID	SBE	29	23	2239	23
+																		181	Zsigmond Mórócz	MID	VII	29	8	1046	6.7		181	Ödön Kolostoros	DEF	SBE	28	28	2444	4		181	Alexander Vésztői	MID	DBZ	30	12	1405	23
+																		182	Nándor Bölcs	DEF	PSK	29	28	2062	6.7		182	Károly Nedváry	DEF	PSK	29	27	2488	4		182	Valter Fehér	FWD	TTK	30	28	2094	22
+																		183	Henrik Szűcs	DEF	UKH	29	26	2368	6.7		183	Nándor Telekes	DEF	CNV	30	29	2616	4		183	Rudolf Szimondy	FWD	VTC	28	26	2138	21
+																		184	Ferenc Lisztes	DEF	UKH	29	19	1790	6.7		184	Lajos Szalay	DEF	UKH	30	23	1777	4		184	Csanád Vinposzics	MID	MBT	8	8	513	21
+																		185	Valter Fehér	FWD	TTK	30	28	2094	6.7		185	Nándor Virág	DEF	STE	27	22	1724	4		185	Botond Szarvasy	FWD	DBZ	29	23	2229	20
+																		186	Attila Gyöngy	FWD	VII	30	26	2443	6.7		186	Benedek Détáry	DEF	STE	29	27	2467	4		186	Yriö Pohjolainen	FWD	SZT	30	25	2242	20
+																		187	Jakab Kürtös	MID	SZV	30	14	1512	6.7		187	Sándor Veres	DEF	VTC	29	27	2484	4		187	Endre Thébai	FWD	TSE	28	11	1314	20
+																		188	Elemér Balázs	MID	SBE	30	11	1181	6.7		188	Gáspár Holtági	DEF	VII	29	29	2599	4		188	Géza Szakács	FWD	VTC	28	28	2292	20
+																		189	Milán Szentesy	MID	DTK	30	6	901	6.7		189	Marczell Szatmári	DEF	UKH	29	28	2549	4		189	Péter Lipót	FWD	UKH	28	26	2362	19
+																		190	Koppány Tálcásy	MID	DTK	30	24	1733	6.7		190	Mátyás Havasy	DEF	SZV	30	28	2568	4		190	Dömötör Pácz	MID	TSE	18	11	871	19
+																		191	Róbert Szivacsos	MID	VTC	30	25	2383	6.7		191	Noel Karácsony	DEF	VTC	30	16	1614	4		191	Gábor Gyalogos	MID	VII	26	10	1120	19
+																		192	Bertalan Kormos	DEF	MTZ	30	23	2250	6.7		192	Ármin Gyenes	DEF	KDH	30	28	2567	4		192	Elek Árpás	MID	MTZ	30	13	1459	19
+																		193	Huba Tornácz	DEF	MTZ	30	28	2437	6.7		193	Vilmos Ács	MID	SZT	6	3	319	4		193	Antall Kerekes	MID	VTC	30	15	1445	18
+																		194	Flórián Losonczy	MID	TTK	30	12	1506	6.7		194	Gábor Gyalogos	MID	VII	26	10	1120	4		194	Ferenc Keresztes	FWD	SZV	29	26	1824	17
+																		195	Ferenc Bodza	MID	VII	30	30	2700	6.7		195	Sándor Teleki	DEF	DTK	29	28	2528	3		195	Ádám Kiss	MID	DTK	29	10	1146	17
+																		196	Dezső Makkos	MID	PSK	30	15	1541	6.7		196	Márton Mészáros	DEF	TTK	30	7	1046	3		196	Tibor Pintér	MID	SZV	30	7	1041	17
+																		197	Erik Baltás	DEF	DBZ	30	21	2124	6.7		197	Barna Tölgyessy	DEF	DBZ	30	28	2577	3		197	Dezső Balogh	FWD	SBE	29	29	2608	16
+																		198	Alexander Vésztői	MID	DBZ	30	12	1405	6.7		198	Sámuel Rétfalvi	MID	STE	6	5	333	3		198	Carlós Torres	FWD	UKH	30	9	1135	16
+																		199	Miklós Mocsaras	DEF	SZT	30	11	1451	6.7		199	Dömötör Pácz	MID	TSE	18	11	871	3		199	Ernő Szalagos	MID	SZT	12	8	624	16
+																		200	Mátyás Varjas	GK	VII	7	7	630	6.6		200	Csaba Békés	MID	KDH	20	2	447	3		200	Alvin Búzás	MID	MTZ	26	19	1606	16
 																		201	Dezső Nagy	MID	STE	10	9	642	6.6		201	László Báthory	GK	PSK	23	23	2070	2		201	Boldizsár Mátrai	FWD	SZV	26	13	1212	15
 																		202	Dömötör Pácz	MID	TSE	18	11	871	6.6		202	István Barta	DEF	SZT	25	25	2110	2		202	Béla Kun	FWD	UKH	30	25	1866	15
 																		203	Balázs Givrocsics	MID	SZT	18	10	748	6.6		203	Árpád Papucs	DEF	MBT	26	26	2305	2		203	Dezső Nagy	MID	STE	10	9	642	15
@@ -245,12 +245,12 @@
 																		244	Kevin Szalonnás	MID	VTC	30	23	1765	6.5
 																		245	Elek Árpás	MID	MTZ	30	13	1459	6.5
 																		246	Dömötör Borostyán	FWD	PSK	30	29	2612	6.4
-																		247	Miklós Tóth	GK	KDH	1	1	90	7.7
-																		248	Barnabás Labancz	GK	VTC	2	2	180	7.1
+																		247	Miklós Tóth	GK	KDH	1	1	90	7.5
+																		248	Barnabás Labancz	GK	VTC	2	2	180	7.0
 																		249	Csaba Békés	MID	KDH	20	2	447	6.9
 																		250	Sámuel Rétfalvi	MID	STE	6	5	333	6.9
-																		251	Konrád Nemes	GK	DTK	1	1	90	6.8
+																		251	Konrád Nemes	GK	DTK	1	1	90	6.7
 																		252	Ágoston Váradi	MID	VII	3	3	155	6.7
 																		253	Márk Tapolczai	MID	TTK	10	2	267	6.6
 																		254	Vilmos Ács	MID	SZT	6	3	319	6.6
-																		255	Márton Herczeg	GK	UKH	2	2	180	6.6
+																		255	Márton Herczeg	GK	UKH	2	2	180	6.5

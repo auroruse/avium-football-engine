@@ -1917,9 +1917,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   //   mistakes cost" and busy and idle keepers levelled). rateSave is now an ordinary match's worth of saves, paid by
   //   the share of an ordinary keeper's pay his came to; rateBigSave the same for the saves the ordinary keeper does
   //   not reach, against rateGkBig of his shots on target; rateGkMistake a goal that was his, rateGkSoft where a shot
-  //   starts to be one that should not go in; rateGkDamp what a match under an ordinary keeper's counts for; and an
+  //   starts to be one that should not go in; rateGkDamp what a match under an ordinary keeper's counts for (0 since the
+  //   same evening: "only clear mistakes cost", so saving less than usual of what could go either way costs nothing); and an
   //   ordinary match is rateGkPar of pay and rateGkShots shots on target, drawn toward by rateGkLevel of itself.
-  rateBigSave: 1.40, rateGkMistake: 0.70, rateGkSoft: 0.25, rateGkDamp: 0.2, rateGkLevel: 1.0, rateGkPar: 0.40, rateGkShots: 5.0,
+  rateBigSave: 1.40, rateGkMistake: 0.70, rateGkSoft: 0.25, rateGkDamp: 0, rateGkLevel: 1.0, rateGkPar: 0.40, rateGkShots: 5.0,
   rateGkBig: 0.11,
   //   ...WHAT THE LEDGER DID, on three League One seasons played as seasons (lab/rate9-season) against goals prevented
   //   priced after the strike as it stood that afternoon (lab/rate7-season). A keeper's full match is at 6.5 or under
@@ -2164,7 +2165,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
     // 8.5%, a keeper's 6.0% and a defender's 5.1%, and 6.0 or under 9.5%, 6.3%, 2.2% and 7.5%. A win reads 7.22, a
     // draw 6.93 and a defeat 6.69 with nothing paid for the result (SofaScore's 7.23, 6.97, 6.62); one goal 7.93, two
     // 8.98, three 9.64.
-    GK:  { mid: 0.173, up: 1.133, dn: 1.060, tail: 1.156 },
+    // GK's mid refitted the same evening on the seasons played on the final engine (lab/rate9-season, 2,275 full matches):
+    // 0.173 had keepers at 7.07, 0.12 over every other position. At 0.321, with rateGkDamp 0, they read 6.95; 16.9% at
+    // 6.5 or under (a defender's 19.8%) and 2.6% at 6.0 or under, the fewest of any position.
+    GK:  { mid: 0.321, up: 1.133, dn: 1.060, tail: 1.156 },
     DEF: { mid: 0.348, up: 1.133, dn: 1.060, tail: 1.156 },
     MID: { mid: 0.368, up: 1.133, dn: 1.060, tail: 1.156 },
     FWD: { mid: 0.597, up: 1.133, dn: 1.060, tail: 1.156 },

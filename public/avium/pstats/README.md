@@ -229,7 +229,8 @@ against expectation and no longer gives every position the same share of high ma
 of units could not do it, because the new model moves positions against each other. Within each
 position (GK, DEF, MID, FWD) a man keeps his rank; the position takes the distribution the new engine
 gives a group of that size. It is a quantile map, taken separately for the qualified men and for the
-rest. The reference is three NL1 seasons played on the new engine: each man's season is re-drawn
+rest. The reference is three NL1 seasons played on the new engine (keepers on that evening's refit, which put them
+at the same par as everyone else): each man's season is re-drawn
 300 times from it, his starts taken from one of its regulars and his substitute appearances from its
 appearances at his minutes, so a cup of one-match men spreads like a cup and a forty-match league
 like a league. Boards are re-sorted and renumbered. Goals, assists and every other board are

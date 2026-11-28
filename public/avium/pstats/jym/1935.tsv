@@ -2,9 +2,9 @@
 1	Raleigh Preston	FWD	NSR	4	4	270	6		1	Suhayl Al-Marwan	FWD	BAZ	3	3	198	3		1	Raleigh Preston	FWD	NSR	4	4	270	8.9		1	Ashkan Mahdavi	FWD	PAS	3	3	174	23		1	Tadhana Batumbakal	DEF	SKH	4	4	304	30		1	Sohail Diba	GK	BAZ	3	3	270	18
 2	Farbod Roohi	FWD	BAZ	3	3	195	4		2	Raleigh Preston	FWD	NSR	4	4	270	3		2	Bartosz Jastrzębski	MID	NSR	4	4	232	8.8		2	Alex Kaczmarek	FWD	SKH	4	4	265	16		2	Yashar Niroomand	DEF	AHA	1	1	90	24		2	Faisal Al-Dosari	GK	NSR	4	4	360	16
 3	Dariush Karimi	FWD	DAR	3	3	215	3		3	Tariq Al-Nawti	MID	BDS	1	1	90	2		3	Yashar Niroomand	DEF	AHA	1	1	90	8.5		3	Takeru Mikado	MID	SKH	4	4	243	15		3	Ardalan Danesh	DEF	SKH	4	4	360	24		3	Idris Katib	GK	TAR	2	2	180	15
-4	Orod Soltani	FWD	DGD	1	0	51	2		4	Zareen Fahrzan	FWD	EST	1	1	49	2		4	Idris Katib	GK	TAR	2	2	180	8.5		4	Suhayl Al-Marwan	FWD	BAZ	3	3	198	14		4	Bartosz Jastrzębski	MID	NSR	4	4	232	18		4	Manuchehr Pirzad	GK	DAR	3	3	270	13
-5	Jaadallah El-Farid	MID	NSR	4	4	360	2		5	Kian Shokoohi	MID	BAZ	1	0	45	2		5	Farbod Roohi	FWD	BAZ	3	3	195	8.4		5	Rayan Khathlan	MID	SHU	2	2	132	13		5	Tole-Buqa Inalchi	MID	SKH	4	4	260	17		5	Siamak Golbaf	GK	NAQ	2	2	180	11
-6	Zayit Bloom	MID	BDS	1	1	90	1		6	Tourang Asyaban	MID	MEH	2	2	180	2		6	Takeru Mikado	MID	SKH	4	4	243	8.4		6	Sōta Wakatsuki	MID	PAS	3	3	216	12		6	Kenneth Haugland	DEF	NSR	4	4	360	17		6	Hormoz Mottaghi	GK	FOU	2	2	180	11
+4	Orod Soltani	FWD	DGD	1	0	51	2		4	Zareen Fahrzan	FWD	EST	1	1	49	2		4	Farbod Roohi	FWD	BAZ	3	3	195	8.4		4	Suhayl Al-Marwan	FWD	BAZ	3	3	198	14		4	Bartosz Jastrzębski	MID	NSR	4	4	232	18		4	Manuchehr Pirzad	GK	DAR	3	3	270	13
+5	Jaadallah El-Farid	MID	NSR	4	4	360	2		5	Kian Shokoohi	MID	BAZ	1	0	45	2		5	Takeru Mikado	MID	SKH	4	4	243	8.4		5	Rayan Khathlan	MID	SHU	2	2	132	13		5	Tole-Buqa Inalchi	MID	SKH	4	4	260	17		5	Siamak Golbaf	GK	NAQ	2	2	180	11
+6	Zayit Bloom	MID	BDS	1	1	90	1		6	Tourang Asyaban	MID	MEH	2	2	180	2		6	Idris Katib	GK	TAR	2	2	180	8.3		6	Sōta Wakatsuki	MID	PAS	3	3	216	12		6	Kenneth Haugland	DEF	NSR	4	4	360	17		6	Hormoz Mottaghi	GK	FOU	2	2	180	11
 7	Fardin Mehrgan	FWD	EST	1	1	51	1		7	Butti Al-Yasra	MID	MVA	2	2	180	2		7	Kian Abdi	DEF	FOU	1	0	60	8.1		7	Arsalan Sharif	MID	BAZ	3	3	230	8		7	Munir Mizan	DEF	TAR	2	2	180	15		7	Khalaf Al-Hassat	GK	MVA	2	2	180	10
 8	Jahan Mashayekhi	FWD	MEH	2	2	153	1		8	Tourang Khānlari	MID	DGD	2	2	159	2		8	Zayit Bloom	MID	BDS	1	1	90	8.1		8	Siavash Mehrian	MID	DAR	3	3	180	8		8	Bardia Sorkhābi	DEF	BAZ	3	3	233	14		8	Kai Ouyang	GK	SKH	4	4	360	10
 9	Sanjar Hamrah	MID	TND	2	2	167	1		9	Taghi Hashemi-Far	MID	BAZ	3	3	225	1		9	Dariush Karimi	FWD	DAR	3	3	215	8.1		9	Bartosz Jastrzębski	MID	NSR	4	4	232	8		9	Eskandar Dehghan	DEF	PAS	3	3	217	14		9	Keyvan Rahnavard	GK	TND	2	2	180	8
@@ -13,18 +13,18 @@
 12	Khosrow Mousavi	FWD	DGD	2	2	129	1		12	Fereydoun Vatankhah	MID	DAR	3	3	212	1		12	Titus Hochberg	DEF	FOU	2	2	139	7.9		12	Tourang Asyaban	MID	MEH	2	2	180	7		12	Loïc Kervadec	MID	NSR	4	4	307	12		12	Salim Al-Bahri	GK	BDS	1	1	90	6
 13	Abdulrahman Al-Bishi	FWD	SHU	2	2	89	1		13	Yuto Ōtani	FWD	DAR	3	3	172	1		13	Ashkan Mahdavi	FWD	PAS	3	3	174	7.9		13	Tourang Khānlari	MID	DGD	2	2	159	7		13	Kian Abdi	DEF	FOU	1	0	60	12		13	Arya Badpa	GK	HOM	1	1	90	5
 14	Orod Pourahmadi	FWD	BAZ	3	0	113	1		14	Siavash Mehrian	MID	DAR	3	3	180	1		14	Siavash Mehrian	MID	DAR	3	3	180	7.9		14	Ziyad Subaie	MID	NSR	4	4	258	7		14	Ramtin Avestani	DEF	MEH	2	2	180	12		14	Zal Kohgard	GK	DFK	1	1	90	5
-15	Suhayl Al-Marwan	FWD	BAZ	3	3	198	1		15	Ziyad Subaie	MID	NSR	4	4	258	1		15	Zal Kohgard	GK	DFK	1	1	90	7.8		15	Tadhana Batumbakal	DEF	SKH	4	4	304	6		15	Wathiq Al-Kayyal	DEF	TAR	2	2	180	12		15	Sohrab Palayesh	GK	BOL	1	1	90	5
-16	Behzad Pourmehrdad	MID	PAS	3	3	217	1		16	Bartosz Jastrzębski	MID	NSR	4	4	232	1		16	Jubayr Manzil	GK	KRV	1	1	90	7.8		16	Farbod Roohi	FWD	BAZ	3	3	195	6		16	Juma Tawwash	DEF	MVA	2	2	180	12		16	Jubayr Manzil	GK	KRV	1	1	90	5
-17	Ashkan Mahdavi	FWD	PAS	3	3	174	1		17	Takeru Mikado	MID	SKH	4	4	243	1		17	Hormoz Mottaghi	GK	FOU	2	2	180	7.8		17	Fereydoun Vatankhah	MID	DAR	3	3	212	5		17	Dara Mosaffa	DEF	BAZ	3	3	270	12		17	Erik Ratas	GK	MEH	2	2	180	5
-18	Bartosz Jastrzębski	MID	NSR	4	4	232	1		18	Vandad Tabrizi	MID	SKH	4	0	217	1		18	Nima Parvaneh	DEF	HOM	1	1	90	7.7		18	Loïc Kervadec	MID	NSR	4	4	307	5		18	Sōta Wakatsuki	MID	PAS	3	3	216	11		18	Chahrokh Nassirian	GK	DGD	2	2	180	5
-19	Tadhana Batumbakal	DEF	SKH	4	4	304	1		19	Alex Kaczmarek	FWD	SKH	4	4	265	1		19	Davoud Kheybari	MID	DGD	2	2	180	7.7		19	Iman Kandan	FWD	DFK	1	1	53	4		19	Fereydoun Vatankhah	MID	DAR	3	3	212	10		19	Jahangir Keramati	GK	DAN	1	1	90	3
-20	Takeru Mikado	MID	SKH	4	4	243	1											20	Tourang Khānlari	MID	DGD	2	2	159	7.7		20	Sepehr Qaleb	FWD	BOL	1	1	77	4		20	Khosro Heydari	DEF	FOU	2	2	180	10		20	Behnam Sarzeri	GK	EST	1	1	90	2
-21	Mehran Shahi	MID	SKH	4	4	360	1											21	Rayan Khathlan	MID	SHU	2	2	132	7.7		21	Sina Gereh	FWD	NAQ	2	2	97	4		21	Hushmand Qajar	DEF	DGD	2	2	180	10		21	Kamyar Tarokh	GK	KEM	2	2	180	2
-22	Tole-Buqa Inalchi	MID	SKH	4	4	260	1											22	Suhayl Al-Marwan	FWD	BAZ	3	3	198	7.7		22	Nikan Ostūri	FWD	MEH	2	2	147	4		22	Kamran Vakili	DEF	AZA	2	2	180	10		22	Saud Nakhli	GK	SHU	2	2	180	2
-23	Parviz Ghaderi	FWD	SKH	4	4	271	1											23	Kenneth Haugland	DEF	NSR	4	4	360	7.7		23	Rashed Mashta	FWD	MVA	2	0	55	4		23	Fahad Faraj	DEF	SHU	2	2	180	10		23	Vahid Lorestani	GK	PAS	3	3	270	2
-24	Alex Kaczmarek	FWD	SKH	4	4	265	1											24	Alex Kaczmarek	FWD	SKH	4	4	265	7.7		24	Khosrow Mousavi	FWD	DGD	2	2	129	4		24	Arash Davidi	DEF	DAR	3	3	270	10
-																		25	Loïc Kervadec	MID	NSR	4	4	307	7.7		25	Jahangir Mozafari	FWD	AZA	2	2	127	4		25	Jaadallah El-Farid	MID	NSR	4	4	360	9
-																		26	Farshad Qand	DEF	BOL	1	1	90	7.6		26	Farhad Adelstein	FWD	AZA	2	2	133	4		26	Takeru Mikado	MID	SKH	4	4	243	9
+15	Suhayl Al-Marwan	FWD	BAZ	3	3	198	1		15	Ziyad Subaie	MID	NSR	4	4	258	1		15	Nima Parvaneh	DEF	HOM	1	1	90	7.7		15	Tadhana Batumbakal	DEF	SKH	4	4	304	6		15	Wathiq Al-Kayyal	DEF	TAR	2	2	180	12		15	Sohrab Palayesh	GK	BOL	1	1	90	5
+16	Behzad Pourmehrdad	MID	PAS	3	3	217	1		16	Bartosz Jastrzębski	MID	NSR	4	4	232	1		16	Davoud Kheybari	MID	DGD	2	2	180	7.7		16	Farbod Roohi	FWD	BAZ	3	3	195	6		16	Juma Tawwash	DEF	MVA	2	2	180	12		16	Jubayr Manzil	GK	KRV	1	1	90	5
+17	Ashkan Mahdavi	FWD	PAS	3	3	174	1		17	Takeru Mikado	MID	SKH	4	4	243	1		17	Tourang Khānlari	MID	DGD	2	2	159	7.7		17	Fereydoun Vatankhah	MID	DAR	3	3	212	5		17	Dara Mosaffa	DEF	BAZ	3	3	270	12		17	Erik Ratas	GK	MEH	2	2	180	5
+18	Bartosz Jastrzębski	MID	NSR	4	4	232	1		18	Vandad Tabrizi	MID	SKH	4	0	217	1		18	Rayan Khathlan	MID	SHU	2	2	132	7.7		18	Loïc Kervadec	MID	NSR	4	4	307	5		18	Sōta Wakatsuki	MID	PAS	3	3	216	11		18	Chahrokh Nassirian	GK	DGD	2	2	180	5
+19	Tadhana Batumbakal	DEF	SKH	4	4	304	1		19	Alex Kaczmarek	FWD	SKH	4	4	265	1		19	Suhayl Al-Marwan	FWD	BAZ	3	3	198	7.7		19	Iman Kandan	FWD	DFK	1	1	53	4		19	Fereydoun Vatankhah	MID	DAR	3	3	212	10		19	Jahangir Keramati	GK	DAN	1	1	90	3
+20	Takeru Mikado	MID	SKH	4	4	243	1											20	Kenneth Haugland	DEF	NSR	4	4	360	7.7		20	Sepehr Qaleb	FWD	BOL	1	1	77	4		20	Khosro Heydari	DEF	FOU	2	2	180	10		20	Behnam Sarzeri	GK	EST	1	1	90	2
+21	Mehran Shahi	MID	SKH	4	4	360	1											21	Alex Kaczmarek	FWD	SKH	4	4	265	7.7		21	Sina Gereh	FWD	NAQ	2	2	97	4		21	Hushmand Qajar	DEF	DGD	2	2	180	10		21	Kamyar Tarokh	GK	KEM	2	2	180	2
+22	Tole-Buqa Inalchi	MID	SKH	4	4	260	1											22	Loïc Kervadec	MID	NSR	4	4	307	7.7		22	Nikan Ostūri	FWD	MEH	2	2	147	4		22	Kamran Vakili	DEF	AZA	2	2	180	10		22	Saud Nakhli	GK	SHU	2	2	180	2
+23	Parviz Ghaderi	FWD	SKH	4	4	271	1											23	Zal Kohgard	GK	DFK	1	1	90	7.6		23	Rashed Mashta	FWD	MVA	2	0	55	4		23	Fahad Faraj	DEF	SHU	2	2	180	10		23	Vahid Lorestani	GK	PAS	3	3	270	2
+24	Alex Kaczmarek	FWD	SKH	4	4	265	1											24	Farshad Qand	DEF	BOL	1	1	90	7.6		24	Khosrow Mousavi	FWD	DGD	2	2	129	4		24	Arash Davidi	DEF	DAR	3	3	270	10
+																		25	Jubayr Manzil	GK	KRV	1	1	90	7.6		25	Jahangir Mozafari	FWD	AZA	2	2	127	4		25	Jaadallah El-Farid	MID	NSR	4	4	360	9
+																		26	Hormoz Mottaghi	GK	FOU	2	2	180	7.6		26	Farhad Adelstein	FWD	AZA	2	2	133	4		26	Takeru Mikado	MID	SKH	4	4	243	9
 																		27	Jahan Mashayekhi	FWD	MEH	2	2	153	7.6		27	Naif Khaldi	FWD	SHU	2	2	89	4		27	Darab Pāriguri	DEF	MEH	2	2	140	9
 																		28	Sanjar Hamrah	MID	TND	2	2	167	7.6		28	Kaveh Bahmani	FWD	SKH	4	4	260	4		28	Arman Daneshmand	DEF	KEM	2	2	180	9
 																		29	Kambiz Golchin	DEF	BAZ	3	3	270	7.6		29	Parviz Ghaderi	FWD	SKH	4	4	271	4		29	Reza Mozaffari	DEF	PAS	3	3	270	9
@@ -52,224 +52,224 @@
 																		51	Tole-Buqa Inalchi	MID	SKH	4	4	260	7.4		51	Mansour Rayegan	FWD	SRD	1	1	72	2		51	Ryōhei Iwakuma	DEF	SKH	4	4	360	6
 																		52	Farbod Yazdani	DEF	DAN	1	1	90	7.3		52	Ehsan Vahdat	MID	DAN	1	0	15	2		52	Rintarō Kiyomizu	DEF	SKH	4	4	306	6
 																		53	Carmel Waley	DEF	BDS	1	1	73	7.3		53	Delshad Ostāadi	MID	DAN	1	1	90	2		53	Alex Kaczmarek	FWD	SKH	4	4	265	5
-																		54	Keyvan Rahnavard	GK	TND	2	2	180	7.3		54	Tirdad Behdād	FWD	DAN	1	1	90	2		54	Hajime Morimoto	FWD	PAS	3	3	179	5
-																		55	Khalaf Al-Hassat	GK	MVA	2	2	180	7.3		55	Nikan Mehrāzar	FWD	DAN	1	1	90	2		55	Dariush Karimi	FWD	DAR	3	3	215	5
-																		56	Khosro Heydari	DEF	FOU	2	2	180	7.3		56	Farzin Roshani	FWD	DAN	1	1	69	2		56	Sanjar Hamrah	MID	TND	2	2	167	5
-																		57	Fahad Faraj	DEF	SHU	2	2	180	7.3		57	Anushirvan Marghzar	MID	DFK	1	1	90	2		57	Nader Kianian	MID	FOU	2	2	180	5
-																		58	Manuchehr Pirzad	GK	DAR	3	3	270	7.3		58	Zand Jarayan	MID	AHA	1	1	90	2		58	Hunayn Ibn Ishaq	MID	TAR	2	2	140	5
-																		59	Faisal Al-Dosari	GK	NSR	4	4	360	7.3		59	Tariq Al-Nawti	MID	BDS	1	1	90	2		59	Ubayd Al-Daftar	MID	TAR	2	2	122	5
-																		60	Antaei Djurunga	DEF	HOM	1	1	60	7.2		60	Anwar Sadaf	FWD	BDS	1	0	13	2		60	Taghi Hashemi-Far	MID	BAZ	3	3	225	5
-																		61	Farzin Simkesh	DEF	AHA	1	1	90	7.2		61	Qais Al-Lulu	FWD	BDS	1	1	77	2		61	Silas Davis	MID	NSR	4	4	251	5
-																		62	Ramin Degchi	MID	BOL	1	1	90	7.2		62	Feivel Weizman	FWD	BDS	1	1	79	2		62	Farzad Charkh	MID	HOM	1	1	90	5
-																		63	Ibrahim Jammal	DEF	KRV	1	1	62	7.2		63	Hooman Parvareh	MID	BOL	1	1	90	2		63	Zand Jarayan	MID	AHA	1	1	90	5
-																		64	Ramtin Avestani	DEF	MEH	2	2	180	7.2		64	Milad Sarboland	FWD	BOL	1	1	74	2		64	Omar Khayyam	MID	NAQ	2	2	131	5
-																		65	Nader Kianian	MID	FOU	2	2	180	7.2		65	Ghanim Al-Khan	MID	KRV	1	1	90	2		65	Mani Naqshband	MID	NAQ	2	0	83	5
-																		66	Sayf Al-Hammal	FWD	TAR	2	2	139	7.2		66	Muhsin Al-Sabil	MID	KRV	1	1	90	2		66	Artin Darbaf	MID	NAQ	2	2	156	5
-																		67	Juma Tawwash	DEF	MVA	2	2	180	7.2		67	Nayif Al-Tariq	FWD	KRV	1	0	38	2		67	Tourang Asyaban	MID	MEH	2	2	180	5
-																		68	Butti Al-Yasra	MID	MVA	2	2	180	7.2		68	Arsalan Kheybari	MID	EST	1	1	90	2		68	Ardavan Poladvand	MID	TND	2	2	180	5
-																		69	Manuchehr Khorrami	DEF	AZA	2	2	180	7.2		69	Sohrab Gandomzar	MID	EST	1	1	90	2		69	Afshin Lakzāyi	MID	FOU	2	2	180	5
-																		70	Hormoz Blourian	MID	AZA	2	2	126	7.2		70	Heshmat Razavi-Far	MID	EST	1	0	39	2		70	Behrad Pakuh	MID	FOU	2	2	116	5
-																		71	Khalid Al-Sahli	DEF	SHU	2	2	180	7.2		71	Obaid Yektai	FWD	EST	1	0	41	2		71	Shervin Pournejad	MID	FOU	2	2	117	5
-																		72	Orod Pourahmadi	FWD	BAZ	3	0	113	7.2		72	Zareen Fahrzan	FWD	EST	1	1	49	2		72	Nima Parvaneh	DEF	HOM	1	1	90	5
-																		73	Mohsen Tabrizi	DEF	PAS	3	3	270	7.2		73	Kaveh Rezghi	MID	EST	1	1	52	2		73	Farbod Yazdani	DEF	DAN	1	1	90	5
+																		54	Khosro Heydari	DEF	FOU	2	2	180	7.3		54	Tirdad Behdād	FWD	DAN	1	1	90	2		54	Hajime Morimoto	FWD	PAS	3	3	179	5
+																		55	Fahad Faraj	DEF	SHU	2	2	180	7.3		55	Nikan Mehrāzar	FWD	DAN	1	1	90	2		55	Dariush Karimi	FWD	DAR	3	3	215	5
+																		56	Antaei Djurunga	DEF	HOM	1	1	60	7.2		56	Farzin Roshani	FWD	DAN	1	1	69	2		56	Sanjar Hamrah	MID	TND	2	2	167	5
+																		57	Farzin Simkesh	DEF	AHA	1	1	90	7.2		57	Anushirvan Marghzar	MID	DFK	1	1	90	2		57	Nader Kianian	MID	FOU	2	2	180	5
+																		58	Ramin Degchi	MID	BOL	1	1	90	7.2		58	Zand Jarayan	MID	AHA	1	1	90	2		58	Hunayn Ibn Ishaq	MID	TAR	2	2	140	5
+																		59	Ibrahim Jammal	DEF	KRV	1	1	62	7.2		59	Tariq Al-Nawti	MID	BDS	1	1	90	2		59	Ubayd Al-Daftar	MID	TAR	2	2	122	5
+																		60	Keyvan Rahnavard	GK	TND	2	2	180	7.2		60	Anwar Sadaf	FWD	BDS	1	0	13	2		60	Taghi Hashemi-Far	MID	BAZ	3	3	225	5
+																		61	Khalaf Al-Hassat	GK	MVA	2	2	180	7.2		61	Qais Al-Lulu	FWD	BDS	1	1	77	2		61	Silas Davis	MID	NSR	4	4	251	5
+																		62	Ramtin Avestani	DEF	MEH	2	2	180	7.2		62	Feivel Weizman	FWD	BDS	1	1	79	2		62	Farzad Charkh	MID	HOM	1	1	90	5
+																		63	Nader Kianian	MID	FOU	2	2	180	7.2		63	Hooman Parvareh	MID	BOL	1	1	90	2		63	Zand Jarayan	MID	AHA	1	1	90	5
+																		64	Sayf Al-Hammal	FWD	TAR	2	2	139	7.2		64	Milad Sarboland	FWD	BOL	1	1	74	2		64	Omar Khayyam	MID	NAQ	2	2	131	5
+																		65	Juma Tawwash	DEF	MVA	2	2	180	7.2		65	Ghanim Al-Khan	MID	KRV	1	1	90	2		65	Mani Naqshband	MID	NAQ	2	0	83	5
+																		66	Butti Al-Yasra	MID	MVA	2	2	180	7.2		66	Muhsin Al-Sabil	MID	KRV	1	1	90	2		66	Artin Darbaf	MID	NAQ	2	2	156	5
+																		67	Manuchehr Khorrami	DEF	AZA	2	2	180	7.2		67	Nayif Al-Tariq	FWD	KRV	1	0	38	2		67	Tourang Asyaban	MID	MEH	2	2	180	5
+																		68	Hormoz Blourian	MID	AZA	2	2	126	7.2		68	Arsalan Kheybari	MID	EST	1	1	90	2		68	Ardavan Poladvand	MID	TND	2	2	180	5
+																		69	Khalid Al-Sahli	DEF	SHU	2	2	180	7.2		69	Sohrab Gandomzar	MID	EST	1	1	90	2		69	Afshin Lakzāyi	MID	FOU	2	2	180	5
+																		70	Manuchehr Pirzad	GK	DAR	3	3	270	7.2		70	Heshmat Razavi-Far	MID	EST	1	0	39	2		70	Behrad Pakuh	MID	FOU	2	2	116	5
+																		71	Orod Pourahmadi	FWD	BAZ	3	0	113	7.2		71	Obaid Yektai	FWD	EST	1	0	41	2		71	Shervin Pournejad	MID	FOU	2	2	117	5
+																		72	Mohsen Tabrizi	DEF	PAS	3	3	270	7.2		72	Zareen Fahrzan	FWD	EST	1	1	49	2		72	Nima Parvaneh	DEF	HOM	1	1	90	5
+																		73	Faisal Al-Dosari	GK	NSR	4	4	360	7.2		73	Kaveh Rezghi	MID	EST	1	1	52	2		73	Farbod Yazdani	DEF	DAN	1	1	90	5
 																		74	Ryōhei Iwakuma	DEF	SKH	4	4	360	7.2		74	Kian Shokoohi	MID	BAZ	1	0	45	2		74	Bozorgmehr Damavand	DEF	DFK	1	1	90	5
 																		75	Danial Raad	DEF	DAN	1	1	90	7.1		75	Yashar Shaneh	MID	NAQ	2	2	97	2		75	Behrouz Simband	DEF	AHA	1	0	46	5
-																		76	Siamak Golbaf	GK	NAQ	2	2	180	7.1		76	Ardavan Poladvand	MID	TND	2	2	180	2		76	Carmel Waley	DEF	BDS	1	1	73	5
-																		77	Miklós Nagy	GK	AZA	2	2	180	7.1		77	Narseh Mostowfi	MID	TND	2	2	142	2		77	Mansur Al-Huda	DEF	KRV	1	1	90	5
-																		78	Iraj Shahvand	DEF	TND	2	2	180	7.1		78	Farrokh Andisheh	MID	TND	2	0	74	2		78	Hilal Al-Qafila	DEF	KRV	1	1	90	5
-																		79	Rashid Bahmanyar	DEF	FOU	2	2	180	7.1		79	Karan Shateri	MID	TND	2	2	144	2		79	Mohammad Reza Pahlavi	DEF	EST	1	1	90	5
-																		80	Wathiq Al-Kayyal	DEF	TAR	2	2	180	7.1		80	Omah Azir	FWD	TND	2	2	131	2		80	Iraj Shahvand	DEF	TND	2	2	180	5
-																		81	Suwayd Mahhar	DEF	MVA	2	2	153	7.1		81	Behrad Pakuh	MID	FOU	2	2	116	2		81	Qobad Zarrinkafsh	DEF	TND	2	2	180	5
-																		82	Mazdak Safavi	DEF	KEM	2	2	180	7.1		82	Nader Kianian	MID	FOU	2	2	180	2		82	Suwayd Mahhar	DEF	MVA	2	2	153	5
-																		83	Mehrzad Zamani	FWD	KEM	2	0	85	7.1		83	Shervin Pournejad	MID	FOU	2	2	117	2		83	Setareh Radahn	DEF	KEM	2	2	180	5
-																		84	Nima Raad	DEF	DGD	2	2	180	7.1		84	Hunayn Ibn Ishaq	MID	TAR	2	2	140	2		84	Mazdak Safavi	DEF	KEM	2	2	180	5
-																		85	Khosrow Mousavi	FWD	DGD	2	2	129	7.1		85	Rafiq Al-Qayd	MID	TAR	2	2	137	2		85	Sohrab Bozorgi	DEF	AZA	2	2	130	5
-																		86	Sohrab Bozorgi	DEF	AZA	2	2	130	7.1		86	Muthanna Rasif	FWD	TAR	2	2	137	2		86	Behnam Pasdar	DEF	BAZ	3	3	225	5
-																		87	Farhad Adelstein	FWD	AZA	2	2	133	7.1		87	Darwish Sahil	MID	MVA	2	0	57	2		87	Mohsen Tabrizi	DEF	PAS	3	3	270	5
-																		88	Hajime Morimoto	FWD	PAS	3	3	179	7.1		88	Hamdan Majra	MID	MVA	2	2	180	2		88	Valterri Lehtonen	FWD	DAR	3	3	213	4
-																		89	Valterri Lehtonen	FWD	DAR	3	3	213	7.1		89	Saqr Al-Dana	MID	MVA	2	2	151	2		89	Rafiq Al-Qayd	MID	TAR	2	2	137	4
-																		90	Turki Ibn Shammari	DEF	NSR	4	4	308	7.1		90	Mehrzad Zamani	FWD	KEM	2	0	85	2		90	Hamdan Majra	MID	MVA	2	2	180	4
-																		91	Bahman Parastui	GK	SRD	1	1	90	7.0		91	Farbod Kalami	FWD	KEM	2	2	125	2		91	Zaid Al-Hazmi	MID	SHU	2	0	84	4
-																		92	Kian Forough	GK	AHA	1	1	90	7.0		92	Danial Sokhanvar	MID	KEM	2	2	131	2		92	Maziar Sehat	MID	PAS	3	3	270	4
-																		93	Farzad Charkh	MID	HOM	1	1	90	7.0		93	Emad Askari	MID	DGD	2	0	68	2		93	Behzad Pourmehrdad	MID	PAS	3	3	217	4
-																		94	Ardeshir Faisali	MID	SRD	1	1	90	7.0		94	Navid Lofti	MID	DGD	2	2	180	2		94	Hormoz Ershadi	MID	PAS	3	0	145	4
-																		95	Anushirvan Marghzar	MID	DFK	1	1	90	7.0		95	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	2		95	Sasan Bayat	MID	DAR	3	3	270	4
-																		96	Arsalan Kheybari	MID	EST	1	1	90	7.0		96	Nariman Freydooni	MID	AZA	2	2	180	2		96	Artin Barqi	MID	AHA	1	1	90	4
-																		97	Sohrab Gandomzar	MID	EST	1	1	90	7.0		97	Omid Khoshnam	FWD	AZA	2	0	100	2		97	Hooman Parvareh	MID	BOL	1	1	90	4
-																		98	Vishtasp Taftan	DEF	DFK	1	1	90	7.0		98	Bijan Shakibaii	MID	AZA	2	2	139	2		98	Ghassan Al-Tabi	MID	TAR	1	0	43	4
-																		99	Sina Partow	DEF	AHA	1	1	90	7.0		99	Osama Al-Najem	FWD	SHU	2	0	92	2		99	Heshmat Razavi-Far	MID	EST	1	0	39	4
-																		100	Jamal Al-Sayyad	DEF	BDS	1	1	90	7.0		100	Orod Pourahmadi	FWD	BAZ	3	0	113	2		100	Narseh Mostowfi	MID	TND	2	2	142	4
-																		101	Nima Tasfiyeh	DEF	BOL	1	1	90	7.0		101	Yazeed Al-Braik	FWD	NSR	3	0	138	2		101	Hazim Wazzan	MID	TAR	2	2	136	4
-																		102	Renji Yamase	MID	NAQ	2	2	180	7.0		102	Nader Daneshi	FWD	PAS	3	0	149	2		102	Jahan Shokoufeh	MID	KEM	2	0	79	4
-																		103	Ardavan Poladvand	MID	TND	2	2	180	7.0		103	Hajime Morimoto	FWD	PAS	3	3	179	2		103	Davoud Kheybari	MID	DGD	2	2	180	4
-																		104	Hunayn Ibn Ishaq	MID	TAR	2	2	140	7.0		104	Valterri Lehtonen	FWD	DAR	3	3	213	2		104	Tourang Khānlari	MID	DGD	2	2	159	4
-																		105	Ubayd Al-Daftar	MID	TAR	2	2	122	7.0		105	Ahmad Ibn Majid	DEF	BDS	1	1	90	1		105	Hormoz Blourian	MID	AZA	2	2	126	4
-																		106	Navid Lofti	MID	DGD	2	2	180	7.0		106	Parsa Abrisham	DEF	NAQ	2	2	180	1		106	Rayan Khathlan	MID	SHU	2	2	132	4
-																		107	Farzad Rangraz	DEF	NAQ	2	2	180	7.0		107	Garshasp Bonyadi	DEF	TND	2	2	180	1		107	Arsalan Sharif	MID	BAZ	3	3	230	4
-																		108	Arman Spahani	DEF	MEH	2	2	144	7.0		108	Khosro Heydari	DEF	FOU	2	2	180	1		108	Mishal Malki	MID	NSR	4	0	189	4
-																		109	Matar Qumasha	DEF	MVA	2	2	180	7.0		109	Mazdak Safavi	DEF	KEM	2	2	180	1		109	Ziyad Subaie	MID	NSR	4	4	258	4
-																		110	Bahador Roshanfekr	DEF	KEM	2	2	150	7.0		110	Arman Daneshmand	DEF	KEM	2	2	180	1		110	Kian Bolandi	DEF	HOM	1	0	30	4
-																		111	Sohail Diba	GK	BAZ	3	3	270	7.0		111	Kambiz Golchin	DEF	BAZ	3	3	270	1		111	Antaei Djurunga	DEF	HOM	1	1	60	4
-																		112	Jaadallah El-Farid	MID	NSR	4	4	360	7.0		112	Eskandar Dehghan	DEF	PAS	3	3	217	1		112	Mehrdad Hashemi	DEF	SRD	1	1	49	4
-																		113	Silas Davis	MID	NSR	4	4	251	7.0		113	Kasra Shahbaz	DEF	HOM	1	1	90	1		113	Khashayar Barzkuh	DEF	DFK	1	1	90	4
-																		114	Amir Yousefi	MID	SKH	4	0	199	7.0		114	Danial Raad	DEF	DAN	1	1	90	1		114	Sina Partow	DEF	AHA	1	1	90	4
-																		115	Majed Al-Otaibi	DEF	NSR	4	4	360	7.0		115	Narsi Polad	DEF	DFK	1	0	37	1		115	Bahador Afruz	DEF	AHA	1	1	90	4
-																		116	Ardalan Danesh	DEF	SKH	4	4	360	7.0		116	Gudarz Sangshekan	DEF	DFK	1	1	57	1		116	Arash Nabat	DEF	BOL	1	0	31	4
-																		117	Sohrab Palayesh	GK	BOL	1	1	90	6.9		117	Sina Partow	DEF	AHA	1	1	90	1		117	Yousef Al-Marri	DEF	SHU	1	0	37	4
-																		118	Vahid Lorestani	GK	PAS	3	3	270	6.9		118	Yashar Niroomand	DEF	AHA	1	1	90	1		118	Fawaz Amri	DEF	NSR	2	0	89	4
-																		119	Jahangir Keramati	GK	DAN	1	1	90	6.8		119	Bahador Afruz	DEF	AHA	1	1	90	1		119	Nima Raad	DEF	DGD	2	2	180	4
-																		120	Sam Kaviyan	MID	DFK	1	1	90	6.8		120	Carmel Waley	DEF	BDS	1	1	73	1		120	Jamshid Momeni	DEF	AZA	2	2	180	4
-																		121	Hossein Sina	MID	AHA	1	1	90	6.8		121	Jubayr Manzil	GK	KRV	1	1	90	1		121	Peyman Forouzandeh	DEF	AZA	2	0	93	4
-																		122	Zand Jarayan	MID	AHA	1	1	90	6.8		122	Milad Khoraki	DEF	EST	1	1	90	1		122	Nasser Hamdan	DEF	SHU	2	2	180	4
-																		123	Jahid Hajati	MID	FOU	1	0	63	6.8		123	Hamid Goshir	DEF	EST	1	1	90	1		123	Reza Khorshidi	DEF	BAZ	3	3	270	4
-																		124	Bozorgmehr Damavand	DEF	DFK	1	1	90	6.8		124	Farzad Rangraz	DEF	NAQ	2	2	180	1		124	Kourosh Tahmasebi	DEF	DAR	3	3	270	4
-																		125	Bahador Afruz	DEF	AHA	1	1	90	6.8		125	Arsham Nakhris	DEF	NAQ	2	2	180	1		125	Ehsan Sarbāzi	FWD	FOU	2	0	125	3
-																		126	Mansur Al-Huda	DEF	KRV	1	1	90	6.8		126	Qobad Zarrinkafsh	DEF	TND	2	2	180	1		126	Tirdad Mansouri	FWD	AZA	2	2	138	3
-																		127	Kamyar Tarokh	GK	KEM	2	2	180	6.8		127	Rashid Bahmanyar	DEF	FOU	2	2	180	1		127	Nader Daneshi	FWD	PAS	3	0	149	3
-																		128	Omar Khayyam	MID	NAQ	2	2	131	6.8		128	Titus Hochberg	DEF	FOU	2	2	139	1		128	Ramin Degchi	MID	BOL	1	1	90	3
-																		129	Sina Gereh	FWD	NAQ	2	2	97	6.8		129	Munir Mizan	DEF	TAR	2	2	180	1		129	Jahid Hajati	MID	FOU	1	0	63	3
-																		130	Narseh Mostowfi	MID	TND	2	2	142	6.8		130	Matar Qumasha	DEF	MVA	2	2	180	1		130	Cyrus Pazdar	MID	EST	1	1	90	3
-																		131	Farrokh Andisheh	MID	TND	2	0	74	6.8		131	Bahador Roshanfekr	DEF	KEM	2	2	150	1		131	Kaveh Rezghi	MID	EST	1	1	52	3
-																		132	Shervin Pournejad	MID	FOU	2	2	117	6.8		132	Kianoush Bahari	DEF	DGD	2	2	131	1		132	Esfandiar Hajipour	MID	DAR	1	0	58	3
-																		133	Ehsan Sarbāzi	FWD	FOU	2	0	125	6.8		133	Sohrab Bozorgi	DEF	AZA	2	2	130	1		133	Kaito Annaka	MID	NAQ	2	2	180	3
-																		134	Ubayd Nahham	MID	MVA	2	2	180	6.8		134	Jamshid Momeni	DEF	AZA	2	2	180	1		134	Bardia Mehrjui	MID	MEH	2	2	180	3
-																		135	Shahriar Daftari	MID	KEM	2	2	180	6.8		135	Peyman Forouzandeh	DEF	AZA	2	0	93	1		135	Talib Barid	MID	TAR	2	0	102	3
-																		136	Emad Askari	MID	DGD	2	0	68	6.8		136	Muhannad Al-Raml	MID	SHU	2	2	180	1		136	Shahriar Daftari	MID	KEM	2	2	180	3
-																		137	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	6.8		137	Shahin Blourian	MID	BAZ	3	0	91	1		137	Tourang Maqāli	MID	KEM	2	2	150	3
-																		138	Nariman Freydooni	MID	AZA	2	2	180	6.8		138	Bardia Sorkhābi	DEF	BAZ	3	3	233	1		138	Ozhan Derakshani	MID	DGD	2	2	134	3
-																		139	Zaid Al-Hazmi	MID	SHU	2	0	84	6.8		139	Behnam Pasdar	DEF	BAZ	3	3	225	1		139	Navid Lofti	MID	DGD	2	2	180	3
-																		140	Abdulrahman Al-Bishi	FWD	SHU	2	2	89	6.8		140	Sohrab Karimzadeh	DEF	PAS	3	3	270	1		140	Nariman Freydooni	MID	AZA	2	2	180	3
-																		141	Garshasp Bonyadi	DEF	TND	2	2	180	6.8		141	Maziar Sehat	MID	PAS	3	3	270	1		141	Adel Al-Dakhil	MID	SHU	2	2	180	3
-																		142	Qobad Zarrinkafsh	DEF	TND	2	2	180	6.8		142	Nima Sarmast	DEF	SKH	3	0	135	1		142	Hattan Al-Shehri	MID	SHU	2	2	180	3
-																		143	Danial Meskini	DEF	FOU	2	2	180	6.8		143	Parviz Tahmasb	DEF	DAR	3	3	270	1		143	Badr Yami	MID	NSR	3	0	155	3
-																		144	Jamshid Momeni	DEF	AZA	2	2	180	6.8		144	Turki Ibn Shammari	DEF	NSR	4	4	308	1		144	Mehran Shahi	MID	SKH	4	4	360	3
-																		145	Peyman Forouzandeh	DEF	AZA	2	0	93	6.8		145	Mishal Malki	MID	NSR	4	0	189	1		145	Kasra Shahbaz	DEF	HOM	1	1	90	3
-																		146	Nasser Hamdan	DEF	SHU	2	2	180	6.8		146	Vandad Tabrizi	MID	SKH	4	0	217	1		146	Parsa Shahin	DEF	HOM	1	1	90	3
-																		147	Taghi Hashemi-Far	MID	BAZ	3	3	225	6.8											147	Vishtasp Taftan	DEF	DFK	1	1	90	3
-																		148	Maziar Sehat	MID	PAS	3	3	270	6.8											148	Goshtasp Ahangar	DEF	DFK	1	1	90	3
-																		149	Behzad Pourmehrdad	MID	PAS	3	3	217	6.8											149	Farzin Simkesh	DEF	AHA	1	1	90	3
-																		150	Nader Daneshi	FWD	PAS	3	0	149	6.8											150	Amir Al-Mufattish	DEF	TAR	1	0	41	3
-																		151	Hormoz Ershadi	MID	PAS	3	0	145	6.8											151	Ahmad Ibn Majid	DEF	BDS	1	1	90	3
-																		152	Bahram Aliabadi	MID	DAR	3	0	133	6.8											152	Mehran Degdan	DEF	BOL	1	1	90	3
-																		153	Behnam Pasdar	DEF	BAZ	3	3	225	6.8											153	Farshad Qand	DEF	BOL	1	1	90	3
-																		154	Kourosh Tahmasebi	DEF	DAR	3	3	270	6.8											154	Ibrahim Jammal	DEF	KRV	1	1	62	3
-																		155	Ziyad Subaie	MID	NSR	4	4	258	6.8											155	Parsa Abrisham	DEF	NAQ	2	2	180	3
-																		156	Kaveh Bahmani	FWD	SKH	4	4	260	6.8											156	Farzad Rangraz	DEF	NAQ	2	2	180	3
-																		157	Parviz Ghaderi	FWD	SKH	4	4	271	6.8											157	Arsham Nakhris	DEF	NAQ	2	2	180	3
-																		158	Rintarō Kiyomizu	DEF	SKH	4	4	306	6.8											158	Mazyar Sasanian	DEF	MEH	2	2	148	3
-																		159	Artin Oqab	FWD	HOM	1	1	64	6.7											159	Jamshid Khordadi	DEF	MEH	2	0	67	3
-																		160	Farzin Roshani	FWD	DAN	1	1	69	6.7											160	Garshasp Bonyadi	DEF	TND	2	2	180	3
-																		161	Qais Al-Lulu	FWD	BDS	1	1	77	6.7											161	Danial Meskini	DEF	FOU	2	2	180	3
-																		162	Feivel Weizman	FWD	BDS	1	1	79	6.7											162	Matar Qumasha	DEF	MVA	2	2	180	3
-																		163	Ebrahim Akbari	FWD	SKH	1	0	60	6.7											163	Mehrab Nashriyāt	DEF	KEM	2	2	148	3
-																		164	Parsa Shahin	DEF	HOM	1	1	90	6.7											164	Kianoush Bahari	DEF	DGD	2	2	131	3
-																		165	Rostam Mansouri	DEF	SRD	1	1	90	6.7											165	Khalid Al-Sahli	DEF	SHU	2	2	180	3
-																		166	Dhiyab Marhala	DEF	KRV	1	1	90	6.7											166	Zareen Fahrzan	FWD	EST	1	1	49	2
-																		167	Milad Khoraki	DEF	EST	1	1	90	6.7											167	Farbod Ghaderi	FWD	FOU	2	2	119	2
-																		168	Chahrokh Nassirian	GK	DGD	2	2	180	6.7											168	Mehrzad Zamani	FWD	KEM	2	0	85	2
-																		169	Saud Nakhli	GK	SHU	2	2	180	6.7											169	Khosrow Mousavi	FWD	DGD	2	2	129	2
-																		170	Omah Azir	FWD	TND	2	2	131	6.7											170	Farbod Roohi	FWD	BAZ	3	3	195	2
-																		171	Jahangir Mozafari	FWD	AZA	2	2	127	6.7											171	Ashkan Mahdavi	FWD	PAS	3	3	174	2
-																		172	Shahram Tarhkar	DEF	NAQ	2	2	180	6.7											172	Yuto Ōtani	FWD	DAR	3	3	172	2
-																		173	Arsham Nakhris	DEF	NAQ	2	2	180	6.7											173	Jahan Mashayekhi	FWD	MEH	2	2	153	2
-																		174	Jamshid Khordadi	DEF	MEH	2	0	67	6.7											174	Muthanna Rasif	FWD	TAR	2	2	137	2
-																		175	Mehrab Nashriyāt	DEF	KEM	2	2	148	6.7											175	Sayf Al-Hammal	FWD	TAR	2	2	139	2
-																		176	Setareh Radahn	DEF	KEM	2	2	180	6.7											176	Orod Vāzhe	FWD	KEM	2	2	148	2
-																		177	Pourang Khoshtin	DEF	KEM	2	0	64	6.7											177	Abdulrahman Al-Bishi	FWD	SHU	2	2	89	2
-																		178	Fawaz Amri	DEF	NSR	2	0	89	6.7											178	Naif Khaldi	FWD	SHU	2	2	89	2
-																		179	Hushang Mansour	DEF	DAR	2	2	164	6.7											179	Parviz Ghaderi	FWD	SKH	4	4	271	2
-																		180	Dara Mosaffa	DEF	BAZ	3	3	270	6.7											180	Behnam Hassan-Zadeh	MID	SRD	1	1	90	2
-																		181	Nima Sarmast	DEF	SKH	3	0	135	6.7											181	Ardeshir Faisali	MID	SRD	1	1	90	2
-																		182	Kai Ouyang	GK	SKH	4	4	360	6.7											182	Anoush Sadeghi-Pour	MID	DAN	1	1	75	2
-																		183	Kōhei Gushiken	DEF	NSR	4	4	323	6.7											183	Sam Kaviyan	MID	DFK	1	1	90	2
-																		184	Aryan Shahpar	MID	HOM	1	1	90	6.6											184	Anushirvan Marghzar	MID	DFK	1	1	90	2
-																		185	Behnam Hassan-Zadeh	MID	SRD	1	1	90	6.6											185	Piruz Shirkuh	MID	DFK	1	1	90	2
-																		186	Delshad Ostāadi	MID	DAN	1	1	90	6.6											186	Hossein Sina	MID	AHA	1	1	90	2
-																		187	Anoush Sadeghi-Pour	MID	DAN	1	1	75	6.6											187	Ashkan Movaled	MID	AHA	1	0	43	2
-																		188	Vahid Shekarriz	MID	BOL	1	1	90	6.6											188	Peyman Neybor	MID	BOL	1	1	90	2
-																		189	Ghanim Al-Khan	MID	KRV	1	1	90	6.6											189	Vahid Shekarriz	MID	BOL	1	1	90	2
-																		190	Rasoul Atash	FWD	AHA	1	0	63	6.6											190	Ghanim Al-Khan	MID	KRV	1	1	90	2
-																		191	Sepehr Qaleb	FWD	BOL	1	1	77	6.6											191	Arsalan Kheybari	MID	EST	1	1	90	2
-																		192	Behnam Sarzeri	GK	EST	1	1	90	6.6											192	Sohrab Gandomzar	MID	EST	1	1	90	2
-																		193	Mani Naqshband	MID	NAQ	2	0	83	6.6											193	Kian Shokoohi	MID	BAZ	1	0	45	2
-																		194	Artin Darbaf	MID	NAQ	2	2	156	6.6											194	Farrokh Andisheh	MID	TND	2	0	74	2
-																		195	Erik Ratas	GK	MEH	2	2	180	6.6											195	Kaveh Mohebi	MID	FOU	2	0	105	2
-																		196	Bardia Mehrjui	MID	MEH	2	2	180	6.6											196	Saqr Al-Dana	MID	MVA	2	2	151	2
-																		197	Kaveh Mohebi	MID	FOU	2	0	105	6.6											197	Emad Askari	MID	DGD	2	0	68	2
-																		198	Afshin Lakzāyi	MID	FOU	2	2	180	6.6											198	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	2
-																		199	Behrad Pakuh	MID	FOU	2	2	116	6.6											199	Hooman Mehrgan	MID	AZA	2	0	95	2
-																		200	Rafiq Al-Qayd	MID	TAR	2	2	137	6.6											200	Bijan Shakibaii	MID	AZA	2	2	139	2
-																		201	Jahan Shokoufeh	MID	KEM	2	0	79	6.6											201	Sohrab Karimzadeh	DEF	PAS	3	3	270	2
-																		202	Ozhan Derakshani	MID	DGD	2	2	134	6.6											202	Nima Sarmast	DEF	SKH	3	0	135	2
-																		203	Adel Al-Dakhil	MID	SHU	2	2	180	6.6											203	Bahram Aliabadi	MID	DAR	3	0	133	2
-																		204	Hattan Al-Shehri	MID	SHU	2	2	180	6.6											204	Vandad Tavakoli	DEF	DAR	3	1	145	2
-																		205	Nikan Ostūri	FWD	MEH	2	2	147	6.6											205	Vandad Tabrizi	MID	SKH	4	0	217	2
-																		206	Muthanna Rasif	FWD	TAR	2	2	137	6.6											206	Sina Parandeh	FWD	HOM	1	1	90	1
-																		207	Orod Vāzhe	FWD	KEM	2	2	148	6.6											207	Iman Kandan	FWD	DFK	1	1	53	1
-																		208	Omid Khoshnam	FWD	AZA	2	0	100	6.6											208	Milad Sarboland	FWD	BOL	1	1	74	1
-																		209	Naif Khaldi	FWD	SHU	2	2	89	6.6											209	Sepehr Qaleb	FWD	BOL	1	1	77	1
-																		210	Jahan Radish	MID	BAZ	3	3	270	6.6											210	Orod Soltani	FWD	DGD	1	0	51	1
-																		211	Sasan Bayat	MID	DAR	3	3	270	6.6											211	Sina Gereh	FWD	NAQ	2	2	97	1
-																		212	Yazeed Al-Braik	FWD	NSR	3	0	138	6.6											212	Nikan Ostūri	FWD	MEH	2	2	147	1
-																		213	Vandad Tabrizi	MID	SKH	4	0	217	6.6											213	Omah Azir	FWD	TND	2	2	131	1
-																		214	Dariush Karim-Pour	MID	SRD	1	1	90	6.5											214	Jahangir Mozafari	FWD	AZA	2	2	127	1
-																		215	Piruz Shirkuh	MID	DFK	1	1	90	6.5											215	Omar Tamimi	FWD	SHU	2	2	149	1
-																		216	Artin Barqi	MID	AHA	1	1	90	6.5											216	Suhayl Al-Marwan	FWD	BAZ	3	3	198	1
-																		217	Peyman Neybor	MID	BOL	1	1	90	6.5											217	Yazeed Al-Braik	FWD	NSR	3	0	138	1
-																		218	Shahram Tizpar	FWD	HOM	1	1	66	6.5											218	Vahram Nouri	FWD	PAS	3	3	182	1
-																		219	Kambiz Yektabar	DEF	SRD	1	1	90	6.5											219	Arya Badpa	GK	HOM	1	1	90	1
-																		220	Kunibert Haase	DEF	SRD	1	1	90	6.5											220	Aryan Shahpar	MID	HOM	1	1	90	1
-																		221	Mansour Rayegan	FWD	SRD	1	1	72	6.5											221	Abbas Firnas	FWD	HOM	1	1	90	1
-																		222	Bardia Tabesh	DEF	DAN	1	1	90	6.5											222	Artin Oqab	FWD	HOM	1	1	64	1
-																		223	Nikan Mehrāzar	FWD	DAN	1	1	90	6.5											223	Manuchehr Behdad	DEF	SRD	1	0	41	1
-																		224	Ahmad Ibn Majid	DEF	BDS	1	1	90	6.5											224	Rostam Mansouri	DEF	SRD	1	1	90	1
-																		225	Mehran Degdan	DEF	BOL	1	1	90	6.5											225	Kambiz Yektabar	DEF	SRD	1	1	90	1
-																		226	Salih Al-Rawiya	DEF	KRV	1	1	90	6.5											226	Dariush Karim-Pour	MID	SRD	1	1	90	1
-																		227	Kourosh Abedi	DEF	EST	1	1	90	6.5											227	Orbalaye Mohammadi	FWD	SRD	1	0	43	1
-																		228	Hamid Goshir	DEF	EST	1	1	90	6.5											228	Hamed Najafi	FWD	SRD	1	1	47	1
-																		229	Arya Badpa	GK	HOM	1	1	90	6.5											229	Mansour Rayegan	FWD	SRD	1	1	72	1
-																		230	Kaito Annaka	MID	NAQ	2	2	180	6.5											230	Danial Raad	DEF	DAN	1	1	90	1
-																		231	Soheil Chelesh	MID	NAQ	2	0	73	6.5											231	Bardia Tabesh	DEF	DAN	1	1	90	1
-																		232	Yashar Shaneh	MID	NAQ	2	2	97	6.5											232	Farzin Roshani	FWD	DAN	1	1	69	1
-																		233	Shahin Cyrusi	MID	MEH	2	2	162	6.5											233	Hooshyar Soroush	MID	DAN	1	1	70	1
-																		234	Borzu Yekrang	MID	TND	2	2	144	6.5											234	Kambakhsh Avaz	MID	DFK	1	0	33	1
-																		235	Hazim Wazzan	MID	TAR	2	2	136	6.5											235	Narsi Polad	DEF	DFK	1	0	37	1
-																		236	Sadiq Khattat	MID	TAR	2	2	180	6.5											236	Ranen Mocatta	DEF	BDS	1	1	90	1
-																		237	Hamdan Majra	MID	MVA	2	2	180	6.5											237	Zayit Bloom	MID	BDS	1	1	90	1
-																		238	Tourang Maqāli	MID	KEM	2	2	150	6.5											238	Tariq Al-Nawti	MID	BDS	1	1	90	1
-																		239	Ehsan Mokhtari	MID	DGD	2	0	60	6.5											239	Ammar Al-Shabak	MID	BDS	1	1	90	1
-																		240	Hooman Mehrgan	MID	AZA	2	0	95	6.5											240	Qais Al-Lulu	FWD	BDS	1	1	77	1
-																		241	Bijan Shakibaii	MID	AZA	2	2	139	6.5											241	Kaveh Boluri	DEF	BOL	1	1	59	1
-																		242	Muhannad Al-Raml	MID	SHU	2	2	180	6.5											242	Dhiyab Marhala	DEF	KRV	1	1	90	1
-																		243	Houman Tirgan	FWD	MEH	2	0	65	6.5											243	Salih Al-Rawiya	DEF	KRV	1	1	90	1
-																		244	Payam Esmaili	DEF	BAZ	2	0	65	6.5											244	Awad Al-Waha	DEF	KRV	1	0	37	1
-																		245	Rashid Al-Buri	DEF	MVA	2	2	180	6.5											245	Fahd Al-Sarraj	FWD	KRV	1	1	52	1
-																		246	Osama Al-Najem	FWD	SHU	2	0	92	6.5											246	Ibn Battuta	FWD	KRV	1	1	53	1
-																		247	Omar Tamimi	FWD	SHU	2	2	149	6.5											247	Milad Khoraki	DEF	EST	1	1	90	1
-																		248	Shahin Blourian	MID	BAZ	3	0	91	6.5											248	Hamid Goshir	DEF	EST	1	1	90	1
-																		249	Arsalan Sharif	MID	BAZ	3	3	230	6.5											249	Fardin Mehrgan	FWD	EST	1	1	51	1
-																		250	Jamshid Razavi	MID	PAS	3	0	141	6.5											250	Ebrahim Akbari	FWD	SKH	1	0	60	1
-																		251	Sohrab Karimzadeh	DEF	PAS	3	3	270	6.5											251	Yashar Shaneh	MID	NAQ	2	2	97	1
-																		252	Omid Ghorbani	FWD	DAR	3	0	112	6.5											252	Farzam Kavehgar	MID	MEH	2	2	180	1
-																		253	Mishal Malki	MID	NSR	4	0	189	6.5											253	Houman Tirgan	FWD	MEH	2	0	65	1
-																		254	Shervin Shojaii	DEF	DAN	1	1	90	6.4											254	Shahin Cyrusi	MID	MEH	2	2	162	1
+																		76	Iraj Shahvand	DEF	TND	2	2	180	7.1		76	Ardavan Poladvand	MID	TND	2	2	180	2		76	Carmel Waley	DEF	BDS	1	1	73	5
+																		77	Rashid Bahmanyar	DEF	FOU	2	2	180	7.1		77	Narseh Mostowfi	MID	TND	2	2	142	2		77	Mansur Al-Huda	DEF	KRV	1	1	90	5
+																		78	Wathiq Al-Kayyal	DEF	TAR	2	2	180	7.1		78	Farrokh Andisheh	MID	TND	2	0	74	2		78	Hilal Al-Qafila	DEF	KRV	1	1	90	5
+																		79	Suwayd Mahhar	DEF	MVA	2	2	153	7.1		79	Karan Shateri	MID	TND	2	2	144	2		79	Mohammad Reza Pahlavi	DEF	EST	1	1	90	5
+																		80	Mazdak Safavi	DEF	KEM	2	2	180	7.1		80	Omah Azir	FWD	TND	2	2	131	2		80	Iraj Shahvand	DEF	TND	2	2	180	5
+																		81	Mehrzad Zamani	FWD	KEM	2	0	85	7.1		81	Behrad Pakuh	MID	FOU	2	2	116	2		81	Qobad Zarrinkafsh	DEF	TND	2	2	180	5
+																		82	Nima Raad	DEF	DGD	2	2	180	7.1		82	Nader Kianian	MID	FOU	2	2	180	2		82	Suwayd Mahhar	DEF	MVA	2	2	153	5
+																		83	Khosrow Mousavi	FWD	DGD	2	2	129	7.1		83	Shervin Pournejad	MID	FOU	2	2	117	2		83	Setareh Radahn	DEF	KEM	2	2	180	5
+																		84	Sohrab Bozorgi	DEF	AZA	2	2	130	7.1		84	Hunayn Ibn Ishaq	MID	TAR	2	2	140	2		84	Mazdak Safavi	DEF	KEM	2	2	180	5
+																		85	Farhad Adelstein	FWD	AZA	2	2	133	7.1		85	Rafiq Al-Qayd	MID	TAR	2	2	137	2		85	Sohrab Bozorgi	DEF	AZA	2	2	130	5
+																		86	Hajime Morimoto	FWD	PAS	3	3	179	7.1		86	Muthanna Rasif	FWD	TAR	2	2	137	2		86	Behnam Pasdar	DEF	BAZ	3	3	225	5
+																		87	Valterri Lehtonen	FWD	DAR	3	3	213	7.1		87	Darwish Sahil	MID	MVA	2	0	57	2		87	Mohsen Tabrizi	DEF	PAS	3	3	270	5
+																		88	Turki Ibn Shammari	DEF	NSR	4	4	308	7.1		88	Hamdan Majra	MID	MVA	2	2	180	2		88	Valterri Lehtonen	FWD	DAR	3	3	213	4
+																		89	Farzad Charkh	MID	HOM	1	1	90	7.0		89	Saqr Al-Dana	MID	MVA	2	2	151	2		89	Rafiq Al-Qayd	MID	TAR	2	2	137	4
+																		90	Ardeshir Faisali	MID	SRD	1	1	90	7.0		90	Mehrzad Zamani	FWD	KEM	2	0	85	2		90	Hamdan Majra	MID	MVA	2	2	180	4
+																		91	Anushirvan Marghzar	MID	DFK	1	1	90	7.0		91	Farbod Kalami	FWD	KEM	2	2	125	2		91	Zaid Al-Hazmi	MID	SHU	2	0	84	4
+																		92	Arsalan Kheybari	MID	EST	1	1	90	7.0		92	Danial Sokhanvar	MID	KEM	2	2	131	2		92	Maziar Sehat	MID	PAS	3	3	270	4
+																		93	Sohrab Gandomzar	MID	EST	1	1	90	7.0		93	Emad Askari	MID	DGD	2	0	68	2		93	Behzad Pourmehrdad	MID	PAS	3	3	217	4
+																		94	Vishtasp Taftan	DEF	DFK	1	1	90	7.0		94	Navid Lofti	MID	DGD	2	2	180	2		94	Hormoz Ershadi	MID	PAS	3	0	145	4
+																		95	Sina Partow	DEF	AHA	1	1	90	7.0		95	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	2		95	Sasan Bayat	MID	DAR	3	3	270	4
+																		96	Jamal Al-Sayyad	DEF	BDS	1	1	90	7.0		96	Nariman Freydooni	MID	AZA	2	2	180	2		96	Artin Barqi	MID	AHA	1	1	90	4
+																		97	Nima Tasfiyeh	DEF	BOL	1	1	90	7.0		97	Omid Khoshnam	FWD	AZA	2	0	100	2		97	Hooman Parvareh	MID	BOL	1	1	90	4
+																		98	Siamak Golbaf	GK	NAQ	2	2	180	7.0		98	Bijan Shakibaii	MID	AZA	2	2	139	2		98	Ghassan Al-Tabi	MID	TAR	1	0	43	4
+																		99	Miklós Nagy	GK	AZA	2	2	180	7.0		99	Osama Al-Najem	FWD	SHU	2	0	92	2		99	Heshmat Razavi-Far	MID	EST	1	0	39	4
+																		100	Renji Yamase	MID	NAQ	2	2	180	7.0		100	Orod Pourahmadi	FWD	BAZ	3	0	113	2		100	Narseh Mostowfi	MID	TND	2	2	142	4
+																		101	Ardavan Poladvand	MID	TND	2	2	180	7.0		101	Yazeed Al-Braik	FWD	NSR	3	0	138	2		101	Hazim Wazzan	MID	TAR	2	2	136	4
+																		102	Hunayn Ibn Ishaq	MID	TAR	2	2	140	7.0		102	Nader Daneshi	FWD	PAS	3	0	149	2		102	Jahan Shokoufeh	MID	KEM	2	0	79	4
+																		103	Ubayd Al-Daftar	MID	TAR	2	2	122	7.0		103	Hajime Morimoto	FWD	PAS	3	3	179	2		103	Davoud Kheybari	MID	DGD	2	2	180	4
+																		104	Navid Lofti	MID	DGD	2	2	180	7.0		104	Valterri Lehtonen	FWD	DAR	3	3	213	2		104	Tourang Khānlari	MID	DGD	2	2	159	4
+																		105	Farzad Rangraz	DEF	NAQ	2	2	180	7.0		105	Ahmad Ibn Majid	DEF	BDS	1	1	90	1		105	Hormoz Blourian	MID	AZA	2	2	126	4
+																		106	Arman Spahani	DEF	MEH	2	2	144	7.0		106	Parsa Abrisham	DEF	NAQ	2	2	180	1		106	Rayan Khathlan	MID	SHU	2	2	132	4
+																		107	Matar Qumasha	DEF	MVA	2	2	180	7.0		107	Garshasp Bonyadi	DEF	TND	2	2	180	1		107	Arsalan Sharif	MID	BAZ	3	3	230	4
+																		108	Bahador Roshanfekr	DEF	KEM	2	2	150	7.0		108	Khosro Heydari	DEF	FOU	2	2	180	1		108	Mishal Malki	MID	NSR	4	0	189	4
+																		109	Jaadallah El-Farid	MID	NSR	4	4	360	7.0		109	Mazdak Safavi	DEF	KEM	2	2	180	1		109	Ziyad Subaie	MID	NSR	4	4	258	4
+																		110	Silas Davis	MID	NSR	4	4	251	7.0		110	Arman Daneshmand	DEF	KEM	2	2	180	1		110	Kian Bolandi	DEF	HOM	1	0	30	4
+																		111	Amir Yousefi	MID	SKH	4	0	199	7.0		111	Kambiz Golchin	DEF	BAZ	3	3	270	1		111	Antaei Djurunga	DEF	HOM	1	1	60	4
+																		112	Majed Al-Otaibi	DEF	NSR	4	4	360	7.0		112	Eskandar Dehghan	DEF	PAS	3	3	217	1		112	Mehrdad Hashemi	DEF	SRD	1	1	49	4
+																		113	Ardalan Danesh	DEF	SKH	4	4	360	7.0		113	Kasra Shahbaz	DEF	HOM	1	1	90	1		113	Khashayar Barzkuh	DEF	DFK	1	1	90	4
+																		114	Sohail Diba	GK	BAZ	3	3	270	6.9		114	Danial Raad	DEF	DAN	1	1	90	1		114	Sina Partow	DEF	AHA	1	1	90	4
+																		115	Bahman Parastui	GK	SRD	1	1	90	6.8		115	Narsi Polad	DEF	DFK	1	0	37	1		115	Bahador Afruz	DEF	AHA	1	1	90	4
+																		116	Kian Forough	GK	AHA	1	1	90	6.8		116	Gudarz Sangshekan	DEF	DFK	1	1	57	1		116	Arash Nabat	DEF	BOL	1	0	31	4
+																		117	Sam Kaviyan	MID	DFK	1	1	90	6.8		117	Sina Partow	DEF	AHA	1	1	90	1		117	Yousef Al-Marri	DEF	SHU	1	0	37	4
+																		118	Hossein Sina	MID	AHA	1	1	90	6.8		118	Yashar Niroomand	DEF	AHA	1	1	90	1		118	Fawaz Amri	DEF	NSR	2	0	89	4
+																		119	Zand Jarayan	MID	AHA	1	1	90	6.8		119	Bahador Afruz	DEF	AHA	1	1	90	1		119	Nima Raad	DEF	DGD	2	2	180	4
+																		120	Jahid Hajati	MID	FOU	1	0	63	6.8		120	Carmel Waley	DEF	BDS	1	1	73	1		120	Jamshid Momeni	DEF	AZA	2	2	180	4
+																		121	Bozorgmehr Damavand	DEF	DFK	1	1	90	6.8		121	Jubayr Manzil	GK	KRV	1	1	90	1		121	Peyman Forouzandeh	DEF	AZA	2	0	93	4
+																		122	Bahador Afruz	DEF	AHA	1	1	90	6.8		122	Milad Khoraki	DEF	EST	1	1	90	1		122	Nasser Hamdan	DEF	SHU	2	2	180	4
+																		123	Mansur Al-Huda	DEF	KRV	1	1	90	6.8		123	Hamid Goshir	DEF	EST	1	1	90	1		123	Reza Khorshidi	DEF	BAZ	3	3	270	4
+																		124	Omar Khayyam	MID	NAQ	2	2	131	6.8		124	Farzad Rangraz	DEF	NAQ	2	2	180	1		124	Kourosh Tahmasebi	DEF	DAR	3	3	270	4
+																		125	Sina Gereh	FWD	NAQ	2	2	97	6.8		125	Arsham Nakhris	DEF	NAQ	2	2	180	1		125	Ehsan Sarbāzi	FWD	FOU	2	0	125	3
+																		126	Narseh Mostowfi	MID	TND	2	2	142	6.8		126	Qobad Zarrinkafsh	DEF	TND	2	2	180	1		126	Tirdad Mansouri	FWD	AZA	2	2	138	3
+																		127	Farrokh Andisheh	MID	TND	2	0	74	6.8		127	Rashid Bahmanyar	DEF	FOU	2	2	180	1		127	Nader Daneshi	FWD	PAS	3	0	149	3
+																		128	Shervin Pournejad	MID	FOU	2	2	117	6.8		128	Titus Hochberg	DEF	FOU	2	2	139	1		128	Ramin Degchi	MID	BOL	1	1	90	3
+																		129	Ehsan Sarbāzi	FWD	FOU	2	0	125	6.8		129	Munir Mizan	DEF	TAR	2	2	180	1		129	Jahid Hajati	MID	FOU	1	0	63	3
+																		130	Ubayd Nahham	MID	MVA	2	2	180	6.8		130	Matar Qumasha	DEF	MVA	2	2	180	1		130	Cyrus Pazdar	MID	EST	1	1	90	3
+																		131	Shahriar Daftari	MID	KEM	2	2	180	6.8		131	Bahador Roshanfekr	DEF	KEM	2	2	150	1		131	Kaveh Rezghi	MID	EST	1	1	52	3
+																		132	Emad Askari	MID	DGD	2	0	68	6.8		132	Kianoush Bahari	DEF	DGD	2	2	131	1		132	Esfandiar Hajipour	MID	DAR	1	0	58	3
+																		133	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	6.8		133	Sohrab Bozorgi	DEF	AZA	2	2	130	1		133	Kaito Annaka	MID	NAQ	2	2	180	3
+																		134	Nariman Freydooni	MID	AZA	2	2	180	6.8		134	Jamshid Momeni	DEF	AZA	2	2	180	1		134	Bardia Mehrjui	MID	MEH	2	2	180	3
+																		135	Zaid Al-Hazmi	MID	SHU	2	0	84	6.8		135	Peyman Forouzandeh	DEF	AZA	2	0	93	1		135	Talib Barid	MID	TAR	2	0	102	3
+																		136	Abdulrahman Al-Bishi	FWD	SHU	2	2	89	6.8		136	Muhannad Al-Raml	MID	SHU	2	2	180	1		136	Shahriar Daftari	MID	KEM	2	2	180	3
+																		137	Garshasp Bonyadi	DEF	TND	2	2	180	6.8		137	Shahin Blourian	MID	BAZ	3	0	91	1		137	Tourang Maqāli	MID	KEM	2	2	150	3
+																		138	Qobad Zarrinkafsh	DEF	TND	2	2	180	6.8		138	Bardia Sorkhābi	DEF	BAZ	3	3	233	1		138	Ozhan Derakshani	MID	DGD	2	2	134	3
+																		139	Danial Meskini	DEF	FOU	2	2	180	6.8		139	Behnam Pasdar	DEF	BAZ	3	3	225	1		139	Navid Lofti	MID	DGD	2	2	180	3
+																		140	Jamshid Momeni	DEF	AZA	2	2	180	6.8		140	Sohrab Karimzadeh	DEF	PAS	3	3	270	1		140	Nariman Freydooni	MID	AZA	2	2	180	3
+																		141	Peyman Forouzandeh	DEF	AZA	2	0	93	6.8		141	Maziar Sehat	MID	PAS	3	3	270	1		141	Adel Al-Dakhil	MID	SHU	2	2	180	3
+																		142	Nasser Hamdan	DEF	SHU	2	2	180	6.8		142	Nima Sarmast	DEF	SKH	3	0	135	1		142	Hattan Al-Shehri	MID	SHU	2	2	180	3
+																		143	Taghi Hashemi-Far	MID	BAZ	3	3	225	6.8		143	Parviz Tahmasb	DEF	DAR	3	3	270	1		143	Badr Yami	MID	NSR	3	0	155	3
+																		144	Maziar Sehat	MID	PAS	3	3	270	6.8		144	Turki Ibn Shammari	DEF	NSR	4	4	308	1		144	Mehran Shahi	MID	SKH	4	4	360	3
+																		145	Behzad Pourmehrdad	MID	PAS	3	3	217	6.8		145	Mishal Malki	MID	NSR	4	0	189	1		145	Kasra Shahbaz	DEF	HOM	1	1	90	3
+																		146	Nader Daneshi	FWD	PAS	3	0	149	6.8		146	Vandad Tabrizi	MID	SKH	4	0	217	1		146	Parsa Shahin	DEF	HOM	1	1	90	3
+																		147	Hormoz Ershadi	MID	PAS	3	0	145	6.8											147	Vishtasp Taftan	DEF	DFK	1	1	90	3
+																		148	Bahram Aliabadi	MID	DAR	3	0	133	6.8											148	Goshtasp Ahangar	DEF	DFK	1	1	90	3
+																		149	Behnam Pasdar	DEF	BAZ	3	3	225	6.8											149	Farzin Simkesh	DEF	AHA	1	1	90	3
+																		150	Kourosh Tahmasebi	DEF	DAR	3	3	270	6.8											150	Amir Al-Mufattish	DEF	TAR	1	0	41	3
+																		151	Ziyad Subaie	MID	NSR	4	4	258	6.8											151	Ahmad Ibn Majid	DEF	BDS	1	1	90	3
+																		152	Kaveh Bahmani	FWD	SKH	4	4	260	6.8											152	Mehran Degdan	DEF	BOL	1	1	90	3
+																		153	Parviz Ghaderi	FWD	SKH	4	4	271	6.8											153	Farshad Qand	DEF	BOL	1	1	90	3
+																		154	Rintarō Kiyomizu	DEF	SKH	4	4	306	6.8											154	Ibrahim Jammal	DEF	KRV	1	1	62	3
+																		155	Sohrab Palayesh	GK	BOL	1	1	90	6.7											155	Parsa Abrisham	DEF	NAQ	2	2	180	3
+																		156	Jahangir Keramati	GK	DAN	1	1	90	6.7											156	Farzad Rangraz	DEF	NAQ	2	2	180	3
+																		157	Artin Oqab	FWD	HOM	1	1	64	6.7											157	Arsham Nakhris	DEF	NAQ	2	2	180	3
+																		158	Farzin Roshani	FWD	DAN	1	1	69	6.7											158	Mazyar Sasanian	DEF	MEH	2	2	148	3
+																		159	Qais Al-Lulu	FWD	BDS	1	1	77	6.7											159	Jamshid Khordadi	DEF	MEH	2	0	67	3
+																		160	Feivel Weizman	FWD	BDS	1	1	79	6.7											160	Garshasp Bonyadi	DEF	TND	2	2	180	3
+																		161	Ebrahim Akbari	FWD	SKH	1	0	60	6.7											161	Danial Meskini	DEF	FOU	2	2	180	3
+																		162	Parsa Shahin	DEF	HOM	1	1	90	6.7											162	Matar Qumasha	DEF	MVA	2	2	180	3
+																		163	Rostam Mansouri	DEF	SRD	1	1	90	6.7											163	Mehrab Nashriyāt	DEF	KEM	2	2	148	3
+																		164	Dhiyab Marhala	DEF	KRV	1	1	90	6.7											164	Kianoush Bahari	DEF	DGD	2	2	131	3
+																		165	Milad Khoraki	DEF	EST	1	1	90	6.7											165	Khalid Al-Sahli	DEF	SHU	2	2	180	3
+																		166	Kamyar Tarokh	GK	KEM	2	2	180	6.7											166	Zareen Fahrzan	FWD	EST	1	1	49	2
+																		167	Omah Azir	FWD	TND	2	2	131	6.7											167	Farbod Ghaderi	FWD	FOU	2	2	119	2
+																		168	Jahangir Mozafari	FWD	AZA	2	2	127	6.7											168	Mehrzad Zamani	FWD	KEM	2	0	85	2
+																		169	Shahram Tarhkar	DEF	NAQ	2	2	180	6.7											169	Khosrow Mousavi	FWD	DGD	2	2	129	2
+																		170	Arsham Nakhris	DEF	NAQ	2	2	180	6.7											170	Farbod Roohi	FWD	BAZ	3	3	195	2
+																		171	Jamshid Khordadi	DEF	MEH	2	0	67	6.7											171	Ashkan Mahdavi	FWD	PAS	3	3	174	2
+																		172	Mehrab Nashriyāt	DEF	KEM	2	2	148	6.7											172	Yuto Ōtani	FWD	DAR	3	3	172	2
+																		173	Setareh Radahn	DEF	KEM	2	2	180	6.7											173	Jahan Mashayekhi	FWD	MEH	2	2	153	2
+																		174	Pourang Khoshtin	DEF	KEM	2	0	64	6.7											174	Muthanna Rasif	FWD	TAR	2	2	137	2
+																		175	Fawaz Amri	DEF	NSR	2	0	89	6.7											175	Sayf Al-Hammal	FWD	TAR	2	2	139	2
+																		176	Hushang Mansour	DEF	DAR	2	2	164	6.7											176	Orod Vāzhe	FWD	KEM	2	2	148	2
+																		177	Vahid Lorestani	GK	PAS	3	3	270	6.7											177	Abdulrahman Al-Bishi	FWD	SHU	2	2	89	2
+																		178	Dara Mosaffa	DEF	BAZ	3	3	270	6.7											178	Naif Khaldi	FWD	SHU	2	2	89	2
+																		179	Nima Sarmast	DEF	SKH	3	0	135	6.7											179	Parviz Ghaderi	FWD	SKH	4	4	271	2
+																		180	Kōhei Gushiken	DEF	NSR	4	4	323	6.7											180	Behnam Hassan-Zadeh	MID	SRD	1	1	90	2
+																		181	Aryan Shahpar	MID	HOM	1	1	90	6.6											181	Ardeshir Faisali	MID	SRD	1	1	90	2
+																		182	Behnam Hassan-Zadeh	MID	SRD	1	1	90	6.6											182	Anoush Sadeghi-Pour	MID	DAN	1	1	75	2
+																		183	Delshad Ostāadi	MID	DAN	1	1	90	6.6											183	Sam Kaviyan	MID	DFK	1	1	90	2
+																		184	Anoush Sadeghi-Pour	MID	DAN	1	1	75	6.6											184	Anushirvan Marghzar	MID	DFK	1	1	90	2
+																		185	Vahid Shekarriz	MID	BOL	1	1	90	6.6											185	Piruz Shirkuh	MID	DFK	1	1	90	2
+																		186	Ghanim Al-Khan	MID	KRV	1	1	90	6.6											186	Hossein Sina	MID	AHA	1	1	90	2
+																		187	Rasoul Atash	FWD	AHA	1	0	63	6.6											187	Ashkan Movaled	MID	AHA	1	0	43	2
+																		188	Sepehr Qaleb	FWD	BOL	1	1	77	6.6											188	Peyman Neybor	MID	BOL	1	1	90	2
+																		189	Chahrokh Nassirian	GK	DGD	2	2	180	6.6											189	Vahid Shekarriz	MID	BOL	1	1	90	2
+																		190	Saud Nakhli	GK	SHU	2	2	180	6.6											190	Ghanim Al-Khan	MID	KRV	1	1	90	2
+																		191	Mani Naqshband	MID	NAQ	2	0	83	6.6											191	Arsalan Kheybari	MID	EST	1	1	90	2
+																		192	Artin Darbaf	MID	NAQ	2	2	156	6.6											192	Sohrab Gandomzar	MID	EST	1	1	90	2
+																		193	Bardia Mehrjui	MID	MEH	2	2	180	6.6											193	Kian Shokoohi	MID	BAZ	1	0	45	2
+																		194	Kaveh Mohebi	MID	FOU	2	0	105	6.6											194	Farrokh Andisheh	MID	TND	2	0	74	2
+																		195	Afshin Lakzāyi	MID	FOU	2	2	180	6.6											195	Kaveh Mohebi	MID	FOU	2	0	105	2
+																		196	Behrad Pakuh	MID	FOU	2	2	116	6.6											196	Saqr Al-Dana	MID	MVA	2	2	151	2
+																		197	Rafiq Al-Qayd	MID	TAR	2	2	137	6.6											197	Emad Askari	MID	DGD	2	0	68	2
+																		198	Jahan Shokoufeh	MID	KEM	2	0	79	6.6											198	Jahanbakhsh Pahlavāni	MID	DGD	2	2	119	2
+																		199	Ozhan Derakshani	MID	DGD	2	2	134	6.6											199	Hooman Mehrgan	MID	AZA	2	0	95	2
+																		200	Adel Al-Dakhil	MID	SHU	2	2	180	6.6											200	Bijan Shakibaii	MID	AZA	2	2	139	2
+																		201	Hattan Al-Shehri	MID	SHU	2	2	180	6.6											201	Sohrab Karimzadeh	DEF	PAS	3	3	270	2
+																		202	Nikan Ostūri	FWD	MEH	2	2	147	6.6											202	Nima Sarmast	DEF	SKH	3	0	135	2
+																		203	Muthanna Rasif	FWD	TAR	2	2	137	6.6											203	Bahram Aliabadi	MID	DAR	3	0	133	2
+																		204	Orod Vāzhe	FWD	KEM	2	2	148	6.6											204	Vandad Tavakoli	DEF	DAR	3	1	145	2
+																		205	Omid Khoshnam	FWD	AZA	2	0	100	6.6											205	Vandad Tabrizi	MID	SKH	4	0	217	2
+																		206	Naif Khaldi	FWD	SHU	2	2	89	6.6											206	Sina Parandeh	FWD	HOM	1	1	90	1
+																		207	Jahan Radish	MID	BAZ	3	3	270	6.6											207	Iman Kandan	FWD	DFK	1	1	53	1
+																		208	Sasan Bayat	MID	DAR	3	3	270	6.6											208	Milad Sarboland	FWD	BOL	1	1	74	1
+																		209	Yazeed Al-Braik	FWD	NSR	3	0	138	6.6											209	Sepehr Qaleb	FWD	BOL	1	1	77	1
+																		210	Kai Ouyang	GK	SKH	4	4	360	6.6											210	Orod Soltani	FWD	DGD	1	0	51	1
+																		211	Vandad Tabrizi	MID	SKH	4	0	217	6.6											211	Sina Gereh	FWD	NAQ	2	2	97	1
+																		212	Dariush Karim-Pour	MID	SRD	1	1	90	6.5											212	Nikan Ostūri	FWD	MEH	2	2	147	1
+																		213	Piruz Shirkuh	MID	DFK	1	1	90	6.5											213	Omah Azir	FWD	TND	2	2	131	1
+																		214	Artin Barqi	MID	AHA	1	1	90	6.5											214	Jahangir Mozafari	FWD	AZA	2	2	127	1
+																		215	Peyman Neybor	MID	BOL	1	1	90	6.5											215	Omar Tamimi	FWD	SHU	2	2	149	1
+																		216	Shahram Tizpar	FWD	HOM	1	1	66	6.5											216	Suhayl Al-Marwan	FWD	BAZ	3	3	198	1
+																		217	Kambiz Yektabar	DEF	SRD	1	1	90	6.5											217	Yazeed Al-Braik	FWD	NSR	3	0	138	1
+																		218	Kunibert Haase	DEF	SRD	1	1	90	6.5											218	Vahram Nouri	FWD	PAS	3	3	182	1
+																		219	Mansour Rayegan	FWD	SRD	1	1	72	6.5											219	Arya Badpa	GK	HOM	1	1	90	1
+																		220	Bardia Tabesh	DEF	DAN	1	1	90	6.5											220	Aryan Shahpar	MID	HOM	1	1	90	1
+																		221	Nikan Mehrāzar	FWD	DAN	1	1	90	6.5											221	Abbas Firnas	FWD	HOM	1	1	90	1
+																		222	Ahmad Ibn Majid	DEF	BDS	1	1	90	6.5											222	Artin Oqab	FWD	HOM	1	1	64	1
+																		223	Mehran Degdan	DEF	BOL	1	1	90	6.5											223	Manuchehr Behdad	DEF	SRD	1	0	41	1
+																		224	Salih Al-Rawiya	DEF	KRV	1	1	90	6.5											224	Rostam Mansouri	DEF	SRD	1	1	90	1
+																		225	Kourosh Abedi	DEF	EST	1	1	90	6.5											225	Kambiz Yektabar	DEF	SRD	1	1	90	1
+																		226	Hamid Goshir	DEF	EST	1	1	90	6.5											226	Dariush Karim-Pour	MID	SRD	1	1	90	1
+																		227	Behnam Sarzeri	GK	EST	1	1	90	6.5											227	Orbalaye Mohammadi	FWD	SRD	1	0	43	1
+																		228	Erik Ratas	GK	MEH	2	2	180	6.5											228	Hamed Najafi	FWD	SRD	1	1	47	1
+																		229	Kaito Annaka	MID	NAQ	2	2	180	6.5											229	Mansour Rayegan	FWD	SRD	1	1	72	1
+																		230	Soheil Chelesh	MID	NAQ	2	0	73	6.5											230	Danial Raad	DEF	DAN	1	1	90	1
+																		231	Yashar Shaneh	MID	NAQ	2	2	97	6.5											231	Bardia Tabesh	DEF	DAN	1	1	90	1
+																		232	Shahin Cyrusi	MID	MEH	2	2	162	6.5											232	Farzin Roshani	FWD	DAN	1	1	69	1
+																		233	Borzu Yekrang	MID	TND	2	2	144	6.5											233	Hooshyar Soroush	MID	DAN	1	1	70	1
+																		234	Hazim Wazzan	MID	TAR	2	2	136	6.5											234	Kambakhsh Avaz	MID	DFK	1	0	33	1
+																		235	Sadiq Khattat	MID	TAR	2	2	180	6.5											235	Narsi Polad	DEF	DFK	1	0	37	1
+																		236	Hamdan Majra	MID	MVA	2	2	180	6.5											236	Ranen Mocatta	DEF	BDS	1	1	90	1
+																		237	Tourang Maqāli	MID	KEM	2	2	150	6.5											237	Zayit Bloom	MID	BDS	1	1	90	1
+																		238	Ehsan Mokhtari	MID	DGD	2	0	60	6.5											238	Tariq Al-Nawti	MID	BDS	1	1	90	1
+																		239	Hooman Mehrgan	MID	AZA	2	0	95	6.5											239	Ammar Al-Shabak	MID	BDS	1	1	90	1
+																		240	Bijan Shakibaii	MID	AZA	2	2	139	6.5											240	Qais Al-Lulu	FWD	BDS	1	1	77	1
+																		241	Muhannad Al-Raml	MID	SHU	2	2	180	6.5											241	Kaveh Boluri	DEF	BOL	1	1	59	1
+																		242	Houman Tirgan	FWD	MEH	2	0	65	6.5											242	Dhiyab Marhala	DEF	KRV	1	1	90	1
+																		243	Payam Esmaili	DEF	BAZ	2	0	65	6.5											243	Salih Al-Rawiya	DEF	KRV	1	1	90	1
+																		244	Rashid Al-Buri	DEF	MVA	2	2	180	6.5											244	Awad Al-Waha	DEF	KRV	1	0	37	1
+																		245	Osama Al-Najem	FWD	SHU	2	0	92	6.5											245	Fahd Al-Sarraj	FWD	KRV	1	1	52	1
+																		246	Omar Tamimi	FWD	SHU	2	2	149	6.5											246	Ibn Battuta	FWD	KRV	1	1	53	1
+																		247	Shahin Blourian	MID	BAZ	3	0	91	6.5											247	Milad Khoraki	DEF	EST	1	1	90	1
+																		248	Arsalan Sharif	MID	BAZ	3	3	230	6.5											248	Hamid Goshir	DEF	EST	1	1	90	1
+																		249	Jamshid Razavi	MID	PAS	3	0	141	6.5											249	Fardin Mehrgan	FWD	EST	1	1	51	1
+																		250	Sohrab Karimzadeh	DEF	PAS	3	3	270	6.5											250	Ebrahim Akbari	FWD	SKH	1	0	60	1
+																		251	Omid Ghorbani	FWD	DAR	3	0	112	6.5											251	Yashar Shaneh	MID	NAQ	2	2	97	1
+																		252	Mishal Malki	MID	NSR	4	0	189	6.5											252	Farzam Kavehgar	MID	MEH	2	2	180	1
+																		253	Shervin Shojaii	DEF	DAN	1	1	90	6.4											253	Houman Tirgan	FWD	MEH	2	0	65	1
+																		254	Arya Badpa	GK	HOM	1	1	90	6.4											254	Shahin Cyrusi	MID	MEH	2	2	162	1
 																		255	Mihran Dastgerd	DEF	TND	2	2	180	6.4											255	Mihran Dastgerd	DEF	TND	2	2	180	1
 																		256	Bardia Sorkhābi	DEF	BAZ	3	3	233	6.4											256	Tus Gerayeli	MID	TND	2	0	49	1
 																		257	Abbas Firnas	FWD	HOM	1	1	90	6.3											257	Karan Shateri	MID	TND	2	2	144	1
 																		258	Tirdad Behdād	FWD	DAN	1	1	90	6.3											258	Hormoz Mottaghi	GK	FOU	2	2	180	1
 																		259	Ranen Mocatta	DEF	BDS	1	1	90	6.3											259	Payam Esmaili	DEF	BAZ	2	0	65	1
-																		260	Salim Al-Bahri	GK	BDS	1	1	90	6.3											260	Ubayd Nahham	MID	MVA	2	2	180	1
-																		261	Kasra Qalamkar	FWD	NAQ	2	0	83	6.3											261	Butti Al-Yasra	MID	MVA	2	2	180	1
-																		262	Wasim Makhzan	FWD	TAR	2	0	83	6.3											262	Pourang Khoshtin	DEF	KEM	2	0	64	1
-																		263	Tirdad Mansouri	FWD	AZA	2	2	138	6.3											263	Shahin Blourian	MID	BAZ	3	0	91	1
-																		264	Vahram Nouri	FWD	PAS	3	3	182	6.3
-																		265	Reza Mozaffari	DEF	PAS	3	3	270	6.3
-																		266	Vandad Tavakoli	DEF	DAR	3	1	145	6.3
-																		267	Hooshyar Soroush	MID	DAN	1	1	70	6.2
-																		268	Hilal Al-Shiraa	MID	BDS	1	1	90	6.2
-																		269	Ammar Al-Shabak	MID	BDS	1	1	90	6.2
-																		270	Muhsin Al-Sabil	MID	KRV	1	1	90	6.2
-																		271	Nasir Al-Dalil	MID	KRV	1	1	90	6.2
+																		260	Kasra Qalamkar	FWD	NAQ	2	0	83	6.3											260	Ubayd Nahham	MID	MVA	2	2	180	1
+																		261	Wasim Makhzan	FWD	TAR	2	0	83	6.3											261	Butti Al-Yasra	MID	MVA	2	2	180	1
+																		262	Tirdad Mansouri	FWD	AZA	2	2	138	6.3											262	Pourang Khoshtin	DEF	KEM	2	0	64	1
+																		263	Vahram Nouri	FWD	PAS	3	3	182	6.3											263	Shahin Blourian	MID	BAZ	3	0	91	1
+																		264	Reza Mozaffari	DEF	PAS	3	3	270	6.3
+																		265	Vandad Tavakoli	DEF	DAR	3	1	145	6.3
+																		266	Hooshyar Soroush	MID	DAN	1	1	70	6.2
+																		267	Hilal Al-Shiraa	MID	BDS	1	1	90	6.2
+																		268	Ammar Al-Shabak	MID	BDS	1	1	90	6.2
+																		269	Muhsin Al-Sabil	MID	KRV	1	1	90	6.2
+																		270	Nasir Al-Dalil	MID	KRV	1	1	90	6.2
+																		271	Salim Al-Bahri	GK	BDS	1	1	90	6.2
 																		272	Farzam Kavehgar	MID	MEH	2	2	180	6.2
 																		273	Talib Barid	MID	TAR	2	0	102	6.2
 																		274	Parsa Abrisham	DEF	NAQ	2	2	180	6.2
