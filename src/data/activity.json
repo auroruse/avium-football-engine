@@ -1,5 +1,29 @@
 [
  {
+  "id": "52187c69",
+  "by": "cornafiable",
+  "at": "2026-11-28T17:00:01.223Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "leagues",
+    "id": "l0025",
+    "name": "Hanan Tantanakuy",
+    "field": "cwc",
+    "from": null,
+    "to": 1
+   },
+   {
+    "kind": "leagues",
+    "id": "l0025",
+    "name": "Hanan Tantanakuy",
+    "field": "cws",
+    "from": null,
+    "to": 1
+   }
+  ]
+ },
+ {
   "id": "4e8167a2",
   "by": "auroruse",
   "at": "2026-11-28T16:44:35.766Z",
