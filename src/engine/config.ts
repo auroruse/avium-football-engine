@@ -1420,7 +1420,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // the second notch is scatter DISTANCE: a longer poke runs to open grass, the stripped side's
   // goal-side eight, or dead, all of which deny the instant chance.
   tkLooseP: 0.78, tkLooseD: 8, tkLooseV: 6.5,
-  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.042,
+  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.10,
   runTicks: 14,
   // Threat-list bonus for an opponent standing goal-side of our own trap line. Above the active-run
   // bonus (0.8) on purpose: being through does not time out the way a run's fourteen slices do,
@@ -1843,7 +1843,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // (rateResult), errors and own goals cost about half (rateError 1.0 -> 0.58, rateOwnGoal 1.25 -> 0.85), and a save
   // pays for itself (rateSaveVol). Fitted offline on the dumps, the finish then refitted (test/ratings.mjs derive).
   rateGoal: 0.80, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.22,
-  rateGoalPos: { DEF: 0.25, MID: 0.08, FWD: 0.37 },
+  // (a forward's 0.37 -> 0.11 on 28 November 2026, the rebuild at rateSave: on one scale for every position it made a
+  // forward's goal worth half as much again as anyone's, and a goalless forward read 6.40.)
+  rateGoalPos: { DEF: 0.25, MID: 0.08, FWD: 0.11 },
   // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
   // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
   // a busy keeper rated well for being busy, and the good keeper on the good side, facing three
@@ -1865,13 +1867,87 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.78, rateOwnGoal: 0.85, rateSaveVol: 0.13,
+  // 28 November 2026 (the user, "good saves should be rewarded instead of drowned out"): rateSave 0.65 -> 1.0 and rateSaveVol
+  // 0.13 -> 0.03. Better keepers prevent more (85+ about a quarter of a goal a match over 65-75), but they face fewer shots, so
+  // the pay a save took every bit of it back: keepers' ratings rose 0.01 per ten OVR. Read offline on 2,086 matches, this
+  // triples how much of the rating his prevention decides.
+  // ...and nothing for the save itself (rateSaveVol 0.03 -> 0, the rebuild below): a shot any keeper holds is worth what an
+  // ordinary keeper concedes from it, which is next to nothing.
+  // rateSave 1.0 -> 0.7 with it: at 1.0 on the common scale a keeper's full match was at 6.0 or under one time in eight,
+  // and at 0.8 one in forty-five was a 9.0, more than a midfielder's.
+  // ...and 1.2 that evening, when it stopped being a weight on goals prevented (THE KEEPER'S AFTERNOON, below).
+  rateSave: 1.2, gkExpPen: 0.77, rateOwnGoal: 0.85, rateSaveVol: 0,
+  // THE RATINGS, REBUILT ON WHAT A MAN DID AGAINST WHAT WAS EXPECTED OF IT (28 November 2026, the user: "ratings that
+  // ACTUALLY reflect how WELL the player played and contributed in the match instead of rewarding volume", after a first
+  // attempt that day moved who was charged for a goal and re-centred the midfield by role). What was wrong, measured on
+  // 1,200 League One and Two fixtures: a defender's season average followed his count of defensive actions (0.83), the
+  // second division's best-rated man was a centre-half on 7.4 of them a match with no goal, a midfielder's followed his
+  // passes, progressive passes and defensive actions (0.7 each), and because every position was fitted to one shape the
+  // best three hundred match ratings were 117 defenders to 52 forwards: a 10.0 for eight defensive actions, 9.37 for a
+  // hat-trick. The user's answers, in order: the top ratings to decisive games, a real league's scale and mix on the
+  // season board, routine work paid against expectation, nothing for the result, a defender moved by his duels, the
+  // danger he stopped, what came through him and the back line's result, the keeper by how saveable each shot was, no
+  // finish by midfield role, and SofaScore's share of bad games earned by mistakes.
+  //   THE PASS (match.ts mePassPay): ratePassX x (arrived - the chance it had) x what was at stake, which is 1, more by
+  //   ratePassFwd for the ground it was aimed to gain (to ratePassProgCap metres) and by ratePassThru for a ball in behind.
+  ratePassX: 0.09, ratePassFwd: 1.0, ratePassThru: 1.0,
+  //   ...the chance it had being what a ball believed at that completes, measured (mePassReal; 294,910 passes, cloud run
+  //   46140711920): [believed, completed].
+  ratePassReal: [[0.20, 0.31], [0.39, 0.46], [0.50, 0.55], [0.60, 0.66], [0.70, 0.705], [0.79, 0.735], [0.84, 0.794],
+                 [0.87, 0.853], [0.90, 0.916], [0.92, 0.953], [0.99, 0.989]],
+  //   THE CHALLENGE (meDuelPay): an ordinary one is won rateDuelP of the time; the tackler takes rateDuelX x (1 - rateDuelP)
+  //   for winning it and loses rateDuelX x rateDuelP for being beaten, the man on the ball the mirror on rateDribX.
+  rateDuelP: 0.70, rateDuelX: 0.40, rateDribX: 0.25,
+  //   THE HEADER: the winner of a contested one takes rateAirX x the chance he would lose it, off the loser.
+  rateAirX: 0.40,
+  //   WHAT CAME THROUGH HIM (meThruPay): rateThruXg x the chance, to the shooter's marker by how loose he was, or to the
+  //   nearest man at rateThruNear of it, and rateThruBeat of it to each man beaten in the move; handed back across the
+  //   side by line (rateThruShare).
+  rateThruXg: 1.30, rateThruNear: 0.6, rateThruBeat: 0.5, rateThruShare: { DEF: 1, MID: 0.5, FWD: 0.15 },
+  //   THE BACK LINE'S RESULT (meFinalise): rateUnitClean for a clean sheet and rateUnitXg for each goal of open-play
+  //   chances conceded under rateUnitPar (a side's ordinary match), by line (rateUnitPos) and share of the match.
+  rateUnitClean: 0.20, rateUnitXg: 0.20, rateUnitPar: 1.7, rateUnitPos: { DEF: 1, MID: 0.4 },
+  //   THE SHOT AFTER IT IS STRUCK (meGkPs; keeper.ts planFor): what an ordinary keeper (gkRefK on the skill band) concedes,
+  //   a logistic on the metres his reach had in hand (mg, held to mgLo..mgHi), the metres it came above gkZHi (zHi), whether
+  //   it was along the floor under gkZLo (zLo) and the chance before the shot (xg, to xgHi). Fitted on the engine's own
+  //   shots on target (test/ratings.mjs derive): on 23,582 of them it leaves 0.074 of the 0.185 a shot's outcome varies
+  //   by, where the chance alone (gkExp) left 0.158. Null prices a shot on the chance before it (gkExp), which is also
+  //   what a ball with no save plan falls back to.
+  //   THE KEEPER'S AFTERNOON (match.ts meGkScore, where it is set out; the user's second round that day, "only clear
+  //   mistakes cost" and busy and idle keepers levelled). rateSave is now an ordinary match's worth of saves, paid by
+  //   the share of an ordinary keeper's pay his came to; rateBigSave the same for the saves the ordinary keeper does
+  //   not reach, against rateGkBig of his shots on target; rateGkMistake a goal that was his, rateGkSoft where a shot
+  //   starts to be one that should not go in; rateGkDamp what a match under an ordinary keeper's counts for; and an
+  //   ordinary match is rateGkPar of pay and rateGkShots shots on target, drawn toward by rateGkLevel of itself.
+  rateBigSave: 1.40, rateGkMistake: 0.70, rateGkSoft: 0.25, rateGkDamp: 0.2, rateGkLevel: 1.0, rateGkPar: 0.40, rateGkShots: 5.0,
+  rateGkBig: 0.11,
+  gkRefK: 0.3, gkPs: { b0: -3.97, mg: -3.56, zHi: 2.66, zLo: -0.87, xg: 12.80, mgLo: -2.5, mgHi: 0.6, xgHi: 0.4 },   // 28 Nov 2026, lab/rate8-*
+  //   WHAT IT DID, on the same 1,200 League One and Two fixtures before and after (cloud runs on lab/rate2-nl and
+  //   lab/rate5-nl). A keeper's season average rises 0.17 for ten OVR of his own (0.13) and does not move with the chances
+  //   his side gives up (-0.01 for half a goal a match more of them); from a clean sheet to three or more conceded it
+  //   runs 7.34 to 6.50 (7.63 to 6.21). A defender's season average follows his count of defensive actions at 0.13 where
+  //   it was 0.83. The best three hundred match ratings are 123 forwards, 107 midfielders, 47 defenders and 23 keepers
+  //   (52, 90, 117, 41), and all but two in a hundred of a midfielder's nines have a goal or an assist in them.
+  //   ...and on three League One seasons played as seasons (380 fixtures each, lab/rate7-season): the best season average
+  //   7.71, 7.72 and 7.90, the tenth 7.30, the thirtieth 7.15, the top ten's mean OVR 89 in a league of 78.5; the regulars'
+  //   averages spread 0.22 (SofaScore's 0.20, its best one in twenty 7.26 and one in ten 7.16; ours 7.25 and 7.15).
   // A goal against, to each man of the side on the pitch, by his line (raw): SofaScore's defenders lose 0.28 a goal, its
   // midfielders 0.08 and its forwards nothing. Was 0.06 to the defenders alone.
-  rateConcede: { DEF: 0.29, MID: 0.05, FWD: 0 },
+  // ...cut to a share the back line carries together (28 November 2026), DEF 0.29 -> 0.05: the rest of a goal is charged
+  // to the men in it (rateBlame*, below), so a good defender behind a poor side is no longer a poor defender.
+  // ...and gone (the rebuild above): the side's share is the back line's result, a bonus (rateUnit*).
+  rateConcede: { DEF: 0, MID: 0, FWD: 0 },
+  // THE MEN WHO LET IT IN (match.ts, the goal; meBlameAt reads them at the strike). The scorer's marker pays rateBlameMark
+  // scaled from rateBlameMarkMin of it when he was within rateBlameTight metres to all of it at rateBlameLoose or more;
+  // with nobody marking him, the nearest outfielder within rateBlameNearR pays rateBlameNear; every man beaten in the move
+  // within rateErrWin of the goal pays rateBlameBeat. Set by reasoning to replace the flat charge they share out of; the
+  // finish (rateFin) is refitted on top, so they move who pays, not what a defender averages.
+  rateBlameMark: 0.25, rateBlameMarkMin: 0.4, rateBlameTight: 1.5, rateBlameLoose: 5.0,
+  rateBlameNear: 0.15, rateBlameNearR: 10, rateBlameBeat: 0.12,
   // The result, to every man who played, by his share of the match (raw, [won, drawn]): SofaScore's keeper +0.16 / +0.09
   // over a defeat, defender +0.11 / +0.08, midfielder +0.09 / +0.06, forward +0.27 / +0.12, net of everything else.
-  rateResult: { GK: [0.17, 0.12], DEF: [0.07, 0.07], MID: [0.04, 0.01], FWD: [0.21, 0.06] },
+  // GONE, all of it (28 November 2026, the user: "No, only what he did"). It read { GK: [0.17, 0.12], DEF: [0.07, 0.07],
+  // MID: [0.04, 0.01], FWD: [0.21, 0.06] }.
   // THE EVENT WEIGHTS, REBUILT FOR THE REBUILT GAME (user, 22 November 2026: "rebuild the rating system from a
   // SofaScore-inspired system again, taking into consideration everything we have available in our engine. I expect the
   // current one to be very attacker-biased"). The weights were fitted on 16 October to SofaScore's own, per event, for a
@@ -1885,13 +1961,18 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // 0.13, being beaten 0.075 -> 0.10, losing the ball in a duel 0.062 -> 0.07. A header won is now a real contest for
   // the ball where it was one of fifty knock-ons: 0.052 -> 0.20. And the ball in behind that reaches its man is paid
   // for itself (rateThru), which nothing was: it is the pass the engine now plays twelve times a match.
-  rateThru: 0.08,
+  // (rateThru, 0.08 for a ball in behind that found its man, went on 28 November 2026 into ratePassThru.)
   // The keeper's clean sheet (raw, match.ts meFinalise; 22 November 2026): 0.20 for the nought and 0.08 for each save
   // in it, to eight of them, and a floor of 7.0 under a full match of it. With rateFin.GK.mid moved to keep the keepers'
   // mean, a clean sheet with nothing to do reads 7.0, one with five saves a little over 8.0. This is above SofaScore's
   // own keepers, whose clean sheets average 7.37 (ours will sit near 7.7): the user asked for it. SofaScore's breakdown
   // by saves could not be pulled (its API refused the request), so the split by workload is set by reasoning.
-  rateCleanGK: 0.20, rateCleanSave: 0.08, rateCleanSaveMax: 8, rateCleanFloor: 7.0,
+  // REBUILT 28 November 2026: a flat 0.20 and a floor of 7.0 rewarded a poor keeper behind a good defence for the nought
+  // the defence kept. Now rateCleanXg for each goal an ordinary keeper would have expected to concede from the shots on
+  // target he faced, to rateCleanXgMax of them: nothing to do reads par, five ordinary saves about what they did before.
+  // ...0.40 -> 0.25 the same day with the common scale (rateFin): the saves in a clean sheet are already paid in full.
+  // ...and 0.15 with the keeper's ledger (rateBigSave, below).
+  rateCleanXg: 0.15, rateCleanXgMax: 2.5,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1927,12 +2008,16 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 22 November 2026 for the rebuilt game (2,971 matches of every league and the national sides at thirteen
   // minutes, cloud run 45021080612), with gkExpPen (0.76 -> 0.78).
   // Re-derived 23 November 2026 after the free kick, the corner and the swing were rebuilt (2,971 matches, cloud run 45084196754).
-  gkExp: [[0.05, 0.08], [0.10, 0.16], [0.20, 0.25], [0.30, 0.59], [0.40, 0.83], [0.60, 0.88], [1.01, 0.89]],   // cloud run 45084196754
+  gkExp: [[0.05, 0.07], [0.10, 0.14], [0.20, 0.23], [0.30, 0.62], [0.40, 0.84], [0.60, 0.88], [1.01, 0.89]],   // 28 Nov 2026, lab/rate2-*
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 0.58, rateErrWin: 32, rateBlock: 0.20, rateClear: 0.063, rateKeyPass: 0.08,
+  // (rateBlock is now for a big chance blocked, less by the chance it was; rateClear and rateIntercept are paid by the
+  // danger alone: match.ts meDefPay, 28 November 2026.)
+  // (rateKeyPass 0.08 -> 0, same day: a pass before any shot paid whatever the shot was, and the chance it made is
+  // already paid by what it was worth, rateChanceBuild. The big chance made, rateBigChance, stands.)
+  rateError: 0.58, rateErrWin: 32, rateBlock: 0.25, rateClear: 0.10, rateKeyPass: 0,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1943,7 +2028,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // (the quickest, a throw, is taken eleven ticks after the ball died). Both are small on
   // purpose: they are how a deep midfielder finishes a 3-0 on 7.6 rather than on exactly what he
   // started with.
-  rateIntercept: 0.080, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
+  rateIntercept: 0.08, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
   // THE CHANCE IS THE CONTRIBUTION, not the goal. The build walk above only ran when the move
   // scored, so a winger who manufactured two goals of expected chances on the striker's blank
   // afternoon finished on par -- his rating tracked the statline, not the football. Every
@@ -1962,7 +2047,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // set to lands on his season as a flat bonus the rest of his position never collects. 1.1
   // built a board of nine midfielders; 0.30 is what keeps the credit real without deciding the
   // whole table by itself.
-  rateChanceBuild: 0.35, rateChanceGet: 0.35, rateChanceCap: 0.25,
+  // ...AND THE CAP IS OFF (28 November 2026, the rebuild at rateSave). At 0.25 more than half of all forwards' full
+  // matches reached it (55%, and 24% of midfielders'), so it was a flat bonus for playing up front and said nothing of
+  // which forward got on the end of more. 0.35 -> 0.12 a goal of chances each, to rateChanceCap 1.0, which nobody meets.
+  rateChanceBuild: 0.12, rateChanceGet: 0.12, rateChanceCap: 1.0,
   // ...and STOPPING the chance is worth what the chance was. A flat tackle rate said cutting out
   // a square ball on halfway and an interception on the six-yard line were the same act. Every
   // defensive action -- tackle, interception, block, clearance -- now scales with the danger of
@@ -1975,7 +2063,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // afternoon's worth of routine work pays less, while the block on the line and the interception
   // in the six-yard box pay more. The standout defender separates from his own back four, which
   // is the whole point of rating a defender at all.
-  rateDefDanger: 1.3,
+  // ...and on 28 November 2026 the base went altogether: the danger is all a defensive act pays (match.ts meDefPay).
   // PHASE D: THE ROUTINE. Everything above is a moment -- a goal, a card, an error -- and a match
   // is mostly not moments. A full-back who played ninety composed minutes and a midfielder who
   // completed eighty passes both finished on exactly 6.50, because nothing either of them did all
@@ -1989,22 +2077,25 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ABOVE the 6.5 start, the left tail is thin, and the right tail is long and reaches 10. So the
   // routine positives are small and frequent, the routine punishments are smaller still, and only
   // goals, saves, errors and dismissals reach far from par.
-  ratePass: 0.014, ratePassProg: 0.0009, ratePassProgCap: 26, ratePassFail: 0.054,
+  // (The pass's own pay, 0.014 completed and its ground and 0.054 off a failed one, went on 28 November 2026 for
+  // ratePassX above: it paid the man who saw most of the ball for seeing it.)
+  ratePassProgCap: 26,
   // A pass is PROGRESSIVE by the Wyscout rule: the gain toward the opponent's goal that counts
   // shrinks as play moves higher, so a defender lumping it forward from all that free grass does
   // not out-count a midfielder threading it in traffic. Both ends in own half: 28 m. Crossing
   // halves: 14 m. Both in the opponent's half: 9 m. Measured at a flat 10 m, DEF still topped the
   // table (2.4/match vs MID 1.5); tiered, the table belongs to the men who play forward.
   progOwn: 28, progCross: 14, progOpp: 9,
-  rateDuelWon: 0.085, rateDuelLost: 0.07, rateDribble: 0.13, rateBeaten: 0.10,
-  rateAerial: 0.20, rateShotOn: 0.05, rateShotOff: 0.018,
+  // (A duel won 0.085, lost 0.07, a dribble 0.13, a man beaten 0.10 and any header 0.20 went on 28 November 2026 for
+  // rateDuelX, rateDribX and rateAirX above.)
+  rateShotOn: 0.05, rateShotOff: 0.018,
   // A chance is big when the model says roughly a third of them go in. Creating one is worth more
   // than the key pass it already scores; spurning one is a real cost, and it is charged whether the
   // keeper saved it or it went wide, exactly as it is in the systems this is modelled on.
   bigChanceXg: 0.30, rateBigChance: 0.20, rateBigMiss: 0.40, rateBigMissCap: 1.7,
   // The moments that were missing. A penalty saved and a tackle made with nobody behind you are two
   // of the biggest single things a keeper or a defender can do in a match, and neither existed.
-  ratePenSave: 0.85, ratePenMiss: 1.00, rateLastMan: 0.28, tkLastManR: 34,
+  ratePenSave: 0.85, ratePenMiss: 1.00, rateLastMan: 0.22, tkLastManR: 34,
   // PHASE C. rateFullFrac is the share of a match a man has to play before his rating is taken at
   // face value; below it he is pulled back toward par (see rateFin).
   rateFullFrac: 0.667,
@@ -2053,10 +2144,21 @@ tkBeatT: 14, tkBeatSpd: 0.55,
     // Refitted 23 November 2026 (2,971 matches, cloud run 45084196754) after the free kick, the corner and the swing
     // were rebuilt: more headed and set-piece goals, and unrefitted a keeper's full match was at 6.0 or under 8.8% of
     // the time against 6.8%. 2.85 goals a match in League One on these.
-    GK:  { mid: 0.949, up: 0.760, dn: 0.663, tail: 1.370 },
-    DEF: { mid: 0.682, up: 0.958, dn: 0.740, tail: 1.431 },
-    MID: { mid: 0.854, up: 0.799, dn: 1.073, tail: 1.302 },
-    FWD: { mid: 1.128, up: 0.554, dn: 0.977, tail: 1.515 },
+    // ONE SCALE FOR EVERYBODY (28 November 2026, the rebuild at rateSave: the user's "decisive games"). Every position
+    // had its own up, dn and tail, fitted so each put the same share of its matches at 8, at 9 and at 6: a defender's
+    // best afternoon of the year read as a hat-trick whatever it was made of. The swing and the bend are now the same
+    // for all four, so how far a rating travels is what the man did, in the one currency the weights are in; only `mid`
+    // is still his position's, so an ordinary afternoon is par wherever he plays. Fitted on all the full matches together
+    // to SofaScore's shape (test/ratings.mjs derive): 2,383 matches, every league and League One and Two (cloud runs on
+    // lab/rate8-mix and lab/rate8-nl, with the keeper's ledger). On them 7.7% of full matches are at 8.0 or better, 1.4%
+    // at 9.0 and 6.8% at 6.0 or under, as SofaScore's are; by position 8.0 or better is a forward's 12.8%, a midfielder's
+    // 8.5%, a keeper's 6.0% and a defender's 5.1%, and 6.0 or under 9.5%, 6.3%, 2.2% and 7.5%. A win reads 7.22, a
+    // draw 6.93 and a defeat 6.69 with nothing paid for the result (SofaScore's 7.23, 6.97, 6.62); one goal 7.93, two
+    // 8.98, three 9.64.
+    GK:  { mid: 0.173, up: 1.133, dn: 1.060, tail: 1.156 },
+    DEF: { mid: 0.348, up: 1.133, dn: 1.060, tail: 1.156 },
+    MID: { mid: 0.368, up: 1.133, dn: 1.060, tail: 1.156 },
+    FWD: { mid: 0.597, up: 1.133, dn: 1.060, tail: 1.156 },
   },
 
   kickLock: 3,
