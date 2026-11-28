@@ -1,5 +1,98 @@
 [
  {
+  "id": "87370435",
+  "by": "auroruse",
+  "at": "2026-11-28T16:44:21.462Z",
+  "what": "accept",
+  "changes": [],
+  "added": {
+   "players": [
+    {
+     "id": "p7070",
+     "name": "Domenge Mori"
+    },
+    {
+     "id": "p7071",
+     "name": "Elek Schwartz"
+    },
+    {
+     "id": "p7072",
+     "name": "Pèire Vandini"
+    },
+    {
+     "id": "p7073",
+     "name": "Josèp Beraudo"
+    },
+    {
+     "id": "p7074",
+     "name": "Maurici Torniaire"
+    },
+    {
+     "id": "p7075",
+     "name": "Loís Cler"
+    },
+    {
+     "id": "p7076",
+     "name": "Franz Kekeiss"
+    },
+    {
+     "id": "p7077",
+     "name": "Joan Cornilli"
+    },
+    {
+     "id": "p7078",
+     "name": "Károly Kovács"
+    },
+    {
+     "id": "p7079",
+     "name": "Antòni Franceschetti"
+    },
+    {
+     "id": "p7080",
+     "name": "Andrieu Guimbard"
+    },
+    {
+     "id": "p7081",
+     "name": "Raol Dutheil"
+    },
+    {
+     "id": "p7082",
+     "name": "Pèire Fecchino"
+    },
+    {
+     "id": "p7083",
+     "name": "Andrieu Caleca"
+    },
+    {
+     "id": "p7084",
+     "name": "Léon Pawlak"
+    },
+    {
+     "id": "p7085",
+     "name": "Marius Besson"
+    },
+    {
+     "id": "p7086",
+     "name": "Carles Bardot"
+    },
+    {
+     "id": "p7087",
+     "name": "Marcèl Miquèl"
+    },
+    {
+     "id": "p7088",
+     "name": "Francés Roux"
+    }
+   ],
+   "teams": [
+    {
+     "id": "t0419",
+     "name": "AS Canas"
+    }
+   ]
+  }
+ },
+ {
   "id": "46ccf97e",
   "by": "auroruse",
   "at": "2026-11-28T16:44:05.162Z",
