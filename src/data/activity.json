@@ -1,5 +1,98 @@
 [
  {
+  "id": "46ccf97e",
+  "by": "auroruse",
+  "at": "2026-11-28T16:44:05.162Z",
+  "what": "accept",
+  "changes": [],
+  "added": {
+   "players": [
+    {
+     "id": "p7051",
+     "name": "Andrieu Tixier"
+    },
+    {
+     "id": "p7052",
+     "name": "Andrieu Chardar"
+    },
+    {
+     "id": "p7053",
+     "name": "Pèire Bastida"
+    },
+    {
+     "id": "p7054",
+     "name": "Joan Schnoeck"
+    },
+    {
+     "id": "p7055",
+     "name": "Enric Policarpe"
+    },
+    {
+     "id": "p7056",
+     "name": "Augustin Chantrel"
+    },
+    {
+     "id": "p7057",
+     "name": "Ferenc Győri"
+    },
+    {
+     "id": "p7058",
+     "name": "Andrieu Wilson"
+    },
+    {
+     "id": "p7059",
+     "name": "Saïd Ben-Aïssa"
+    },
+    {
+     "id": "p7060",
+     "name": "Claudius Cheuva"
+    },
+    {
+     "id": "p7061",
+     "name": "Ramon Reboul"
+    },
+    {
+     "id": "p7062",
+     "name": "Loís Brunel"
+    },
+    {
+     "id": "p7063",
+     "name": "Gaston Pelissier"
+    },
+    {
+     "id": "p7064",
+     "name": "Maurici Dalmas"
+    },
+    {
+     "id": "p7065",
+     "name": "Jòrdi Teissièr"
+    },
+    {
+     "id": "p7066",
+     "name": "Renat Arnaud"
+    },
+    {
+     "id": "p7067",
+     "name": "Emili Sauvaire"
+    },
+    {
+     "id": "p7068",
+     "name": "Károly Tóth"
+    },
+    {
+     "id": "p7069",
+     "name": "Pau Viala"
+    }
+   ],
+   "teams": [
+    {
+     "id": "t0418",
+     "name": "Cavares Olimpic"
+    }
+   ]
+  }
+ },
+ {
   "id": "f470328b",
   "by": "GeneralVarah",
   "at": "2026-11-28T16:07:53.539Z",
