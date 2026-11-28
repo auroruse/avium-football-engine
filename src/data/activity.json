@@ -1,5 +1,98 @@
 [
  {
+  "id": "4e8167a2",
+  "by": "auroruse",
+  "at": "2026-11-28T16:44:35.766Z",
+  "what": "accept",
+  "changes": [],
+  "added": {
+   "players": [
+    {
+     "id": "p7089",
+     "name": "Andrieu Combes"
+    },
+    {
+     "id": "p7090",
+     "name": "Renat Roque"
+    },
+    {
+     "id": "p7091",
+     "name": "Antonin Bosc"
+    },
+    {
+     "id": "p7092",
+     "name": "Ramon Vidal"
+    },
+    {
+     "id": "p7093",
+     "name": "Marcèl Causse"
+    },
+    {
+     "id": "p7094",
+     "name": "Paulin Sabatièr"
+    },
+    {
+     "id": "p7095",
+     "name": "István Kovács"
+    },
+    {
+     "id": "p7096",
+     "name": "Moussa Ben-Kaddour"
+    },
+    {
+     "id": "p7097",
+     "name": "Franz Neubauer"
+    },
+    {
+     "id": "p7098",
+     "name": "Claudius Mercier"
+    },
+    {
+     "id": "p7099",
+     "name": "Pèire Vernet"
+    },
+    {
+     "id": "p7100",
+     "name": "Joan-Luc Mazel"
+    },
+    {
+     "id": "p7101",
+     "name": "Kaddour Belkacem"
+    },
+    {
+     "id": "p7102",
+     "name": "Léonard Fabre"
+    },
+    {
+     "id": "p7103",
+     "name": "Gaston Delmas"
+    },
+    {
+     "id": "p7104",
+     "name": "Émile Pujol"
+    },
+    {
+     "id": "p7105",
+     "name": "Ali Ouali"
+    },
+    {
+     "id": "p7106",
+     "name": "Loís Chabaud"
+    },
+    {
+     "id": "p7107",
+     "name": "Jacme Bastida"
+    }
+   ],
+   "teams": [
+    {
+     "id": "t0420",
+     "name": "Estadi Olimpic de Pestelliére"
+    }
+   ]
+  }
+ },
+ {
   "id": "87370435",
   "by": "auroruse",
   "at": "2026-11-28T16:44:21.462Z",
