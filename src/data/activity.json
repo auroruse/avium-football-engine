@@ -1,5 +1,21 @@
 [
  {
+  "id": "f470328b",
+  "by": "GeneralVarah",
+  "at": "2026-11-28T16:07:53.539Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "leagues",
+    "id": "l0017",
+    "name": "Liga-ye Mellī",
+    "field": "cupFixed",
+    "from": null,
+    "to": true
+   }
+  ]
+ },
+ {
   "id": "e4b5f134",
   "by": "GeneralVarah",
   "at": "2026-11-28T15:42:59.937Z",
