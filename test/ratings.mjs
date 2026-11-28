@@ -25,6 +25,10 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const POSN = ["GK", "DEF", "MID", "FWD"];
+// The finishes fitted: a midfielder is rated on his role's (match.ts meFinKey, mirrored here on the slot the dump carries).
+const FINK = ["GK", "DEF", "MID_DM", "MID_CM", "MID_AM", "FWD"];
+const ROLE_BAND = { DM: "DM", AM: "AM" };
+const finKey = (pos, spos) => pos !== "MID" ? pos : "MID_" + (ROLE_BAND[(spos || "").split("/")[0]] || "CM");
 // SOFASCORE'S RATINGS AS THEY ARE NOW (the algorithm it brought in for 2025/26, which leans on a bell curve and gives more
 // sevens and more nines than the old one did), read from 142 matches and 4,270 rated performances of its own match data on
 // 16 October 2026: the Premier League, a round of each of the other big four and the 2026 World Cup's first round. A full
@@ -95,7 +99,7 @@ if (process.argv[2] === "--worker") {
           prog: p.prog || 0, cc: p.cc || 0, def: p.defActs || 0, sv: p.saves || 0,
           duelWon: p.duelWon || 0, duelLost: p.duelLost || 0, drib: p.dribbles || 0,
           beaten: p.beaten || 0, aer: p.aerials || 0, int: p.ints || 0, yc: p.yc || 0, rc: p.rc ? 1 : 0,
-          r0: p._r0, proj: p._proj, shrink: p._shrink });
+          r0: p._r0, proj: p._proj, shrink: p._shrink, fk: finKey(p.pos, p.spos) });
       }
     }
     // Per pass: passer's OVR against his XI, position, the decision's belief, outcome, length,
@@ -245,10 +249,10 @@ function refinish(matches, CFG, F, gk, S = CFG.rateBend, par = CFG.ratePar) {
     if (p.r0 == null || p.frac * 90 < 10) continue;
     let r0 = p.r0;
     if (gk && p.pos === "GK") for (const [xg, , pen] of m.team[p.sd].sotLog) r0 += CFG.rateSave * (ex(gk.T, pen, xg, gk.pen) - ex(CFG.gkExp, pen, xg, CFG.gkExpPen));
-    const f = F[p.pos], z = p.rc ? r0 - 6.5 - f.mid : (r0 - 6.5 - f.mid * p.frac) * p.proj * p.shrink;
+    const f = F[p.fk || p.pos] || F[p.pos], z = p.rc ? r0 - 6.5 - f.mid : (r0 - 6.5 - f.mid * p.frac) * p.proj * p.shrink;
     const top = 6.5 + z * (z >= 0 ? f.up : f.dn) + (par - 6.5) * p.shrink;
     const r = top > CFG.rateKnee ? CFG.rateKnee + f.tail * S * Math.log(1 + (top - CFG.rateKnee) / S) : top;
-    rows.push({ pos: p.pos, full: p.frac >= 0.9, r: Math.max(3, Math.min(10, +r.toFixed(2))), p, m });
+    rows.push({ pos: p.pos, fk: p.fk || p.pos, full: p.frac >= 0.9, r: Math.max(3, Math.min(10, +r.toFixed(2))), p, m });
   }
   return rows;
 }
@@ -261,9 +265,10 @@ function fitFinish(matches, CFG, gk) {
   const F = JSON.parse(JSON.stringify(CFG.rateFin));
   let S = CFG.rateBend;
   const bis = (set, f, lo, hi) => { for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; set(m); if (f() < 0) lo = m; else hi = m; } set((lo + hi) / 2); };
-  const get = (p) => refinish(matches, CFG, F, gk, S, PAR).filter(r => r.full && r.pos === p).map(r => r.r);
+  const get = (p) => refinish(matches, CFG, F, gk, S, PAR).filter(r => r.full && r.fk === p).map(r => r.r);
   for (let it = 0; it < 3; it++) {
-    for (const p of POSN) for (let k = 0; k < 2; k++) {
+    for (const p of FINK) for (let k = 0; k < 2; k++) {
+      if (!F[p]) F[p] = { ...F.MID };
       bis(v => F[p].mid = v, () => PAR - mean(get(p)), -2, 3);
       bis(v => F[p].up = v, () => share(get(p), r => r >= 8.0) - SHAPE.hi8, 0.2, 4);
       bis(v => F[p].dn = v, () => share(get(p), r => r <= 6.0) - SHAPE.lo6, 0.2, 4);
@@ -363,7 +368,7 @@ const sub = (from, to) => { const c = code.split(from).length - 1; if (c !== 1) 
 const subRe = (re, to) => { const m = code.match(new RegExp(re.source, "g")) || []; if (m.length !== 1) throw new Error(`anchor x${m.length}, want x1: ${re}`); code = code.replace(re, to); };
 subRe(/meRate\((q\d*), meSaveBonus\(shp\.xgN \?\? shp\.xg, shp\.pen\) \+ \(shp\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([shp.xgN ?? shp.xg, $1, !!shp.pen]), meSaveBonus(shp.xgN ?? shp.xg, shp.pen)) + (shp.pen ? CFG.ratePenSave : 0));");
 subRe(/meRate\((q\d*), meSaveBonus\(mp\.shot\.xgN \?\? mp\.shot\.xg, mp\.shot\.pen\) \+ \(mp\.shot\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([mp.shot.xgN ?? mp.shot.xg, $1, !!mp.shot.pen]), meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
-subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\? sh\.xg : xg, !!\(sh && sh\.pen\)\)\);/, "if ($1.pos === \"GK\") meRate($1, (globalThis.__gc.push([sh ? sh.xgN ?? sh.xg : xg, $1, !!(sh && sh.pen)]), -meConcedePen(sh ? sh.xgN ?? sh.xg : xg, !!(sh && sh.pen))));");
+subRe(/meRate\((q\d*), -meConcedePen\((gxp\d*), (gpn\d*)\)\);/, "meRate($1, (globalThis.__gc.push([$2, $1, $3]), -meConcedePen($2, $3)));");
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
 // The rating before full time shapes it, so the finalisation can be re-fitted without replaying.
@@ -404,7 +409,7 @@ if (mode === "derive") {
   console.log("\nTO SHIP (par " + PAR + " for every position, full-match players):");
   console.log("  gkExp: [" + gk.T.map(([hi, e]) => `[${hi.toFixed(2)}, ${e.toFixed(2)}]`).join(", ") + "],   gkExpPen: " + gk.pen.toFixed(2));
   console.log("  rateBend: " + S.toFixed(2) + ",");
-  console.log("  rateFin: {\n" + POSN.map(p => `    ${(p + ":").padEnd(4)} { mid: ${F[p].mid.toFixed(3)}, up: ${F[p].up.toFixed(3)}, dn: ${F[p].dn.toFixed(3)}, tail: ${F[p].tail.toFixed(3)} },`).join("\n") + "\n  },");
+  console.log("  rateFin: {\n" + FINK.map(p => `    ${(p + ":").padEnd(7)} { mid: ${F[p].mid.toFixed(3)}, up: ${F[p].up.toFixed(3)}, dn: ${F[p].dn.toFixed(3)}, tail: ${F[p].tail.toFixed(3)} },`).join("\n") + "\n  },");
   console.log("\nTHE FINISH TO SHIP, on these matches:");
   const toShip = refinish(matches, CFG, F, gk, S, PAR);
   console.log(shapeTable(toShip));
