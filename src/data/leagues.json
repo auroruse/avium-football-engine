@@ -24,5 +24,6 @@
 {"id":"l0023","name":"3. Liga","nation":"ALE","tier":3,"cup":null,"up":3,"down":3,"listed":true},
 {"id":"l0024","name":"1. Alemannische Amateursliga","nation":"ALE","tier":4,"cup":null,"up":3,"listed":true},
 {"id":"l0025","name":"Hanan Tantanakuy","nation":"ANT","tier":1,"cup":"Northern Cup","listed":true},
-{"id":"l0026","name":"Uray Tantanakuy","nation":"ANT","tier":1,"cup":"Southern Cup","listed":true}
+{"id":"l0026","name":"Uray Tantanakuy","nation":"ANT","tier":1,"cup":"Southern Cup","listed":true},
+{"id":"l0027","name":"Division d'Onor","nation":"CRS","tier":1,"cup":null,"listed":true}
 ]

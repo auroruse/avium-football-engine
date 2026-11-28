@@ -1,5 +1,116 @@
 [
  {
+  "id": "32eb8d01",
+  "by": "auroruse",
+  "at": "2026-11-28T09:53:59.038Z",
+  "what": "accept",
+  "changes": [],
+  "added": {
+   "players": [
+    {
+     "id": "p7029",
+     "name": "Andrieu Lacombe"
+    },
+    {
+     "id": "p7030",
+     "name": "Jòrdi Cabrol"
+    },
+    {
+     "id": "p7031",
+     "name": "Pèire-Joan Marty"
+    },
+    {
+     "id": "p7032",
+     "name": "Miquèl Soulié"
+    },
+    {
+     "id": "p7033",
+     "name": "Rachid Ben-Slimane"
+    },
+    {
+     "id": "p7034",
+     "name": "Léonard Peyre"
+    },
+    {
+     "id": "p7035",
+     "name": "Gaston Bories"
+    },
+    {
+     "id": "p7036",
+     "name": "Raimon Pujol"
+    },
+    {
+     "id": "p7037",
+     "name": "Enric Estève"
+    },
+    {
+     "id": "p7038",
+     "name": "Bertrand Cayla"
+    },
+    {
+     "id": "p7039",
+     "name": "Lucien-Marc Galtier"
+    },
+    {
+     "id": "p7040",
+     "name": "Bernat Delpech"
+    },
+    {
+     "id": "p7041",
+     "name": "Guilhèm Teissèire"
+    },
+    {
+     "id": "p7042",
+     "name": "Arnaut Combes"
+    },
+    {
+     "id": "p7043",
+     "name": "Yacine Mansouri"
+    },
+    {
+     "id": "p7044",
+     "name": "Henri-Marc Viguier"
+    },
+    {
+     "id": "p7045",
+     "name": "Loís Falguièras"
+    },
+    {
+     "id": "p7046",
+     "name": "Fabian Castan"
+    },
+    {
+     "id": "p7047",
+     "name": "Clamenç Roques"
+    },
+    {
+     "id": "p7048",
+     "name": "Sébastien Auriol"
+    },
+    {
+     "id": "p7049",
+     "name": "Kader Ziani"
+    },
+    {
+     "id": "p7050",
+     "name": "Hector Mallet"
+    }
+   ],
+   "teams": [
+    {
+     "id": "t0417",
+     "name": "Tolosa FC"
+    }
+   ],
+   "leagues": [
+    {
+     "id": "l0027",
+     "name": "Division d'Onor"
+    }
+   ]
+  }
+ },
+ {
   "id": "d751877a",
   "by": "cornafiable",
   "at": "2026-11-27T21:50:53.909Z",
