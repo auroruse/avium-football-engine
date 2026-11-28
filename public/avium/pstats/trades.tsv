@@ -610,3 +610,11 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 207	1936	2026-11-28T14:14:21.819Z	player	p3256	Rhys WARWICK	CM	76	31	3100000	t0206	Imperial Sports Society	t0223	AC Shirasagi	auroruse
 207	1936	2026-11-28T14:14:21.819Z	player	p3238	Karl HAUSCHKA	RB	79	28	8500000	t0223	AC Shirasagi	t0206	Imperial Sports Society	auroruse
 207	1936	2026-11-28T14:14:21.819Z	player	p6504	Dezeb NILAKHÎN	AM	72	23	2200000	t0223	AC Shirasagi			auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p1095	Ludovic MERCADIER	GK	82	28	12000000	t0206	Imperial Sports Society	t0208	Kyōwa Naginomiya	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p1386	Yerrin CHINDURA	LW/AM	88	23	94000000	t0206	Imperial Sports Society	t0208	Kyōwa Naginomiya	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p1088	Íker OLABARRÍA	CM	83	26	23000000	t0206	Imperial Sports Society	t0208	Kyōwa Naginomiya	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p2436	Kymani HEWITT	ST	74	23	4500000	t0206	Imperial Sports Society	t0208	Kyōwa Naginomiya	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p6895	Pierre-Jean GIDE	GK	84	23	24000000	t0208	Kyōwa Naginomiya	t0206	Imperial Sports Society	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p0772	Alberto ACIN	CB	83	23	30000000	t0208	Kyōwa Naginomiya	t0206	Imperial Sports Society	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p1526	Sheng HUANG	AM/LW	82	24	23000000	t0208	Kyōwa Naginomiya	t0206	Imperial Sports Society	auroruse
+208	1936	2026-11-28T14:19:10.164Z	player	p0778	Petr PROCHÁZKA	ST/AM	84	29	30000000	t0208	Kyōwa Naginomiya	t0206	Imperial Sports Society	auroruse
