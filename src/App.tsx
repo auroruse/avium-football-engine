@@ -18492,7 +18492,7 @@ export default function App() {
       </div>);
     const rowHead = (r) => (<>
       <LeagueCrest league={r.g.comp} size={22} />
-      {uxArcBy.has(r.g.comp)
+      {uxArcBy.has(r.g.comp) || lgOfComp(r.g.comp)
         ? <button type="button" className="ux-btnreset ux-pyr-name ux-a" onClick={() => openComp(r.g.comp)}>{r.g.name}</button>
         : <span className="ux-pyr-name">{r.g.name}</span>}</>);
     // A COLLEGE LEAGUE (DESIGN.md, The ANCC) is its conferences, two abreast, each in its last season's finishing order
