@@ -621,3 +621,7 @@ DEAL	SEASON	DATE	KIND	ID	NAME	POS	OVR	AGE	VALUE	FROM	FROM CLUB	TO	TO CLUB	BY
 209	1936	2026-11-28T14:20:45.886Z	player	p1413	Periklis VOULGARIS	CB	72	27	1900000	t0206	Imperial Sports Society			auroruse
 210	1936	2026-11-28T14:20:45.886Z	player	p5286	Sōseki SOEJIMA	DM/CM	73	22	3100000	t0210	Ayanami Sei-Hachiman			auroruse
 211	1936	2026-11-28T14:22:41.044Z	player	p5846	Meshari RUWAILI	AM/CM	74	22	4300000	t0208	Kyōwa Naginomiya			auroruse
+212	1936	2026-11-28T14:23:48.873Z	player	p2436	Kymani HEWITT	ST	74	23	4500000	t0208	Kyōwa Naginomiya	t0227	Dai-Ichi Sen'ninhara	auroruse
+212	1936	2026-11-28T14:23:48.873Z	player	p5767	Isamu MIYAZAWA	CB	73	22	2600000	t0208	Kyōwa Naginomiya	t0227	Dai-Ichi Sen'ninhara	auroruse
+212	1936	2026-11-28T14:23:48.873Z	player	p0776	Quim ESTANYOL	CM	78	28	8000000	t0208	Kyōwa Naginomiya	t0227	Dai-Ichi Sen'ninhara	auroruse
+212	1936	2026-11-28T14:23:48.873Z	player	p3469	Ákos TOLVAJ	ST	78	24	12000000	t0227	Dai-Ichi Sen'ninhara	t0208	Kyōwa Naginomiya	auroruse
