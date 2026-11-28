@@ -1,5 +1,21 @@
 [
  {
+  "id": "31702152",
+  "by": "cornafiable",
+  "at": "2026-11-28T17:02:01.023Z",
+  "what": "save",
+  "changes": [
+   {
+    "kind": "leagues",
+    "id": "l0026",
+    "name": "Uray Tantanakuy",
+    "field": "cwc",
+    "from": 1,
+    "to": 2
+   }
+  ]
+ },
+ {
   "id": "3a6b4f02",
   "by": "cornafiable",
   "at": "2026-11-28T17:00:40.434Z",
