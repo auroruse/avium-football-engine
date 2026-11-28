@@ -20279,9 +20279,13 @@ export default function App() {
   const uxSeasonStats = (s) => {
     const m = new Map();
     for (const k of Object.keys(s.boards)) for (const e of s.boards[k]) {
-      const r = m.get(e.player) || { player: e.player, pos: e.pos, team: e.team, gp: 0 };
-      r.gp = Math.max(r.gp, e.gp); r[k] = e.v; m.set(e.player, r);
+      const r = m.get(e.player) || { player: e.player, pos: e.pos, team: e.team, gp: 0, min: 0 };
+      r.gp = Math.max(r.gp, e.gp); r.min = Math.max(r.min, e.min || 0); r[k] = e.v; m.set(e.player, r);
     }
+    // An average counts once a man has played a sixth of the most anyone did, by minutes where the season kept them,
+    // the bar its own RTG board was written with: below it the figure is grey and sorts under everyone who cleared it.
+    const all = [...m.values()], maxMin = Math.max(0, ...all.map(r => r.min)), maxGp = Math.max(1, ...all.map(r => r.gp));
+    for (const r of all) r.ok = maxMin > 0 ? r.min >= maxMin / 6 : r.gp >= Math.ceil(maxGp / 6);
     const nt = uxH2hKindOf(s.comp) === "nt";
     const teamOf = (code) => teams.find(t => t.code === code && t.league === s.comp) || teams.find(t => t.code === code && isIntlLeague(t.league) === nt) || null;
     const kinds = PSTATS_STAT_ORDER.filter(k => s.boards[k]?.length), sort = kinds.includes(tournSort.k) || tournSort.k === "gp" || tournSort.k === "name" ? tournSort : { k: kinds.includes("RTG") ? "RTG" : kinds[0] || "G", asc: false };
@@ -20289,6 +20293,7 @@ export default function App() {
     const rows = [...m.values()].filter(r => (tournPosF === "ALL" || r.pos === tournPosF) && (!tournTeamF || r.team === tournTeamF) && (!q || pFold(r.player).includes(q)))
       .sort((x, y) => { const k = sort.k, a = k === "name" ? x.player : x[k], b = k === "name" ? y.player : y[k];
         if ((a == null) !== (b == null)) return a == null ? 1 : -1;
+        if (k === "RTG" && x.ok !== y.ok) return x.ok ? -1 : 1;
         const d = typeof a === "string" ? a.localeCompare(b) : (a ?? 0) - (b ?? 0);
         return (sort.asc ? d : -d) || (y.G ?? 0) - (x.G ?? 0); });
     const S = (k, label, cls, text, title) => uxSortTh(sort, setTournSort, k, label, cls, text, title);
@@ -20315,7 +20320,7 @@ export default function App() {
                 <td style={{ ...mono, color: POS_CLR[r.pos] || "var(--ux-text-2)", fontWeight: 700, fontSize: 11 }}>{r.pos}</td>
                 <td><div className="ux-tc">{t ? <TeamCrest team={t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}
                   {t ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(t)}>{t.name}</button></span> : <span>{formerName(r.team)}</span>}</div></td>
-                {STATS.map(([k]) => <td key={k} className={"ux-n" + (k === sort.k ? " ux-strong" : "") + (r[k] == null ? " ux-dim" : "")} style={{ ...mono, ...(k === "RTG" && r[k] != null ? { color: ratingColor(r[k]) } : null) }}>
+                {STATS.map(([k]) => <td key={k} className={"ux-n" + (k === sort.k ? " ux-strong" : "") + (r[k] == null ? " ux-dim" : "")} style={{ ...mono, ...(k === "RTG" && r[k] != null ? { color: r.ok ? ratingColor(r[k]) : "var(--ux-text-3)" } : null) }}>
                   {r[k] == null ? "–" : k === "RTG" ? Number(r[k]).toFixed(2).replace(/0$/, "") : r[k]}</td>)}
               </tr>); })}
           {!rows.length && <tr><td colSpan={4 + STATS.length} className="ux-dim">No Players Found</td></tr>}
