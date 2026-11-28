@@ -1015,6 +1015,20 @@ export const meGkExp = (xg, pen) => {
 // about a quarter of a point a save whatever it was, so six saves read 8.1 where goals prevented alone had them at 7.4.
 export const meSaveBonus = (xg, pen) => CFG.rateSave * meGkExp(xg, pen) + CFG.rateSaveVol;
 export const meConcedePen = (xg, pen) => CFG.rateSave * (1 - meGkExp(xg, pen));
+// WHO WAS ON THE SHOOTER when he struck, for the blame if it goes in: the man marking him (his _mk names the shooter) and
+// how far off he was, and the nearest outfielder of the side defending, if he was within rateBlameNearR.
+export const meBlameAt = (s, side, si, p) => {
+  const cq = s.players[meOther(side)] || [];
+  let mk = -1, mkd = 0, nr = -1, nrd = 1e9;
+  for (let j = 0; j < cq.length; j++) {
+    const q = cq[j];
+    if (!q || q.off || q.pos === "GK") continue;
+    const d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (q._mk === si && (mk < 0 || d < mkd)) { mk = j; mkd = d; }
+    if (d < nrd) { nr = j; nrd = d; }
+  }
+  return { mk, mkd, nr: nrd <= CFG.rateBlameNearR ? nr : -1 };
+};
 // The running total is kept unclamped in _rr and only the shown rating is held to [3, 10]: clamped
 // on the way, a brace with three assists and a goal on a tidy afternoon both arrived at full time as
 // the same 10, and the finish could no longer tell them apart.
@@ -1093,8 +1107,10 @@ export function meFinalise(s) {
       // save to make read 6.43 and one with a single save 6.70, under a par of 6.95, and five saves with a clean sheet
       // 7.6 to 7.9. Keeping it out is paid whether or not he was asked to (rateCleanGK), every save in a clean sheet a
       // little more (rateCleanSave, to rateCleanSaveMax of them), by his share of the match.
-      const clean = p.pos === "GK" && gA === 0
-        ? (CFG.rateCleanGK + CFG.rateCleanSave * Math.min(CFG.rateCleanSaveMax, p.saves || 0)) * frac : 0;
+      // ...REBUILT 28 November 2026 (the user: "a bad keeper behind a good defense shouldnt be rewarded"): the clean
+      // sheet pays by the threat he faced, the goals an ordinary keeper would have expected to concede from his shots on
+      // target (_gxF, meGkExp), to rateCleanXgMax of them. A clean sheet with nothing to do is par; a busy one still pays.
+      const clean = p.pos === "GK" && gA === 0 ? CFG.rateCleanXg * Math.min(CFG.rateCleanXgMax, p._gxF || 0) : 0;
       const rawR = (p._rr ?? p.rating) + clean + (gF >= gA ? (CFG.rateResult[p.pos]?.[gF > gA ? 0 : 1] ?? 0) * frac : 0);
       // ...AND AGAINST AN ORDINARY AFTERNOON OF HIS OWN LENGTH. `mid` is an ordinary ninety, and a cameo was set against
       // all of it scaled by the shrink while his projection stopped at rateProjMax: an ordinary twenty minutes off the bench
@@ -1102,9 +1118,8 @@ export function meFinalise(s) {
       const z = p.rc ? rawR - 6.5 - f.mid : (rawR - 6.5 - f.mid * frac) * proj * shrink;
       const rTop = 6.5 + z * (z >= 0 ? f.up : f.dn) + (CFG.ratePar - 6.5) * shrink, KNEE = CFG.rateKnee;
       const S = CFG.rateBend, rSoft = rTop > KNEE ? KNEE + f.tail * S * Math.log(1 + (rTop - KNEE) / S) : rTop;
-      // ...and a full match in goal without conceding is never a poor afternoon: no lower than rateCleanFloor.
-      const floor = p.pos === "GK" && gA === 0 && !p.rc && frac >= 0.95 ? CFG.rateCleanFloor : 3;
-      p.rating = Math.max(floor, Math.min(10, +(rSoft.toFixed(2))));
+      // (The clean sheet's floor of 7.0 went with the flat clean sheet: a quiet nought is no proof of a good afternoon.)
+      p.rating = Math.max(3, Math.min(10, +(rSoft.toFixed(2))));
     }
   }
 }
@@ -1350,7 +1365,7 @@ export function meTackle(s, rng, out) {
       out.beaten = (out.beaten || 0) + 1;
       // He went past him. Worth something to the carrier and something off the man he left.
       meRate(c, CFG.rateDribble); c.dribbles = (c.dribbles || 0) + 1;
-      meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1;
+      meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1; p._beatT = mp.tick;
       // A failed tackle is not news -- it happens dozens of times a match and reads as a man
       // being praised for beating somebody who barely engaged him. Still drawn on the pitch.
       meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, null);
@@ -1398,7 +1413,7 @@ function meDuelHooks(s, rng, out) {
       const atk = mp.side;
       out.beaten = (out.beaten || 0) + 1;
       meRate(c, CFG.rateDribble); c.dribbles = (c.dribbles || 0) + 1;
-      meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1;
+      meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1; p._beatT = mp.tick;
       meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, null);
       if (out.fx?.length) { const r = out.fx[out.fx.length - 1], def = meOther(atk), j = s.players[def].indexOf(p);
         if (j >= 0) r.tq = (def === "away" ? 11 : 0) + j; if (slide) r.f = 1; }
@@ -2427,8 +2442,12 @@ export function meTick(s, rng, out) {
                                 const _fwd = pp.sx === undefined || pp.rs ? 0
                                            : (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx);
                                 // ...and the ball in behind that found its man is paid for itself (CFG.rateThru).
-                                meRate(pp.byP, CFG.ratePass
-                                  + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg
+                                // ...and the pass and its ground pay less the more of them he has completed (ratePassHalf,
+                                // 28 November 2026): sheer volume lifted the man who sees most of the ball every week, so
+                                // the season board was the playmakers' alone. A ball in behind still pays in full.
+                                meRate(pp.byP, (CFG.ratePass
+                                  + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg)
+                                  * CFG.ratePassHalf / (CFG.ratePassHalf + Math.max(0, pp.byP.passOk - 1))
                                   + (pp.k === "through" || pp.k === "over" ? CFG.rateThru : 0));
                                 // The table stat. Raw completions crowned the man who recycled at
                                 // the back; a pass that GAINS ground is the one worth counting, and
@@ -2691,12 +2710,30 @@ export function meTick(s, rng, out) {
               break;
             }
           }
-          // The men it went past. The keeper carries most of it and the back line shares the rest.
+          // The men it went past. The keeper is charged on his goals-prevented ledger and nothing else; the outfield shares
+          // only a little of it (rateConcede), because a goal is mostly the fault of the men in the move, below.
           for (const q of s.players[cross.conceding] || []) {
             if (q.off) continue;
-            if (q.pos === "GK") meRate(q, -meConcedePen(sh ? (sh.xgN ?? sh.xg) : xg, !!(sh && sh.pen)));
+            if (q.pos === "GK") { const gxp = sh ? (sh.xgN ?? sh.xg) : xg, gpn = !!(sh && sh.pen);
+              q._gxF = (q._gxF || 0) + meGkExp(gxp, gpn); meRate(q, -meConcedePen(gxp, gpn)); }
             else meRate(q, -(CFG.rateConcede[q.pos] ?? 0));
           }
+          // THE MEN WHO LET IT IN (the user, 28 November 2026: a defender was charged 0.29 for every goal his side
+          // conceded, involved or not, so a good centre-half behind a poor side read as a poor centre-half). The man
+          // marking the scorer when he struck pays for it, more the looser he was (meBlameAt, read at the strike); with
+          // nobody on him, the nearest man pays a smaller share, and nobody does for a strike from out of anyone's reach.
+          // A penalty's man is the one who gave it away (ratePenGave). Every man beaten in the move pays too.
+          if (sh && !sh.pen && sh.bl) {
+            const cq = s.players[cross.conceding] || [];
+            const mk = sh.bl.mk >= 0 ? cq[sh.bl.mk] : null, nr = sh.bl.nr >= 0 ? cq[sh.bl.nr] : null;
+            if (mk && !mk.off) {
+              const loose = clamp01((sh.bl.mkd - CFG.rateBlameTight) / (CFG.rateBlameLoose - CFG.rateBlameTight));
+              meRate(mk, -CFG.rateBlameMark * (CFG.rateBlameMarkMin + (1 - CFG.rateBlameMarkMin) * loose));
+              mk.blamed = (mk.blamed || 0) + 1;
+            } else if (nr && !nr.off) { meRate(nr, -CFG.rateBlameNear); nr.blamed = (nr.blamed || 0) + 1; }
+          }
+          for (const q of s.players[cross.conceding] || [])
+            if (q && !q.off && q.pos !== "GK" && q._beatT != null && mp.tick - q._beatT <= CFG.rateErrWin) meRate(q, -CFG.rateBlameBeat);
         }
         if (sh && sh.pen) sh._pd = 1;                    // scored: the funnel must not call it missed
         meEvt(out, sh && sh.pen ? "pen" : "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, goalTxt);
@@ -3187,7 +3224,7 @@ export function meTick(s, rng, out) {
             const aimY = ME_HALF_W + (q.y < ME_HALF_W ? 1 : -1) * GOAL_HALF_W * CFG.headAim;
             mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick, p: q, xg: hp,
                         xgN: meXgCal(meShotP(s, bs, q, q.x, q.y, true, CFG.gkRefSkill)) * CFG.headXg,
-                        lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1, d: dGoalA, hdr: 1 };
+                        lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1, d: dGoalA, hdr: 1, bl: meBlameAt(s, bs, bi, q) };
             if (globalThis.__shots) globalThis.__shots.push({ side: bs, d: dGoalA, pt: mp.possT ?? -1,
               lt: mp.tick - (mp._loose ?? -1e9), press: 0, xg: hp, hdr: 1, why: mp._looseWhy, inV: +inV.toFixed(1) });
 
@@ -3339,6 +3376,7 @@ export function meTick(s, rng, out) {
           if (shp && globalThis.__svd) globalThis.__svd.push([shp.d, 1]);
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
             if (shp._r != null && globalThis.__shots) globalThis.__shots[shp._r].out = "parry";
+            q._gxF = (q._gxF || 0) + meGkExp(shp.xgN ?? shp.xg, shp.pen);
             meRate(q, meSaveBonus(shp.xgN ?? shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0));
             if (shp.p) meRate(shp.p, CFG.rateShotOn);
             mePenRes(out, shp, null, q);
@@ -3445,6 +3483,7 @@ export function meTick(s, rng, out) {
           if (globalThis.__svd) globalThis.__svd.push([mp.shot.d, 1]);
           if (mp.shot._r != null && globalThis.__shots) globalThis.__shots[mp.shot._r].out = "catch";
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
+          q._gxF = (q._gxF || 0) + meGkExp(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen);
           meRate(q, meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePenSave : 0));
           if (mp.shot.p) meRate(mp.shot.p, CFG.rateShotOn);
           mePenRes(out, mp.shot, null, q);
@@ -4460,7 +4499,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: xgRec, t0: mp.tick, p,
                 xgN: meXgCal(meShotP(s, side, p, p.x, p.y, true, CFG.gkRefSkill) * (1 + wind * CFG.shotSetK)),
                 lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1,
-                d: Math.hypot(gx - p.x, p.y - ME_HALF_W) };
+                d: Math.hypot(gx - p.x, p.y - ME_HALF_W), bl: meBlameAt(s, side, shooter, p) };
     if (globalThis.__gfrom) mp.shot.from = (p._rcvT !== undefined && mp.tick - p._rcvT <= 8 ? p._rcvK : "-") + (act.ft ? " first time" : "");
     // Shot genesis, harness-only: same gate pattern as __prov. WHERE THE KEEPER WAS as well as
     // where the shot came from -- a goal conceded with him twelve metres off his line and still
